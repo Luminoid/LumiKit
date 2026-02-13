@@ -1,0 +1,24 @@
+{
+  "originHash" : "dfb9c9066a79bbc929d54d1d78635f3d8296d55c1971319fd10488c834dc0eee",
+  "pins" : [
+    {
+      "identity" : "lottie-spm",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/airbnb/lottie-spm.git",
+      "state" : {
+        "revision" : "69faaefa7721fba9e434a52c16adf4329c9084db",
+        "version" : "4.6.0"
+      }
+    },
+    {
+      "identity" : "snapkit",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/SnapKit/SnapKit.git",
+      "state" : {
+        "revision" : "2842e6e84e82eb9a8dac0100ca90d9444b0307f4",
+        "version" : "5.7.1"
+      }
+    }
+  ],
+  "version" : 3
+}
