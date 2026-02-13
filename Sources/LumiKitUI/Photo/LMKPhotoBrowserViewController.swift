@@ -52,8 +52,8 @@ public nonisolated struct LMKPhotoBrowserStrings: Sendable {
 public final class LMKPhotoBrowserViewController: UIViewController {
     // MARK: - Properties
 
-    public weak var dataSource: LMKPhotoBrowserDataSource?
-    public weak var delegate: LMKPhotoBrowserDelegate?
+    public weak var dataSource: (any LMKPhotoBrowserDataSource)?
+    public weak var delegate: (any LMKPhotoBrowserDelegate)?
     public var strings = LMKPhotoBrowserStrings()
 
     private let initialIndex: Int

@@ -100,7 +100,7 @@ public final class LMKPhotoCropViewController: UIViewController {
     // MARK: - Public Properties
 
     /// Delegate for receiving crop/cancel callbacks.
-    public weak var delegate: LMKPhotoCropDelegate?
+    public weak var delegate: (any LMKPhotoCropDelegate)?
 
     /// The source image to crop.
     public let image: UIImage
@@ -171,7 +171,7 @@ public final class LMKPhotoCropViewController: UIViewController {
     /// - Parameters:
     ///   - image: The source image to crop.
     ///   - delegate: Delegate for receiving crop/cancel results.
-    public init(image: UIImage, delegate: LMKPhotoCropDelegate? = nil) {
+    public init(image: UIImage, delegate: (any LMKPhotoCropDelegate)? = nil) {
         self.image = image
         self.delegate = delegate
         super.init(nibName: nil, bundle: nil)

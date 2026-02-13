@@ -58,6 +58,13 @@ LumiKit/
 - **View Controllers**: `LMK*ViewController`
 - **Cells**: `LMK*Cell`
 
+### Modern Swift Syntax
+
+- **Implicit returns** — already adopted; all switch cases use implicit returns
+- **`any` for existentials** — use on delegate/dataSource properties: `public weak var delegate: (any LMKPhotoCropDelegate)?`
+- **`some` for opaque parameters** — already adopted: `func apply(_ theme: some LMKTheme)`
+- **if-let shorthand** — use `if let x {` when rebinding the same name
+
 ---
 
 ## Swift 6.2 Concurrency Patterns

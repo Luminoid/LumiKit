@@ -42,7 +42,7 @@ public final class LMKSearchBar: UIView {
 
     // MARK: - Public
 
-    public weak var delegate: LMKSearchBarDelegate?
+    public weak var delegate: (any LMKSearchBarDelegate)?
 
     public var placeholder: String? {
         get { textField.attributedPlaceholder?.string }
