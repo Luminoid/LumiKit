@@ -1,0 +1,45 @@
+disabled_rules:
+  - function_body_length
+  - function_parameter_count
+  - identifier_name
+  - large_tuple
+  - trailing_whitespace
+  - trailing_comma
+
+opt_in_rules:
+  - empty_count
+
+included:
+  - Sources
+
+allow_zero_lintable_files: false
+
+strict: false
+
+lenient: false
+
+check_for_updates: true
+
+# configurable rules
+force_cast: warning
+force_try:
+  severity: warning
+line_length: 300
+type_body_length:
+  - 1800 # warning
+  - 2500 # error
+file_length:
+  warning: 2500
+  error: 3500
+type_name:
+  min_length: 3
+  max_length:
+    warning: 40
+    error: 50
+  excluded: iPhone
+  allowed_symbols: ["_"]
+cyclomatic_complexity:
+  warning: 20
+  error: 40
+
+reporter: "xcode"

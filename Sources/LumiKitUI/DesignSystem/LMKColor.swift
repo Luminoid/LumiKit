@@ -11,7 +11,6 @@ import UIKit
 /// Static convenience accessors that proxy to the active theme.
 ///
 /// Usage: `view.backgroundColor = LMKColor.backgroundPrimary`
-@MainActor
 public enum LMKColor {
     // MARK: - Primary
 

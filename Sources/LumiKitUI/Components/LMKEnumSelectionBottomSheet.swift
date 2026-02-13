@@ -9,13 +9,12 @@ import SnapKit
 import UIKit
 
 /// Protocol for types that can be displayed in a selection bottom sheet.
-public protocol LMKEnumSelectable {
+public nonisolated protocol LMKEnumSelectable {
     var displayName: String { get }
     var iconName: String { get }
 }
 
 /// Bottom sheet for selecting from a list of `LMKEnumSelectable` options.
-@MainActor
 public final class LMKEnumSelectionBottomSheet<T: Equatable & LMKEnumSelectable>: UIViewController, UITableViewDataSource, UITableViewDelegate {
     // MARK: - Layout Constants
 
@@ -100,12 +99,12 @@ public final class LMKEnumSelectionBottomSheet<T: Equatable & LMKEnumSelectable>
     @available(*, unavailable)
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
 
-    public override func viewDidLoad() {
+    override public func viewDidLoad() {
         super.viewDidLoad()
         setupUI()
     }
 
-    public override func viewDidAppear(_ animated: Bool) {
+    override public func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
         animateIn()
     }
@@ -215,7 +214,6 @@ public final class LMKEnumSelectionBottomSheet<T: Equatable & LMKEnumSelectable>
 
 // MARK: - Selection Cell
 
-@MainActor
 final class LMKEnumSelectionCell: UITableViewCell {
     private lazy var iconImageView: UIImageView = {
         let iv = UIImageView()

@@ -8,7 +8,6 @@
 import UIKit
 
 /// Base button with closure-based tap handling.
-@MainActor
 open class LMKButton: UIButton {
     /// Simple tap handler (no typed reference).
     public var tapHandler: (() -> Void)?
@@ -23,7 +22,7 @@ open class LMKButton: UIButton {
         didSet { imageView?.contentMode = imageContentMode }
     }
 
-    public override init(frame: CGRect) {
+    override public init(frame: CGRect) {
         super.init(frame: frame)
         initialize()
     }

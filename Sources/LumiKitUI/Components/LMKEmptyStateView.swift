@@ -14,21 +14,19 @@ public enum LMKEmptyStateStyle {
     case card
     case inline
 
-    @MainActor
     public var iconSize: CGFloat {
         switch self {
-        case .fullScreen: return 80
-        case .card: return 40
-        case .inline: return 20
+        case .fullScreen: 80
+        case .card: 40
+        case .inline: 20
         }
     }
 
-    @MainActor
     public var fontSize: UIFont {
         switch self {
-        case .fullScreen: return LMKTypography.h3
-        case .card: return LMKTypography.body
-        case .inline: return LMKTypography.caption
+        case .fullScreen: LMKTypography.h3
+        case .card: LMKTypography.body
+        case .inline: LMKTypography.caption
         }
     }
 
@@ -36,7 +34,6 @@ public enum LMKEmptyStateStyle {
 }
 
 /// Reusable empty state view for displaying messages when content is unavailable.
-@MainActor
 public final class LMKEmptyStateView: UIView {
     private static var iconToLabelSpacing: CGFloat { LMKSpacing.small }
 
@@ -51,7 +48,7 @@ public final class LMKEmptyStateView: UIView {
     private var horizontalContainerView: UIView?
     private var currentStyle: LMKEmptyStateStyle = .fullScreen
 
-    public override init(frame: CGRect) {
+    override public init(frame: CGRect) {
         super.init(frame: frame)
         setupUI()
     }
@@ -199,9 +196,8 @@ public final class LMKEmptyStateView: UIView {
 }
 
 /// Helper extension for creating empty state table view cells.
-extension UITableViewCell {
-    @MainActor
-    public static func lmk_emptyStateCell(message: String, icon: String? = nil, style: LMKEmptyStateStyle = .card, reuseIdentifier: String = "LMKEmptyStateCell") -> UITableViewCell {
+public extension UITableViewCell {
+    static func lmk_emptyStateCell(message: String, icon: String? = nil, style: LMKEmptyStateStyle = .card, reuseIdentifier: String = "LMKEmptyStateCell") -> UITableViewCell {
         let cell = UITableViewCell(style: .default, reuseIdentifier: reuseIdentifier)
         cell.selectionStyle = .none
         cell.backgroundColor = .clear

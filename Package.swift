@@ -1,4 +1,4 @@
-// swift-tools-version: 6.0
+// swift-tools-version: 6.2
 
 import PackageDescription
 
@@ -20,42 +20,52 @@ let package = Package(
     ],
     targets: [
         // MARK: - Core (Pure Foundation — Zero Dependencies)
+
         .target(
             name: "LumiKitCore",
             dependencies: [],
-            path: "Sources/LumiKitCore"
+            path: "Sources/LumiKitCore",
         ),
 
         // MARK: - UI (UIKit + SnapKit)
+
         .target(
             name: "LumiKitUI",
             dependencies: [
                 "LumiKitCore",
                 .product(name: "SnapKit", package: "SnapKit"),
             ],
-            path: "Sources/LumiKitUI"
+            path: "Sources/LumiKitUI",
+            swiftSettings: [
+                .defaultIsolation(MainActor.self),
+            ],
         ),
 
         // MARK: - Lottie (Optional Lottie dependency)
+
         .target(
             name: "LumiKitLottie",
             dependencies: [
                 "LumiKitUI",
                 .product(name: "Lottie", package: "lottie-spm"),
             ],
-            path: "Sources/LumiKitLottie"
+            path: "Sources/LumiKitLottie",
+            swiftSettings: [
+                .defaultIsolation(MainActor.self),
+            ],
         ),
 
         // MARK: - Tests
+
         .testTarget(
             name: "LumiKitCoreTests",
             dependencies: ["LumiKitCore"],
-            path: "Tests/LumiKitCoreTests"
+            path: "Tests/LumiKitCoreTests",
         ),
         .testTarget(
             name: "LumiKitUITests",
             dependencies: ["LumiKitUI"],
-            path: "Tests/LumiKitUITests"
+            path: "Tests/LumiKitUITests",
         ),
-    ]
+    ],
 )

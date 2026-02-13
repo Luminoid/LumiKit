@@ -8,16 +8,14 @@
 import UIKit
 
 /// Factory methods for creating styled `UILabel` instances.
-@MainActor
 public enum LMKLabelFactory {
     /// Create a heading label with proper line height and letter spacing.
     public static func heading(text: String, level: Int = 1) -> UILabel {
-        let font: UIFont
-        switch level {
-        case 1: font = LMKTypography.h1
-        case 2: font = LMKTypography.h2
-        case 3: font = LMKTypography.h3
-        default: font = LMKTypography.h4
+        let font: UIFont = switch level {
+        case 1: LMKTypography.h1
+        case 2: LMKTypography.h2
+        case 3: LMKTypography.h3
+        default: LMKTypography.h4
         }
         return createLabel(text: text, font: font, color: LMKColor.textPrimary, type: .heading)
     }
@@ -48,7 +46,7 @@ public enum LMKLabelFactory {
         text: String,
         font: UIFont,
         color: UIColor,
-        type: LMKTypographyType
+        type: LMKTypographyType,
     ) -> UILabel {
         let label = UILabel()
         label.font = font
@@ -63,16 +61,15 @@ public enum LMKLabelFactory {
         text: String,
         font: UIFont,
         color: UIColor,
-        type: LMKTypographyType
+        type: LMKTypographyType,
     ) -> NSAttributedString {
         let paragraphStyle = NSMutableParagraphStyle()
 
-        let lineHeightMultiplier: CGFloat
-        switch type {
-        case .heading: lineHeightMultiplier = LMKTypography.headingLineHeightMultiplier
-        case .body: lineHeightMultiplier = LMKTypography.bodyLineHeightMultiplier
-        case .caption: lineHeightMultiplier = LMKTypography.captionLineHeightMultiplier
-        case .small: lineHeightMultiplier = LMKTypography.smallLineHeightMultiplier
+        let lineHeightMultiplier: CGFloat = switch type {
+        case .heading: LMKTypography.headingLineHeightMultiplier
+        case .body: LMKTypography.bodyLineHeightMultiplier
+        case .caption: LMKTypography.captionLineHeightMultiplier
+        case .small: LMKTypography.smallLineHeightMultiplier
         }
 
         let fontSize = font.pointSize

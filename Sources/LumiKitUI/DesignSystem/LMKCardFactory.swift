@@ -8,7 +8,6 @@
 import UIKit
 
 /// Factory for creating card views with standard shadow and corner radius.
-@MainActor
 public enum LMKCardFactory {
     /// Create a card view with secondary background, medium corner radius, and cell card shadow.
     public static func cardView() -> UIView {

@@ -23,7 +23,7 @@ public enum LMKLogger {
 
     /// The logging subsystem identifier. Defaults to the main bundle identifier.
     /// Call `configure(subsystem:)` to override.
-    nonisolated(unsafe) private static var subsystem = Bundle.main.bundleIdentifier ?? "com.lumikit"
+    private nonisolated(unsafe) static var subsystem = Bundle.main.bundleIdentifier ?? "com.lumikit"
 
     /// Configure the logger subsystem. Call once at app launch.
     /// - Parameter subsystem: The subsystem identifier (typically `Bundle.main.bundleIdentifier`).
@@ -49,12 +49,12 @@ public enum LMKLogger {
         }
 
         // Built-in categories
-        nonisolated(unsafe) public static var general = LogCategory(name: "General")
-        nonisolated(unsafe) public static var data = LogCategory(name: "Data")
-        nonisolated(unsafe) public static var ui = LogCategory(name: "UI")
-        nonisolated(unsafe) public static var network = LogCategory(name: "Network")
-        nonisolated(unsafe) public static var error = LogCategory(name: "Error")
-        nonisolated(unsafe) public static var localization = LogCategory(name: "Localization")
+        public nonisolated(unsafe) static var general = LogCategory(name: "General")
+        public nonisolated(unsafe) static var data = LogCategory(name: "Data")
+        public nonisolated(unsafe) static var ui = LogCategory(name: "UI")
+        public nonisolated(unsafe) static var network = LogCategory(name: "Network")
+        public nonisolated(unsafe) static var error = LogCategory(name: "Error")
+        public nonisolated(unsafe) static var localization = LogCategory(name: "Localization")
 
         fileprivate static func rebuildLogs(subsystem: String) {
             general = LogCategory(name: "General")
@@ -74,7 +74,7 @@ public enum LMKLogger {
         category: LogCategory = .general,
         file: String = #file,
         function: String = #function,
-        line: Int = #line
+        line: Int = #line,
     ) {
         #if DEBUG
             let fileName = (file as NSString).lastPathComponent
@@ -89,7 +89,7 @@ public enum LMKLogger {
         category: LogCategory = .general,
         file: String = #file,
         function: String = #function,
-        line: Int = #line
+        line: Int = #line,
     ) {
         let fileName = (file as NSString).lastPathComponent
         let logMessage = "[\(fileName):\(line)] \(function) - \(message)"
@@ -103,7 +103,7 @@ public enum LMKLogger {
         category: LogCategory = .error,
         file: String = #file,
         function: String = #function,
-        line: Int = #line
+        line: Int = #line,
     ) {
         let fileName = (file as NSString).lastPathComponent
         var logMessage = "[\(fileName):\(line)] \(function) - \(message)"
@@ -119,7 +119,7 @@ public enum LMKLogger {
         category: LogCategory = .general,
         file: String = #file,
         function: String = #function,
-        line: Int = #line
+        line: Int = #line,
     ) {
         let fileName = (file as NSString).lastPathComponent
         let logMessage = "[\(fileName):\(line)] \(function) - \(message)"

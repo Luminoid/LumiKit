@@ -9,7 +9,7 @@ import UIKit
 import UniformTypeIdentifiers
 
 /// Image utility helpers.
-public enum LMKImageUtil {
+public nonisolated enum LMKImageUtil {
     /// Create an SF Symbol image with a given point size and optional color.
     public static func getSFSymbolImage(_ name: String, pointSize: CGFloat, color: UIColor? = nil) -> UIImage? {
         let image = UIImage(systemName: name, withConfiguration: UIImage.SymbolConfiguration(pointSize: pointSize))

@@ -21,7 +21,6 @@ import UIKit
 ///   It fires only after they release the scroll past the threshold.
 /// - After loading finishes, the spinner fades out smoothly and
 ///   ignores further scroll-offset changes until the dismiss completes.
-@MainActor
 public final class LMKLottieRefreshControl: UIRefreshControl {
     // MARK: - Constants
 
@@ -52,7 +51,7 @@ public final class LMKLottieRefreshControl: UIRefreshControl {
 
     // MARK: - Initialization
 
-    public override init() {
+    override public init() {
         super.init()
         setup()
     }
@@ -70,12 +69,12 @@ public final class LMKLottieRefreshControl: UIRefreshControl {
         addSubview(animationView)
     }
 
-    public override func didMoveToWindow() {
+    override public func didMoveToWindow() {
         super.didMoveToWindow()
         animationView.isHidden = UIAccessibility.isReduceMotionEnabled
     }
 
-    public override func layoutSubviews() {
+    override public func layoutSubviews() {
         super.layoutSubviews()
         if !UIAccessibility.isReduceMotionEnabled {
             hideDefaultSubviews()
@@ -85,7 +84,7 @@ public final class LMKLottieRefreshControl: UIRefreshControl {
             x: (bounds.width - size) / 2,
             y: (bounds.height - size) / 2,
             width: size,
-            height: size
+            height: size,
         )
     }
 
@@ -125,7 +124,7 @@ public final class LMKLottieRefreshControl: UIRefreshControl {
         return shouldRefresh
     }
 
-    public override func beginRefreshing() {
+    override public func beginRefreshing() {
         super.beginRefreshing()
         isDismissing = false
         passedThreshold = false
@@ -136,7 +135,7 @@ public final class LMKLottieRefreshControl: UIRefreshControl {
         playPhase2()
     }
 
-    public override func endRefreshing() {
+    override public func endRefreshing() {
         guard isRefreshing, !isDismissing else { return }
 
         if let startTime = spinStartTime {
@@ -167,7 +166,7 @@ public final class LMKLottieRefreshControl: UIRefreshControl {
         let duration = shouldAnimate ? Self.dismissDuration : 0
 
         UIView.animate(
-            withDuration: duration, delay: 0, options: .curveEaseIn
+            withDuration: duration, delay: 0, options: .curveEaseIn,
         ) { [weak self] in
             self?.animationView.alpha = 0
         } completion: { [weak self] _ in

@@ -7,10 +7,10 @@
 
 import Foundation
 
-extension Optional where Wrapped == String {
+public extension String? {
     /// Returns the string if it's not empty, otherwise `nil`.
     /// Useful for cleaning up optional string handling patterns.
-    public var nonEmpty: String? {
+    var nonEmpty: String? {
         guard let self, !self.isEmpty else { return nil }
         return self
     }

@@ -8,7 +8,6 @@
 import UIKit
 
 /// Toggle button with on/off state and per-state title/image.
-@MainActor
 open class LMKToggleButton: LMKButton {
     public enum Status {
         case on
@@ -31,7 +30,7 @@ open class LMKToggleButton: LMKButton {
         titleForStatusOn: String? = nil,
         titleForStatusOff: String? = nil,
         imageForStatusOn: UIImage? = nil,
-        imageForStatusOff: UIImage? = nil
+        imageForStatusOff: UIImage? = nil,
     ) {
         self.titleForStatusOn = titleForStatusOn
         self.titleForStatusOff = titleForStatusOff
@@ -40,7 +39,7 @@ open class LMKToggleButton: LMKButton {
         super.init(frame: .zero)
     }
 
-    open override func initialize() {
+    override open func initialize() {
         super.initialize()
         updateStyle()
     }
@@ -56,7 +55,7 @@ open class LMKToggleButton: LMKButton {
         }
     }
 
-    @objc open override func didTap() {
+    @objc override open func didTap() {
         if flipStatusOnTap {
             status = (status == .on) ? .off : .on
         }

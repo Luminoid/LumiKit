@@ -10,7 +10,6 @@ import UIKit
 
 /// Reusable loading state view for displaying loading indicators.
 /// Supports inline (clear background) and overlay (dimmed full-screen) styles.
-@MainActor
 public final class LMKLoadingStateView: UIView {
     private static var activityIndicatorVerticalOffset: CGFloat { -LMKSpacing.xl }
 
@@ -29,7 +28,7 @@ public final class LMKLoadingStateView: UIView {
         setupUI()
     }
 
-    public override init(frame: CGRect) {
+    override public init(frame: CGRect) {
         activityIndicator = UIActivityIndicatorView(style: .medium)
         super.init(frame: frame)
         setupUI()

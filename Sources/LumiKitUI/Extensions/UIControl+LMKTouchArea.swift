@@ -8,11 +8,11 @@
 
 import UIKit
 
-nonisolated(unsafe) private var lmk_touchAreaEdgeInsetsKey: UInt8 = 0
+private nonisolated(unsafe) var lmk_touchAreaEdgeInsetsKey: UInt8 = 0
 
-extension UIControl {
+public extension UIControl {
     /// Edge insets applied to the hit-test area. Use negative values to expand the touch area.
-    public var lmk_touchAreaEdgeInsets: UIEdgeInsets {
+    var lmk_touchAreaEdgeInsets: UIEdgeInsets {
         get {
             if let value = objc_getAssociatedObject(self, &lmk_touchAreaEdgeInsetsKey) as? NSValue {
                 var edgeInsets = UIEdgeInsets.zero
@@ -29,7 +29,7 @@ extension UIControl {
 
     /// Check if point is inside the expanded touch area.
     /// Call from your `point(inside:with:)` override if you use `lmk_touchAreaEdgeInsets`.
-    public func lmk_pointInside(_ point: CGPoint, with event: UIEvent?) -> Bool {
+    func lmk_pointInside(_ point: CGPoint, with event: UIEvent?) -> Bool {
         if lmk_touchAreaEdgeInsets == .zero || !isEnabled || isHidden {
             return bounds.contains(point)
         }

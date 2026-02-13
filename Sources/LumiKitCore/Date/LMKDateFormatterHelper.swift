@@ -16,7 +16,7 @@ import Foundation
 public enum LMKDateFormatterHelper {
     /// Closure that returns the current date format string.
     /// Override via `configure(dateFormat:)`. Defaults to `"MM/dd/yyyy"`.
-    nonisolated(unsafe) private static var dateFormatProvider: () -> String = { "MM/dd/yyyy" }
+    private nonisolated(unsafe) static var dateFormatProvider: () -> String = { "MM/dd/yyyy" }
 
     /// Configure the date format provider.
     /// - Parameter dateFormat: A closure that returns the current date format string.

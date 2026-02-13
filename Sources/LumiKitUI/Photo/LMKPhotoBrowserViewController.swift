@@ -28,7 +28,7 @@ public protocol LMKPhotoBrowserDelegate: AnyObject {
 // MARK: - Configurable Strings
 
 /// Configurable strings for the photo browser, allowing localization without R.swift.
-public struct LMKPhotoBrowserStrings {
+public nonisolated struct LMKPhotoBrowserStrings: Sendable {
     /// Empty state text shown when there are no photos.
     public var emptyText: String
     /// Format string for the photo counter (e.g. "%d of %d").
@@ -39,7 +39,7 @@ public struct LMKPhotoBrowserStrings {
     public init(
         emptyText: String = "No photos",
         counterFormat: String = "%d of %d",
-        tapToToggleHint: String = "Double-tap to zoom, tap to show or hide controls"
+        tapToToggleHint: String = "Double-tap to zoom, tap to show or hide controls",
     ) {
         self.emptyText = emptyText
         self.counterFormat = counterFormat
@@ -622,7 +622,7 @@ public final class LMKPhotoBrowserViewController: UIViewController {
         UIView.animate(
             withDuration: duration,
             delay: 0,
-            options: [.curveEaseOut, .allowUserInteraction, .beginFromCurrentState]
+            options: [.curveEaseOut, .allowUserInteraction, .beginFromCurrentState],
         ) {
             self.view.alpha = 0
             self.collectionView.transform = CGAffineTransform(scaleX: 0.7, y: 0.7)

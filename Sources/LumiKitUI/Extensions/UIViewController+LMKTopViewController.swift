@@ -7,14 +7,13 @@
 
 import UIKit
 
-extension UIViewController {
+public extension UIViewController {
     /// Get the top-most view controller in the view hierarchy.
-    public static func lmk_topViewController(controller: UIViewController? = nil) -> UIViewController? {
-        let rootViewController: UIViewController?
-        if let controller {
-            rootViewController = controller
+    static func lmk_topViewController(controller: UIViewController? = nil) -> UIViewController? {
+        let rootViewController: UIViewController? = if let controller {
+            controller
         } else {
-            rootViewController = UIApplication.shared.connectedScenes
+            UIApplication.shared.connectedScenes
                 .compactMap { $0 as? UIWindowScene }
                 .flatMap(\.windows)
                 .first { $0.isKeyWindow }?
@@ -36,7 +35,7 @@ extension UIViewController {
     }
 
     /// Present an alert on the top-most view controller.
-    public func lmk_presentAlertOnTop(_ alert: UIAlertController, animated: Bool = true) {
+    func lmk_presentAlertOnTop(_ alert: UIAlertController, animated: Bool = true) {
         let presenter = Self.lmk_topViewController(controller: nil) ?? self
         if alert.preferredStyle == .actionSheet, alert.popoverPresentationController?.sourceView == nil || presenter != self {
             presenter.lmk_configurePopoverForActionSheet(alert)

@@ -184,7 +184,7 @@ public final class LMKPhotoBrowserCell: UICollectionViewCell {
                         delay: 0,
                         usingSpringWithDamping: LMKAnimationHelper.Spring.damping,
                         initialSpringVelocity: 0,
-                        options: [.allowUserInteraction, .beginFromCurrentState]
+                        options: [.allowUserInteraction, .beginFromCurrentState],
                     ) {
                         self.scrollView.transform = .identity
                     } completion: { _ in
@@ -267,12 +267,12 @@ public final class LMKPhotoBrowserCell: UICollectionViewCell {
         let zoomScale = scrollView.zoomScale
         let scaledImageSize = CGSize(
             width: imageSize.width * zoomScale,
-            height: imageSize.height * zoomScale
+            height: imageSize.height * zoomScale,
         )
 
         scrollView.contentSize = CGSize(
             width: max(scrollViewSize.width, scaledImageSize.width),
-            height: max(scrollViewSize.height, scaledImageSize.height)
+            height: max(scrollViewSize.height, scaledImageSize.height),
         )
 
         // Center the image
@@ -304,7 +304,7 @@ public final class LMKPhotoBrowserCell: UICollectionViewCell {
             top: verticalInset,
             left: horizontalInset,
             bottom: verticalInset,
-            right: horizontalInset
+            right: horizontalInset,
         )
 
         // Reset content offset to center when not zoomed
@@ -354,20 +354,20 @@ public final class LMKPhotoBrowserCell: UICollectionViewCell {
         let imageAspectRatio = imageSize.height / imageSize.width
         let screenAspectRatio = screenSize.height / screenSize.width
 
-        var fittedSize: CGSize
+        var fittedSize
 
-        // If photo height/width ratio > screen height/width ratio,
-        // photo height should be same as screen height
-        if imageAspectRatio > screenAspectRatio {
-            fittedSize = CGSize(
+            // If photo height/width ratio > screen height/width ratio,
+            // photo height should be same as screen height
+            = if imageAspectRatio > screenAspectRatio {
+            CGSize(
                 width: screenSize.height / imageAspectRatio,
-                height: screenSize.height
+                height: screenSize.height,
             )
         } else {
             // Otherwise, photo width should be same as screen width
-            fittedSize = CGSize(
+            CGSize(
                 width: screenSize.width,
-                height: screenSize.width * imageAspectRatio
+                height: screenSize.width * imageAspectRatio,
             )
         }
 
@@ -448,7 +448,7 @@ extension LMKPhotoBrowserCell: UIScrollViewDelegate {
     private func verticalDismissThreshold(for scrollView: UIScrollView) -> CGFloat {
         max(
             Self.verticalDismissMinimumPoints,
-            scrollView.bounds.height * Self.verticalDismissThresholdFraction
+            scrollView.bounds.height * Self.verticalDismissThresholdFraction,
         )
     }
 

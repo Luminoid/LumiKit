@@ -13,12 +13,11 @@ import UIKit
 /// ```swift
 /// LMKErrorHandler.strings = .init(errorTitle: "Error", retry: "Retry", ok: "OK", warningTitle: "Warning")
 /// ```
-@MainActor
 public enum LMKErrorHandler {
     // MARK: - Configurable Strings
 
     /// Configurable display strings.
-    public struct Strings: Sendable {
+    public nonisolated struct Strings: Sendable {
         public var errorTitle: String
         public var retry: String
         public var ok: String
@@ -28,7 +27,7 @@ public enum LMKErrorHandler {
             errorTitle: String = "Error",
             retry: String = "Retry",
             ok: String = "OK",
-            warningTitle: String = "Warning"
+            warningTitle: String = "Warning",
         ) {
             self.errorTitle = errorTitle
             self.retry = retry
@@ -38,7 +37,7 @@ public enum LMKErrorHandler {
     }
 
     /// Override these at app launch with localized values.
-    nonisolated(unsafe) public static var strings = Strings()
+    public nonisolated(unsafe) static var strings = Strings()
 
     // MARK: - Presentation
 
@@ -47,7 +46,7 @@ public enum LMKErrorHandler {
         on viewController: UIViewController,
         error: Error,
         retryAction: (() -> Void)? = nil,
-        showRetry: Bool? = nil
+        showRetry: Bool? = nil,
     ) {
         let message = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
         presentError(on: viewController, message: message, retryAction: retryAction, showRetry: showRetry)
@@ -59,7 +58,7 @@ public enum LMKErrorHandler {
         title: String? = nil,
         message: String,
         retryAction: (() -> Void)? = nil,
-        showRetry: Bool? = nil
+        showRetry: Bool? = nil,
     ) {
         let shouldShowRetry = showRetry ?? (retryAction != nil)
 
@@ -77,7 +76,7 @@ public enum LMKErrorHandler {
     public static func presentWarning(
         on viewController: UIViewController,
         title: String? = nil,
-        message: String
+        message: String,
     ) {
         let alert = UIAlertController(title: title ?? strings.warningTitle, message: message, preferredStyle: .alert)
         alert.addAction(UIAlertAction(title: strings.ok, style: .default))

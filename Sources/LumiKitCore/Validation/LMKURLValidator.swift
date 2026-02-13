@@ -20,7 +20,7 @@ public enum LMKURLValidator {
     public static func validateHTTPSURL(
         _ input: String?,
         maxLength: Int = 500,
-        requiredScheme: String = "https"
+        requiredScheme: String = "https",
     ) -> String? {
         let trimmed = (input ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty, trimmed.count <= maxLength else { return nil }

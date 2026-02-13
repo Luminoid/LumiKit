@@ -8,19 +8,19 @@
 import SnapKit
 import UIKit
 
-extension UIView {
+public extension UIView {
     /// Safe area SnapKit DSL accessor.
-    public var lmk_safeAreaSnp: ConstraintBasicAttributesDSL {
+    var lmk_safeAreaSnp: ConstraintBasicAttributesDSL {
         safeAreaLayoutGuide.snp
     }
 
     /// Pin edges to superview.
-    public func lmk_setEdgesEqualToSuperView() {
+    func lmk_setEdgesEqualToSuperView() {
         snp.makeConstraints { make in make.edges.equalToSuperview() }
     }
 
     /// Set fixed Auto Layout size.
-    public func lmk_setAutoLayoutSize(width: CGFloat, height: CGFloat) {
+    func lmk_setAutoLayoutSize(width: CGFloat, height: CGFloat) {
         snp.makeConstraints { make in
             make.width.equalTo(width)
             make.height.equalTo(height)

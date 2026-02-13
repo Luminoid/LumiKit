@@ -9,7 +9,7 @@ import UIKit
 
 /// Shadow tokens for the Lumi design system.
 /// Uses `UIColor.black` directly (not theme-dependent).
-public enum LMKShadow {
+public nonisolated enum LMKShadow {
     /// Standard shadow opacity for icon overlays (e.g. category icon on photo).
     public static let opacity: Float = 0.8
 

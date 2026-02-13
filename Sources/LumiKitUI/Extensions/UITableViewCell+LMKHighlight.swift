@@ -18,13 +18,12 @@ extension UITableViewCell {
 
     /// Apply custom highlight effect to the cell.
     /// Call from `setHighlighted(_:animated:)` in your cell subclass.
-    @MainActor
     public func lmk_applyCustomHighlight(highlighted: Bool, animated: Bool) {
         let darkOverlayColor = UIColor { traitCollection in
             if traitCollection.userInterfaceStyle == .dark {
-                return LMKColor.black.withAlphaComponent(Self.lmk_darkModeOverlayAlpha)
+                LMKColor.black.withAlphaComponent(Self.lmk_darkModeOverlayAlpha)
             } else {
-                return LMKColor.black.withAlphaComponent(Self.lmk_lightModeOverlayAlpha)
+                LMKColor.black.withAlphaComponent(Self.lmk_lightModeOverlayAlpha)
             }
         }
 
@@ -34,13 +33,17 @@ extension UITableViewCell {
         let applyHighlight = {
             if highlighted {
                 if !containerViews.isEmpty {
-                    for cv in containerViews { self.lmk_addDarkOverlay(to: cv, color: darkOverlayColor) }
+                    for cv in containerViews {
+                        self.lmk_addDarkOverlay(to: cv, color: darkOverlayColor)
+                    }
                 } else {
                     self.contentView.backgroundColor = darkOverlayColor
                 }
             } else {
                 if !containerViews.isEmpty {
-                    for cv in containerViews { self.lmk_removeDarkOverlay(from: cv) }
+                    for cv in containerViews {
+                        self.lmk_removeDarkOverlay(from: cv)
+                    }
                 } else {
                     self.contentView.backgroundColor = .clear
                 }
@@ -89,24 +92,22 @@ extension UITableViewCell {
     }
 
     /// Configure custom highlight for standard `UITableViewCell` instances.
-    @MainActor
     public func lmk_configureCustomHighlight() {
         let selectedBgView = UIView()
         selectedBgView.backgroundColor = UIColor { traitCollection in
             if traitCollection.userInterfaceStyle == .dark {
-                return LMKColor.black.withAlphaComponent(Self.lmk_darkModeOverlayAlpha)
+                LMKColor.black.withAlphaComponent(Self.lmk_darkModeOverlayAlpha)
             } else {
-                return LMKColor.black.withAlphaComponent(Self.lmk_lightModeOverlayAlpha)
+                LMKColor.black.withAlphaComponent(Self.lmk_lightModeOverlayAlpha)
             }
         }
         selectedBackgroundView = selectedBgView
     }
 }
 
-extension UITableView {
+public extension UITableView {
     /// Configure a standard `UITableViewCell` with custom highlight.
-    @MainActor
-    public func lmk_configureCellHighlight(_ cell: UITableViewCell) {
+    func lmk_configureCellHighlight(_ cell: UITableViewCell) {
         cell.lmk_configureCustomHighlight()
     }
 }

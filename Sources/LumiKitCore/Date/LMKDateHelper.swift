@@ -10,7 +10,7 @@ import Foundation
 /// Helper for optimized date operations with caching.
 public enum LMKDateHelper {
     /// Shared calendar instance to avoid repeated `Calendar.current` calls.
-    nonisolated(unsafe) public static var calendar: Calendar = {
+    public nonisolated(unsafe) static var calendar: Calendar = {
         var cal = Calendar.current
         cal.timeZone = TimeZone.current
         return cal
@@ -18,16 +18,16 @@ public enum LMKDateHelper {
 
     // MARK: - Cache
 
-    nonisolated(unsafe) private static var _cachedToday: Date?
-    nonisolated(unsafe) private static var _cachedTodayDay: Int?
-    nonisolated(unsafe) private static var _cachedTimeZone: TimeZone?
+    private nonisolated(unsafe) static var _cachedToday: Date?
+    private nonisolated(unsafe) static var _cachedTodayDay: Int?
+    private nonisolated(unsafe) static var _cachedTimeZone: TimeZone?
 
     /// Set up timezone-change observer. Call once at app launch.
     public static func initialize() {
         NotificationCenter.default.addObserver(
             forName: .NSSystemTimeZoneDidChange,
             object: nil,
-            queue: .main
+            queue: .main,
         ) { _ in
             invalidateTodayCache()
             var cal = Calendar.current
@@ -104,19 +104,19 @@ public enum LMKDateHelper {
 
 // MARK: - Date Convenience Extensions
 
-extension Date {
+public extension Date {
     /// Start of day using `LMKDateHelper`.
-    public var lmk_startOfDay: Date {
+    var lmk_startOfDay: Date {
         LMKDateHelper.startOfDay(for: self)
     }
 
     /// Whether this date is today.
-    public var lmk_isToday: Bool {
+    var lmk_isToday: Bool {
         LMKDateHelper.isToday(self)
     }
 
     /// Whether this date is on the same day as another date.
-    public func lmk_isSameDay(as date: Date) -> Bool {
+    func lmk_isSameDay(as date: Date) -> Bool {
         LMKDateHelper.isSameDay(self, date)
     }
 }

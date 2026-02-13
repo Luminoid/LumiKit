@@ -8,7 +8,6 @@
 import UIKit
 
 /// Factory methods for creating styled `UIButton` instances.
-@MainActor
 public enum LMKButtonFactory {
     public static func primary(title: String, target: Any?, action: Selector) -> UIButton {
         makeButton(title: title, backgroundColor: LMKColor.primary, target: target, action: action)
@@ -30,7 +29,7 @@ public enum LMKButtonFactory {
         title: String,
         backgroundColor: UIColor,
         target: Any?,
-        action: Selector
+        action: Selector,
     ) -> UIButton {
         let button = UIButton(type: .system)
         button.setTitle(title, for: .normal)
@@ -48,7 +47,7 @@ public enum LMKButtonFactory {
             top: LMKSpacing.buttonPaddingVertical,
             leading: LMKSpacing.buttonPaddingHorizontal,
             bottom: LMKSpacing.buttonPaddingVertical,
-            trailing: LMKSpacing.buttonPaddingHorizontal
+            trailing: LMKSpacing.buttonPaddingHorizontal,
         )
         button.configuration = config
 

@@ -8,7 +8,7 @@
 import UIKit
 
 /// General spacing tokens for the Lumi design system.
-public enum LMKSpacing {
+public nonisolated enum LMKSpacing {
     /// Very tight spacing (stacked labels) — 2pt.
     public static let xxs: CGFloat = 2
     /// Tight spacing (icon to text) — 4pt.
@@ -26,17 +26,13 @@ public enum LMKSpacing {
 
     /// Content horizontal padding for headers, list content, cards.
     /// Scales based on device size (iPhone → iPad → Mac Catalyst).
-    public static var cardPadding: CGFloat {
+    @MainActor public static var cardPadding: CGFloat {
         #if targetEnvironment(macCatalyst)
             return 48
         #elseif os(iOS)
             if UIDevice.current.userInterfaceIdiom == .pad {
                 let screenSize = max(UIScreen.main.bounds.width, UIScreen.main.bounds.height)
-                if screenSize <= 768 { return 24 }
-                else if screenSize <= 820 { return 28 }
-                else if screenSize <= 834 { return 32 }
-                else if screenSize <= 1024 { return 36 }
-                else { return 40 }
+                if screenSize <= 768 { return 24 } else if screenSize <= 820 { return 28 } else if screenSize <= 834 { return 32 } else if screenSize <= 1024 { return 36 } else { return 40 }
             }
             return 16
         #else
@@ -45,7 +41,7 @@ public enum LMKSpacing {
     }
 
     /// Cell vertical padding (larger on bigger screens).
-    public static var cellPaddingVertical: CGFloat {
+    @MainActor public static var cellPaddingVertical: CGFloat {
         #if targetEnvironment(macCatalyst)
             return 16
         #elseif os(iOS)

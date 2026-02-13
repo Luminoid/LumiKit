@@ -19,7 +19,7 @@ import UIKit
 ///     // ...
 /// }
 /// ```
-public protocol LMKTheme: Sendable {
+public nonisolated protocol LMKTheme: Sendable {
     // Primary
     var primary: UIColor { get }
     var primaryDark: UIColor { get }
@@ -55,7 +55,7 @@ public protocol LMKTheme: Sendable {
 // MARK: - Default Theme
 
 /// Neutral gray default theme. Override by applying your own `LMKTheme`.
-public struct LMKDefaultTheme: LMKTheme {
+public nonisolated struct LMKDefaultTheme: LMKTheme {
     public init() {}
 
     public var primary: UIColor { .systemGreen }
@@ -86,7 +86,6 @@ public struct LMKDefaultTheme: LMKTheme {
 /// ```swift
 /// LMKThemeManager.shared.apply(MyAppTheme())
 /// ```
-@MainActor
 public final class LMKThemeManager {
     public static let shared = LMKThemeManager()
 

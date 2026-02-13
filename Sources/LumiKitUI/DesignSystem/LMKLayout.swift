@@ -8,7 +8,7 @@
 import UIKit
 
 /// General layout dimension tokens for the Lumi design system.
-public enum LMKLayout {
+public nonisolated enum LMKLayout {
     /// Minimum touch target size (44pt per HIG).
     public static let minimumTouchTarget: CGFloat = 44
     /// Medium icon size — 24pt.

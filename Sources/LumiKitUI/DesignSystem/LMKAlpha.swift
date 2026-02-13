@@ -8,7 +8,7 @@
 import UIKit
 
 /// Alpha/opacity tokens for the Lumi design system.
-public enum LMKAlpha {
+public nonisolated enum LMKAlpha {
     /// Semi-transparent overlay (0.5).
     public static let overlay: CGFloat = 0.5
     /// Dimming overlay for modal bottom sheets (0.4).

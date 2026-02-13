@@ -7,13 +7,13 @@
 
 import UIKit
 
-extension UIButton {
-    @objc public func lmk_animatePress() {
+public extension UIButton {
+    @objc func lmk_animatePress() {
         LMKAnimationHelper.animateButtonPress(self)
         LMKHapticFeedbackHelper.medium()
     }
 
-    @objc public func lmk_animateRelease() {
+    @objc func lmk_animateRelease() {
         // Release animation handled by LMKAnimationHelper's spring return.
     }
 }

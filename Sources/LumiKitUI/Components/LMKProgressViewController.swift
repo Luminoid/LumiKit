@@ -10,7 +10,6 @@ import SnapKit
 import UIKit
 
 /// Blocking progress view controller with activity indicator, progress bar, and cancel button.
-@MainActor
 public final class LMKProgressViewController: UIViewController {
     private static let containerWidth: CGFloat = 280
     private static let activityIndicatorTopOffset: CGFloat = 24
@@ -99,7 +98,7 @@ public final class LMKProgressViewController: UIViewController {
         fatalError("init(coder:) has not been implemented")
     }
 
-    public override func viewDidLoad() {
+    override public func viewDidLoad() {
         super.viewDidLoad()
         setupUI()
     }

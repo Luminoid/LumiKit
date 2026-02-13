@@ -13,12 +13,11 @@ import UIKit
 /// ```swift
 /// LMKAlertPresenter.strings = .init(ok: "OK", cancel: "Cancel")
 /// ```
-@MainActor
 public enum LMKAlertPresenter {
     // MARK: - Configurable Strings
 
     /// Configurable button title strings.
-    public struct Strings: Sendable {
+    public nonisolated struct Strings: Sendable {
         public var ok: String
         public var cancel: String
 
@@ -29,7 +28,7 @@ public enum LMKAlertPresenter {
     }
 
     /// Override these at app launch with localized values.
-    nonisolated(unsafe) public static var strings = Strings()
+    public nonisolated(unsafe) static var strings = Strings()
 
     // MARK: - Presentation
 
@@ -42,7 +41,7 @@ public enum LMKAlertPresenter {
         cancelTitle: String? = nil,
         confirmStyle: UIAlertAction.Style = .default,
         onConfirm: @escaping () -> Void,
-        onCancel: (() -> Void)? = nil
+        onCancel: (() -> Void)? = nil,
     ) {
         let alert = UIAlertController(title: title, message: message, preferredStyle: .alert)
         alert.addAction(UIAlertAction(title: cancelTitle ?? strings.cancel, style: .cancel) { _ in onCancel?() })
@@ -56,7 +55,7 @@ public enum LMKAlertPresenter {
         title: String,
         message: String? = nil,
         buttonTitle: String? = nil,
-        onDismiss: (() -> Void)? = nil
+        onDismiss: (() -> Void)? = nil,
     ) {
         let alert = UIAlertController(title: title, message: message, preferredStyle: .alert)
         alert.addAction(UIAlertAction(title: buttonTitle ?? strings.ok, style: .default) { _ in onDismiss?() })
@@ -69,7 +68,7 @@ public enum LMKAlertPresenter {
         title: String? = nil,
         message: String? = nil,
         actions: [(title: String, style: UIAlertAction.Style, handler: () -> Void)],
-        cancelTitle: String? = nil
+        cancelTitle: String? = nil,
     ) {
         let alert = UIAlertController(title: title, message: message, preferredStyle: .actionSheet)
         for action in actions {

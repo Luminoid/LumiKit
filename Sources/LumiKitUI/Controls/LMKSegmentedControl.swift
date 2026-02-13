@@ -8,7 +8,6 @@
 import UIKit
 
 /// Segmented control with closure-based value change handling.
-@MainActor
 open class LMKSegmentedControl: UISegmentedControl {
     /// Called when the selected segment changes. Receives the new selected index.
     public var valueChangedHandler: ((Int) -> Void)?
@@ -16,7 +15,7 @@ open class LMKSegmentedControl: UISegmentedControl {
     /// Typed handler that receives the control itself.
     public var didValueChangeHandler: ((LMKSegmentedControl) -> Void)?
 
-    public override init(items: [Any]?) {
+    override public init(items: [Any]?) {
         super.init(items: items)
         initialize()
     }

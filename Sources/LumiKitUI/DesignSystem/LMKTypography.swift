@@ -9,7 +9,7 @@ import UIKit
 
 /// Typography tokens for the Lumi design system.
 /// All fonts scale with Dynamic Type via `UIFontMetrics`.
-public enum LMKTypography {
+public nonisolated enum LMKTypography {
     // MARK: - Font Metrics
 
     private static let metricsTitle1 = UIFontMetrics(forTextStyle: .title1)
@@ -83,12 +83,11 @@ public enum LMKTypography {
 
     /// Get line height for a font based on its type.
     public static func lineHeight(for font: UIFont, type: LMKTypographyType) -> CGFloat {
-        let multiplier: CGFloat
-        switch type {
-        case .heading: multiplier = headingLineHeightMultiplier
-        case .body: multiplier = bodyLineHeightMultiplier
-        case .caption: multiplier = captionLineHeightMultiplier
-        case .small: multiplier = smallLineHeightMultiplier
+        let multiplier: CGFloat = switch type {
+        case .heading: headingLineHeightMultiplier
+        case .body: bodyLineHeightMultiplier
+        case .caption: captionLineHeightMultiplier
+        case .small: smallLineHeightMultiplier
         }
         return font.pointSize * multiplier
     }
@@ -102,15 +101,15 @@ public enum LMKTypography {
     /// Get letter spacing for a font type.
     public static func letterSpacing(for type: LMKTypographyType) -> CGFloat {
         switch type {
-        case .heading: return headingLetterSpacing
-        case .body, .caption: return bodyLetterSpacing
-        case .small: return smallLetterSpacing
+        case .heading: headingLetterSpacing
+        case .body, .caption: bodyLetterSpacing
+        case .small: smallLetterSpacing
         }
     }
 }
 
 /// Typography type for determining line height and letter spacing.
-public enum LMKTypographyType {
+public nonisolated enum LMKTypographyType {
     case heading
     case body
     case caption

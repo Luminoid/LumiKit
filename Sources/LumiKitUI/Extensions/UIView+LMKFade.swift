@@ -7,9 +7,9 @@
 
 import UIKit
 
-extension UIView {
+public extension UIView {
     /// Fade in to a given alpha.
-    public func lmk_fadeIn(_ alpha: CGFloat = 1.0, duration: Double = 0.2, completion: ((Bool) -> Void)? = nil) {
+    func lmk_fadeIn(_ alpha: CGFloat = 1.0, duration: Double = 0.2, completion: ((Bool) -> Void)? = nil) {
         if duration == 0.0 {
             self.alpha = alpha
             completion?(true)
@@ -19,7 +19,7 @@ extension UIView {
     }
 
     /// Fade out to a given alpha.
-    public func lmk_fadeOut(_ alpha: CGFloat = 0.0, duration: Double = 0.2, completion: ((Bool) -> Void)? = nil) {
+    func lmk_fadeOut(_ alpha: CGFloat = 0.0, duration: Double = 0.2, completion: ((Bool) -> Void)? = nil) {
         if duration == 0.0 {
             self.alpha = alpha
             completion?(true)

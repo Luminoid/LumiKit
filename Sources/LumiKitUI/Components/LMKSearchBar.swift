@@ -25,11 +25,10 @@ public extension LMKSearchBarDelegate {
 }
 
 /// Custom search bar matching native iOS UISearchBar features (minimal style).
-@MainActor
 public final class LMKSearchBar: UIView {
     // MARK: - Configurable Strings
 
-    public struct Strings: Sendable {
+    public nonisolated struct Strings: Sendable {
         public var cancel: String
         public var clearAccessibilityLabel: String
 
@@ -39,7 +38,7 @@ public final class LMKSearchBar: UIView {
         }
     }
 
-    nonisolated(unsafe) public static var strings = Strings()
+    public nonisolated(unsafe) static var strings = Strings()
 
     // MARK: - Public
 
@@ -71,13 +70,13 @@ public final class LMKSearchBar: UIView {
     }
 
     @discardableResult
-    public override func becomeFirstResponder() -> Bool { textField.becomeFirstResponder() }
+    override public func becomeFirstResponder() -> Bool { textField.becomeFirstResponder() }
 
     @discardableResult
-    public override func resignFirstResponder() -> Bool { textField.resignFirstResponder() }
+    override public func resignFirstResponder() -> Bool { textField.resignFirstResponder() }
 
-    public override var canBecomeFirstResponder: Bool { textField.canBecomeFirstResponder }
-    public override var isFirstResponder: Bool { textField.isFirstResponder }
+    override public var canBecomeFirstResponder: Bool { textField.canBecomeFirstResponder }
+    override public var isFirstResponder: Bool { textField.isFirstResponder }
 
     // MARK: - Subviews
 
@@ -134,7 +133,7 @@ public final class LMKSearchBar: UIView {
 
     private var cancelButtonWidthConstraint: Constraint?
 
-    public override init(frame: CGRect) {
+    override public init(frame: CGRect) {
         super.init(frame: frame)
         setupUI()
     }

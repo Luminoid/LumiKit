@@ -9,7 +9,6 @@ import SnapKit
 import UIKit
 
 /// Skeleton loading cell with shimmer animation.
-@MainActor
 public final class LMKSkeletonCell: UITableViewCell {
     private static let cellHeight: CGFloat = 80
     private static let containerInsets = UIEdgeInsets(top: 4, left: 16, bottom: 4, right: 16)
@@ -23,17 +22,17 @@ public final class LMKSkeletonCell: UITableViewCell {
     private let shimmerView = UIView()
     private let gradientLayer = CAGradientLayer()
 
-    public override init(style: UITableViewCell.CellStyle, reuseIdentifier: String?) {
+    override public init(style: UITableViewCell.CellStyle, reuseIdentifier: String?) {
         super.init(style: style, reuseIdentifier: reuseIdentifier)
         setupUI()
     }
 
-    public override func setHighlighted(_ highlighted: Bool, animated: Bool) {
+    override public func setHighlighted(_ highlighted: Bool, animated: Bool) {
         super.setHighlighted(highlighted, animated: animated)
         lmk_applyCustomHighlight(highlighted: highlighted, animated: animated)
     }
 
-    public override func setSelected(_ selected: Bool, animated: Bool) {
+    override public func setSelected(_ selected: Bool, animated: Bool) {
         super.setSelected(selected, animated: animated)
         lmk_applyCustomHighlight(highlighted: selected, animated: animated)
     }
@@ -77,7 +76,7 @@ public final class LMKSkeletonCell: UITableViewCell {
         gradientLayer.endPoint = Self.gradientEndPoint
     }
 
-    public override func layoutSubviews() {
+    override public func layoutSubviews() {
         super.layoutSubviews()
         gradientLayer.frame = shimmerView.bounds
     }

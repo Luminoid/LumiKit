@@ -7,9 +7,9 @@
 
 import UIKit
 
-extension UIViewController {
+public extension UIViewController {
     /// Current window orientation (available in `viewDidAppear`).
-    public var lmk_windowOrientation: UIInterfaceOrientation {
+    var lmk_windowOrientation: UIInterfaceOrientation {
         view.window?.windowScene?.interfaceOrientation ?? .unknown
     }
 }

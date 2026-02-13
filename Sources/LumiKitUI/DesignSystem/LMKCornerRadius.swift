@@ -8,7 +8,7 @@
 import UIKit
 
 /// Corner radius tokens for the Lumi design system.
-public enum LMKCornerRadius {
+public nonisolated enum LMKCornerRadius {
     public static let xs: CGFloat = 4
     public static let small: CGFloat = 8
     public static let medium: CGFloat = 12

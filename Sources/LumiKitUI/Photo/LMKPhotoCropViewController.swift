@@ -22,13 +22,13 @@ public protocol LMKPhotoCropDelegate: AnyObject {
 // MARK: - Configurable Strings
 
 /// Localisable strings for `LMKPhotoCropViewController`.
-public struct LMKPhotoCropStrings: Sendable {
+public nonisolated struct LMKPhotoCropStrings: Sendable {
     public var title: String
     public var free: String
 
     public init(
         title: String = "Crop",
-        free: String = "Free"
+        free: String = "Free",
     ) {
         self.title = title
         self.free = free
@@ -36,40 +36,40 @@ public struct LMKPhotoCropStrings: Sendable {
 }
 
 /// Override to provide localised strings. Set once at app launch.
-nonisolated(unsafe) public var lmkPhotoCropStrings = LMKPhotoCropStrings()
+public nonisolated(unsafe) var lmkPhotoCropStrings = LMKPhotoCropStrings()
 
 // MARK: - Aspect Ratio
 
 /// Predefined crop aspect ratios.
-public enum LMKCropAspectRatio: CaseIterable, Sendable {
-    case square     // 1:1
-    case fourThree  // 4:3
-    case threeTwo   // 3:2
-    case twoThree   // 2:3
-    case threeFour  // 3:4
-    case free       // No fixed ratio
+public nonisolated enum LMKCropAspectRatio: CaseIterable, Sendable {
+    case square // 1:1
+    case fourThree // 4:3
+    case threeTwo // 3:2
+    case twoThree // 2:3
+    case threeFour // 3:4
+    case free // No fixed ratio
 
     /// Numeric ratio (width / height), or `nil` for free.
     public var ratio: CGFloat? {
         switch self {
-        case .square: return 1.0
-        case .fourThree: return 4.0 / 3.0
-        case .threeTwo: return 3.0 / 2.0
-        case .twoThree: return 2.0 / 3.0
-        case .threeFour: return 3.0 / 4.0
-        case .free: return nil
+        case .square: 1.0
+        case .fourThree: 4.0 / 3.0
+        case .threeTwo: 3.0 / 2.0
+        case .twoThree: 2.0 / 3.0
+        case .threeFour: 3.0 / 4.0
+        case .free: nil
         }
     }
 
     /// Default display name (e.g. "1:1", "4:3", "Free").
     public var displayName: String {
         switch self {
-        case .square: return "1:1"
-        case .fourThree: return "4:3"
-        case .threeTwo: return "3:2"
-        case .twoThree: return "2:3"
-        case .threeFour: return "3:4"
-        case .free: return lmkPhotoCropStrings.free
+        case .square: "1:1"
+        case .fourThree: "4:3"
+        case .threeTwo: "3:2"
+        case .twoThree: "2:3"
+        case .threeFour: "3:4"
+        case .free: lmkPhotoCropStrings.free
         }
     }
 }
@@ -84,9 +84,7 @@ public enum LMKCropAspectRatio: CaseIterable, Sendable {
 /// - Pinch-to-zoom on the image
 /// - Rule-of-thirds grid overlay
 /// - Optimised gesture handling (no Auto Layout during drag)
-@MainActor
 public final class LMKPhotoCropViewController: UIViewController {
-
     // MARK: - Constants
 
     private static let handleSize: CGFloat = 22
@@ -149,7 +147,7 @@ public final class LMKPhotoCropViewController: UIViewController {
             padding,
             padding,
             view.bounds.width - padding,
-            view.bounds.height - Self.aspectControlHeight - padding
+            view.bounds.height - Self.aspectControlHeight - padding,
         )
     }
 
@@ -161,8 +159,8 @@ public final class LMKPhotoCropViewController: UIViewController {
 
         var isCorner: Bool {
             switch self {
-            case .topLeft, .topRight, .bottomLeft, .bottomRight: return true
-            default: return false
+            case .topLeft, .topRight, .bottomLeft, .bottomRight: true
+            default: false
             }
         }
     }
@@ -186,7 +184,7 @@ public final class LMKPhotoCropViewController: UIViewController {
 
     // MARK: - Lifecycle
 
-    public override func viewDidLoad() {
+    override public func viewDidLoad() {
         super.viewDidLoad()
         hidesBottomBarWhenPushed = true
         setupUI()
@@ -194,7 +192,7 @@ public final class LMKPhotoCropViewController: UIViewController {
         setupCachedLayers()
     }
 
-    public override func viewDidLayoutSubviews() {
+    override public func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
         updateLayout()
     }
@@ -208,12 +206,12 @@ public final class LMKPhotoCropViewController: UIViewController {
         navigationItem.leftBarButtonItem = UIBarButtonItem(
             barButtonSystemItem: .cancel,
             target: self,
-            action: #selector(cancelTapped)
+            action: #selector(cancelTapped),
         )
         navigationItem.rightBarButtonItem = UIBarButtonItem(
             barButtonSystemItem: .done,
             target: self,
-            action: #selector(doneTapped)
+            action: #selector(doneTapped),
         )
         navigationItem.title = lmkPhotoCropStrings.title
 
@@ -348,11 +346,11 @@ public final class LMKPhotoCropViewController: UIViewController {
             let padding = LMKSpacing.xl
             let availableSize = CGSize(
                 width: viewSize.width - padding * 2,
-                height: viewSize.height - padding * 2
+                height: viewSize.height - padding * 2,
             )
             cachedBaseScale = min(
                 availableSize.width / image.size.width,
-                availableSize.height / image.size.height
+                availableSize.height / image.size.height,
             )
         }
 
@@ -364,7 +362,7 @@ public final class LMKPhotoCropViewController: UIViewController {
             x: (viewSize.width - scaledWidth) / 2,
             y: (viewSize.height - scaledHeight) / 2,
             width: scaledWidth,
-            height: scaledHeight
+            height: scaledHeight,
         )
     }
 
@@ -393,7 +391,7 @@ public final class LMKPhotoCropViewController: UIViewController {
             x: (view.bounds.width - cropWidth) / 2,
             y: (view.bounds.height - cropHeight) / 2,
             width: cropWidth,
-            height: cropHeight
+            height: cropHeight,
         )
 
         updateCropFrame()
@@ -466,14 +464,14 @@ public final class LMKPhotoCropViewController: UIViewController {
         let divisions = CGFloat(Self.gridLineCount + 1)
 
         // Vertical lines
-        for i in 1...Self.gridLineCount {
+        for i in 1 ... Self.gridLineCount {
             let x = w * CGFloat(i) / divisions
             path.move(to: CGPoint(x: x, y: 0))
             path.addLine(to: CGPoint(x: x, y: h))
         }
 
         // Horizontal lines
-        for i in 1...Self.gridLineCount {
+        for i in 1 ... Self.gridLineCount {
             let y = h * CGFloat(i) / divisions
             path.move(to: CGPoint(x: 0, y: y))
             path.addLine(to: CGPoint(x: w, y: y))
@@ -517,7 +515,7 @@ public final class LMKPhotoCropViewController: UIViewController {
                 x: center.x - newWidth / 2,
                 y: center.y - newHeight / 2,
                 width: newWidth,
-                height: newHeight
+                height: newHeight,
             )
         }
 
@@ -637,7 +635,7 @@ public final class LMKPhotoCropViewController: UIViewController {
         var (newOriginX, newOriginY) = originFromAnchorForFixedRatio(handle: handle, anchorX: anchor.x, anchorY: anchor.y, width: newWidth, height: newHeight)
         (newOriginX, newOriginY, newWidth, newHeight) = applyBoundaryConstraintsForFixedRatio(
             handle: handle, anchorX: anchor.x, anchorY: anchor.y, ratio: ratio,
-            originX: newOriginX, originY: newOriginY, width: newWidth, height: newHeight, constraints: constraints
+            originX: newOriginX, originY: newOriginY, width: newWidth, height: newHeight, constraints: constraints,
         )
         newOriginX = max(constraints.minX, min(newOriginX, constraints.maxX - newWidth))
         newOriginY = max(constraints.minY, min(newOriginY, constraints.maxY - newHeight))
@@ -649,38 +647,38 @@ public final class LMKPhotoCropViewController: UIViewController {
 
     private func anchorPointForFixedRatio(handle: ResizeHandle, frame: CGRect) -> (x: CGFloat, y: CGFloat)? {
         switch handle {
-        case .topLeft: return (frame.maxX, frame.maxY)
-        case .topRight: return (frame.minX, frame.maxY)
-        case .bottomLeft: return (frame.maxX, frame.minY)
-        case .bottomRight: return (frame.minX, frame.minY)
-        default: return nil
+        case .topLeft: (frame.maxX, frame.maxY)
+        case .topRight: (frame.minX, frame.maxY)
+        case .bottomLeft: (frame.maxX, frame.minY)
+        case .bottomRight: (frame.minX, frame.minY)
+        default: nil
         }
     }
 
     private func newCornerPointForFixedRatio(handle: ResizeHandle, frame: CGRect, deltaX: CGFloat, deltaY: CGFloat) -> (x: CGFloat, y: CGFloat)? {
         switch handle {
-        case .topLeft: return (frame.minX + deltaX, frame.minY + deltaY)
-        case .topRight: return (frame.maxX + deltaX, frame.minY + deltaY)
-        case .bottomLeft: return (frame.minX + deltaX, frame.maxY + deltaY)
-        case .bottomRight: return (frame.maxX + deltaX, frame.maxY + deltaY)
-        default: return nil
+        case .topLeft: (frame.minX + deltaX, frame.minY + deltaY)
+        case .topRight: (frame.maxX + deltaX, frame.minY + deltaY)
+        case .bottomLeft: (frame.minX + deltaX, frame.maxY + deltaY)
+        case .bottomRight: (frame.maxX + deltaX, frame.maxY + deltaY)
+        default: nil
         }
     }
 
     private func originFromAnchorForFixedRatio(handle: ResizeHandle, anchorX: CGFloat, anchorY: CGFloat, width: CGFloat, height: CGFloat) -> (x: CGFloat, y: CGFloat) {
         switch handle {
-        case .topLeft: return (anchorX - width, anchorY - height)
-        case .topRight: return (anchorX, anchorY - height)
-        case .bottomLeft: return (anchorX - width, anchorY)
-        case .bottomRight: return (anchorX, anchorY)
-        default: return (0, 0)
+        case .topLeft: (anchorX - width, anchorY - height)
+        case .topRight: (anchorX, anchorY - height)
+        case .bottomLeft: (anchorX - width, anchorY)
+        case .bottomRight: (anchorX, anchorY)
+        default: (0, 0)
         }
     }
 
     private func applyBoundaryConstraintsForFixedRatio(
         handle: ResizeHandle, anchorX: CGFloat, anchorY: CGFloat, ratio: CGFloat,
         originX: CGFloat, originY: CGFloat, width: CGFloat, height: CGFloat,
-        constraints: (minX: CGFloat, minY: CGFloat, maxX: CGFloat, maxY: CGFloat)
+        constraints: (minX: CGFloat, minY: CGFloat, maxX: CGFloat, maxY: CGFloat),
     ) -> (originX: CGFloat, originY: CGFloat, width: CGFloat, height: CGFloat) {
         var newOriginX = originX
         var newOriginY = originY
@@ -739,7 +737,7 @@ public final class LMKPhotoCropViewController: UIViewController {
         frame: inout CGRect,
         deltaX: CGFloat,
         deltaY: CGFloat,
-        constraints: (minX: CGFloat, minY: CGFloat, maxX: CGFloat, maxY: CGFloat)
+        constraints: (minX: CGFloat, minY: CGFloat, maxX: CGFloat, maxY: CGFloat),
     ) {
         var limitedDeltaX = deltaX
         var limitedDeltaY = deltaY
@@ -778,7 +776,7 @@ public final class LMKPhotoCropViewController: UIViewController {
         frame: inout CGRect,
         deltaX: CGFloat,
         deltaY: CGFloat,
-        constraints: (minX: CGFloat, minY: CGFloat, maxX: CGFloat, maxY: CGFloat)
+        constraints: (minX: CGFloat, minY: CGFloat, maxX: CGFloat, maxY: CGFloat),
     ) {
         var limitedDeltaX = deltaX
         var limitedDeltaY = deltaY
@@ -871,7 +869,7 @@ public final class LMKPhotoCropViewController: UIViewController {
             x: cropFrame.origin.x - imageViewFrame.origin.x,
             y: cropFrame.origin.y - imageViewFrame.origin.y,
             width: cropFrame.width,
-            height: cropFrame.height
+            height: cropFrame.height,
         )
 
         // Scale from image view to actual image pixel coordinates
@@ -880,7 +878,7 @@ public final class LMKPhotoCropViewController: UIViewController {
             x: cropInImageView.origin.x * scale,
             y: cropInImageView.origin.y * scale,
             width: cropInImageView.width * scale,
-            height: cropInImageView.height * scale
+            height: cropInImageView.height * scale,
         )
 
         // Clamp to image bounds, snapping to whole pixels to prevent

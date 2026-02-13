@@ -12,7 +12,7 @@
 | **LumiKitUI** | LumiKitCore + SnapKit | Design system tokens, theme, animation, haptics, alerts, components, controls, photo browser/crop, extensions |
 | **LumiKitLottie** | LumiKitUI + Lottie | Lottie-powered pull-to-refresh control |
 
-**Swift 6** strict concurrency. Platforms: iOS 18+, Mac Catalyst 18+, macOS 15+.
+**Swift 6.2** strict concurrency with `defaultIsolation: MainActor` on LumiKitUI and LumiKitLottie targets. Platforms: iOS 18+, Mac Catalyst 18+, macOS 15+.
 
 ---
 
@@ -60,10 +60,11 @@ LumiKit/
 
 ---
 
-## Swift 6 Concurrency Patterns
+## Swift 6.2 Concurrency Patterns
 
-- All `UIViewController` subclasses are `@MainActor`
-- Configurable strings accessed from non-MainActor contexts **must** be module-level `nonisolated(unsafe)` — not nested inside `@MainActor` classes
+- LumiKitUI and LumiKitLottie use `defaultIsolation: MainActor` — all types are MainActor by default (no explicit `@MainActor` needed)
+- Pure data types (Sendable structs, protocols) must opt out with `nonisolated`
+- Configurable strings accessed from non-MainActor contexts **must** be module-level `nonisolated(unsafe)` — not nested inside MainActor classes
 - Use `Sendable` for all configuration structs
 - `LMKConcurrencyHelpers.encode/decode` — off-main-thread Codable operations
 

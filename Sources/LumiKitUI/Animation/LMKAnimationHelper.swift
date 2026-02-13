@@ -9,7 +9,6 @@
 import UIKit
 
 /// Animation helper with standard durations, curves, and accessibility support.
-@MainActor
 public enum LMKAnimationHelper {
     // MARK: - Animation Durations
 
@@ -77,9 +76,9 @@ public enum LMKAnimationHelper {
                     animations: {
                         button.transform = .identity
                     },
-                    completion: { _ in completion?() }
+                    completion: { _ in completion?() },
                 )
-            }
+            },
         )
     }
 
@@ -118,11 +117,11 @@ public enum LMKAnimationHelper {
                             completion: { _ in
                                 checkmarkView.removeFromSuperview()
                                 completion?()
-                            }
+                            },
                         )
-                    }
+                    },
                 )
-            }
+            },
         )
     }
 
@@ -146,9 +145,9 @@ public enum LMKAnimationHelper {
                             view.layer.borderColor = originalBorderColor
                             view.layer.borderWidth = 0
                         },
-                        completion: { _ in completion?() }
+                        completion: { _ in completion?() },
                     )
-                }
+                },
             )
             return
         }
@@ -180,7 +179,7 @@ public enum LMKAnimationHelper {
                 imageView.alpha = 1
                 imageView.transform = .identity
             },
-            completion: { _ in completion?() }
+            completion: { _ in completion?() },
         )
     }
 
@@ -193,7 +192,7 @@ public enum LMKAnimationHelper {
             withDuration: shouldReduceMotion ? 0 : duration,
             delay: 0, options: [.allowUserInteraction, Curve.easeIn],
             animations: { view.alpha = 1 },
-            completion: { _ in completion?() }
+            completion: { _ in completion?() },
         )
     }
 
@@ -203,7 +202,7 @@ public enum LMKAnimationHelper {
             withDuration: shouldReduceMotion ? 0 : duration,
             delay: 0, options: [.allowUserInteraction, Curve.easeOut],
             animations: { view.alpha = 0 },
-            completion: { _ in completion?() }
+            completion: { _ in completion?() },
         )
     }
 
@@ -220,7 +219,7 @@ public enum LMKAnimationHelper {
         UIView.animate(
             withDuration: duration, delay: 0, options: [.curveEaseOut],
             animations: animations,
-            completion: { _ in completion?() }
+            completion: { _ in completion?() },
         )
     }
 }

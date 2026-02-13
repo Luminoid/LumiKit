@@ -8,7 +8,6 @@
 import UIKit
 
 /// Centralized haptic feedback helper.
-@MainActor
 public enum LMKHapticFeedbackHelper {
     private static let impactLight = UIImpactFeedbackGenerator(style: .light)
     private static let impactMedium = UIImpactFeedbackGenerator(style: .medium)

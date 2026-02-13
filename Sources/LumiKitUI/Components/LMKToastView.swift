@@ -17,26 +17,24 @@ public enum LMKToastType {
 
     public var iconName: String {
         switch self {
-        case .error: return "exclamationmark.circle.fill"
-        case .success: return "checkmark.circle.fill"
-        case .warning: return "exclamationmark.triangle.fill"
-        case .info: return "info.circle.fill"
+        case .error: "exclamationmark.circle.fill"
+        case .success: "checkmark.circle.fill"
+        case .warning: "exclamationmark.triangle.fill"
+        case .info: "info.circle.fill"
         }
     }
 
-    @MainActor
     public var color: UIColor {
         switch self {
-        case .error: return LMKColor.error
-        case .success: return LMKColor.success
-        case .warning: return LMKColor.warning
-        case .info: return LMKColor.info
+        case .error: LMKColor.error
+        case .success: LMKColor.success
+        case .warning: LMKColor.warning
+        case .info: LMKColor.info
         }
     }
 }
 
 /// Toast notification view with icon, message, and accent bar.
-@MainActor
 public final class LMKToastView: UIView {
     public static let defaultDuration: TimeInterval = 3.0
 
@@ -151,11 +149,13 @@ public final class LMKToastView: UIView {
                 self.transform = .identity
                 self.alpha = 1
             },
-            completion: { _ in onShowComplete?() }
+            completion: { _ in onShowComplete?() },
         )
 
         dismissTimer = Timer.scheduledTimer(withTimeInterval: self.duration, repeats: false) { [weak self] _ in
-            self?.dismiss()
+            MainActor.assumeIsolated {
+                self?.dismiss()
+            }
         }
 
         switch type {
@@ -186,7 +186,7 @@ public final class LMKToastView: UIView {
                 self.transform = CGAffineTransform(translationX: 0, y: Self.dismissYOffset)
                 self.alpha = 0
             },
-            completion: { _ in self.removeFromSuperview() }
+            completion: { _ in self.removeFromSuperview() },
         )
     }
 
@@ -202,7 +202,6 @@ public final class LMKToastView: UIView {
 // MARK: - Toast Helper
 
 /// Static convenience methods for showing toasts.
-@MainActor
 public enum LMKToast {
     public static func show(type: LMKToastType, message: String, duration: TimeInterval = LMKToastView.defaultDuration, on viewController: UIViewController, onShowComplete: (() -> Void)? = nil) {
         let toast = LMKToastView(type: type, message: message, duration: duration)
