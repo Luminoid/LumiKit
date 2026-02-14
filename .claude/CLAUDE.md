@@ -24,23 +24,23 @@ LumiKit/
 ├── Sources/
 │   ├── LumiKitCore/
 │   │   ├── Concurrency/     # LMKConcurrencyHelpers (encode/decode off main)
-│   │   ├── Data/            # LMKFormatHelper
+│   │   ├── Data/            # LMKFormatHelper, LMKLogger
 │   │   ├── Date/            # LMKDateHelper, LMKDateFormatterHelper
 │   │   ├── File/            # LMKFileHelper
 │   │   └── Validation/      # LMKURLValidator, String+LMK
 │   ├── LumiKitUI/
-│   │   ├── Alerts/          # LMKAlertPresenter
-│   │   ├── Animation/       # LMKAnimationHelper
-│   │   ├── Components/      # LMKEmptyStateView, LMKToastView, etc.
-│   │   ├── Controls/        # LMKWaterButton, etc.
-│   │   ├── DesignSystem/    # LMKColor, LMKTypography, LMKSpacing, LMKCornerRadius, LMKAlpha, LMKLayout, LMKShadow, LMKTheme
+│   │   ├── Alerts/          # LMKAlertPresenter, LMKErrorHandler
+│   │   ├── Animation/       # LMKAnimationHelper, LMKAnimationTheme
+│   │   ├── Components/      # LMKEmptyStateView, LMKToastView, LMKSearchBar, etc.
+│   │   ├── Controls/        # LMKButton, LMKSegmentedControl, LMKToggleButton
+│   │   ├── DesignSystem/    # Token enums + Theme configs (see below)
 │   │   ├── Extensions/      # UIKit extensions (lmk_ prefix)
-│   │   ├── Haptics/         # LMKHapticManager
+│   │   ├── Haptics/         # LMKHapticFeedbackHelper
 │   │   └── Photo/           # LMKPhotoBrowserViewController, LMKPhotoCropViewController
 │   └── LumiKitLottie/       # LMKLottieRefreshControl
 ├── Tests/
 │   ├── LumiKitCoreTests/    # 44 tests (7 suites)
-│   └── LumiKitUITests/      # 23 tests (9 suites)
+│   └── LumiKitUITests/      # 52 tests (20 suites)
 ```
 
 ---
@@ -49,14 +49,9 @@ LumiKit/
 
 - **Public types**: `LMK` prefix (e.g. `LMKColor`, `LMKSpacing`, `LMKAnimationHelper`)
 - **Extension methods**: `lmk_` prefix (e.g. `view.lmk_addSubviews(...)`)
+- **Theme configs**: `LMK*Theme` structs (e.g. `LMKTypographyTheme`, `LMKSpacingTheme`)
 - **Configurable strings**: Module-level `nonisolated(unsafe)` variable + `Sendable` struct
-  ```swift
-  public struct LMKPhotoCropStrings: Sendable { ... }
-  nonisolated(unsafe) public var lmkPhotoCropStrings = LMKPhotoCropStrings()
-  ```
 - **Protocols for data/delegates**: `LMKPhotoBrowserDataSource`, `LMKPhotoCropDelegate`
-- **View Controllers**: `LMK*ViewController`
-- **Cells**: `LMK*Cell`
 
 ### Modern Swift Syntax
 
@@ -71,36 +66,100 @@ LumiKit/
 
 - LumiKitUI and LumiKitLottie use `defaultIsolation: MainActor` — all types are MainActor by default (no explicit `@MainActor` needed)
 - Pure data types (Sendable structs, protocols) must opt out with `nonisolated`
-- Configurable strings accessed from non-MainActor contexts **must** be module-level `nonisolated(unsafe)` — not nested inside MainActor classes
-- Use `Sendable` for all configuration structs
+- **Theme config structs** are `nonisolated struct: Sendable` — can be created/passed from any context
+- **Token enums** (LMKColor, LMKTypography, etc.) are `@MainActor` — accessed only from main thread
+- Configurable strings accessed from non-MainActor contexts **must** be module-level `nonisolated(unsafe)`
 - `LMKConcurrencyHelpers.encode/decode` — off-main-thread Codable operations
 
 ---
 
-## Design System Tokens
+## Design System — Fully Configurable Tokens
 
-**Always use LMK tokens — never hardcode values.**
+**All tokens are customizable** via `LMKThemeManager`. Each category has a configuration struct with defaults matching the built-in values. Token enums proxy to the active configuration.
 
-| Category | Enum | Examples |
-|----------|------|---------|
-| Colors | `LMKColor` | `.primary`, `.backgroundPrimary`, `.textPrimary` (proxied through `LMKTheme`) |
-| Typography | `LMKTypography` | `.h1`, `.body`, `.caption` with line heights and letter spacing |
-| Spacing | `LMKSpacing` | `.xs` (4pt), `.small` (8pt), `.medium` (12pt), `.large` (16pt), `.xl` (20pt), `.xxl` (24pt) |
-| Corner Radius | `LMKCornerRadius` | `.small`, `.medium`, `.large` |
-| Alpha | `LMKAlpha` | `.light`, `.medium`, `.heavy` |
-| Layout | `LMKLayout` | `.minimumTouchTarget` (44pt), `.iconMedium` (24pt), `.pullThreshold` (80pt) |
-| Shadow | `LMKShadow` | Shadow configurations |
-| Animation | `LMKAnimationHelper` | `.Duration`, `.shouldAnimate`, `.Spring` |
-
-### Theme System
+### Configuration at App Launch
 
 ```swift
-// App configures theme at launch
-LMKThemeManager.shared.apply(MyAppTheme())
+// Configure everything at once
+LMKThemeManager.shared.configure(
+    colors: MyAppTheme(),
+    typography: .init(fontFamily: "Inter"),
+    spacing: .init(large: 20, xxl: 28),
+    cornerRadius: .init(small: 12, medium: 16)
+)
 
-// LMKColor proxies to current theme
-view.backgroundColor = LMKColor.backgroundPrimary
+// Or configure individual categories
+LMKThemeManager.shared.apply(MyAppTheme())
+LMKThemeManager.shared.apply(typography: .init(fontFamily: "Inter"))
+LMKThemeManager.shared.apply(spacing: .init(large: 20))
 ```
+
+### Token Categories
+
+| Category | Proxy Enum | Config Struct | Key Properties |
+|----------|-----------|---------------|----------------|
+| Colors | `LMKColor` | `LMKTheme` (protocol) | `.primary`, `.backgroundPrimary`, `.textPrimary` |
+| Typography | `LMKTypography` | `LMKTypographyTheme` | `fontFamily`, `h1Size`, `bodySize`, line heights, letter spacing |
+| Spacing | `LMKSpacing` | `LMKSpacingTheme` | `.xs` (4pt), `.small` (8pt), `.medium` (12pt), `.large` (16pt) |
+| Corner Radius | `LMKCornerRadius` | `LMKCornerRadiusTheme` | `.small` (8), `.medium` (12), `.large` (16) |
+| Alpha | `LMKAlpha` | `LMKAlphaTheme` | `.overlay`, `.disabled`, `.overlayStrong` |
+| Layout | `LMKLayout` | `LMKLayoutTheme` | `.minimumTouchTarget` (44), `.iconMedium` (24), `.searchBarHeight` (36) |
+| Shadow | `LMKShadow` | `LMKShadowTheme` | `cellCard()`, `card()`, `button()`, `small()` |
+| Animation | `LMKAnimationHelper` | `LMKAnimationTheme` | `.Duration.*`, `.Spring.damping`, `.shouldAnimate` |
+
+### Design System Files
+
+```
+DesignSystem/
+├── LMKTheme.swift              # LMKTheme protocol + LMKThemeManager (holds all configs)
+├── LMKColor.swift              # Color proxy → LMKThemeManager.shared.current
+├── LMKTypography.swift         # Font proxy → LMKThemeManager.shared.typography
+├── LMKTypographyTheme.swift    # Configuration struct (fontFamily, sizes, weights)
+├── LMKSpacing.swift            # Spacing proxy → LMKThemeManager.shared.spacing
+├── LMKSpacingTheme.swift       # Configuration struct
+├── LMKCornerRadius.swift       # Corner radius proxy
+├── LMKCornerRadiusTheme.swift  # Configuration struct
+├── LMKAlpha.swift              # Alpha proxy
+├── LMKAlphaTheme.swift         # Configuration struct
+├── LMKLayout.swift             # Layout dimensions proxy
+├── LMKLayoutTheme.swift        # Configuration struct
+├── LMKShadow.swift             # Shadow proxy
+├── LMKShadowTheme.swift        # Configuration struct
+├── LMKButtonFactory.swift      # Factory methods for styled buttons
+├── LMKCardFactory.swift        # Factory methods for card views
+└── LMKLabelFactory.swift       # Factory methods for styled labels
+```
+
+### Pattern: Token Enum → Config Struct → ThemeManager
+
+```swift
+// 1. Config struct with defaults (nonisolated, Sendable)
+public nonisolated struct LMKSpacingTheme: Sendable {
+    public var large: CGFloat
+    public init(large: CGFloat = 16, ...) { ... }
+}
+
+// 2. Token enum proxies to config (inherits @MainActor)
+public enum LMKSpacing {
+    private static var config: LMKSpacingTheme { LMKThemeManager.shared.spacing }
+    public static var large: CGFloat { config.large }
+}
+
+// 3. ThemeManager holds the active config
+LMKThemeManager.shared.apply(spacing: .init(large: 20))
+```
+
+---
+
+## Error Handling
+
+- **`LMKErrorHandler`** for user-facing errors — supports severity-based presentation:
+  - `.info` → info toast
+  - `.warning` → alert with OK
+  - `.error` → toast (transient) or alert with retry (recoverable)
+  - `.critical` → always alert, retry if available
+- All presentation methods auto-log via `LMKLogger`
+- **`LMKAlertPresenter`** for generic alerts and action sheets
 
 ---
 
@@ -136,7 +195,7 @@ swift build --target LumiKitCore
 
 ## Adding New Tokens / Components
 
-1. **New design token**: Add to appropriate `LMK*` enum in `DesignSystem/`; update `LMKTheme` protocol if theme-dependent
+1. **New design token**: Add to appropriate `LMK*Theme` config struct + proxy in the token enum
 2. **New component**: Add to `Components/` or `Controls/`; use `LMK` prefix; depend only on design tokens
 3. **New extension**: Add to `Extensions/` with `lmk_` prefix; keep extensions small and focused
 4. **New configurable strings**: Use the module-level pattern (not nested in `@MainActor` class)
@@ -156,4 +215,4 @@ swift build --target LumiKitCore
 
 ---
 
-*Optimized for Claude Code • Last updated: 2026-02-12*
+*Optimized for Claude Code • Last updated: 2026-02-13*

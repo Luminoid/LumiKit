@@ -4,28 +4,38 @@
 //
 //  Animation helper following UI/UX design specifications.
 //  Respects Reduce Motion accessibility setting throughout.
+//  Proxies to `LMKThemeManager.shared.animation` for customization.
 //
 
 import UIKit
 
 /// Animation helper with standard durations, curves, and accessibility support.
+///
+/// Customize by applying an animation theme:
+/// ```swift
+/// LMKThemeManager.shared.apply(animation: .init(modalPresentation: 0.25))
+/// ```
 public enum LMKAnimationHelper {
     // MARK: - Animation Durations
 
     public enum Duration {
-        public static let screenTransition: TimeInterval = 0.35
-        public static let modalPresentation: TimeInterval = 0.3
-        public static let actionSheet: TimeInterval = 0.25
-        public static let alert: TimeInterval = 0.2
+        private static var config: LMKAnimationTheme {
+            LMKThemeManager.shared.animation
+        }
+
+        public static var screenTransition: TimeInterval { config.screenTransition }
+        public static var modalPresentation: TimeInterval { config.modalPresentation }
+        public static var actionSheet: TimeInterval { config.actionSheet }
+        public static var alert: TimeInterval { config.alert }
         /// Short UI transitions (menus, overlays).
-        public static let uiShort: TimeInterval = 0.15
-        public static let buttonPress: TimeInterval = 0.1
-        public static let successFeedback: TimeInterval = 0.5
-        public static let errorShake: TimeInterval = 0.4
-        public static let photoLoad: TimeInterval = 0.15
-        public static let listUpdate: TimeInterval = 0.3
-        public static let listInsertDelete: TimeInterval = 0.3
-        public static let cardExpand: TimeInterval = 0.3
+        public static var uiShort: TimeInterval { config.uiShort }
+        public static var buttonPress: TimeInterval { config.buttonPress }
+        public static var successFeedback: TimeInterval { config.successFeedback }
+        public static var errorShake: TimeInterval { config.errorShake }
+        public static var photoLoad: TimeInterval { config.photoLoad }
+        public static var listUpdate: TimeInterval { config.listUpdate }
+        public static var listInsertDelete: TimeInterval { config.listInsertDelete }
+        public static var cardExpand: TimeInterval { config.cardExpand }
     }
 
     /// Whether animations should run (`false` when Reduce Motion is enabled).
@@ -34,8 +44,12 @@ public enum LMKAnimationHelper {
     // MARK: - Spring
 
     public enum Spring {
+        private static var config: LMKAnimationTheme {
+            LMKThemeManager.shared.animation
+        }
+
         /// Damping for smooth spring animations (per design spec 0.6–0.8).
-        public static let damping: CGFloat = 0.8
+        public static var damping: CGFloat { config.springDamping }
     }
 
     // MARK: - Animation Curves

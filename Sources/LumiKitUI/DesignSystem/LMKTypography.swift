@@ -3,13 +3,19 @@
 //  LumiKit
 //
 //  Typography tokens with Dynamic Type support.
+//  Proxies to `LMKThemeManager.shared.typography` for customization.
 //
 
 import UIKit
 
 /// Typography tokens for the Lumi design system.
 /// All fonts scale with Dynamic Type via `UIFontMetrics`.
-public nonisolated enum LMKTypography {
+///
+/// Customize by applying a typography theme:
+/// ```swift
+/// LMKThemeManager.shared.apply(typography: .init(fontFamily: "Inter"))
+/// ```
+public enum LMKTypography {
     // MARK: - Font Metrics
 
     private static let metricsTitle1 = UIFontMetrics(forTextStyle: .title1)
@@ -21,50 +27,128 @@ public nonisolated enum LMKTypography {
     private static let metricsCaption2 = UIFontMetrics(forTextStyle: .caption2)
     private static let metricsFootnote = UIFontMetrics(forTextStyle: .footnote)
 
+    // MARK: - Configuration Access
+
+    private static var config: LMKTypographyTheme {
+        LMKThemeManager.shared.typography
+    }
+
+    // MARK: - Font Builder
+
+    private static func makeFont(size: CGFloat, weight: UIFont.Weight) -> UIFont {
+        if let family = config.fontFamily {
+            let traits: [UIFontDescriptor.TraitKey: Any] = [.weight: weight]
+            let descriptor = UIFontDescriptor(fontAttributes: [
+                .family: family,
+                .traits: traits,
+            ])
+            return UIFont(descriptor: descriptor, size: size)
+        }
+        return .systemFont(ofSize: size, weight: weight)
+    }
+
+    private static func makeItalicFont(size: CGFloat) -> UIFont {
+        if let family = config.fontFamily {
+            let descriptor = UIFontDescriptor(fontAttributes: [.family: family])
+            if let italicDescriptor = descriptor.withSymbolicTraits(.traitItalic) {
+                return UIFont(descriptor: italicDescriptor, size: size)
+            }
+        }
+        return .italicSystemFont(ofSize: size)
+    }
+
     // MARK: - Headings
 
-    public static let h1 = metricsTitle1.scaledFont(for: .systemFont(ofSize: 28, weight: .bold))
-    public static let h2 = metricsTitle2.scaledFont(for: .systemFont(ofSize: 22, weight: .semibold))
-    public static let h3 = metricsTitle3.scaledFont(for: .systemFont(ofSize: 18, weight: .semibold))
-    public static let h4 = metricsBody.scaledFont(for: .systemFont(ofSize: 16, weight: .semibold))
+    public static var h1: UIFont {
+        metricsTitle1.scaledFont(for: makeFont(size: config.h1Size, weight: config.h1Weight))
+    }
+
+    public static var h2: UIFont {
+        metricsTitle2.scaledFont(for: makeFont(size: config.h2Size, weight: config.h2Weight))
+    }
+
+    public static var h3: UIFont {
+        metricsTitle3.scaledFont(for: makeFont(size: config.h3Size, weight: config.h3Weight))
+    }
+
+    public static var h4: UIFont {
+        metricsBody.scaledFont(for: makeFont(size: config.h4Size, weight: config.h4Weight))
+    }
 
     // MARK: - Body
 
-    public static let body = metricsBody.scaledFont(for: .systemFont(ofSize: 16, weight: .regular))
-    public static let bodyMedium = metricsBody.scaledFont(for: .systemFont(ofSize: 16, weight: .medium))
-    public static let bodyBold = metricsBody.scaledFont(for: .systemFont(ofSize: 16, weight: .semibold))
+    public static var body: UIFont {
+        metricsBody.scaledFont(for: makeFont(size: config.bodySize, weight: .regular))
+    }
+
+    public static var bodyMedium: UIFont {
+        metricsBody.scaledFont(for: makeFont(size: config.bodySize, weight: .medium))
+    }
+
+    public static var bodyBold: UIFont {
+        metricsBody.scaledFont(for: makeFont(size: config.bodySize, weight: .semibold))
+    }
 
     /// Subbody (between caption and body, e.g. property labels).
-    public static let subbodyMedium = metricsSubheadline.scaledFont(for: .systemFont(ofSize: 14, weight: .medium))
+    public static var subbodyMedium: UIFont {
+        metricsSubheadline.scaledFont(for: makeFont(size: config.subbodySize, weight: .medium))
+    }
 
     // MARK: - Caption
 
-    public static let caption = metricsCaption1.scaledFont(for: .systemFont(ofSize: 13, weight: .regular))
-    public static let captionMedium = metricsCaption1.scaledFont(for: .systemFont(ofSize: 13, weight: .medium))
+    public static var caption: UIFont {
+        metricsCaption1.scaledFont(for: makeFont(size: config.captionSize, weight: .regular))
+    }
+
+    public static var captionMedium: UIFont {
+        metricsCaption1.scaledFont(for: makeFont(size: config.captionSize, weight: .medium))
+    }
 
     // MARK: - Small
 
-    public static let small = metricsCaption2.scaledFont(for: .systemFont(ofSize: 12, weight: .regular))
-    public static let smallMedium = metricsCaption2.scaledFont(for: .systemFont(ofSize: 12, weight: .medium))
+    public static var small: UIFont {
+        metricsCaption2.scaledFont(for: makeFont(size: config.smallSize, weight: .regular))
+    }
+
+    public static var smallMedium: UIFont {
+        metricsCaption2.scaledFont(for: makeFont(size: config.smallSize, weight: .medium))
+    }
 
     // MARK: - Extra Small
 
-    public static let extraSmall = metricsFootnote.scaledFont(for: .systemFont(ofSize: 11, weight: .regular))
-    public static let extraSmallMedium = metricsFootnote.scaledFont(for: .systemFont(ofSize: 11, weight: .medium))
-    public static let extraSmallSemibold = metricsFootnote.scaledFont(for: .systemFont(ofSize: 11, weight: .semibold))
+    public static var extraSmall: UIFont {
+        metricsFootnote.scaledFont(for: makeFont(size: config.extraSmallSize, weight: .regular))
+    }
+
+    public static var extraSmallMedium: UIFont {
+        metricsFootnote.scaledFont(for: makeFont(size: config.extraSmallSize, weight: .medium))
+    }
+
+    public static var extraSmallSemibold: UIFont {
+        metricsFootnote.scaledFont(for: makeFont(size: config.extraSmallSize, weight: .semibold))
+    }
 
     // MARK: - Extra Extra Small
 
-    public static let extraExtraSmall = metricsFootnote.scaledFont(for: .systemFont(ofSize: 10, weight: .regular))
-    public static let extraExtraSmallSemibold = metricsFootnote.scaledFont(for: .systemFont(ofSize: 10, weight: .semibold))
+    public static var extraExtraSmall: UIFont {
+        metricsFootnote.scaledFont(for: makeFont(size: config.extraExtraSmallSize, weight: .regular))
+    }
+
+    public static var extraExtraSmallSemibold: UIFont {
+        metricsFootnote.scaledFont(for: makeFont(size: config.extraExtraSmallSize, weight: .semibold))
+    }
 
     // MARK: - Italic
 
-    /// Italic variant of body (16pt) for scientific names.
-    public static let italicBody = metricsBody.scaledFont(for: .italicSystemFont(ofSize: 16))
+    /// Italic variant of body for scientific names.
+    public static var italicBody: UIFont {
+        metricsBody.scaledFont(for: makeItalicFont(size: config.bodySize))
+    }
 
-    /// Italic variant of caption (13pt).
-    public static let italicCaption = metricsCaption1.scaledFont(for: .italicSystemFont(ofSize: 13))
+    /// Italic variant of caption.
+    public static var italicCaption: UIFont {
+        metricsCaption1.scaledFont(for: makeItalicFont(size: config.captionSize))
+    }
 
     /// Returns italic variant of the given font, preserving weight when possible.
     public static func italic(_ font: UIFont) -> UIFont {
@@ -76,10 +160,10 @@ public nonisolated enum LMKTypography {
 
     // MARK: - Line Heights
 
-    public static let headingLineHeightMultiplier: CGFloat = 1.2
-    public static let bodyLineHeightMultiplier: CGFloat = 1.5
-    public static let captionLineHeightMultiplier: CGFloat = 1.4
-    public static let smallLineHeightMultiplier: CGFloat = 1.4
+    public static var headingLineHeightMultiplier: CGFloat { config.headingLineHeightMultiplier }
+    public static var bodyLineHeightMultiplier: CGFloat { config.bodyLineHeightMultiplier }
+    public static var captionLineHeightMultiplier: CGFloat { config.captionLineHeightMultiplier }
+    public static var smallLineHeightMultiplier: CGFloat { config.smallLineHeightMultiplier }
 
     /// Get line height for a font based on its type.
     public static func lineHeight(for font: UIFont, type: LMKTypographyType) -> CGFloat {
@@ -94,9 +178,9 @@ public nonisolated enum LMKTypography {
 
     // MARK: - Letter Spacing
 
-    public static let headingLetterSpacing: CGFloat = -0.5
-    public static let bodyLetterSpacing: CGFloat = 0
-    public static let smallLetterSpacing: CGFloat = 0.5
+    public static var headingLetterSpacing: CGFloat { config.headingLetterSpacing }
+    public static var bodyLetterSpacing: CGFloat { config.bodyLetterSpacing }
+    public static var smallLetterSpacing: CGFloat { config.smallLetterSpacing }
 
     /// Get letter spacing for a font type.
     public static func letterSpacing(for type: LMKTypographyType) -> CGFloat {

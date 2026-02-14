@@ -81,20 +81,115 @@ public nonisolated struct LMKDefaultTheme: LMKTheme {
 
 // MARK: - Theme Manager
 
-/// Singleton that holds the active theme. Apply once at app launch.
+/// Singleton that holds the active design system configuration.
 ///
+/// Configure at app launch:
+/// ```swift
+/// LMKThemeManager.shared.configure(
+///     colors: MyAppTheme(),
+///     typography: .init(fontFamily: "Inter"),
+///     spacing: .init(large: 20)
+/// )
+/// ```
+///
+/// Or apply individual categories:
 /// ```swift
 /// LMKThemeManager.shared.apply(MyAppTheme())
+/// LMKThemeManager.shared.apply(typography: .init(fontFamily: "Inter"))
 /// ```
 public final class LMKThemeManager {
     public static let shared = LMKThemeManager()
 
+    // MARK: - Token Categories
+
+    /// Color theme (existing).
     public private(set) var current: any LMKTheme = LMKDefaultTheme()
+
+    /// Typography configuration (font family, sizes, weights, line heights).
+    public private(set) var typography: LMKTypographyTheme = .init()
+
+    /// Spacing configuration (grid values, padding).
+    public private(set) var spacing: LMKSpacingTheme = .init()
+
+    /// Corner radius configuration.
+    public private(set) var cornerRadius: LMKCornerRadiusTheme = .init()
+
+    /// Shadow configuration.
+    public private(set) var shadow: LMKShadowTheme = .init()
+
+    /// Alpha/opacity configuration.
+    public private(set) var alpha: LMKAlphaTheme = .init()
+
+    /// Layout dimension configuration (touch targets, icon sizes).
+    public private(set) var layout: LMKLayoutTheme = .init()
+
+    /// Animation timing configuration.
+    public private(set) var animation: LMKAnimationTheme = .init()
 
     private init() {}
 
-    /// Apply a theme. Call once during app setup (e.g., in `SceneDelegate`).
+    // MARK: - Apply (Per-Category)
+
+    /// Apply a color theme.
     public func apply(_ theme: some LMKTheme) {
         current = theme
+    }
+
+    /// Apply typography configuration.
+    public func apply(typography: LMKTypographyTheme) {
+        self.typography = typography
+    }
+
+    /// Apply spacing configuration.
+    public func apply(spacing: LMKSpacingTheme) {
+        self.spacing = spacing
+    }
+
+    /// Apply corner radius configuration.
+    public func apply(cornerRadius: LMKCornerRadiusTheme) {
+        self.cornerRadius = cornerRadius
+    }
+
+    /// Apply shadow configuration.
+    public func apply(shadow: LMKShadowTheme) {
+        self.shadow = shadow
+    }
+
+    /// Apply alpha/opacity configuration.
+    public func apply(alpha: LMKAlphaTheme) {
+        self.alpha = alpha
+    }
+
+    /// Apply layout dimension configuration.
+    public func apply(layout: LMKLayoutTheme) {
+        self.layout = layout
+    }
+
+    /// Apply animation timing configuration.
+    public func apply(animation: LMKAnimationTheme) {
+        self.animation = animation
+    }
+
+    // MARK: - Configure (All-in-One)
+
+    /// Configure multiple token categories at once. Only provided values are applied.
+    public func configure(
+        colors: (any LMKTheme)? = nil,
+        typography: LMKTypographyTheme? = nil,
+        spacing: LMKSpacingTheme? = nil,
+        cornerRadius: LMKCornerRadiusTheme? = nil,
+        shadow: LMKShadowTheme? = nil,
+        alpha: LMKAlphaTheme? = nil,
+        layout: LMKLayoutTheme? = nil,
+        animation: LMKAnimationTheme? = nil
+    ) {
+        if let colors { current = colors }
+        if let typography { self.typography = typography }
+        if let spacing { self.spacing = spacing }
+        if let cornerRadius { self.cornerRadius = cornerRadius }
+        if let shadow { self.shadow = shadow }
+        if let alpha { self.alpha = alpha }
+        if let layout { self.layout = layout }
+        if let animation { self.animation = animation }
     }
 }

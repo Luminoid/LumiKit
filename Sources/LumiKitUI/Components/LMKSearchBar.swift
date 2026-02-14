@@ -150,18 +150,15 @@ public final class LMKSearchBar: UIView {
         containerView.addSubview(clearButton)
         addSubview(cancelButton)
 
-        let iconSize: CGFloat = 18
-        let horizontalPadding = LMKSpacing.medium
-
         containerView.snp.makeConstraints { make in
             make.leading.top.bottom.equalToSuperview()
-            make.height.equalTo(36)
+            make.height.equalTo(LMKLayout.searchBarHeight)
         }
 
         magnifyingGlassImageView.snp.makeConstraints { make in
-            make.leading.equalToSuperview().offset(horizontalPadding)
+            make.leading.equalToSuperview().offset(LMKSpacing.medium)
             make.centerY.equalToSuperview()
-            make.width.height.equalTo(iconSize)
+            make.width.height.equalTo(LMKLayout.searchBarIconSize)
         }
 
         textField.snp.makeConstraints { make in
@@ -173,7 +170,7 @@ public final class LMKSearchBar: UIView {
         clearButton.snp.makeConstraints { make in
             make.trailing.equalToSuperview().offset(-LMKSpacing.small)
             make.centerY.equalToSuperview()
-            make.width.height.equalTo(22)
+            make.width.height.equalTo(LMKLayout.clearButtonSize)
         }
 
         cancelButton.snp.makeConstraints { make in

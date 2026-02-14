@@ -106,6 +106,7 @@ struct LMKAlertPresenterTests {
 // MARK: - LMKSpacing
 
 @Suite("LMKSpacing")
+@MainActor
 struct LMKSpacingTests {
     @Test("Spacing values follow 4pt grid")
     func spacingGrid() {
@@ -122,6 +123,7 @@ struct LMKSpacingTests {
 // MARK: - LMKCornerRadius
 
 @Suite("LMKCornerRadius")
+@MainActor
 struct LMKCornerRadiusTests {
     @Test("Corner radii are positive and ordered")
     func cornerRadiiOrdered() {
@@ -136,6 +138,7 @@ struct LMKCornerRadiusTests {
 // MARK: - LMKAlpha
 
 @Suite("LMKAlpha")
+@MainActor
 struct LMKAlphaTests {
     @Test("Alpha values are between 0 and 1")
     func alphaRange() {
@@ -154,6 +157,7 @@ struct LMKAlphaTests {
 // MARK: - LMKTypography
 
 @Suite("LMKTypography")
+@MainActor
 struct LMKTypographyTests {
     @Test("Heading fonts are larger than body")
     func headingLargerThanBody() {
@@ -188,6 +192,7 @@ struct LMKTypographyTests {
 // MARK: - LMKLayout
 
 @Suite("LMKLayout")
+@MainActor
 struct LMKLayoutTests {
     @Test("minimumTouchTarget meets Apple HIG")
     func minimumTouchTarget() {

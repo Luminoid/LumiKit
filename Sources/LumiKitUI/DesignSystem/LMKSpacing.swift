@@ -3,30 +3,40 @@
 //  LumiKit
 //
 //  Spacing tokens (4pt base unit).
+//  Proxies to `LMKThemeManager.shared.spacing` for customization.
 //
 
 import UIKit
 
 /// General spacing tokens for the Lumi design system.
-public nonisolated enum LMKSpacing {
-    /// Very tight spacing (stacked labels) — 2pt.
-    public static let xxs: CGFloat = 2
-    /// Tight spacing (icon to text) — 4pt.
-    public static let xs: CGFloat = 4
-    /// Standard spacing (elements in cards) — 8pt.
-    public static let small: CGFloat = 8
-    /// Comfortable spacing (between sections) — 12pt.
-    public static let medium: CGFloat = 12
-    /// Section spacing (card padding) — 16pt.
-    public static let large: CGFloat = 16
-    /// Large spacing (between major sections) — 20pt.
-    public static let xl: CGFloat = 20
-    /// Screen margins, large gaps — 24pt.
-    public static let xxl: CGFloat = 24
+///
+/// Customize by applying a spacing theme:
+/// ```swift
+/// LMKThemeManager.shared.apply(spacing: .init(large: 20, xxl: 28))
+/// ```
+public enum LMKSpacing {
+    private static var config: LMKSpacingTheme {
+        LMKThemeManager.shared.spacing
+    }
+
+    /// Very tight spacing (stacked labels) — default 2pt.
+    public static var xxs: CGFloat { config.xxs }
+    /// Tight spacing (icon to text) — default 4pt.
+    public static var xs: CGFloat { config.xs }
+    /// Standard spacing (elements in cards) — default 8pt.
+    public static var small: CGFloat { config.small }
+    /// Comfortable spacing (between sections) — default 12pt.
+    public static var medium: CGFloat { config.medium }
+    /// Section spacing (card padding) — default 16pt.
+    public static var large: CGFloat { config.large }
+    /// Large spacing (between major sections) — default 20pt.
+    public static var xl: CGFloat { config.xl }
+    /// Screen margins, large gaps — default 24pt.
+    public static var xxl: CGFloat { config.xxl }
 
     /// Content horizontal padding for headers, list content, cards.
     /// Scales based on device size (iPhone → iPad → Mac Catalyst).
-    @MainActor public static var cardPadding: CGFloat {
+    public static var cardPadding: CGFloat {
         #if targetEnvironment(macCatalyst)
             return 48
         #elseif os(iOS)
@@ -34,14 +44,14 @@ public nonisolated enum LMKSpacing {
                 let screenSize = max(UIScreen.main.bounds.width, UIScreen.main.bounds.height)
                 if screenSize <= 768 { return 24 } else if screenSize <= 820 { return 28 } else if screenSize <= 834 { return 32 } else if screenSize <= 1024 { return 36 } else { return 40 }
             }
-            return 16
+            return config.large
         #else
-            return 16
+            return config.large
         #endif
     }
 
     /// Cell vertical padding (larger on bigger screens).
-    @MainActor public static var cellPaddingVertical: CGFloat {
+    public static var cellPaddingVertical: CGFloat {
         #if targetEnvironment(macCatalyst)
             return 16
         #elseif os(iOS)
@@ -51,16 +61,16 @@ public nonisolated enum LMKSpacing {
                 if screenSize <= 834 { return 14 }
                 return 16
             }
-            return 8
+            return config.small
         #else
-            return 12
+            return config.medium
         #endif
     }
 
-    public static let buttonPaddingVertical: CGFloat = 12
-    public static let buttonPaddingHorizontal: CGFloat = 16
-    /// Between icons — 6pt.
-    public static let iconSpacing: CGFloat = 6
-    /// Icon to text — 8pt.
-    public static let iconToText: CGFloat = 8
+    public static var buttonPaddingVertical: CGFloat { config.buttonPaddingVertical }
+    public static var buttonPaddingHorizontal: CGFloat { config.buttonPaddingHorizontal }
+    /// Between icons — default 6pt.
+    public static var iconSpacing: CGFloat { config.iconSpacing }
+    /// Icon to text — default 8pt.
+    public static var iconToText: CGFloat { config.iconToText }
 }
