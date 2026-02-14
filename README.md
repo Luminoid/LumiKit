@@ -33,7 +33,7 @@ LumiKit is organized into three targets so apps can import only what they need:
 | **LumiKitUI** | LumiKitCore + SnapKit | Design system tokens, theme manager, animation, haptics, alerts, components, controls, photo browser/crop, UIKit extensions |
 | **LumiKitLottie** | LumiKitUI + Lottie | Lottie-powered pull-to-refresh control |
 
-**73 source files** across 3 targets, with **167 tests** (56 Core + 111 UI) across 45 suites.
+**73 source files** across 3 targets, with **198 tests** (56 Core + 142 UI) across 55 suites.
 
 ---
 
@@ -127,7 +127,7 @@ LumiKit/
 │   └── LumiKitLottie/         # LMKLottieRefreshControl
 ├── Tests/
 │   ├── LumiKitCoreTests/      # 56 tests (9 suites)
-│   └── LumiKitUITests/        # 111 tests (36 suites)
+│   └── LumiKitUITests/        # 142 tests (46 suites)
 ```
 
 ---
