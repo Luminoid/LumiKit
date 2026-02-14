@@ -126,6 +126,9 @@ public final class LMKThemeManager {
     /// Animation timing configuration.
     public private(set) var animation: LMKAnimationTheme = .init()
 
+    /// Badge configuration.
+    public private(set) var badge: LMKBadgeTheme = .init()
+
     private init() {}
 
     // MARK: - Apply (Per-Category)
@@ -170,6 +173,11 @@ public final class LMKThemeManager {
         self.animation = animation
     }
 
+    /// Apply badge configuration.
+    public func apply(badge: LMKBadgeTheme) {
+        self.badge = badge
+    }
+
     // MARK: - Configure (All-in-One)
 
     /// Configure multiple token categories at once. Only provided values are applied.
@@ -181,7 +189,8 @@ public final class LMKThemeManager {
         shadow: LMKShadowTheme? = nil,
         alpha: LMKAlphaTheme? = nil,
         layout: LMKLayoutTheme? = nil,
-        animation: LMKAnimationTheme? = nil
+        animation: LMKAnimationTheme? = nil,
+        badge: LMKBadgeTheme? = nil
     ) {
         if let colors { current = colors }
         if let typography { self.typography = typography }
@@ -191,5 +200,6 @@ public final class LMKThemeManager {
         if let alpha { self.alpha = alpha }
         if let layout { self.layout = layout }
         if let animation { self.animation = animation }
+        if let badge { self.badge = badge }
     }
 }

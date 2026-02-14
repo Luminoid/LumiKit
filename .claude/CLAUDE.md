@@ -8,8 +8,8 @@
 
 | Target | Dependencies | Purpose |
 |--------|-------------|---------|
-| **LumiKitCore** | Foundation only | Logger, DateHelper, URLValidator, ConcurrencyHelpers, FormatHelper, FileHelper, String extensions |
-| **LumiKitUI** | LumiKitCore + SnapKit | Design system tokens, theme, animation, haptics, alerts, components, controls, photo browser/crop, extensions |
+| **LumiKitCore** | Foundation only | Logger, DateHelper, URLValidator, ConcurrencyHelpers, FormatHelper, FileHelper, String/Collection/NSAttributedString extensions |
+| **LumiKitUI** | LumiKitCore + SnapKit | Design system tokens, theme, animation, haptics, alerts, components, controls, utilities, photo browser/crop, extensions |
 | **LumiKitLottie** | LumiKitUI + Lottie | Lottie-powered pull-to-refresh control |
 
 **Swift 6.2** strict concurrency with `defaultIsolation: MainActor` on LumiKitUI and LumiKitLottie targets. Platforms: iOS 18+, Mac Catalyst 18+, macOS 15+.
@@ -24,23 +24,28 @@ LumiKit/
 ├── Sources/
 │   ├── LumiKitCore/
 │   │   ├── Concurrency/     # LMKConcurrencyHelpers (encode/decode off main)
-│   │   ├── Data/            # LMKFormatHelper, LMKLogger
+│   │   ├── Data/            # LMKFormatHelper, LMKLogger, Collection+LMK, NSAttributedString+LMK
 │   │   ├── Date/            # LMKDateHelper, LMKDateFormatterHelper
 │   │   ├── File/            # LMKFileHelper
 │   │   └── Validation/      # LMKURLValidator, String+LMK
 │   ├── LumiKitUI/
 │   │   ├── Alerts/          # LMKAlertPresenter, LMKErrorHandler
 │   │   ├── Animation/       # LMKAnimationHelper, LMKAnimationTheme
-│   │   ├── Components/      # LMKEmptyStateView, LMKToastView, LMKSearchBar, etc.
-│   │   ├── Controls/        # LMKButton, LMKSegmentedControl, LMKToggleButton
+│   │   ├── Components/      # LMKEmptyStateView, LMKToastView, LMKSearchBar, LMKBadgeView,
+│   │   │                    # LMKChipView, LMKDividerView, LMKGradientView, LMKCardView,
+│   │   │                    # LMKBannerView, LMKSkeletonCell, LMKLoadingStateView, etc.
+│   │   ├── Controls/        # LMKButton, LMKSegmentedControl, LMKToggleButton,
+│   │   │                    # LMKTextField, LMKTextView
 │   │   ├── DesignSystem/    # Token enums + Theme configs (see below)
-│   │   ├── Extensions/      # UIKit extensions (lmk_ prefix)
+│   │   ├── Extensions/      # UIKit extensions (lmk_ prefix): UIColor, UIImage, UIView,
+│   │   │                    # UIStackView, UITextField, UIButton, UITableViewCell, etc.
 │   │   ├── Haptics/         # LMKHapticFeedbackHelper
-│   │   └── Photo/           # LMKPhotoBrowserViewController, LMKPhotoCropViewController
+│   │   ├── Photo/           # LMKPhotoBrowserViewController, LMKPhotoCropViewController
+│   │   └── Utilities/       # LMKDeviceHelper, LMKKeyboardObserver
 │   └── LumiKitLottie/       # LMKLottieRefreshControl
 ├── Tests/
-│   ├── LumiKitCoreTests/    # 44 tests (7 suites)
-│   └── LumiKitUITests/      # 52 tests (20 suites)
+│   ├── LumiKitCoreTests/    # 56 tests (9 suites)
+│   └── LumiKitUITests/      # 111 tests (36 suites)
 ```
 
 ---
@@ -106,6 +111,7 @@ LMKThemeManager.shared.apply(spacing: .init(large: 20))
 | Layout | `LMKLayout` | `LMKLayoutTheme` | `.minimumTouchTarget` (44), `.iconMedium` (24), `.searchBarHeight` (36) |
 | Shadow | `LMKShadow` | `LMKShadowTheme` | `cellCard()`, `card()`, `button()`, `small()` |
 | Animation | `LMKAnimationHelper` | `LMKAnimationTheme` | `.Duration.*`, `.Spring.damping`, `.shouldAnimate` |
+| Badge | `LMKBadgeView` | `LMKBadgeTheme` | `minWidth`, `height`, `horizontalPadding`, `borderWidth` |
 
 ### Design System Files
 
@@ -125,6 +131,7 @@ DesignSystem/
 ├── LMKLayoutTheme.swift        # Configuration struct
 ├── LMKShadow.swift             # Shadow proxy
 ├── LMKShadowTheme.swift        # Configuration struct
+├── LMKBadgeTheme.swift         # Badge sizing configuration struct
 ├── LMKButtonFactory.swift      # Factory methods for styled buttons
 ├── LMKCardFactory.swift        # Factory methods for card views
 └── LMKLabelFactory.swift       # Factory methods for styled labels
@@ -148,6 +155,55 @@ public enum LMKSpacing {
 // 3. ThemeManager holds the active config
 LMKThemeManager.shared.apply(spacing: .init(large: 20))
 ```
+
+---
+
+## Components Reference
+
+### Visual Components (`Components/`)
+
+| Component | Type | Purpose |
+|-----------|------|---------|
+| `LMKBadgeView` | `final class` | Notification count / status dot / custom text badge |
+| `LMKBannerView` | `final class` | Persistent notification bar with optional action & dismiss |
+| `LMKCardView` | `final class` | Card container with shadow, corner radius, content insets |
+| `LMKChipView` | `final class` | Tag/filter chip (`.filled` / `.outlined`) with optional tap handler |
+| `LMKDividerView` | `final class` | Pixel-perfect separator (horizontal / vertical) |
+| `LMKEmptyStateView` | `final class` | Empty state with icon, title, message, action button |
+| `LMKGradientView` | `final class` | CAGradientLayer-backed view with 4 direction options |
+| `LMKLoadingStateView` | `final class` | Loading indicator with optional message |
+| `LMKSearchBar` | `final class` | Search bar with configurable strings |
+| `LMKSkeletonCell` | `final class` | Skeleton loading placeholder cell |
+| `LMKToastView` | `final class` | Auto-dismissing toast notification |
+
+### Controls (`Controls/`)
+
+| Control | Type | Purpose |
+|---------|------|---------|
+| `LMKButton` | `open class` | Configurable button with tap handler, styles |
+| `LMKSegmentedControl` | `open class` | Custom segmented control |
+| `LMKTextField` | `open class` | Text field with validation states, helper text, leading icon |
+| `LMKTextView` | `open class` | Multi-line text input with placeholder, character limit |
+| `LMKToggleButton` | `open class` | Toggle button with on/off states |
+
+### UIKit Extensions (`Extensions/`)
+
+| Extension | Key Methods |
+|-----------|-------------|
+| `UIColor+LMK` | `init(lmk_hex:)`, `lmk_hexString`, `lmk_isLight`, `lmk_adjustedBrightness(by:)`, `lmk_contrastingTextColor` |
+| `UIImage+LMK` | `lmk_resized(maxDimension:)`, `lmk_resized(to:)`, `lmk_solidColor(_:size:)`, `lmk_rounded(cornerRadius:)` |
+| `UIView+LMKShadow` | `lmk_applyShadow(_:)`, `lmk_removeShadow()` |
+| `UIView+LMKBorder` | `lmk_applyBorder(...)`, `lmk_removeBorder()`, `lmk_applyCornerRadius(_:)`, `lmk_makeCircular()` |
+| `UIView+LMKFade` | `lmk_fadeIn(...)`, `lmk_fadeOut(...)` |
+| `UIView+LMKLayout` | `lmk_addSubviews(...)`, `lmk_pinToEdges(...)` |
+| `UIStackView+LMK` | `init(lmk_axis:...)`, `lmk_addArrangedSubviews(_:)`, `lmk_removeAllArrangedSubviews()` |
+
+### Utilities (`Utilities/`)
+
+| Utility | Purpose |
+|---------|---------|
+| `LMKDeviceHelper` | Device type (`.iPhone`, `.iPad`, `.macCatalyst`), screen size classification, notch detection |
+| `LMKKeyboardObserver` | Keyboard show/hide observer with height + animation info |
 
 ---
 

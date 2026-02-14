@@ -3,7 +3,8 @@
 //  LumiKit
 //
 //  Tests for LumiKitCore: Logger, DateHelper, URLValidator,
-//  String+LMK, ConcurrencyHelpers, DateFormatterHelper, FormatHelper.
+//  String+LMK, ConcurrencyHelpers, DateFormatterHelper, FormatHelper,
+//  Collection+LMK, NSAttributedString+LMK.
 //
 
 import Foundation
@@ -333,5 +334,105 @@ struct FormatHelperTests {
     @Test("progressPercent formats 1.0 as 100%")
     func progressPercentFull() {
         #expect(LMKFormatHelper.progressPercent(1.0) == "100%")
+    }
+}
+
+// MARK: - Collection+LMK
+
+@Suite("Collection+LMK")
+struct CollectionLMKTests {
+    @Test("Safe subscript returns element for valid index")
+    func safeSubscriptValid() {
+        let items = ["a", "b", "c"]
+        #expect(items[safe: 1] == "b")
+    }
+
+    @Test("Safe subscript returns nil for out-of-bounds index")
+    func safeSubscriptOutOfBounds() {
+        let items = ["a", "b", "c"]
+        #expect(items[safe: 5] == nil)
+        #expect(items[safe: -1] == nil)
+    }
+
+    @Test("Safe subscript returns nil for empty collection")
+    func safeSubscriptEmpty() {
+        let items: [String] = []
+        #expect(items[safe: 0] == nil)
+    }
+
+    @Test("lmk_uniqued preserves order and removes duplicates")
+    func uniquedPreservesOrder() {
+        let items = [1, 2, 2, 3, 1, 4]
+        #expect(items.lmk_uniqued() == [1, 2, 3, 4])
+    }
+
+    @Test("lmk_uniqued on empty returns empty")
+    func uniquedEmpty() {
+        let items: [Int] = []
+        #expect(items.lmk_uniqued().isEmpty)
+    }
+
+    @Test("lmk_chunked splits correctly")
+    func chunkedSplits() {
+        let items = [1, 2, 3, 4, 5]
+        let chunks = items.lmk_chunked(size: 2)
+        #expect(chunks.count == 3)
+        #expect(chunks[0] == [1, 2])
+        #expect(chunks[1] == [3, 4])
+        #expect(chunks[2] == [5])
+    }
+
+    @Test("lmk_chunked with size larger than count returns single chunk")
+    func chunkedLargerSize() {
+        let items = [1, 2]
+        let chunks = items.lmk_chunked(size: 10)
+        #expect(chunks.count == 1)
+        #expect(chunks[0] == [1, 2])
+    }
+
+    @Test("lmk_chunked with size 0 returns empty")
+    func chunkedZeroSize() {
+        let items = [1, 2, 3]
+        #expect(items.lmk_chunked(size: 0).isEmpty)
+    }
+}
+
+// MARK: - NSAttributedString+LMK
+
+@Suite("NSAttributedString+LMK")
+struct NSAttributedStringLMKTests {
+    @Test("Concatenation operator combines strings")
+    func concatenation() {
+        let a = NSAttributedString(string: "Hello ")
+        let b = NSAttributedString(string: "World")
+        let result = a + b
+        #expect(result.string == "Hello World")
+    }
+
+    @Test("lmk_append adds text")
+    func appendText() {
+        let result = NSMutableAttributedString()
+            .lmk_append("Hello ")
+            .lmk_append("World")
+        #expect(result.string == "Hello World")
+    }
+
+    @Test("lmk_applyToAll applies across full range")
+    func applyToAll() {
+        let key = NSAttributedString.Key("lmk.test")
+        let result = NSMutableAttributedString(string: "Test")
+            .lmk_applyToAll([key: 2.0])
+        var range = NSRange()
+        let attrs = result.attributes(at: 0, longestEffectiveRange: &range, in: NSRange(location: 0, length: result.length))
+        #expect(attrs[key] as? Double == 2.0)
+        #expect(range.length == 4)
+    }
+
+    @Test("lmk_applyToAll on empty string does not crash")
+    func applyToAllEmpty() {
+        let key = NSAttributedString.Key("lmk.test")
+        let result = NSMutableAttributedString()
+            .lmk_applyToAll([key: 2.0])
+        #expect(result.length == 0)
     }
 }
