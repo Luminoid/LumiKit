@@ -53,7 +53,6 @@ public enum LMKButtonFactory {
 
         button.addTarget(target, action: action, for: .touchUpInside)
         button.addTarget(nil, action: #selector(UIButton.lmk_animatePress), for: .touchDown)
-        button.addTarget(nil, action: #selector(UIButton.lmk_animateRelease), for: [.touchUpInside, .touchUpOutside, .touchCancel])
         return button
     }
 }

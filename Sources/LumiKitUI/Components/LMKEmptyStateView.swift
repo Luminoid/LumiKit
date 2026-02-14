@@ -22,7 +22,7 @@ public enum LMKEmptyStateStyle {
         }
     }
 
-    public var fontSize: UIFont {
+    public var font: UIFont {
         switch self {
         case .fullScreen: LMKTypography.h3
         case .card: LMKTypography.body
@@ -51,6 +51,9 @@ public final class LMKEmptyStateView: UIView {
     override public init(frame: CGRect) {
         super.init(frame: frame)
         setupUI()
+        registerForTraitChanges([UITraitUserInterfaceStyle.self]) { (self: LMKEmptyStateView, _: UITraitCollection) in
+            self.refreshDynamicColors()
+        }
     }
 
     @available(*, unavailable)
@@ -58,8 +61,15 @@ public final class LMKEmptyStateView: UIView {
         fatalError("init(coder:) has not been implemented")
     }
 
+    private func refreshDynamicColors() {
+        iconImageView.tintColor = LMKColor.textTertiary
+        messageLabel.textColor = LMKColor.textPrimary
+    }
+
     private func setupUI() {
         backgroundColor = .clear
+        isAccessibilityElement = true
+        accessibilityTraits = .staticText
 
         containerView.backgroundColor = .clear
         addSubview(containerView)
@@ -153,8 +163,9 @@ public final class LMKEmptyStateView: UIView {
     /// Configure the empty state view.
     public func configure(message: String, icon: String? = nil, style: LMKEmptyStateStyle = .fullScreen) {
         messageLabel.text = message
-        messageLabel.font = style.fontSize
+        messageLabel.font = style.font
         currentStyle = style
+        accessibilityLabel = message
 
         if let iconName = icon, let iconImage = UIImage(systemName: iconName) {
             iconImageView.image = iconImage

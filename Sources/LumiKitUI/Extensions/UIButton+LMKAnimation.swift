@@ -8,12 +8,9 @@
 import UIKit
 
 public extension UIButton {
+    /// Animate a button press with scale-down + spring return and medium haptic.
     @objc func lmk_animatePress() {
         LMKAnimationHelper.animateButtonPress(self)
         LMKHapticFeedbackHelper.medium()
-    }
-
-    @objc func lmk_animateRelease() {
-        // Release animation handled by LMKAnimationHelper's spring return.
     }
 }

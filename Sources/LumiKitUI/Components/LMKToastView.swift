@@ -39,12 +39,13 @@ public final class LMKToastView: UIView {
     public static let defaultDuration: TimeInterval = 3.0
 
     private static let showInitialYOffset: CGFloat = -200
-    private static let dismissYOffset: CGFloat = 200
-    private static let springDamping: CGFloat = 0.78
+    private static let dismissYOffset: CGFloat = -200
+    private static let accentBarWidth: CGFloat = LMKSpacing.xs
 
     private let messageLabel = UILabel()
     private let iconView = UIImageView()
     private let containerView = UIView()
+    private let accentView = UIView()
     private var dismissTimer: Timer?
 
     private let type: LMKToastType
@@ -57,6 +58,9 @@ public final class LMKToastView: UIView {
         self.duration = duration
         super.init(frame: .zero)
         setupUI()
+        registerForTraitChanges([UITraitUserInterfaceStyle.self]) { (self: LMKToastView, _: UITraitCollection) in
+            self.refreshDynamicColors()
+        }
     }
 
     @available(*, unavailable)
@@ -64,9 +68,23 @@ public final class LMKToastView: UIView {
         fatalError("init(coder:) has not been implemented")
     }
 
+    private func refreshDynamicColors() {
+        containerView.backgroundColor = LMKColor.backgroundSecondary
+        let shadow = LMKShadow.card()
+        containerView.layer.shadowColor = shadow.color
+        iconView.tintColor = type.color
+        messageLabel.textColor = LMKColor.textPrimary
+        accentView.backgroundColor = type.color
+    }
+
     private func setupUI() {
         backgroundColor = .clear
         isUserInteractionEnabled = false
+
+        // Accessibility: announce toast message when shown
+        isAccessibilityElement = true
+        accessibilityLabel = message
+        accessibilityTraits = .staticText
 
         containerView.backgroundColor = LMKColor.backgroundSecondary
         containerView.layer.cornerRadius = LMKCornerRadius.medium
@@ -103,12 +121,11 @@ public final class LMKToastView: UIView {
             make.top.bottom.equalToSuperview().inset(LMKSpacing.medium)
         }
 
-        let accentView = UIView()
         accentView.backgroundColor = type.color
         containerView.addSubview(accentView)
         accentView.snp.makeConstraints { make in
             make.leading.top.bottom.equalToSuperview()
-            make.width.equalTo(4)
+            make.width.equalTo(Self.accentBarWidth)
         }
     }
 
@@ -143,7 +160,7 @@ public final class LMKToastView: UIView {
         let duration = shouldReduceMotion ? 0 : LMKAnimationHelper.Duration.modalPresentation
         UIView.animate(
             withDuration: duration, delay: 0,
-            usingSpringWithDamping: Self.springDamping, initialSpringVelocity: 0,
+            usingSpringWithDamping: LMKAnimationHelper.Spring.damping, initialSpringVelocity: 0,
             options: [.allowUserInteraction, .curveEaseOut],
             animations: {
                 self.transform = .identity
@@ -164,6 +181,8 @@ public final class LMKToastView: UIView {
         case .warning: LMKHapticFeedbackHelper.warning()
         case .info: LMKHapticFeedbackHelper.light()
         }
+
+        UIAccessibility.post(notification: .announcement, argument: message)
     }
 
     private static var keyWindow: UIWindow? {

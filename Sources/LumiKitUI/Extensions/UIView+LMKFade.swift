@@ -8,23 +8,25 @@
 import UIKit
 
 public extension UIView {
-    /// Fade in to a given alpha.
-    func lmk_fadeIn(_ alpha: CGFloat = 1.0, duration: Double = 0.2, completion: ((Bool) -> Void)? = nil) {
-        if duration == 0.0 {
+    /// Fade in to a given alpha. Respects Reduce Motion accessibility setting.
+    func lmk_fadeIn(_ alpha: CGFloat = 1.0, duration: Double = LMKAnimationHelper.Duration.alert, completion: ((Bool) -> Void)? = nil) {
+        let effectiveDuration = LMKAnimationHelper.shouldAnimate ? duration : 0
+        if effectiveDuration == 0 {
             self.alpha = alpha
             completion?(true)
         } else {
-            UIView.animate(withDuration: duration, animations: { self.alpha = alpha }, completion: completion)
+            UIView.animate(withDuration: effectiveDuration, animations: { self.alpha = alpha }, completion: completion)
         }
     }
 
-    /// Fade out to a given alpha.
-    func lmk_fadeOut(_ alpha: CGFloat = 0.0, duration: Double = 0.2, completion: ((Bool) -> Void)? = nil) {
-        if duration == 0.0 {
+    /// Fade out to a given alpha. Respects Reduce Motion accessibility setting.
+    func lmk_fadeOut(_ alpha: CGFloat = 0.0, duration: Double = LMKAnimationHelper.Duration.alert, completion: ((Bool) -> Void)? = nil) {
+        let effectiveDuration = LMKAnimationHelper.shouldAnimate ? duration : 0
+        if effectiveDuration == 0 {
             self.alpha = alpha
             completion?(true)
         } else {
-            UIView.animate(withDuration: duration, animations: { self.alpha = alpha }, completion: completion)
+            UIView.animate(withDuration: effectiveDuration, animations: { self.alpha = alpha }, completion: completion)
         }
     }
 }

@@ -11,7 +11,9 @@ import UIKit
 /// Skeleton loading cell with shimmer animation.
 public final class LMKSkeletonCell: UITableViewCell {
     private static let cellHeight: CGFloat = 80
-    private static let containerInsets = UIEdgeInsets(top: 4, left: 16, bottom: 4, right: 16)
+    private static var containerInsets: UIEdgeInsets {
+        UIEdgeInsets(top: LMKSpacing.xs, left: LMKSpacing.large, bottom: LMKSpacing.xs, right: LMKSpacing.large)
+    }
     private static let shimmerAnimationDuration: TimeInterval = 1.8
     private static let staggerDelayPerIndex: TimeInterval = 0.1
     private static let gradientLocations: [NSNumber] = [0.0, 0.5, 1.0]
@@ -25,6 +27,21 @@ public final class LMKSkeletonCell: UITableViewCell {
     override public init(style: UITableViewCell.CellStyle, reuseIdentifier: String?) {
         super.init(style: style, reuseIdentifier: reuseIdentifier)
         setupUI()
+        registerForTraitChanges([UITraitUserInterfaceStyle.self]) { (self: LMKSkeletonCell, _: UITraitCollection) in
+            self.refreshDynamicColors()
+        }
+    }
+
+    private func refreshDynamicColors() {
+        containerView.backgroundColor = LMKColor.backgroundPrimary
+        let shadow = LMKShadow.small()
+        containerView.layer.shadowColor = shadow.color
+        shimmerView.backgroundColor = LMKColor.backgroundTertiary
+        gradientLayer.colors = [
+            LMKColor.backgroundTertiary.cgColor,
+            LMKColor.backgroundSecondary.cgColor,
+            LMKColor.backgroundTertiary.cgColor,
+        ]
     }
 
     override public func setHighlighted(_ highlighted: Bool, animated: Bool) {
@@ -74,6 +91,11 @@ public final class LMKSkeletonCell: UITableViewCell {
         gradientLayer.locations = Self.gradientLocations
         gradientLayer.startPoint = Self.gradientStartPoint
         gradientLayer.endPoint = Self.gradientEndPoint
+    }
+
+    override public func prepareForReuse() {
+        super.prepareForReuse()
+        stopShimmer()
     }
 
     override public func layoutSubviews() {

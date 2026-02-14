@@ -7,6 +7,26 @@
 
 import UIKit
 
+// MARK: - Configurable Strings
+
+/// Configurable strings for toggle button accessibility, allowing localization.
+public nonisolated struct LMKToggleButtonStrings: Sendable {
+    public var onAccessibilityValue: String
+    public var offAccessibilityValue: String
+
+    public init(
+        onAccessibilityValue: String = "On",
+        offAccessibilityValue: String = "Off"
+    ) {
+        self.onAccessibilityValue = onAccessibilityValue
+        self.offAccessibilityValue = offAccessibilityValue
+    }
+}
+
+public nonisolated(unsafe) var lmkToggleButtonStrings = LMKToggleButtonStrings()
+
+// MARK: - LMKToggleButton
+
 /// Toggle button with on/off state and per-state title/image.
 open class LMKToggleButton: LMKButton {
     public enum Status {
@@ -49,15 +69,18 @@ open class LMKToggleButton: LMKButton {
         case .on:
             setTitle(titleForStatusOn, for: .normal)
             setImage(imageForStatusOn, for: .normal)
+            accessibilityValue = lmkToggleButtonStrings.onAccessibilityValue
         case .off:
             setTitle(titleForStatusOff, for: .normal)
             setImage(imageForStatusOff, for: .normal)
+            accessibilityValue = lmkToggleButtonStrings.offAccessibilityValue
         }
     }
 
     @objc override open func didTap() {
         if flipStatusOnTap {
             status = (status == .on) ? .off : .on
+            LMKHapticFeedbackHelper.selection()
         }
         super.didTap()
     }

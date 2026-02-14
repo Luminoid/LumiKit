@@ -83,6 +83,7 @@ public final class LMKPhotoBrowserViewController: UIViewController {
     private var currentIndex: Int = 0
     private var isOverlayHidden: Bool = false
 
+    private static let counterLabelAlpha: CGFloat = 0.9
     /// Minimum alpha when vertical pan reaches dismiss threshold (transparency effect)
     private static let dismissProgressMinAlpha: CGFloat = 0.3
     /// Scale-down factor at full dismiss progress (1.0 -> 1 - value)
@@ -381,7 +382,7 @@ public final class LMKPhotoBrowserViewController: UIViewController {
         #if targetEnvironment(macCatalyst)
             let buttonSize: CGFloat = 48
         #else
-            let buttonSize: CGFloat = 44
+            let buttonSize: CGFloat = LMKLayout.minimumTouchTarget
         #endif
 
         dismissButton.snp.makeConstraints { make in
@@ -433,7 +434,7 @@ public final class LMKPhotoBrowserViewController: UIViewController {
 
         // Photo counter ("3 of 12")
         counterLabel.font = LMKTypography.caption
-        counterLabel.textColor = LMKColor.white.withAlphaComponent(0.9)
+        counterLabel.textColor = LMKColor.white.withAlphaComponent(Self.counterLabelAlpha)
         counterLabel.textAlignment = .center
         view.addSubview(counterLabel)
         view.bringSubviewToFront(counterLabel)

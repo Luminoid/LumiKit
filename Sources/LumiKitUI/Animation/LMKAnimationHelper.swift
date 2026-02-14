@@ -98,19 +98,21 @@ public enum LMKAnimationHelper {
 
     // MARK: - Success Feedback Animation
 
+    private static let successCheckmarkSize: CGFloat = 60
+
     public static func animateSuccessFeedback(on view: UIView, completion: (() -> Void)? = nil) {
-        let shouldReduceMotion = UIAccessibility.isReduceMotionEnabled
+        let reduceMotion = !shouldAnimate
 
         let checkmarkView = UIImageView(image: UIImage(systemName: "checkmark.circle.fill"))
         checkmarkView.tintColor = LMKColor.success
-        checkmarkView.frame = CGRect(x: 0, y: 0, width: 60, height: 60)
+        checkmarkView.frame = CGRect(x: 0, y: 0, width: successCheckmarkSize, height: successCheckmarkSize)
         checkmarkView.center = CGPoint(x: view.bounds.midX, y: view.bounds.midY)
         checkmarkView.alpha = 0
         checkmarkView.transform = CGAffineTransform(scaleX: 0, y: 0)
         view.addSubview(checkmarkView)
 
         UIView.animate(
-            withDuration: shouldReduceMotion ? 0 : Duration.successFeedback * 0.6,
+            withDuration: reduceMotion ? 0 : Duration.successFeedback * 0.6,
             delay: 0, usingSpringWithDamping: 0.6, initialSpringVelocity: 0,
             options: [.allowUserInteraction],
             animations: {
@@ -119,12 +121,12 @@ public enum LMKAnimationHelper {
             },
             completion: { _ in
                 UIView.animate(
-                    withDuration: shouldReduceMotion ? 0 : Duration.successFeedback * 0.4,
+                    withDuration: reduceMotion ? 0 : Duration.successFeedback * 0.4,
                     delay: 0, options: [.allowUserInteraction],
                     animations: { checkmarkView.transform = CGAffineTransform(scaleX: 1.0, y: 1.0) },
                     completion: { _ in
                         UIView.animate(
-                            withDuration: shouldReduceMotion ? 0 : Duration.alert,
+                            withDuration: reduceMotion ? 0 : Duration.alert,
                             delay: Duration.modalPresentation,
                             options: [.allowUserInteraction],
                             animations: { checkmarkView.alpha = 0 },
@@ -142,7 +144,7 @@ public enum LMKAnimationHelper {
     // MARK: - Error Shake Animation
 
     public static func animateErrorShake(on view: UIView, completion: (() -> Void)? = nil) {
-        let shouldReduceMotion = UIAccessibility.isReduceMotionEnabled
+        let shouldReduceMotion = !shouldAnimate
 
         if shouldReduceMotion {
             let originalBorderColor = view.layer.borderColor
@@ -180,14 +182,14 @@ public enum LMKAnimationHelper {
     // MARK: - Photo Load Animation
 
     public static func animatePhotoLoad(on imageView: UIImageView, completion: (() -> Void)? = nil) {
-        let shouldReduceMotion = UIAccessibility.isReduceMotionEnabled
+        let reduceMotion = !shouldAnimate
 
         imageView.alpha = 0
-        if !shouldReduceMotion {
+        if !reduceMotion {
             imageView.transform = CGAffineTransform(scaleX: 0.95, y: 0.95)
         }
         UIView.animate(
-            withDuration: shouldReduceMotion ? 0 : Duration.photoLoad,
+            withDuration: reduceMotion ? 0 : Duration.photoLoad,
             delay: 0, options: [.allowUserInteraction, Curve.easeIn],
             animations: {
                 imageView.alpha = 1
@@ -200,10 +202,10 @@ public enum LMKAnimationHelper {
     // MARK: - Fade In/Out
 
     public static func fadeIn(_ view: UIView, duration: TimeInterval = Duration.alert, completion: (() -> Void)? = nil) {
-        let shouldReduceMotion = UIAccessibility.isReduceMotionEnabled
+        let reduceMotion = !shouldAnimate
         view.alpha = 0
         UIView.animate(
-            withDuration: shouldReduceMotion ? 0 : duration,
+            withDuration: reduceMotion ? 0 : duration,
             delay: 0, options: [.allowUserInteraction, Curve.easeIn],
             animations: { view.alpha = 1 },
             completion: { _ in completion?() },
@@ -211,9 +213,9 @@ public enum LMKAnimationHelper {
     }
 
     public static func fadeOut(_ view: UIView, duration: TimeInterval = Duration.alert, completion: (() -> Void)? = nil) {
-        let shouldReduceMotion = UIAccessibility.isReduceMotionEnabled
+        let reduceMotion = !shouldAnimate
         UIView.animate(
-            withDuration: shouldReduceMotion ? 0 : duration,
+            withDuration: reduceMotion ? 0 : duration,
             delay: 0, options: [.allowUserInteraction, Curve.easeOut],
             animations: { view.alpha = 0 },
             completion: { _ in completion?() },

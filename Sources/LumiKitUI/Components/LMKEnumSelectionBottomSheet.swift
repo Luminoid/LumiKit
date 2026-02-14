@@ -41,10 +41,14 @@ public final class LMKEnumSelectionBottomSheet<T: Equatable & LMKEnumSelectable>
         return view
     }()
 
+    private static var dragIndicatorWidth: CGFloat { 40 }
+    private static var dragIndicatorHeight: CGFloat { 5 }
+    private static var dragIndicatorCornerRadius: CGFloat { 2.5 }
+
     private lazy var containerView: UIView = {
         let view = UIView()
         view.backgroundColor = LMKColor.backgroundPrimary
-        view.layer.cornerRadius = 16
+        view.layer.cornerRadius = LMKCornerRadius.large
         view.layer.maskedCorners = [.layerMinXMinYCorner, .layerMaxXMinYCorner]
         return view
     }()
@@ -52,7 +56,7 @@ public final class LMKEnumSelectionBottomSheet<T: Equatable & LMKEnumSelectable>
     private lazy var dragIndicator: UIView = {
         let view = UIView()
         view.backgroundColor = LMKColor.divider
-        view.layer.cornerRadius = 2.5
+        view.layer.cornerRadius = Self.dragIndicatorCornerRadius
         return view
     }()
 
@@ -102,6 +106,19 @@ public final class LMKEnumSelectionBottomSheet<T: Equatable & LMKEnumSelectable>
     override public func viewDidLoad() {
         super.viewDidLoad()
         setupUI()
+        registerForTraitChanges([UITraitUserInterfaceStyle.self]) { (self: LMKEnumSelectionBottomSheet, _: UITraitCollection) in
+            self.refreshDynamicColors()
+        }
+    }
+
+    private func refreshDynamicColors() {
+        dimmingView.backgroundColor = LMKColor.black.withAlphaComponent(LMKAlpha.dimmingOverlay)
+        containerView.backgroundColor = LMKColor.backgroundPrimary
+        dragIndicator.backgroundColor = LMKColor.divider
+        titleLabel.textColor = LMKColor.textPrimary
+        cancelButton.setTitleColor(LMKColor.textPrimary, for: .normal)
+        cancelButton.backgroundColor = LMKColor.backgroundSecondary
+        tableView.reloadData()
     }
 
     override public func viewDidAppear(_ animated: Bool) {
@@ -133,8 +150,8 @@ public final class LMKEnumSelectionBottomSheet<T: Equatable & LMKEnumSelectable>
         dragIndicator.snp.makeConstraints { make in
             make.top.equalToSuperview().offset(LMKSpacing.small)
             make.centerX.equalToSuperview()
-            make.width.equalTo(40)
-            make.height.equalTo(5)
+            make.width.equalTo(Self.dragIndicatorWidth)
+            make.height.equalTo(Self.dragIndicatorHeight)
         }
 
         containerView.addSubview(titleLabel)
@@ -317,8 +334,9 @@ final class LMKEnumSelectionCell: UITableViewCell {
         }
 
         checkmarkImageView.isHidden = !isSelected
+        accessibilityTraits = isSelected ? [.selected] : []
         if isSelected {
-            containerView.backgroundColor = LMKColor.primary.withAlphaComponent(0.1)
+            containerView.backgroundColor = LMKColor.primary.withAlphaComponent(LMKAlpha.overlayLight)
             titleLabel.font = LMKTypography.bodyMedium
         } else {
             containerView.backgroundColor = LMKColor.backgroundSecondary

@@ -11,23 +11,27 @@ import UIKit
 
 /// Blocking progress view controller with activity indicator, progress bar, and cancel button.
 public final class LMKProgressViewController: UIViewController {
+    // MARK: - Layout Constants
+
     private static let containerWidth: CGFloat = 280
-    private static let activityIndicatorTopOffset: CGFloat = 24
-    private static let activityIndicatorToTitleSpacing: CGFloat = 16
-    private static let horizontalInsets: CGFloat = 20
-    private static let titleToTaskSpacing: CGFloat = 12
-    private static let taskToProgressSpacing: CGFloat = 16
+    private static var activityIndicatorTopOffset: CGFloat { LMKSpacing.xxl }
+    private static var activityIndicatorToTitleSpacing: CGFloat { LMKSpacing.large }
+    private static var horizontalInsets: CGFloat { LMKSpacing.xl }
+    private static var titleToTaskSpacing: CGFloat { LMKSpacing.medium }
+    private static var taskToProgressSpacing: CGFloat { LMKSpacing.large }
     private static let progressBarHeight: CGFloat = 4
-    private static let progressToLabelSpacing: CGFloat = 8
-    private static let labelToButtonSpacing: CGFloat = 16
-    private static let bottomOffset: CGFloat = 24
+    private static var progressToLabelSpacing: CGFloat { LMKSpacing.small }
+    private static var labelToButtonSpacing: CGFloat { LMKSpacing.large }
+    private static var bottomOffset: CGFloat { LMKSpacing.xxl }
+
+    // MARK: - Subviews
 
     private let containerView: UIView = {
         let view = UIView()
         view.backgroundColor = LMKColor.backgroundPrimary
         view.layer.cornerRadius = LMKCornerRadius.large
         let shadow = LMKShadow.card()
-        view.layer.shadowColor = LMKColor.black.cgColor
+        view.layer.shadowColor = shadow.color
         view.layer.shadowOpacity = shadow.opacity
         view.layer.shadowOffset = shadow.offset
         view.layer.shadowRadius = shadow.radius
@@ -86,6 +90,8 @@ public final class LMKProgressViewController: UIViewController {
     /// Callback when cancel button is tapped.
     public var onCancel: (() -> Void)?
 
+    // MARK: - Initialization
+
     public init(title: String) {
         super.init(nibName: nil, bundle: nil)
         titleLabel.text = title
@@ -98,10 +104,31 @@ public final class LMKProgressViewController: UIViewController {
         fatalError("init(coder:) has not been implemented")
     }
 
+    // MARK: - Lifecycle
+
     override public func viewDidLoad() {
         super.viewDidLoad()
         setupUI()
+        registerForTraitChanges([UITraitUserInterfaceStyle.self]) { (self: LMKProgressViewController, _: UITraitCollection) in
+            self.refreshDynamicColors()
+        }
     }
+
+    private func refreshDynamicColors() {
+        view.backgroundColor = LMKColor.black.withAlphaComponent(LMKAlpha.overlay)
+        containerView.backgroundColor = LMKColor.backgroundPrimary
+        let shadow = LMKShadow.card()
+        containerView.layer.shadowColor = shadow.color
+        titleLabel.textColor = LMKColor.textPrimary
+        taskLabel.textColor = LMKColor.textSecondary
+        progressView.progressTintColor = LMKColor.primary
+        progressView.trackTintColor = LMKColor.backgroundSecondary
+        progressLabel.textColor = LMKColor.textSecondary
+        activityIndicator.color = LMKColor.primary
+        cancelButton.setTitleColor(LMKColor.textSecondary, for: .normal)
+    }
+
+    // MARK: - Setup
 
     private func setupUI() {
         view.backgroundColor = LMKColor.black.withAlphaComponent(LMKAlpha.overlay)
@@ -153,13 +180,19 @@ public final class LMKProgressViewController: UIViewController {
         activityIndicator.startAnimating()
     }
 
+    // MARK: - Actions
+
     @objc private func cancelButtonTapped() { onCancel?() }
+
+    // MARK: - Public API
 
     /// Update progress and current task.
     public func updateProgress(_ progress: Float, task: String) {
         progressView.setProgress(progress, animated: true)
         taskLabel.text = task
-        progressLabel.text = LMKFormatHelper.progressPercent(progress)
+        let percentText = LMKFormatHelper.progressPercent(progress)
+        progressLabel.text = percentText
+        UIAccessibility.post(notification: .announcement, argument: "\(task) \(percentText)")
     }
 
     /// Update only the progress value.

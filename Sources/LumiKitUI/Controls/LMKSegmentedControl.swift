@@ -30,6 +30,7 @@ open class LMKSegmentedControl: UISegmentedControl {
     }
 
     @objc private func valueChanged() {
+        LMKHapticFeedbackHelper.selection()
         valueChangedHandler?(selectedSegmentIndex)
         didValueChangeHandler?(self)
     }

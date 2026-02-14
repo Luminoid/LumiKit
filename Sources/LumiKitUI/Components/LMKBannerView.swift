@@ -72,6 +72,17 @@ public final class LMKBannerView: UIView {
         self.message = message
         super.init(frame: .zero)
         setupUI()
+        registerForTraitChanges([UITraitUserInterfaceStyle.self]) { (self: LMKBannerView, _: UITraitCollection) in
+            self.refreshDynamicColors()
+        }
+    }
+
+    private func refreshDynamicColors() {
+        backgroundColor = type.color.withAlphaComponent(LMKAlpha.overlayLight)
+        iconView.tintColor = type.color
+        messageLabel.textColor = LMKColor.textPrimary
+        actionButton.setTitleColor(type.color, for: .normal)
+        dismissButton.tintColor = LMKColor.textTertiary
     }
 
     @available(*, unavailable)

@@ -132,15 +132,30 @@ public final class LMKSearchBar: UIView {
     }()
 
     private var cancelButtonWidthConstraint: Constraint?
+    private static let cancelButtonWidth: CGFloat = 60
 
     override public init(frame: CGRect) {
         super.init(frame: frame)
         setupUI()
+        registerForTraitChanges([UITraitUserInterfaceStyle.self]) { (self: LMKSearchBar, _: UITraitCollection) in
+            self.refreshDynamicColors()
+        }
     }
 
     @available(*, unavailable)
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
+    }
+
+    private func refreshDynamicColors() {
+        containerView.backgroundColor = LMKColor.backgroundTertiary
+        magnifyingGlassImageView.tintColor = LMKColor.textTertiary
+        textField.textColor = LMKColor.textPrimary
+        clearButton.tintColor = LMKColor.textTertiary
+        cancelButton.setTitleColor(LMKColor.primary, for: .normal)
+        if let currentText = placeholder {
+            placeholder = currentText
+        }
     }
 
     private func setupUI() {
@@ -188,7 +203,7 @@ public final class LMKSearchBar: UIView {
 
     private func updateCancelButtonConstraints() {
         let showing = !cancelButton.isHidden
-        cancelButtonWidthConstraint?.update(offset: showing ? 60 : 0)
+        cancelButtonWidthConstraint?.update(offset: showing ? Self.cancelButtonWidth : 0)
         let duration = LMKAnimationHelper.shouldAnimate ? LMKAnimationHelper.Duration.actionSheet : 0
         UIView.animate(withDuration: duration) { self.layoutIfNeeded() }
     }

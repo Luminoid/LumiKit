@@ -15,35 +15,44 @@ public final class LMKLoadingStateView: UIView {
 
     private let activityIndicator: UIActivityIndicatorView
     private let messageLabel = UILabel()
+    private let isOverlayStyle: Bool
 
     /// Create a loading state view.
     /// - Parameters:
     ///   - frame: View frame.
     ///   - overlayStyle: When `true`, uses dimmed background for full-screen overlay.
     public init(frame: CGRect = .zero, overlayStyle: Bool = false) {
+        self.isOverlayStyle = overlayStyle
         let style: UIActivityIndicatorView.Style = overlayStyle ? .large : .medium
         activityIndicator = UIActivityIndicatorView(style: style)
         super.init(frame: frame)
         backgroundColor = overlayStyle ? LMKColor.backgroundPrimary.withAlphaComponent(LMKAlpha.overlayOpaque) : .clear
         setupUI()
+        registerForTraitChanges([UITraitUserInterfaceStyle.self]) { (self: LMKLoadingStateView, _: UITraitCollection) in
+            self.refreshDynamicColors()
+        }
     }
 
-    override public init(frame: CGRect) {
-        activityIndicator = UIActivityIndicatorView(style: .medium)
-        super.init(frame: frame)
-        setupUI()
+    private func refreshDynamicColors() {
+        activityIndicator.color = LMKColor.primary
+        messageLabel.textColor = LMKColor.textSecondary
+        if isOverlayStyle {
+            backgroundColor = LMKColor.backgroundPrimary.withAlphaComponent(LMKAlpha.overlayOpaque)
+        }
     }
 
+    @available(*, unavailable)
     required init?(coder: NSCoder) {
-        activityIndicator = UIActivityIndicatorView(style: .medium)
-        super.init(coder: coder)
-        setupUI()
+        fatalError("init(coder:) has not been implemented")
     }
 
     private func setupUI() {
         if backgroundColor == nil || backgroundColor == .clear {
             backgroundColor = .clear
         }
+
+        isAccessibilityElement = true
+        accessibilityTraits = .updatesFrequently
 
         activityIndicator.color = LMKColor.primary
         activityIndicator.hidesWhenStopped = true
@@ -73,8 +82,10 @@ public final class LMKLoadingStateView: UIView {
         if !message.isEmpty {
             messageLabel.text = message
             messageLabel.isHidden = false
+            accessibilityLabel = message
         } else {
             messageLabel.isHidden = true
+            accessibilityLabel = nil
         }
     }
 
@@ -88,5 +99,6 @@ public final class LMKLoadingStateView: UIView {
     public func updateMessage(_ message: String) {
         messageLabel.text = message
         messageLabel.isHidden = false
+        accessibilityLabel = message
     }
 }

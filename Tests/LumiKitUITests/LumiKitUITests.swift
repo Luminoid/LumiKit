@@ -7,7 +7,9 @@
 //  UIColor+LMK, UIImage+LMK, UIView+LMKShadow, UIView+LMKBorder,
 //  UIStackView+LMK, LMKDividerView, LMKBadgeView, LMKChipView,
 //  LMKGradientView, LMKCardView, LMKBannerView, LMKTextField,
-//  LMKTextView, LMKDeviceHelper, LMKKeyboardObserver.
+//  LMKTextView, LMKDeviceHelper, LMKKeyboardObserver,
+//  LMKToastView, LMKEmptyStateView, LMKToggleButton, UIView+LMKFade,
+//  LMKLoadingStateView, LMKSkeletonCell, LMKAnimationHelper.
 //
 
 import Testing
@@ -797,5 +799,313 @@ struct LMKBadgeThemeTests {
         LMKThemeManager.shared.apply(badge: .init(minWidth: 24, height: 24))
         #expect(LMKThemeManager.shared.badge.minWidth == 24)
         #expect(LMKThemeManager.shared.badge.height == 24)
+    }
+}
+
+// MARK: - LMKToastView
+
+@Suite("LMKToastView")
+@MainActor
+struct LMKToastViewTests {
+    @Test("Toast type icon names are correct")
+    func toastTypeIcons() {
+        #expect(LMKToastType.error.iconName == "exclamationmark.circle.fill")
+        #expect(LMKToastType.success.iconName == "checkmark.circle.fill")
+        #expect(LMKToastType.warning.iconName == "exclamationmark.triangle.fill")
+        #expect(LMKToastType.info.iconName == "info.circle.fill")
+    }
+
+    @Test("Toast type colors map to design tokens")
+    func toastTypeColors() {
+        #expect(LMKToastType.error.color == LMKColor.error)
+        #expect(LMKToastType.success.color == LMKColor.success)
+        #expect(LMKToastType.warning.color == LMKColor.warning)
+        #expect(LMKToastType.info.color == LMKColor.info)
+    }
+
+    @Test("Toast sets accessibility properties")
+    func toastAccessibility() {
+        let toast = LMKToastView(type: .error, message: "Something went wrong")
+        #expect(toast.isAccessibilityElement)
+        #expect(toast.accessibilityLabel == "Something went wrong")
+        #expect(toast.accessibilityTraits == .staticText)
+    }
+
+    @Test("Default duration is 3 seconds")
+    func defaultDuration() {
+        #expect(LMKToastView.defaultDuration == 3.0)
+    }
+}
+
+// MARK: - LMKEmptyStateView
+
+@Suite("LMKEmptyStateView")
+@MainActor
+struct LMKEmptyStateViewTests {
+    @Test("font property returns correct font per style")
+    func fontPerStyle() {
+        #expect(LMKEmptyStateStyle.fullScreen.font == LMKTypography.h3)
+        #expect(LMKEmptyStateStyle.card.font == LMKTypography.body)
+        #expect(LMKEmptyStateStyle.inline.font == LMKTypography.caption)
+    }
+
+    @Test("isHorizontal is true only for inline")
+    func isHorizontalOnlyInline() {
+        #expect(!LMKEmptyStateStyle.fullScreen.isHorizontal)
+        #expect(!LMKEmptyStateStyle.card.isHorizontal)
+        #expect(LMKEmptyStateStyle.inline.isHorizontal)
+    }
+
+    @Test("iconSize is positive and ordered by style")
+    func iconSizeOrdered() {
+        #expect(LMKEmptyStateStyle.inline.iconSize < LMKEmptyStateStyle.card.iconSize)
+        #expect(LMKEmptyStateStyle.card.iconSize < LMKEmptyStateStyle.fullScreen.iconSize)
+    }
+}
+
+// MARK: - LMKToggleButton
+
+@Suite("LMKToggleButton")
+@MainActor
+struct LMKToggleButtonTests {
+    @Test("accessibilityValue updates with status changes")
+    func accessibilityValueUpdates() {
+        let button = LMKToggleButton(titleForStatusOn: "On", titleForStatusOff: "Off")
+        button.status = .off
+        #expect(button.accessibilityValue == "Off")
+        button.status = .on
+        #expect(button.accessibilityValue == "On")
+    }
+
+    @Test("flipStatusOnTap toggles state on tap")
+    func flipStatusOnTap() {
+        let button = LMKToggleButton()
+        button.flipStatusOnTap = true
+        button.status = .off
+        button.didTap()
+        #expect(button.status == .on)
+        button.didTap()
+        #expect(button.status == .off)
+    }
+
+    @Test("flipStatusOnTap false prevents toggle")
+    func flipStatusDisabled() {
+        let button = LMKToggleButton()
+        button.flipStatusOnTap = false
+        button.status = .off
+        button.didTap()
+        #expect(button.status == .off)
+    }
+
+    @Test("Title and image update with status")
+    func titleImageUpdate() {
+        let onImage = UIImage(systemName: "heart.fill")
+        let offImage = UIImage(systemName: "heart")
+        let button = LMKToggleButton(
+            titleForStatusOn: "Liked",
+            titleForStatusOff: "Like",
+            imageForStatusOn: onImage,
+            imageForStatusOff: offImage
+        )
+        button.status = .on
+        #expect(button.title(for: .normal) == "Liked")
+        button.status = .off
+        #expect(button.title(for: .normal) == "Like")
+    }
+}
+
+// MARK: - UIView+LMKFade
+
+@Suite("UIView+LMKFade")
+@MainActor
+struct UIViewLMKFadeTests {
+    @Test("fadeIn with zero duration sets alpha immediately")
+    func fadeInZeroDuration() {
+        let view = UIView()
+        view.alpha = 0
+        view.lmk_fadeIn(1.0, duration: 0) { _ in }
+        #expect(view.alpha == 1.0)
+    }
+
+    @Test("fadeOut with zero duration sets alpha immediately")
+    func fadeOutZeroDuration() {
+        let view = UIView()
+        view.alpha = 1.0
+        view.lmk_fadeOut(0.0, duration: 0) { _ in }
+        #expect(view.alpha == 0.0)
+    }
+
+    @Test("fadeIn custom alpha is respected with zero duration")
+    func fadeInCustomAlpha() {
+        let view = UIView()
+        view.alpha = 0
+        view.lmk_fadeIn(0.5, duration: 0) { _ in }
+        #expect(view.alpha == 0.5)
+    }
+}
+
+// MARK: - LMKLoadingStateView
+
+@Suite("LMKLoadingStateView")
+@MainActor
+struct LMKLoadingStateViewTests {
+    @Test("startLoading shows view and sets accessibility")
+    func startLoading() {
+        let view = LMKLoadingStateView()
+        view.startLoading(message: "Loading plants...")
+        #expect(!view.isHidden)
+        #expect(view.accessibilityLabel == "Loading plants...")
+    }
+
+    @Test("stopLoading hides view")
+    func stopLoading() {
+        let view = LMKLoadingStateView()
+        view.startLoading(message: "Loading")
+        view.stopLoading()
+        #expect(view.isHidden)
+    }
+
+    @Test("updateMessage sets label text and accessibility")
+    func updateMessage() {
+        let view = LMKLoadingStateView()
+        view.updateMessage("Step 2 of 3")
+        #expect(view.accessibilityLabel == "Step 2 of 3")
+    }
+
+    @Test("Accessibility traits include updatesFrequently")
+    func accessibilityTraits() {
+        let view = LMKLoadingStateView()
+        #expect(view.accessibilityTraits.contains(.updatesFrequently))
+    }
+
+    @Test("Overlay style has non-clear background")
+    func overlayStyle() {
+        let view = LMKLoadingStateView(overlayStyle: true)
+        #expect(view.backgroundColor != .clear)
+    }
+}
+
+// MARK: - LMKAnimationHelper
+
+@Suite("LMKAnimationHelper")
+@MainActor
+struct LMKAnimationHelperTests {
+    @Test("Duration values are positive")
+    func durationsPositive() {
+        #expect(LMKAnimationHelper.Duration.screenTransition > 0)
+        #expect(LMKAnimationHelper.Duration.modalPresentation > 0)
+        #expect(LMKAnimationHelper.Duration.buttonPress > 0)
+        #expect(LMKAnimationHelper.Duration.errorShake > 0)
+        #expect(LMKAnimationHelper.Duration.photoLoad > 0)
+    }
+
+    @Test("Spring damping is in valid range")
+    func springDampingRange() {
+        let damping = LMKAnimationHelper.Spring.damping
+        #expect(damping > 0 && damping <= 1)
+    }
+
+    @Test("tableViewRowAnimation returns valid value")
+    func tableViewRowAnimation() {
+        let animation = LMKAnimationHelper.tableViewRowAnimation
+        // Should be either .automatic or .none depending on Reduce Motion
+        #expect(animation == .automatic || animation == .none)
+    }
+}
+
+// MARK: - LMKToggleButtonStrings
+
+@Suite("LMKToggleButtonStrings")
+@MainActor
+struct LMKToggleButtonStringsTests {
+    @Test("Default strings are English")
+    func defaultStrings() {
+        let strings = LMKToggleButtonStrings()
+        #expect(strings.onAccessibilityValue == "On")
+        #expect(strings.offAccessibilityValue == "Off")
+    }
+
+    @Test("Custom strings override accessibility values")
+    func customStringsOverride() {
+        let original = lmkToggleButtonStrings
+        defer { lmkToggleButtonStrings = original }
+
+        lmkToggleButtonStrings = LMKToggleButtonStrings(
+            onAccessibilityValue: "Activado",
+            offAccessibilityValue: "Desactivado"
+        )
+        let button = LMKToggleButton()
+        button.status = .on
+        #expect(button.accessibilityValue == "Activado")
+        button.status = .off
+        #expect(button.accessibilityValue == "Desactivado")
+    }
+}
+
+// MARK: - LMKBannerView (extended)
+
+@Suite("LMKBannerView")
+@MainActor
+struct LMKBannerViewExtendedTests {
+    @Test("Banner background uses type color with alpha")
+    func bannerBackground() {
+        let banner = LMKBannerView(type: .warning, message: "Test")
+        #expect(banner.backgroundColor != nil)
+        #expect(banner.backgroundColor != .clear)
+    }
+
+    @Test("Banner manages accessibility elements")
+    func bannerAccessibilityElements() {
+        let banner = LMKBannerView(type: .info, message: "Test")
+        #expect(banner.accessibilityElements != nil)
+        #expect(!banner.isAccessibilityElement)
+    }
+
+    @Test("Default strings are English")
+    func defaultStrings() {
+        let strings = LMKBannerView.Strings()
+        #expect(strings.dismissAccessibilityLabel == "Dismiss")
+    }
+}
+
+// MARK: - LMKSegmentedControl
+
+@Suite("LMKSegmentedControl")
+@MainActor
+struct LMKSegmentedControlTests {
+    @Test("Creates with correct number of segments")
+    func creation() {
+        let control = LMKSegmentedControl(items: ["A", "B", "C"])
+        #expect(control.numberOfSegments == 3)
+    }
+
+    @Test("Handlers can be set")
+    func handlersSet() {
+        let control = LMKSegmentedControl(items: ["X", "Y"])
+        control.valueChangedHandler = { _ in }
+        control.didValueChangeHandler = { _ in }
+        #expect(control.valueChangedHandler != nil)
+        #expect(control.didValueChangeHandler != nil)
+    }
+}
+
+// MARK: - LMKSkeletonCell (extended)
+
+@Suite("LMKSkeletonCell (reuse)")
+@MainActor
+struct LMKSkeletonCellReuseTests {
+    @Test("prepareForReuse stops shimmer without crash")
+    func prepareForReuseStopsShimmer() {
+        let cell = LMKSkeletonCell(style: .default, reuseIdentifier: "test")
+        cell.startShimmer()
+        cell.prepareForReuse()
+        // No crash = success; shimmer should be stopped
+    }
+
+    @Test("prepareForReuse on fresh cell doesn't crash")
+    func prepareForReuseOnFreshCell() {
+        let cell = LMKSkeletonCell(style: .default, reuseIdentifier: "test")
+        cell.prepareForReuse()
+        // No crash = success
     }
 }
