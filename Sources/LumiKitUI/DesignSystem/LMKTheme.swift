@@ -46,6 +46,7 @@ public nonisolated protocol LMKTheme: Sendable {
 
     // Neutral / Dividers
     var divider: UIColor { get }
+    var imageBorder: UIColor { get }
     var graySoft: UIColor { get }
     var grayMuted: UIColor { get }
     var white: UIColor { get }
@@ -73,6 +74,7 @@ public nonisolated struct LMKDefaultTheme: LMKTheme {
     public var backgroundSecondary: UIColor { .secondarySystemBackground }
     public var backgroundTertiary: UIColor { .tertiarySystemBackground }
     public var divider: UIColor { .separator }
+    public var imageBorder: UIColor { .separator }
     public var graySoft: UIColor { UIColor(white: 0.75, alpha: 1) }
     public var grayMuted: UIColor { UIColor(white: 0.85, alpha: 1) }
     public var white: UIColor { UIColor(white: 0.98, alpha: 1) }

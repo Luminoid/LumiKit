@@ -9,7 +9,7 @@
 | Target | Dependencies | Purpose |
 |--------|-------------|---------|
 | **LumiKitCore** | Foundation only | Logger, DateHelper, URLValidator, ConcurrencyHelpers, FormatHelper, FileHelper, String/Collection/NSAttributedString extensions |
-| **LumiKitUI** | LumiKitCore + SnapKit | Design system tokens, theme, animation, haptics, alerts, components, controls, utilities, photo browser/crop, extensions |
+| **LumiKitUI** | LumiKitCore + SnapKit | Design system tokens, theme, animation, haptics, alerts, components, controls, utilities, photo browser/crop/EXIF, share, QR code, extensions |
 | **LumiKitLottie** | LumiKitUI + Lottie | Lottie-powered pull-to-refresh control |
 
 **Swift 6.2** strict concurrency with `defaultIsolation: MainActor` on LumiKitUI and LumiKitLottie targets. Platforms: iOS 18+, Mac Catalyst 18+, macOS 15+.
@@ -26,7 +26,7 @@ LumiKit/
 │   │   ├── Concurrency/     # LMKConcurrencyHelpers (encode/decode off main)
 │   │   ├── Data/            # LMKFormatHelper, LMKLogger, Collection+LMK, NSAttributedString+LMK
 │   │   ├── Date/            # LMKDateHelper, LMKDateFormatterHelper
-│   │   ├── File/            # LMKFileHelper
+│   │   ├── File/            # LMKFileUtil
 │   │   └── Validation/      # LMKURLValidator, String+LMK
 │   ├── LumiKitUI/
 │   │   ├── Alerts/          # LMKAlertPresenter, LMKErrorHandler
@@ -40,12 +40,31 @@ LumiKit/
 │   │   ├── Extensions/      # UIKit extensions (lmk_ prefix): UIColor, UIImage, UIView,
 │   │   │                    # UIStackView, UITextField, UIButton, UITableViewCell, etc.
 │   │   ├── Haptics/         # LMKHapticFeedbackHelper
-│   │   ├── Photo/           # LMKPhotoBrowserViewController, LMKPhotoCropViewController
+│   │   ├── Photo/           # LMKPhotoBrowserViewController, LMKPhotoCropViewController, LMKPhotoEXIFService
+│   │   ├── QRCode/          # LMKQRCodeGenerator
+│   │   ├── Share/           # LMKShareService, LMKSharePreviewViewController
 │   │   └── Utilities/       # LMKDeviceHelper, LMKKeyboardObserver
 │   └── LumiKitLottie/       # LMKLottieRefreshControl
 ├── Tests/
-│   ├── LumiKitCoreTests/    # 56 tests (9 suites)
-│   └── LumiKitUITests/      # 111 tests (36 suites)
+│   ├── LumiKitCoreTests/    # 56 tests, 9 suites — mirrors Sources/LumiKitCore/ subfolders
+│   │   ├── Concurrency/     # LMKConcurrencyHelpersTests
+│   │   ├── Data/            # Logger, String+LMK, Collection+LMK, NSAttributedString+LMK, FormatHelper
+│   │   ├── Date/            # DateHelper, DateFormatterHelper
+│   │   └── Validation/      # URLValidator
+│   └── LumiKitUITests/      # 178 tests, 51 suites — mirrors Sources/LumiKitUI/ subfolders
+│       ├── Alerts/          # AlertPresenter, ErrorHandler
+│       ├── Animation/       # AnimationHelper
+│       ├── Components/      # ActionSheet, Badge, Banner, Card, Chip, Divider,
+│       │                    # EmptyState, Gradient, LoadingState, Skeleton, Toast
+│       ├── Controls/        # SegmentedControl, TextField, TextView, ToggleButton
+│       ├── DesignSystem/    # ThemeManager, Color, Spacing, CornerRadius, Alpha,
+│       │                    # Typography, Layout, Shadow, AnimationTheme, BadgeTheme,
+│       │                    # Sendable compliance, ComponentToken integration
+│       ├── Extensions/      # UIColor, UIImage, UIStackView, UIView (shadow/border/fade)
+│       ├── Photo/           # CropAspectRatio, PhotoEXIF
+│       ├── QRCode/          # QRCodeGenerator
+│       ├── Share/           # SharePreview, ShareService
+│       └── Utilities/       # DeviceHelper, KeyboardObserver
 ```
 
 ---
@@ -56,7 +75,7 @@ LumiKit/
 - **Extension methods**: `lmk_` prefix (e.g. `view.lmk_addSubviews(...)`)
 - **Theme configs**: `LMK*Theme` structs (e.g. `LMKTypographyTheme`, `LMKSpacingTheme`)
 - **Configurable strings**: Module-level `nonisolated(unsafe)` variable + `Sendable` struct
-- **Protocols for data/delegates**: `LMKPhotoBrowserDataSource`, `LMKPhotoCropDelegate`
+- **Protocols for data/delegates**: `LMKPhotoBrowserDataSource`, `LMKPhotoCropDelegate`, `LMKSharePreviewDelegate`
 
 ### Modern Swift Syntax
 
@@ -164,14 +183,17 @@ LMKThemeManager.shared.apply(spacing: .init(large: 20))
 
 | Component | Type | Purpose |
 |-----------|------|---------|
+| `LMKActionSheet` | `final class` | Custom bottom-sheet action sheet with design-token styling and optional custom content |
 | `LMKBadgeView` | `final class` | Notification count / status dot / custom text badge |
 | `LMKBannerView` | `final class` | Persistent notification bar with optional action & dismiss |
 | `LMKCardView` | `final class` | Card container with shadow, corner radius, content insets |
 | `LMKChipView` | `final class` | Tag/filter chip (`.filled` / `.outlined`) with optional tap handler |
 | `LMKDividerView` | `final class` | Pixel-perfect separator (horizontal / vertical) |
 | `LMKEmptyStateView` | `final class` | Empty state with icon, title, message, action button |
+| `LMKEnumSelectionBottomSheet` | `final class` | Generic bottom sheet for selecting from an enum's cases |
 | `LMKGradientView` | `final class` | CAGradientLayer-backed view with 4 direction options |
 | `LMKLoadingStateView` | `final class` | Loading indicator with optional message |
+| `LMKProgressViewController` | `final class` | Progress indicator view controller |
 | `LMKSearchBar` | `final class` | Search bar with configurable strings |
 | `LMKSkeletonCell` | `final class` | Skeleton loading placeholder cell |
 | `LMKToastView` | `final class` | Auto-dismissing toast notification |
@@ -197,6 +219,27 @@ LMKThemeManager.shared.apply(spacing: .init(large: 20))
 | `UIView+LMKFade` | `lmk_fadeIn(...)`, `lmk_fadeOut(...)` |
 | `UIView+LMKLayout` | `lmk_addSubviews(...)`, `lmk_pinToEdges(...)` |
 | `UIStackView+LMK` | `init(lmk_axis:...)`, `lmk_addArrangedSubviews(_:)`, `lmk_removeAllArrangedSubviews()` |
+
+### Share (`Share/`)
+
+| Component | Type | Purpose |
+|-----------|------|---------|
+| `LMKShareService` | `enum` (static) | Share sheet wrapper — `shareImage`, `shareFile` with popover support |
+| `LMKSharePreviewViewController` | `final class` | Image preview sheet with share + save-to-photos, configurable strings, delegate |
+
+### QR Code (`QRCode/`)
+
+| Component | Type | Purpose |
+|-----------|------|---------|
+| `LMKQRCodeGenerator` | `enum` (static) | CoreImage QR code generation with configurable correction level and size |
+
+### Photo (`Photo/`)
+
+| Component | Type | Purpose |
+|-----------|------|---------|
+| `LMKPhotoBrowserViewController` | `final class` | Full-screen photo browser with zoom, swipe, delete |
+| `LMKPhotoCropViewController` | `final class` | Square crop editor with pan/zoom |
+| `LMKPhotoEXIFService` | `nonisolated enum` (static) | EXIF date + GPS extraction from UIImage or PHPickerResult |
 
 ### Utilities (`Utilities/`)
 
@@ -271,4 +314,4 @@ swift build --target LumiKitCore
 
 ---
 
-*Optimized for Claude Code • Last updated: 2026-02-13*
+*Optimized for Claude Code • Last updated: 2026-02-16*

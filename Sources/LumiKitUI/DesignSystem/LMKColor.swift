@@ -45,6 +45,7 @@ public enum LMKColor {
     // MARK: - Neutral / Dividers
 
     public static var divider: UIColor { LMKThemeManager.shared.current.divider }
+    public static var imageBorder: UIColor { LMKThemeManager.shared.current.imageBorder }
     public static var graySoft: UIColor { LMKThemeManager.shared.current.graySoft }
     public static var grayMuted: UIColor { LMKThemeManager.shared.current.grayMuted }
     public static var white: UIColor { LMKThemeManager.shared.current.white }

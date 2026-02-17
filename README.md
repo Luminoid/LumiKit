@@ -17,9 +17,11 @@ Shared Swift Package providing **design tokens**, **UI components**, and **utili
 9. [Extensions](#extensions)
 10. [Core Utilities](#core-utilities)
 11. [Photo](#photo)
-12. [Error Handling](#error-handling)
-13. [Build & Test](#build--test)
-14. [Dependencies](#dependencies)
+12. [Share](#share)
+13. [QR Code](#qr-code)
+14. [Error Handling](#error-handling)
+15. [Build & Test](#build--test)
+16. [Dependencies](#dependencies)
 
 ---
 
@@ -33,7 +35,7 @@ LumiKit is organized into three targets so apps can import only what they need:
 | **LumiKitUI** | LumiKitCore + SnapKit | Design system tokens, theme manager, animation, haptics, alerts, components, controls, photo browser/crop, UIKit extensions |
 | **LumiKitLottie** | LumiKitUI + Lottie | Lottie-powered pull-to-refresh control |
 
-**73 source files** across 3 targets, with **198 tests** (56 Core + 142 UI) across 55 suites.
+**78 source files** across 3 targets, with **234 tests** (56 Core + 178 UI) across 60 suites.
 
 ---
 
@@ -116,18 +118,39 @@ LumiKit/
 │   │   ├── Alerts/            # LMKAlertPresenter, LMKErrorHandler
 │   │   ├── Animation/         # LMKAnimationHelper, LMKAnimationTheme
 │   │   ├── Components/        # EmptyState, Toast, SearchBar, Badge, Chip,
-│   │   │                      # Divider, Gradient, Card, Banner, Skeleton, etc.
+│   │   │                      # Divider, Gradient, Card, Banner, Skeleton,
+│   │   │                      # ActionSheet, EnumSelectionBottomSheet, etc.
 │   │   ├── Controls/          # Button, SegmentedControl, ToggleButton,
 │   │   │                      # TextField, TextView
 │   │   ├── DesignSystem/      # Token enums, theme configs, factories
 │   │   ├── Extensions/        # UIKit extensions (lmk_ prefix)
 │   │   ├── Haptics/           # LMKHapticFeedbackHelper
-│   │   ├── Photo/             # LMKPhotoBrowserViewController, LMKPhotoCropViewController
+│   │   ├── Photo/             # LMKPhotoBrowserViewController, LMKPhotoCropViewController,
+│   │   │                      # LMKPhotoEXIFService
+│   │   ├── QRCode/            # LMKQRCodeGenerator
+│   │   ├── Share/             # LMKShareService, LMKSharePreviewViewController
 │   │   └── Utilities/         # LMKDeviceHelper, LMKKeyboardObserver
 │   └── LumiKitLottie/         # LMKLottieRefreshControl
 ├── Tests/
-│   ├── LumiKitCoreTests/      # 56 tests (9 suites)
-│   └── LumiKitUITests/        # 142 tests (46 suites)
+│   ├── LumiKitCoreTests/      # 56 tests, 9 suites
+│   │   ├── Concurrency/       # LMKConcurrencyHelpers
+│   │   ├── Data/              # Logger, String+LMK, Collection+LMK, NSAttributedString+LMK, FormatHelper
+│   │   ├── Date/              # DateHelper, DateFormatterHelper
+│   │   └── Validation/        # URLValidator
+│   └── LumiKitUITests/        # 178 tests, 51 suites
+│       ├── Alerts/            # AlertPresenter, ErrorHandler
+│       ├── Animation/         # AnimationHelper
+│       ├── Components/        # ActionSheet, Badge, Banner, Card, Chip, Divider,
+│       │                      # EmptyState, Gradient, LoadingState, Skeleton, Toast
+│       ├── Controls/          # SegmentedControl, TextField, TextView, ToggleButton
+│       ├── DesignSystem/      # ThemeManager, Color, Spacing, CornerRadius, Alpha,
+│       │                      # Typography, Layout, Shadow, AnimationTheme, BadgeTheme,
+│       │                      # Sendable compliance, ComponentToken integration
+│       ├── Extensions/        # UIColor, UIImage, UIStackView, UIView (shadow/border/fade)
+│       ├── Photo/             # CropAspectRatio, PhotoEXIF
+│       ├── QRCode/            # QRCodeGenerator
+│       ├── Share/             # SharePreview, ShareService
+│       └── Utilities/         # DeviceHelper, KeyboardObserver
 ```
 
 ---
@@ -200,6 +223,7 @@ LMKThemeManager.shared.apply(spacing: .init(large: 20))
 
 | Component | Purpose |
 |-----------|---------|
+| `LMKActionSheet` | Custom bottom-sheet action sheet with design-token styling and optional custom content |
 | `LMKBadgeView` | Notification count, status dot, or custom text badge |
 | `LMKBannerView` | Persistent notification bar with optional action and dismiss |
 | `LMKCardView` | Card container with shadow, corner radius, content insets |
@@ -208,6 +232,7 @@ LMKThemeManager.shared.apply(spacing: .init(large: 20))
 | `LMKEmptyStateView` | Empty state with icon, title, message, action button |
 | `LMKEnumSelectionBottomSheet` | Bottom sheet for selecting from an enum's cases |
 | `LMKGradientView` | `CAGradientLayer`-backed view with 4 direction options |
+| `LMKProgressViewController` | Progress indicator view controller |
 | `LMKLoadingStateView` | Loading indicator with optional message |
 | `LMKProgressViewController` | Progress indicator view controller |
 | `LMKSearchBar` | Search bar with configurable placeholder and cancel text |
@@ -276,6 +301,24 @@ LumiKitCore provides Foundation-only utilities with zero dependencies:
 |-----------|---------|
 | `LMKPhotoBrowserViewController` | Full-screen photo browser with zoom and swipe navigation |
 | `LMKPhotoCropViewController` | Photo cropping with aspect ratio support |
+| `LMKPhotoEXIFService` | EXIF date and GPS extraction from UIImage or PHPickerResult |
+
+---
+
+## Share
+
+| Component | Purpose |
+|-----------|---------|
+| `LMKShareService` | Share sheet wrapper with `shareImage`, `shareFile` and popover support |
+| `LMKSharePreviewViewController` | Image preview sheet with share and save-to-photos actions |
+
+---
+
+## QR Code
+
+| Component | Purpose |
+|-----------|---------|
+| `LMKQRCodeGenerator` | CoreImage QR code generation with configurable correction level and size |
 
 ---
 
