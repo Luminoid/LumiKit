@@ -86,6 +86,10 @@ public nonisolated enum LMKCropAspectRatio: CaseIterable, Sendable {
 /// - Rule-of-thirds grid overlay
 /// - Optimised gesture handling (no Auto Layout during drag)
 public final class LMKPhotoCropViewController: UIViewController {
+    // MARK: - Status Bar
+
+    override public var preferredStatusBarStyle: UIStatusBarStyle { .lightContent }
+
     // MARK: - Constants
 
     private static let handleSize: CGFloat = 22
@@ -110,6 +114,8 @@ public final class LMKPhotoCropViewController: UIViewController {
 
     // MARK: - Private Properties
 
+    private let cancelButton = UIButton(type: .system)
+    private let doneButton = UIButton(type: .system)
     private let imageView = UIImageView()
     private let overlayView = UIView()
     private let cropFrameView = UIView()
@@ -178,6 +184,7 @@ public final class LMKPhotoCropViewController: UIViewController {
         self.image = image
         self.delegate = delegate
         super.init(nibName: nil, bundle: nil)
+        modalPresentationCapturesStatusBarAppearance = true
     }
 
     @available(*, unavailable)
@@ -189,6 +196,7 @@ public final class LMKPhotoCropViewController: UIViewController {
 
     override public func viewDidLoad() {
         super.viewDidLoad()
+        overrideUserInterfaceStyle = .dark
         hidesBottomBarWhenPushed = true
         setupUI()
         setupHandleViews()
@@ -205,18 +213,39 @@ public final class LMKPhotoCropViewController: UIViewController {
     private func setupUI() {
         view.backgroundColor = LMKColor.black
 
-        // Navigation bar
-        navigationItem.leftBarButtonItem = UIBarButtonItem(
-            barButtonSystemItem: .cancel,
-            target: self,
-            action: #selector(cancelTapped),
-        )
-        navigationItem.rightBarButtonItem = UIBarButtonItem(
-            barButtonSystemItem: .done,
-            target: self,
-            action: #selector(doneTapped),
-        )
-        navigationItem.title = lmkPhotoCropStrings.title
+        // Cancel button
+        cancelButton.setImage(UIImage(systemName: "xmark"), for: .normal)
+        cancelButton.tintColor = LMKColor.white
+        cancelButton.backgroundColor = LMKColor.photoBrowserBackground.withAlphaComponent(LMKAlpha.overlay)
+        cancelButton.layer.cornerRadius = LMKCornerRadius.xl
+        cancelButton.addTarget(self, action: #selector(cancelTapped), for: .touchUpInside)
+        view.addSubview(cancelButton)
+
+        #if targetEnvironment(macCatalyst)
+            let buttonSize: CGFloat = 48
+        #else
+            let buttonSize: CGFloat = LMKLayout.minimumTouchTarget
+        #endif
+
+        cancelButton.snp.makeConstraints { make in
+            make.top.equalTo(view.safeAreaLayoutGuide).offset(LMKSpacing.large)
+            make.leading.equalToSuperview().offset(LMKSpacing.large)
+            make.width.height.equalTo(buttonSize)
+        }
+
+        // Done button
+        doneButton.setImage(UIImage(systemName: "checkmark"), for: .normal)
+        doneButton.tintColor = LMKColor.white
+        doneButton.backgroundColor = LMKColor.photoBrowserBackground.withAlphaComponent(LMKAlpha.overlay)
+        doneButton.layer.cornerRadius = LMKCornerRadius.xl
+        doneButton.addTarget(self, action: #selector(doneTapped), for: .touchUpInside)
+        view.addSubview(doneButton)
+
+        doneButton.snp.makeConstraints { make in
+            make.top.equalTo(view.safeAreaLayoutGuide).offset(LMKSpacing.large)
+            make.trailing.equalToSuperview().offset(-LMKSpacing.large)
+            make.width.height.equalTo(buttonSize)
+        }
 
         // Aspect ratio control
         setupAspectRatioControl()
@@ -259,6 +288,8 @@ public final class LMKPhotoCropViewController: UIViewController {
         // Ensure proper z-ordering
         view.bringSubviewToFront(aspectRatioControl)
         view.bringSubviewToFront(cropFrameView)
+        view.bringSubviewToFront(cancelButton)
+        view.bringSubviewToFront(doneButton)
     }
 
     private func setupAspectRatioControl() {
@@ -336,6 +367,8 @@ public final class LMKPhotoCropViewController: UIViewController {
 
         view.bringSubviewToFront(aspectRatioControl)
         view.bringSubviewToFront(cropFrameView)
+        view.bringSubviewToFront(cancelButton)
+        view.bringSubviewToFront(doneButton)
     }
 
     private func updateImageViewFrame() {
@@ -847,7 +880,6 @@ public final class LMKPhotoCropViewController: UIViewController {
 
     @objc private func cancelTapped() {
         delegate?.photoCropViewControllerDidCancel(self)
-        navigationController?.popViewController(animated: true)
     }
 
     @objc private func doneTapped() {
@@ -855,12 +887,10 @@ public final class LMKPhotoCropViewController: UIViewController {
               let croppedImage = cropImage() else {
             LMKLogger.warning("Crop failed — delivering original image. cropFrame=\(cropFrame)", category: .ui)
             delegate?.photoCropViewController(self, didCropImage: image)
-            navigationController?.popViewController(animated: true)
             return
         }
 
         delegate?.photoCropViewController(self, didCropImage: croppedImage)
-        navigationController?.popViewController(animated: true)
     }
 
     // MARK: - Crop

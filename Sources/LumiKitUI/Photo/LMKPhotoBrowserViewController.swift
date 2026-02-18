@@ -50,6 +50,10 @@ public nonisolated struct LMKPhotoBrowserStrings: Sendable {
 // MARK: - LMKPhotoBrowserViewController
 
 public final class LMKPhotoBrowserViewController: UIViewController {
+    // MARK: - Status Bar
+
+    override public var preferredStatusBarStyle: UIStatusBarStyle { .lightContent }
+
     // MARK: - Properties
 
     public weak var dataSource: (any LMKPhotoBrowserDataSource)?
@@ -99,6 +103,7 @@ public final class LMKPhotoBrowserViewController: UIViewController {
     public init(initialIndex: Int = 0) {
         self.initialIndex = max(0, initialIndex)
         super.init(nibName: nil, bundle: nil)
+        modalPresentationCapturesStatusBarAppearance = true
     }
 
     @available(*, unavailable)

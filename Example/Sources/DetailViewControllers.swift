@@ -858,9 +858,8 @@ final class PhotoCropDetailViewController: DetailViewController, LMKPhotoCropDel
         guard let sampleImage else { return }
         let cropVC = LMKPhotoCropViewController(image: sampleImage)
         cropVC.delegate = self
-        let nav = UINavigationController(rootViewController: cropVC)
-        nav.modalPresentationStyle = .fullScreen
-        present(nav, animated: true)
+        cropVC.modalPresentationStyle = .overFullScreen
+        present(cropVC, animated: true)
     }
 
     private func createSampleImage() -> UIImage? {
