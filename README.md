@@ -21,10 +21,12 @@ Shared Swift Package providing **design tokens**, **UI components**, and **utili
 13. [QR Code](#qr-code)
 14. [Error Handling](#error-handling)
 15. [Build & Test](#build--test)
-16. [Dependencies](#dependencies)
-17. [Built with LumiKit](#built-with-lumikit)
-18. [License](#license)
-19. [Changelog](#changelog)
+16. [Release](#release)
+17. [Dependencies](#dependencies)
+18. [Built with LumiKit](#built-with-lumikit)
+19. [TODO](#todo)
+20. [License](#license)
+21. [Changelog](#changelog)
 
 ---
 
@@ -388,6 +390,28 @@ swift build --target LumiKitCore
 
 ---
 
+## Release
+
+To publish a new version:
+
+```bash
+# 1. Update CHANGELOG.md with the new version and date
+# 2. Commit all changes
+git add CHANGELOG.md README.md
+git commit -m "docs: prepare vX.Y.Z release"
+
+# 3. Tag the release
+git tag X.Y.Z
+git push origin main --tags
+
+# 4. Create GitHub release
+gh release create X.Y.Z --title "X.Y.Z" --notes "Release notes here"
+```
+
+Version tags follow [Semantic Versioning](https://semver.org): `MAJOR.MINOR.PATCH`. Swift Package Manager resolves versions from git tags — no version field in `Package.swift`.
+
+---
+
 ## Dependencies
 
 | Library | Version | Target | Purpose |
@@ -421,6 +445,16 @@ LumiKitCore has no default isolation and is safe to use from any concurrency con
 | App | Description |
 |-----|-------------|
 | [Plantfolio Plus](https://luminoid.github.io/plantfolio-site) | Plant care, watering schedules, collections, and photos for iOS, iPadOS, and Mac |
+
+---
+
+## TODO
+
+- [ ] Create CONTRIBUTING.md with contribution guidelines
+- [ ] Set up GitHub Actions CI (test on push/PR — iOS Simulator + Mac Catalyst)
+- [ ] Add SECURITY.md
+- [ ] Add DocC API reference documentation
+- [ ] Register on [Swift Package Index](https://swiftpackageindex.com)
 
 ---
 
