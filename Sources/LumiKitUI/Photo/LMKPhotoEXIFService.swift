@@ -8,7 +8,7 @@
 import CoreLocation
 import ImageIO
 import Photos
-import PhotosUI
+@preconcurrency import PhotosUI
 import UIKit
 
 /// Extracts date and GPS coordinates from photo EXIF metadata.

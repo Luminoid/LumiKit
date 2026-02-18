@@ -93,7 +93,7 @@ final class ExampleViewController: UIViewController, UITableViewDataSource, UITa
             }
         }
 
-        func makeDetailViewController() -> UIViewController {
+        @MainActor func makeDetailViewController() -> UIViewController {
             switch self {
             case .typography: TypographyDetailViewController()
             case .colors: ColorsDetailViewController()
@@ -122,6 +122,7 @@ final class ExampleViewController: UIViewController, UITableViewDataSource, UITa
         tableView.dataSource = self
         tableView.delegate = self
         tableView.register(UITableViewCell.self, forCellReuseIdentifier: "cell")
+        tableView.contentInset.top = -LMKSpacing.large
         return tableView
     }()
 

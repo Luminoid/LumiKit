@@ -9,20 +9,22 @@
 /* Begin PBXBuildFile section */
 		047822D6720CE3A9B3F0D39B /* LumiKitUI in Frameworks */ = {isa = PBXBuildFile; productRef = 2F68DA943A7AC838DB04D706 /* LumiKitUI */; };
 		6FCFDA026B557679B16628AC /* DetailViewControllers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8892E508D4C9EEC35C2203DC /* DetailViewControllers.swift */; };
+		7CEAE2CFE6F3459CF12AA3B8 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 266C27EB7D3242022FA646B1 /* SceneDelegate.swift */; };
 		8DA6AE05BF1F647DC25C8043 /* ExampleViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 209A8FE1218B1F3B9AC4C27E /* ExampleViewController.swift */; };
 		B97C2431575FC1826B0D8F68 /* ExampleTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4EE462A6DA85E94E76074806 /* ExampleTheme.swift */; };
-		D3E4F5A6B7C8D9E0F1A2B3C4 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6A7B8C9D0E1F2 /* Assets.xcassets */; };
+		BB50C3AFE3CFDD56E1F010C4 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = F4FEA4A6AC67074774361233 /* Assets.xcassets */; };
 		F65AC6D91C57253EE3C4A89B /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 93FB8A0B3A17095ACACC4000 /* AppDelegate.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		0C01ADD96E8B682AB888384E /* LumiKit */ = {isa = PBXFileReference; lastKnownFileType = folder; name = LumiKit; path = ..; sourceTree = SOURCE_ROOT; };
 		209A8FE1218B1F3B9AC4C27E /* ExampleViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExampleViewController.swift; sourceTree = "<group>"; };
+		266C27EB7D3242022FA646B1 /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
 		2B9C75CF348A9670C0B7CEE4 /* LumiKitExample.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = LumiKitExample.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		4EE462A6DA85E94E76074806 /* ExampleTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExampleTheme.swift; sourceTree = "<group>"; };
 		8892E508D4C9EEC35C2203DC /* DetailViewControllers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetailViewControllers.swift; sourceTree = "<group>"; };
 		93FB8A0B3A17095ACACC4000 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
-		A1B2C3D4E5F6A7B8C9D0E1F2 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		F4FEA4A6AC67074774361233 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -49,10 +51,18 @@
 			isa = PBXGroup;
 			children = (
 				B4AD513BF5881447E499F0C6 /* Packages */,
+				7A93CAB069EB0353EAEAC502 /* Resources */,
 				C0CA27369E548F87F01ACF25 /* Sources */,
-				B7C8D9E0F1A2B3C4D5E6F7A8 /* Resources */,
 				11734A1BD76B6C3263E3CA80 /* Products */,
 			);
+			sourceTree = "<group>";
+		};
+		7A93CAB069EB0353EAEAC502 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				F4FEA4A6AC67074774361233 /* Assets.xcassets */,
+			);
+			path = Resources;
 			sourceTree = "<group>";
 		};
 		B4AD513BF5881447E499F0C6 /* Packages */ = {
@@ -63,14 +73,6 @@
 			name = Packages;
 			sourceTree = "<group>";
 		};
-		B7C8D9E0F1A2B3C4D5E6F7A8 /* Resources */ = {
-			isa = PBXGroup;
-			children = (
-				A1B2C3D4E5F6A7B8C9D0E1F2 /* Assets.xcassets */,
-			);
-			path = Resources;
-			sourceTree = "<group>";
-		};
 		C0CA27369E548F87F01ACF25 /* Sources */ = {
 			isa = PBXGroup;
 			children = (
@@ -78,6 +80,7 @@
 				8892E508D4C9EEC35C2203DC /* DetailViewControllers.swift */,
 				4EE462A6DA85E94E76074806 /* ExampleTheme.swift */,
 				209A8FE1218B1F3B9AC4C27E /* ExampleViewController.swift */,
+				266C27EB7D3242022FA646B1 /* SceneDelegate.swift */,
 			);
 			path = Sources;
 			sourceTree = "<group>";
@@ -90,8 +93,8 @@
 			buildConfigurationList = 83F824A0C8A22297D425DEB4 /* Build configuration list for PBXNativeTarget "LumiKitExample" */;
 			buildPhases = (
 				814441829470767CAEC80E8B /* Sources */,
+				458C246613C28FE01AADE3E3 /* Resources */,
 				4E70C62F98AE2534C5724870 /* Frameworks */,
-				F5A6B7C8D9E0F1A2B3C4D5E6 /* Resources */,
 			);
 			buildRules = (
 			);
@@ -141,11 +144,11 @@
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
-		F5A6B7C8D9E0F1A2B3C4D5E6 /* Resources */ = {
+		458C246613C28FE01AADE3E3 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				D3E4F5A6B7C8D9E0F1A2B3C4 /* Assets.xcassets in Resources */,
+				BB50C3AFE3CFDD56E1F010C4 /* Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -160,6 +163,7 @@
 				6FCFDA026B557679B16628AC /* DetailViewControllers.swift in Sources */,
 				B97C2431575FC1826B0D8F68 /* ExampleTheme.swift in Sources */,
 				8DA6AE05BF1F647DC25C8043 /* ExampleViewController.swift in Sources */,
+				7CEAE2CFE6F3459CF12AA3B8 /* SceneDelegate.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -294,6 +298,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = "";
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
@@ -302,7 +307,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 0.1;
+				MARKETING_VERSION = 0.1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.lumi.lumikit.example;
 				SDKROOT = iphoneos;
 				SWIFT_VERSION = 6.2;
@@ -319,6 +324,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = "";
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
@@ -327,7 +333,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 0.1;
+				MARKETING_VERSION = 0.1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.lumi.lumikit.example;
 				SDKROOT = iphoneos;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
