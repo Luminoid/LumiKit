@@ -15,6 +15,8 @@ public extension UIImage {
     /// ```
     func lmk_resized(maxDimension: CGFloat) -> UIImage {
         guard size.width > 0, size.height > 0 else { return self }
+        // Guard against upscaling — return original if already smaller than target
+        guard max(size.width, size.height) > maxDimension else { return self }
         let aspectRatio = size.width / size.height
         let targetSize: CGSize
         if size.width > size.height {

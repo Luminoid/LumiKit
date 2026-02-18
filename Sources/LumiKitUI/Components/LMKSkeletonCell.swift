@@ -34,8 +34,7 @@ public final class LMKSkeletonCell: UITableViewCell {
 
     private func refreshDynamicColors() {
         containerView.backgroundColor = LMKColor.backgroundPrimary
-        let shadow = LMKShadow.small()
-        containerView.layer.shadowColor = shadow.color
+        containerView.lmk_applyShadow(LMKShadow.small())
         shimmerView.backgroundColor = LMKColor.backgroundTertiary
         gradientLayer.colors = [
             LMKColor.backgroundTertiary.cgColor,
@@ -65,13 +64,7 @@ public final class LMKSkeletonCell: UITableViewCell {
 
         containerView.backgroundColor = LMKColor.backgroundPrimary
         containerView.layer.cornerRadius = LMKCornerRadius.medium
-        containerView.layer.masksToBounds = false
-
-        let shadow = LMKShadow.small()
-        containerView.layer.shadowColor = shadow.color
-        containerView.layer.shadowOffset = shadow.offset
-        containerView.layer.shadowRadius = shadow.radius
-        containerView.layer.shadowOpacity = shadow.opacity
+        containerView.lmk_applyShadow(LMKShadow.small())
 
         contentView.addSubview(containerView)
         containerView.snp.makeConstraints { make in
@@ -108,6 +101,14 @@ public final class LMKSkeletonCell: UITableViewCell {
     public func startShimmer(staggerIndex: Int = 0) {
         shimmerView.layer.insertSublayer(gradientLayer, at: 0)
         guard LMKAnimationHelper.shouldAnimate else { return }
+
+        // Guard against zero bounds — retry after layout pass
+        guard shimmerView.bounds.width > 0 else {
+            DispatchQueue.main.async { [weak self] in
+                self?.startShimmer(staggerIndex: staggerIndex)
+            }
+            return
+        }
 
         let animation = CABasicAnimation(keyPath: "transform.translation.x")
         animation.fromValue = -shimmerView.bounds.width

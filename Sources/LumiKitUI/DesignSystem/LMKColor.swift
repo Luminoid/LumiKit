@@ -40,7 +40,6 @@ public enum LMKColor {
     public static var backgroundPrimary: UIColor { LMKThemeManager.shared.current.backgroundPrimary }
     public static var backgroundSecondary: UIColor { LMKThemeManager.shared.current.backgroundSecondary }
     public static var backgroundTertiary: UIColor { LMKThemeManager.shared.current.backgroundTertiary }
-    public static var backgroundGrouped: UIColor { LMKThemeManager.shared.current.backgroundTertiary }
 
     // MARK: - Neutral / Dividers
 
@@ -51,7 +50,4 @@ public enum LMKColor {
     public static var white: UIColor { LMKThemeManager.shared.current.white }
     public static var black: UIColor { LMKThemeManager.shared.current.black }
 
-    // MARK: - Utility
-
-    public static var clear: UIColor { .clear }
 }

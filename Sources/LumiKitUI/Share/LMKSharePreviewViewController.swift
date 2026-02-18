@@ -161,19 +161,22 @@ public final class LMKSharePreviewViewController: UIViewController {
     private func setupUI() {
         view.backgroundColor = LMKColor.backgroundPrimary
 
-        // Close button
-        let closeButton = UIButton(type: .system)
+        // Close button — 32pt visual size with expanded 44pt touch target
+        let closeButton = LMKTouchExpandedButton(type: .system)
         let closeConfig = UIImage.SymbolConfiguration(pointSize: 16, weight: .semibold)
         closeButton.setImage(UIImage(systemName: "xmark", withConfiguration: closeConfig), for: .normal)
         closeButton.tintColor = LMKColor.textSecondary
         closeButton.backgroundColor = LMKColor.backgroundSecondary
-        closeButton.layer.cornerRadius = 16
+        closeButton.layer.cornerRadius = LMKCornerRadius.large
         closeButton.addTarget(self, action: #selector(closeTapped), for: .touchUpInside)
+        let closeButtonSize: CGFloat = 32
+        let touchInset = -(LMKLayout.minimumTouchTarget - closeButtonSize) / 2
+        closeButton.lmk_touchAreaEdgeInsets = UIEdgeInsets(top: touchInset, left: touchInset, bottom: touchInset, right: touchInset)
         view.addSubview(closeButton)
         closeButton.snp.makeConstraints { make in
             make.top.equalTo(view.safeAreaLayoutGuide).offset(LMKSpacing.large)
             make.trailing.equalToSuperview().inset(LMKSpacing.large)
-            make.width.height.equalTo(32)
+            make.width.height.equalTo(closeButtonSize)
         }
 
         view.addSubview(scrollView)
@@ -286,5 +289,14 @@ public final class LMKSharePreviewViewController: UIViewController {
             message: Self.strings.photoPermissionDenied,
             severity: .warning
         )
+    }
+}
+
+// MARK: - Touch Expanded Button
+
+/// Button subclass that respects `lmk_touchAreaEdgeInsets` for hit-testing.
+private final class LMKTouchExpandedButton: UIButton {
+    override func point(inside point: CGPoint, with event: UIEvent?) -> Bool {
+        lmk_pointInside(point, with: event)
     }
 }

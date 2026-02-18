@@ -24,8 +24,10 @@ public enum LMKDividerOrientation {
 /// }
 /// ```
 public final class LMKDividerView: UIView {
-    /// Default pixel-perfect thickness (1 pixel).
-    public static let defaultThickness: CGFloat = 1.0 / UIScreen.main.scale
+    /// Default pixel-perfect thickness (1 physical pixel on the current display).
+    public static var defaultThickness: CGFloat {
+        1.0 / LMKSceneUtil.screenScale
+    }
 
     /// Divider orientation.
     public var orientation: LMKDividerOrientation {

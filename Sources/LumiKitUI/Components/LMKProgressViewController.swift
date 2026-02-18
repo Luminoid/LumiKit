@@ -30,11 +30,7 @@ public final class LMKProgressViewController: UIViewController {
         let view = UIView()
         view.backgroundColor = LMKColor.backgroundPrimary
         view.layer.cornerRadius = LMKCornerRadius.large
-        let shadow = LMKShadow.card()
-        view.layer.shadowColor = shadow.color
-        view.layer.shadowOpacity = shadow.opacity
-        view.layer.shadowOffset = shadow.offset
-        view.layer.shadowRadius = shadow.radius
+        view.lmk_applyShadow(LMKShadow.card())
         return view
     }()
 
@@ -82,13 +78,17 @@ public final class LMKProgressViewController: UIViewController {
         let button = UIButton(type: .system)
         button.setTitle(LMKAlertPresenter.strings.cancel, for: .normal)
         button.titleLabel?.font = LMKTypography.body
-        button.setTitleColor(LMKColor.textSecondary, for: .normal)
+        button.setTitleColor(LMKColor.textPrimary, for: .normal)
         button.addTarget(self, action: #selector(cancelButtonTapped), for: .touchUpInside)
         return button
     }()
 
     /// Callback when cancel button is tapped.
     public var onCancel: (() -> Void)?
+
+    /// Throttle VoiceOver announcements to avoid flooding.
+    private var lastAnnouncementTime: Date = .distantPast
+    private static let announcementThrottleInterval: TimeInterval = 2.0
 
     // MARK: - Initialization
 
@@ -117,15 +117,14 @@ public final class LMKProgressViewController: UIViewController {
     private func refreshDynamicColors() {
         view.backgroundColor = LMKColor.black.withAlphaComponent(LMKAlpha.overlay)
         containerView.backgroundColor = LMKColor.backgroundPrimary
-        let shadow = LMKShadow.card()
-        containerView.layer.shadowColor = shadow.color
+        containerView.lmk_applyShadow(LMKShadow.card())
         titleLabel.textColor = LMKColor.textPrimary
         taskLabel.textColor = LMKColor.textSecondary
         progressView.progressTintColor = LMKColor.primary
         progressView.trackTintColor = LMKColor.backgroundSecondary
         progressLabel.textColor = LMKColor.textSecondary
         activityIndicator.color = LMKColor.primary
-        cancelButton.setTitleColor(LMKColor.textSecondary, for: .normal)
+        cancelButton.setTitleColor(LMKColor.textPrimary, for: .normal)
     }
 
     // MARK: - Setup
@@ -192,7 +191,11 @@ public final class LMKProgressViewController: UIViewController {
         taskLabel.text = task
         let percentText = LMKFormatHelper.progressPercent(progress)
         progressLabel.text = percentText
-        UIAccessibility.post(notification: .announcement, argument: "\(task) \(percentText)")
+        let now = Date()
+        if now.timeIntervalSince(lastAnnouncementTime) >= Self.announcementThrottleInterval {
+            lastAnnouncementTime = now
+            UIAccessibility.post(notification: .announcement, argument: "\(task) \(percentText)")
+        }
     }
 
     /// Update only the progress value.

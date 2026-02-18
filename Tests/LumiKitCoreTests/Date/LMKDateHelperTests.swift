@@ -21,20 +21,11 @@ struct LMKDateHelperTests {
         #expect(components.second == 0)
     }
 
-    @Test("today is cached and returns same value on repeated access")
-    func todayCaching() {
+    @Test("today returns same value on repeated access")
+    func todayConsistency() {
         let first = LMKDateHelper.today
         let second = LMKDateHelper.today
         #expect(first == second)
-    }
-
-    @Test("invalidateTodayCache forces recalculation")
-    func invalidateCache() {
-        let before = LMKDateHelper.today
-        LMKDateHelper.invalidateTodayCache()
-        let after = LMKDateHelper.today
-        // Both should still be the same day
-        #expect(LMKDateHelper.calendar.isDate(before, inSameDayAs: after))
     }
 
     @Test("isToday returns true for now")

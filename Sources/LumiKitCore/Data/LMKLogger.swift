@@ -29,8 +29,7 @@ public enum LMKLogger {
     /// - Parameter subsystem: The subsystem identifier (typically `Bundle.main.bundleIdentifier`).
     public static func configure(subsystem: String) {
         Self.subsystem = subsystem
-        // Rebuild category logs with the new subsystem
-        LogCategory.rebuildLogs(subsystem: subsystem)
+        LogCategory.rebuildLogs()
     }
 
     // MARK: - Log Categories
@@ -48,7 +47,7 @@ public enum LMKLogger {
             self.osLog = OSLog(subsystem: LMKLogger.subsystem, category: name)
         }
 
-        // Built-in categories
+        // Built-in categories.
         public nonisolated(unsafe) static var general = LogCategory(name: "General")
         public nonisolated(unsafe) static var data = LogCategory(name: "Data")
         public nonisolated(unsafe) static var ui = LogCategory(name: "UI")
@@ -56,7 +55,7 @@ public enum LMKLogger {
         public nonisolated(unsafe) static var error = LogCategory(name: "Error")
         public nonisolated(unsafe) static var localization = LogCategory(name: "Localization")
 
-        fileprivate static func rebuildLogs(subsystem: String) {
+        fileprivate static func rebuildLogs() {
             general = LogCategory(name: "General")
             data = LogCategory(name: "Data")
             ui = LogCategory(name: "UI")
@@ -64,6 +63,13 @@ public enum LMKLogger {
             error = LogCategory(name: "Error")
             localization = LogCategory(name: "Localization")
         }
+    }
+
+    // MARK: - Formatting
+
+    private static func formatLogMessage(_ message: String, file: String, function: String, line: Int) -> String {
+        let fileName = (file as NSString).lastPathComponent
+        return "[\(fileName):\(line)] \(function) - \(message)"
     }
 
     // MARK: - Log Levels
@@ -77,8 +83,7 @@ public enum LMKLogger {
         line: Int = #line,
     ) {
         #if DEBUG
-            let fileName = (file as NSString).lastPathComponent
-            let logMessage = "[\(fileName):\(line)] \(function) - \(message)"
+            let logMessage = formatLogMessage(message, file: file, function: function, line: line)
             os_log("%{public}@", log: category.osLog, type: .debug, logMessage)
         #endif
     }
@@ -91,8 +96,7 @@ public enum LMKLogger {
         function: String = #function,
         line: Int = #line,
     ) {
-        let fileName = (file as NSString).lastPathComponent
-        let logMessage = "[\(fileName):\(line)] \(function) - \(message)"
+        let logMessage = formatLogMessage(message, file: file, function: function, line: line)
         os_log("%{public}@", log: category.osLog, type: .info, logMessage)
     }
 
@@ -105,8 +109,7 @@ public enum LMKLogger {
         function: String = #function,
         line: Int = #line,
     ) {
-        let fileName = (file as NSString).lastPathComponent
-        var logMessage = "[\(fileName):\(line)] \(function) - \(message)"
+        var logMessage = formatLogMessage(message, file: file, function: function, line: line)
         if let error {
             logMessage += " | Error: \(error.localizedDescription)"
         }
@@ -121,8 +124,7 @@ public enum LMKLogger {
         function: String = #function,
         line: Int = #line,
     ) {
-        let fileName = (file as NSString).lastPathComponent
-        let logMessage = "[\(fileName):\(line)] \(function) - \(message)"
+        let logMessage = formatLogMessage(message, file: file, function: function, line: line)
         os_log("%{public}@", log: category.osLog, type: .default, logMessage)
     }
 }

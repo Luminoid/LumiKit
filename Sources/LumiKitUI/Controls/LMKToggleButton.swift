@@ -80,7 +80,9 @@ open class LMKToggleButton: LMKButton {
     @objc override open func didTap() {
         if flipStatusOnTap {
             status = (status == .on) ? .off : .on
-            LMKHapticFeedbackHelper.selection()
+            if !pressAnimationEnabled {
+                LMKHapticFeedbackHelper.selection()
+            }
         }
         super.didTap()
     }

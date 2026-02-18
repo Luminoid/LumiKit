@@ -141,4 +141,8 @@ extension LMKTextView: UITextViewDelegate {
         }
         return delegate?.textView?(textView, shouldChangeTextIn: range, replacementText: text) ?? true
     }
+
+    public func textViewDidChangeSelection(_ textView: UITextView) {
+        delegate?.textViewDidChangeSelection?(textView)
+    }
 }

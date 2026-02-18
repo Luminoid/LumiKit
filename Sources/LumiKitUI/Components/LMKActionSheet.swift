@@ -54,15 +54,6 @@ public final class LMKActionSheet: UIViewController {
         }
     }
 
-    // MARK: - Layout Constants
-
-    private static var rowHeight: CGFloat { 56 }
-    private static var buttonHeight: CGFloat { 50 }
-    private static var dragIndicatorWidth: CGFloat { 40 }
-    private static var dragIndicatorHeight: CGFloat { 5 }
-    private static var dragIndicatorCornerRadius: CGFloat { 2.5 }
-    private static var maxScreenHeightRatio: CGFloat { 0.9 }
-
     // MARK: - Properties
 
     private let titleText: String?
@@ -99,7 +90,7 @@ public final class LMKActionSheet: UIViewController {
     private lazy var dragIndicator: UIView = {
         let view = UIView()
         view.backgroundColor = LMKColor.divider
-        view.layer.cornerRadius = Self.dragIndicatorCornerRadius
+        view.layer.cornerRadius = LMKBottomSheetLayout.dragIndicatorCornerRadius
         return view
     }()
 
@@ -227,7 +218,10 @@ public final class LMKActionSheet: UIViewController {
         dimmingView.snp.makeConstraints { make in make.edges.equalToSuperview() }
 
         view.addSubview(containerView)
-        let maxHeight = UIScreen.main.bounds.height * Self.maxScreenHeightRatio
+        let screenHeight = view.window?.windowScene?.screen.bounds.height
+            ?? LMKSceneUtil.getKeyWindow()?.screen.bounds.height
+            ?? view.bounds.height
+        let maxHeight = screenHeight * LMKBottomSheetLayout.maxScreenHeightRatio
         containerView.snp.makeConstraints { make in
             make.leading.trailing.equalToSuperview()
             make.height.lessThanOrEqualTo(maxHeight)
@@ -238,15 +232,15 @@ public final class LMKActionSheet: UIViewController {
         dragIndicator.snp.makeConstraints { make in
             make.top.equalToSuperview().offset(LMKSpacing.small)
             make.centerX.equalToSuperview()
-            make.width.equalTo(Self.dragIndicatorWidth)
-            make.height.equalTo(Self.dragIndicatorHeight)
+            make.width.equalTo(LMKBottomSheetLayout.dragIndicatorWidth)
+            make.height.equalTo(LMKBottomSheetLayout.dragIndicatorHeight)
         }
 
         containerView.addSubview(cancelButton)
         cancelButton.snp.makeConstraints { make in
             make.leading.trailing.equalToSuperview().inset(LMKSpacing.xl)
             make.bottom.equalTo(containerView.safeAreaLayoutGuide.snp.bottom).inset(LMKSpacing.xl)
-            make.height.equalTo(Self.buttonHeight)
+            make.height.equalTo(LMKBottomSheetLayout.buttonHeight)
         }
 
         let scrollBottomAnchor: ConstraintRelatableTarget
@@ -255,7 +249,7 @@ public final class LMKActionSheet: UIViewController {
             confirmButton.snp.makeConstraints { make in
                 make.leading.trailing.equalToSuperview().inset(LMKSpacing.xl)
                 make.bottom.equalTo(cancelButton.snp.top).offset(-LMKSpacing.small)
-                make.height.equalTo(Self.buttonHeight)
+                make.height.equalTo(LMKBottomSheetLayout.buttonHeight)
             }
             scrollBottomAnchor = confirmButton.snp.top
         } else {
@@ -312,7 +306,7 @@ public final class LMKActionSheet: UIViewController {
             actionRows.append(row)
 
             let wrapper = makeInsetWrapper(for: row)
-            row.snp.makeConstraints { make in make.height.equalTo(Self.rowHeight - 2 * LMKSpacing.xs) }
+            row.snp.makeConstraints { make in make.height.equalTo(LMKBottomSheetLayout.rowHeight - 2 * LMKSpacing.xs) }
             contentStackView.addArrangedSubview(wrapper)
 
             if index < sheetActions.count - 1 {

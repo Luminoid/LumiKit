@@ -10,15 +10,35 @@ alwaysApply: false
 
 ## Test Structure
 
-- **LumiKitCoreTests/**: 44 tests, 7 suites — pure Foundation tests
-- **LumiKitUITests/**: 23 tests, 9 suites — UIKit component tests (requires iOS Simulator)
+- **LumiKitCoreTests/**: 56 tests, 9 suites — pure Foundation tests (mirrors Sources/LumiKitCore/ subfolders)
+- **LumiKitUITests/**: 178 tests, 51 suites — UIKit component tests (requires iOS Simulator, mirrors Sources/LumiKitUI/ subfolders)
+- **LumiKitLottie**: No test target — manual verification only
+
+## Framework: Swift Testing
+
+The entire test suite uses **Swift Testing** (not XCTest):
+
+- **ALWAYS** use `@Suite("Description")` for test suites
+- **ALWAYS** use `@Test("description") func camelCaseName()` for test methods
+- **ALWAYS** use `#expect(...)` for assertions
+- **ALWAYS** use `try #require(...)` for unwrapping optionals (never force unwrap `!` in tests)
+- **ALWAYS** use `@MainActor` on suites/tests that touch UIKit or MainActor-isolated code
 
 ## Patterns
 
 - **ALWAYS** use Arrange-Act-Assert pattern
-- **ALWAYS** use descriptive names: `test[What]_[When]_[Expected]`
-- **ALWAYS** use `@MainActor` for tests that touch UIKit or MainActor-isolated code
 - **ALWAYS** add `// MARK: -` sections for logical grouping
+- **ALWAYS** use `.serialized` trait on suites that mutate shared state (e.g., `LMKThemeManager.shared`, configurable strings)
+- **ALWAYS** use `defer` to restore shared state after mutation:
+  ```swift
+  @Test("custom theme") func customTheme() {
+      LMKThemeManager.shared.apply(spacing: .init(large: 20))
+      defer { LMKThemeManager.shared.apply(spacing: .init()) }
+      #expect(LMKSpacing.large == 20)
+  }
+  ```
+- **ALWAYS** test real behavior — assert meaningful properties, not just "no crash"
+- **ALWAYS** test edge cases: empty strings, nil values, zero sizes, negative values, boundary conditions
 
 ## Build & Test Commands
 

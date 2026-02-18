@@ -70,8 +70,7 @@ public final class LMKToastView: UIView {
 
     private func refreshDynamicColors() {
         containerView.backgroundColor = LMKColor.backgroundSecondary
-        let shadow = LMKShadow.card()
-        containerView.layer.shadowColor = shadow.color
+        containerView.lmk_applyShadow(LMKShadow.card())
         iconView.tintColor = type.color
         messageLabel.textColor = LMKColor.textPrimary
         accentView.backgroundColor = type.color
@@ -88,13 +87,7 @@ public final class LMKToastView: UIView {
 
         containerView.backgroundColor = LMKColor.backgroundSecondary
         containerView.layer.cornerRadius = LMKCornerRadius.medium
-        containerView.layer.masksToBounds = false
-
-        let shadow = LMKShadow.card()
-        containerView.layer.shadowColor = shadow.color
-        containerView.layer.shadowOffset = shadow.offset
-        containerView.layer.shadowRadius = shadow.radius
-        containerView.layer.shadowOpacity = shadow.opacity
+        containerView.lmk_applyShadow(LMKShadow.card())
 
         addSubview(containerView)
         containerView.snp.makeConstraints { make in make.edges.equalToSuperview() }
@@ -137,14 +130,14 @@ public final class LMKToastView: UIView {
 
     /// Show on the key window (avoids affecting host VC layout).
     public func showOnWindow(onShowComplete: (() -> Void)? = nil) {
-        guard let window = Self.keyWindow,
+        guard let window = LMKSceneUtil.getKeyWindow(),
               let rootView = window.rootViewController?.view else { return }
         show(in: rootView, safeAreaGuide: rootView.safeAreaLayoutGuide, onShowComplete: onShowComplete)
     }
 
     private func show(in hostView: UIView, safeAreaGuide: UILayoutGuide, onShowComplete: (() -> Void)?) {
         for subview in hostView.subviews where subview is LMKToastView {
-            subview.removeFromSuperview()
+            (subview as? LMKToastView)?.dismiss()
         }
 
         hostView.addSubview(self)
@@ -183,14 +176,6 @@ public final class LMKToastView: UIView {
         }
 
         UIAccessibility.post(notification: .announcement, argument: message)
-    }
-
-    private static var keyWindow: UIWindow? {
-        UIApplication.shared.connectedScenes
-            .filter { $0.activationState == .foregroundActive }
-            .compactMap { $0 as? UIWindowScene }
-            .flatMap(\.windows)
-            .first { $0.isKeyWindow }
     }
 
     public func dismiss() {

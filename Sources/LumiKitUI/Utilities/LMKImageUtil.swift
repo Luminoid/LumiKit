@@ -19,9 +19,10 @@ public nonisolated enum LMKImageUtil {
         return image
     }
 
+    private static let ciContext = CIContext()
+
     /// Convert a `CVPixelBuffer` to JPEG `Data`.
     public static func jpegData(withPixelBuffer pixelBuffer: CVPixelBuffer, attachments: CFDictionary?) -> Data? {
-        let ciContext = CIContext()
         let renderedCIImage = CIImage(cvImageBuffer: pixelBuffer)
         guard let renderedCGImage = ciContext.createCGImage(renderedCIImage, from: renderedCIImage.extent) else {
             return nil

@@ -21,10 +21,6 @@ struct LMKColorTests {
         #expect(LMKColor.textPrimary == LMKThemeManager.shared.current.textPrimary)
     }
 
-    @Test("LMKColor.clear is UIColor.clear")
-    func clearColor() {
-        #expect(LMKColor.clear == UIColor.clear)
-    }
 }
 
 // MARK: - LMKColor proxy

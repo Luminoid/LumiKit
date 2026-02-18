@@ -49,8 +49,6 @@ public enum LMKLabelFactory {
         type: LMKTypographyType,
     ) -> UILabel {
         let label = UILabel()
-        label.font = font
-        label.textColor = color
         label.attributedText = attributedString(text: text, font: font, color: color, type: type)
         label.numberOfLines = 0
         return label

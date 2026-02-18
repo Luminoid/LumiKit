@@ -142,6 +142,9 @@ open class LMKTextField: UIView {
             make.bottom.equalToSuperview()
         }
 
+        isAccessibilityElement = false
+        accessibilityElements = [textField, helperLabel]
+
         _ = registerForTraitChanges([UITraitUserInterfaceStyle.self], action: #selector(refreshDynamicColors))
     }
 
@@ -164,14 +167,17 @@ open class LMKTextField: UIView {
         switch validationState {
         case .normal:
             containerView.layer.borderColor = LMKColor.divider.cgColor
+            textField.accessibilityValue = nil
             updateHelperText()
         case .error(let message):
             containerView.layer.borderColor = LMKColor.error.cgColor
             helperLabel.text = message
             helperLabel.textColor = LMKColor.error
             helperLabel.isHidden = false
+            textField.accessibilityValue = message
         case .success:
             containerView.layer.borderColor = LMKColor.success.cgColor
+            textField.accessibilityValue = nil
             updateHelperText()
         }
     }

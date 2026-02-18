@@ -27,9 +27,9 @@ public enum LMKDateFormatterHelper {
 
     /// Get a date formatter with the configured date format and system locale.
     public static func dateFormatter(includeTime: Bool = false) -> DateFormatter {
+        let format = dateFormatProvider()
         let formatter = DateFormatter()
         formatter.locale = Locale.current
-        let format = dateFormatProvider()
         formatter.dateFormat = includeTime ? format + " HH:mm" : format
         return formatter
     }

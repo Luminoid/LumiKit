@@ -66,7 +66,23 @@ public enum LMKAnimationHelper {
     private static let buttonPressScale: CGFloat = 0.96
     private static let buttonPressSpringDamping: CGFloat = 0.6
 
-    public static func animateButtonPress(_ button: UIButton, completion: (() -> Void)? = nil) {
+    /// Animate the press-down phase (scale down). Call on `.touchDown`.
+    public static func animateButtonPressDown(_ button: UIButton) {
+        guard shouldAnimate else { return }
+        UIView.animate(
+            withDuration: Duration.buttonPress,
+            delay: 0,
+            usingSpringWithDamping: buttonPressSpringDamping,
+            initialSpringVelocity: 0,
+            options: [.allowUserInteraction, .beginFromCurrentState],
+            animations: {
+                button.transform = CGAffineTransform(scaleX: buttonPressScale, y: buttonPressScale)
+            },
+        )
+    }
+
+    /// Animate the release phase (spring back). Call on `.touchUpInside` / `.touchUpOutside` / `.touchCancel`.
+    public static func animateButtonPressUp(_ button: UIButton, completion: (() -> Void)? = nil) {
         guard shouldAnimate else {
             completion?()
             return
@@ -78,27 +94,39 @@ public enum LMKAnimationHelper {
             initialSpringVelocity: 0,
             options: [.allowUserInteraction, .beginFromCurrentState],
             animations: {
-                button.transform = CGAffineTransform(scaleX: buttonPressScale, y: buttonPressScale)
+                button.transform = .identity
             },
-            completion: { _ in
-                UIView.animate(
-                    withDuration: Duration.buttonPress,
-                    delay: 0,
-                    usingSpringWithDamping: buttonPressSpringDamping,
-                    initialSpringVelocity: 0,
-                    options: [.allowUserInteraction, .beginFromCurrentState],
-                    animations: {
-                        button.transform = .identity
-                    },
-                    completion: { _ in completion?() },
-                )
+            completion: { _ in completion?() },
+        )
+    }
+
+    /// Convenience that chains press-down then release. Used by `lmk_animatePress`.
+    public static func animateButtonPress(_ button: UIButton, completion: (() -> Void)? = nil) {
+        guard shouldAnimate else {
+            completion?()
+            return
+        }
+        animateButtonPressDown(button)
+        UIView.animate(
+            withDuration: Duration.buttonPress,
+            delay: Duration.buttonPress,
+            usingSpringWithDamping: buttonPressSpringDamping,
+            initialSpringVelocity: 0,
+            options: [.allowUserInteraction, .beginFromCurrentState],
+            animations: {
+                button.transform = .identity
             },
+            completion: { _ in completion?() },
         )
     }
 
     // MARK: - Success Feedback Animation
 
     private static let successCheckmarkSize: CGFloat = 60
+    private static let successScaleUpFraction: Double = 0.6
+    private static let successSettleFraction: Double = 0.4
+    private static let successOvershootScale: CGFloat = 1.2
+    private static let successSpringDamping: CGFloat = 0.6
 
     public static func animateSuccessFeedback(on view: UIView, completion: (() -> Void)? = nil) {
         let reduceMotion = !shouldAnimate
@@ -112,16 +140,16 @@ public enum LMKAnimationHelper {
         view.addSubview(checkmarkView)
 
         UIView.animate(
-            withDuration: reduceMotion ? 0 : Duration.successFeedback * 0.6,
-            delay: 0, usingSpringWithDamping: 0.6, initialSpringVelocity: 0,
+            withDuration: reduceMotion ? 0 : Duration.successFeedback * successScaleUpFraction,
+            delay: 0, usingSpringWithDamping: successSpringDamping, initialSpringVelocity: 0,
             options: [.allowUserInteraction],
             animations: {
                 checkmarkView.alpha = 1
-                checkmarkView.transform = CGAffineTransform(scaleX: 1.2, y: 1.2)
+                checkmarkView.transform = CGAffineTransform(scaleX: successOvershootScale, y: successOvershootScale)
             },
             completion: { _ in
                 UIView.animate(
-                    withDuration: reduceMotion ? 0 : Duration.successFeedback * 0.4,
+                    withDuration: reduceMotion ? 0 : Duration.successFeedback * successSettleFraction,
                     delay: 0, options: [.allowUserInteraction],
                     animations: { checkmarkView.transform = CGAffineTransform(scaleX: 1.0, y: 1.0) },
                     completion: { _ in
@@ -143,12 +171,14 @@ public enum LMKAnimationHelper {
 
     // MARK: - Error Shake Animation
 
+    private static let errorShakeBorderWidth: CGFloat = 2
+
     public static func animateErrorShake(on view: UIView, completion: (() -> Void)? = nil) {
         let shouldReduceMotion = !shouldAnimate
 
         if shouldReduceMotion {
             let originalBorderColor = view.layer.borderColor
-            view.layer.borderWidth = 2
+            view.layer.borderWidth = errorShakeBorderWidth
             view.layer.borderColor = LMKColor.error.cgColor
             UIView.animate(
                 withDuration: Duration.modalPresentation,
@@ -181,12 +211,14 @@ public enum LMKAnimationHelper {
 
     // MARK: - Photo Load Animation
 
+    private static let photoLoadInitialScale: CGFloat = 0.95
+
     public static func animatePhotoLoad(on imageView: UIImageView, completion: (() -> Void)? = nil) {
         let reduceMotion = !shouldAnimate
 
         imageView.alpha = 0
         if !reduceMotion {
-            imageView.transform = CGAffineTransform(scaleX: 0.95, y: 0.95)
+            imageView.transform = CGAffineTransform(scaleX: photoLoadInitialScale, y: photoLoadInitialScale)
         }
         UIView.animate(
             withDuration: reduceMotion ? 0 : Duration.photoLoad,

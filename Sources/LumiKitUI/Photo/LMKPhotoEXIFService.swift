@@ -23,6 +23,14 @@ import UIKit
 /// let coordinate = await LMKPhotoEXIFService.extractLocation(from: pickerResult)
 /// ```
 public nonisolated enum LMKPhotoEXIFService {
+    // MARK: - Cached Formatters
+
+    private static let exifDateFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy:MM:dd HH:mm:ss"
+        return formatter
+    }()
+
     // MARK: - Date Extraction
 
     /// Extract date from image EXIF data.
@@ -42,8 +50,7 @@ public nonisolated enum LMKPhotoEXIFService {
             return nil
         }
 
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy:MM:dd HH:mm:ss"
+        let formatter = exifDateFormatter
 
         // Try EXIF DateTimeOriginal
         if let exif = metadata[kCGImagePropertyExifDictionary as String] as? [String: Any],
@@ -96,6 +103,23 @@ public nonisolated enum LMKPhotoEXIFService {
 
     // MARK: - GPS Location Extraction
 
+    /// Parse GPS coordinates from a GPS metadata dictionary.
+    private static func parseGPSCoordinate(from gps: [String: Any]) -> CLLocationCoordinate2D? {
+        guard let latitude = gps[kCGImagePropertyGPSLatitude as String] as? Double,
+              let longitude = gps[kCGImagePropertyGPSLongitude as String] as? Double,
+              let latRef = gps[kCGImagePropertyGPSLatitudeRef as String] as? String,
+              let lonRef = gps[kCGImagePropertyGPSLongitudeRef as String] as? String else {
+            return nil
+        }
+
+        let lat = latRef == "S" ? -latitude : latitude
+        let lon = lonRef == "W" ? -longitude : longitude
+        let coordinate = CLLocationCoordinate2D(latitude: lat, longitude: lon)
+
+        guard CLLocationCoordinate2DIsValid(coordinate) else { return nil }
+        return coordinate
+    }
+
     /// Extract GPS coordinates from image EXIF data.
     ///
     /// Reads the GPS dictionary from EXIF metadata and converts latitude/longitude
@@ -106,27 +130,14 @@ public nonisolated enum LMKPhotoEXIFService {
     ///   - imageData: Optional pre-encoded image data (avoids re-encoding).
     /// - Returns: Valid coordinates, or `nil` if no GPS data is present.
     public static func extractLocation(from image: UIImage, imageData: Data? = nil) -> CLLocationCoordinate2D? {
-        guard let data = imageData ?? image.jpegData(compressionQuality: 1.0) else { return nil }
+        guard let data = imageData ?? image.jpegData(compressionQuality: 1.0) ?? image.pngData() else { return nil }
         guard let source = CGImageSourceCreateWithData(data as CFData, nil),
               let metadata = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [String: Any],
               let gps = metadata[kCGImagePropertyGPSDictionary as String] as? [String: Any] else {
             return nil
         }
 
-        guard let latitude = gps[kCGImagePropertyGPSLatitude as String] as? Double,
-              let longitude = gps[kCGImagePropertyGPSLongitude as String] as? Double,
-              let latRef = gps[kCGImagePropertyGPSLatitudeRef as String] as? String,
-              let lonRef = gps[kCGImagePropertyGPSLongitudeRef as String] as? String else {
-            return nil
-        }
-
-        let lat = latRef == "S" ? -latitude : latitude
-        let lon = lonRef == "W" ? -longitude : longitude
-
-        let coordinate = CLLocationCoordinate2D(latitude: lat, longitude: lon)
-        guard CLLocationCoordinate2DIsValid(coordinate) else { return nil }
-
-        return coordinate
+        return parseGPSCoordinate(from: gps)
     }
 
     /// Extract GPS coordinates from a `PHPickerResult`.
@@ -146,30 +157,15 @@ public nonisolated enum LMKPhotoEXIFService {
         // Fallback: extract from image EXIF data
         return await withCheckedContinuation { continuation in
             result.itemProvider.loadDataRepresentation(forTypeIdentifier: "public.image") { data, _ in
-                guard let data else {
-                    continuation.resume(returning: nil)
-                    return
-                }
-                guard let source = CGImageSourceCreateWithData(data as CFData, nil),
+                guard let data,
+                      let source = CGImageSourceCreateWithData(data as CFData, nil),
                       let metadata = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [String: Any],
-                      let gps = metadata[kCGImagePropertyGPSDictionary as String] as? [String: Any],
-                      let latitude = gps[kCGImagePropertyGPSLatitude as String] as? Double,
-                      let longitude = gps[kCGImagePropertyGPSLongitude as String] as? Double,
-                      let latRef = gps[kCGImagePropertyGPSLatitudeRef as String] as? String,
-                      let lonRef = gps[kCGImagePropertyGPSLongitudeRef as String] as? String else {
+                      let gps = metadata[kCGImagePropertyGPSDictionary as String] as? [String: Any] else {
                     continuation.resume(returning: nil)
                     return
                 }
 
-                let lat = latRef == "S" ? -latitude : latitude
-                let lon = lonRef == "W" ? -longitude : longitude
-                let coord = CLLocationCoordinate2D(latitude: lat, longitude: lon)
-
-                if CLLocationCoordinate2DIsValid(coord) {
-                    continuation.resume(returning: coord)
-                } else {
-                    continuation.resume(returning: nil)
-                }
+                continuation.resume(returning: parseGPSCoordinate(from: gps))
             }
         }
     }

@@ -18,10 +18,8 @@ public nonisolated protocol LMKEnumSelectable {
 public final class LMKEnumSelectionBottomSheet<T: Equatable & LMKEnumSelectable>: UIViewController, UITableViewDataSource, UITableViewDelegate {
     // MARK: - Layout Constants
 
-    private static var rowHeight: CGFloat { 56 }
-    private static var buttonHeight: CGFloat { 50 }
     private static var headerHeight: CGFloat { LMKSpacing.xxl + LMKSpacing.xl + LMKSpacing.large }
-    private static var footerHeight: CGFloat { LMKSpacing.large + buttonHeight + LMKSpacing.xl }
+    private static var footerHeight: CGFloat { LMKSpacing.large + LMKBottomSheetLayout.buttonHeight + LMKSpacing.xl }
 
     // MARK: - Properties
 
@@ -41,10 +39,6 @@ public final class LMKEnumSelectionBottomSheet<T: Equatable & LMKEnumSelectable>
         return view
     }()
 
-    private static var dragIndicatorWidth: CGFloat { 40 }
-    private static var dragIndicatorHeight: CGFloat { 5 }
-    private static var dragIndicatorCornerRadius: CGFloat { 2.5 }
-
     private lazy var containerView: UIView = {
         let view = UIView()
         view.backgroundColor = LMKColor.backgroundPrimary
@@ -56,7 +50,7 @@ public final class LMKEnumSelectionBottomSheet<T: Equatable & LMKEnumSelectable>
     private lazy var dragIndicator: UIView = {
         let view = UIView()
         view.backgroundColor = LMKColor.divider
-        view.layer.cornerRadius = Self.dragIndicatorCornerRadius
+        view.layer.cornerRadius = LMKBottomSheetLayout.dragIndicatorCornerRadius
         return view
     }()
 
@@ -127,8 +121,11 @@ public final class LMKEnumSelectionBottomSheet<T: Equatable & LMKEnumSelectable>
     }
 
     private var computedHeight: CGFloat {
-        let contentHeight = Self.headerHeight + Self.rowHeight * CGFloat(options.count) + Self.footerHeight
-        let maxHeight = UIScreen.main.bounds.height * 0.9
+        let contentHeight = Self.headerHeight + LMKBottomSheetLayout.rowHeight * CGFloat(options.count) + Self.footerHeight
+        let screenHeight = view.window?.windowScene?.screen.bounds.height
+            ?? LMKSceneUtil.getKeyWindow()?.screen.bounds.height
+            ?? view.bounds.height
+        let maxHeight = screenHeight * LMKBottomSheetLayout.maxScreenHeightRatio
         return min(contentHeight, maxHeight)
     }
 
@@ -150,8 +147,8 @@ public final class LMKEnumSelectionBottomSheet<T: Equatable & LMKEnumSelectable>
         dragIndicator.snp.makeConstraints { make in
             make.top.equalToSuperview().offset(LMKSpacing.small)
             make.centerX.equalToSuperview()
-            make.width.equalTo(Self.dragIndicatorWidth)
-            make.height.equalTo(Self.dragIndicatorHeight)
+            make.width.equalTo(LMKBottomSheetLayout.dragIndicatorWidth)
+            make.height.equalTo(LMKBottomSheetLayout.dragIndicatorHeight)
         }
 
         containerView.addSubview(titleLabel)
@@ -164,7 +161,7 @@ public final class LMKEnumSelectionBottomSheet<T: Equatable & LMKEnumSelectable>
         cancelButton.snp.makeConstraints { make in
             make.leading.trailing.equalToSuperview().inset(LMKSpacing.xl)
             make.bottom.equalToSuperview().inset(LMKSpacing.xl)
-            make.height.equalTo(Self.buttonHeight)
+            make.height.equalTo(LMKBottomSheetLayout.buttonHeight)
         }
 
         containerView.addSubview(tableView)
@@ -211,7 +208,7 @@ public final class LMKEnumSelectionBottomSheet<T: Equatable & LMKEnumSelectable>
 
     public func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         guard let cell = tableView.dequeueReusableCell(withIdentifier: "LMKEnumSelectionCell", for: indexPath) as? LMKEnumSelectionCell else {
-            fatalError("Failed to dequeue LMKEnumSelectionCell.")
+            return UITableViewCell()
         }
         let option = options[indexPath.row]
         cell.configure(with: option, isSelected: option == currentSelection, showIcon: showIcons)
@@ -220,7 +217,7 @@ public final class LMKEnumSelectionBottomSheet<T: Equatable & LMKEnumSelectable>
 
     // MARK: - UITableViewDelegate
 
-    public func tableView(_ tableView: UITableView, heightForRowAt indexPath: IndexPath) -> CGFloat { Self.rowHeight }
+    public func tableView(_ tableView: UITableView, heightForRowAt indexPath: IndexPath) -> CGFloat { LMKBottomSheetLayout.rowHeight }
 
     public func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         tableView.deselectRow(at: indexPath, animated: true)
@@ -315,7 +312,6 @@ final class LMKEnumSelectionCell: UITableViewCell {
                 iconImageView.image = sfSymbol
             } else {
                 iconImageView.image = UIImage(systemName: "circle.fill")
-                iconImageView.tintColor = LMKColor.textSecondary
             }
             iconImageView.tintColor = LMKColor.primary
             iconImageView.snp.updateConstraints { make in make.width.equalTo(LMKLayout.iconMedium) }
@@ -334,7 +330,7 @@ final class LMKEnumSelectionCell: UITableViewCell {
         }
 
         checkmarkImageView.isHidden = !isSelected
-        accessibilityTraits = isSelected ? [.selected] : []
+        accessibilityTraits = isSelected ? [.button, .selected] : .button
         if isSelected {
             containerView.backgroundColor = LMKColor.primary.withAlphaComponent(LMKAlpha.overlayLight)
             titleLabel.font = LMKTypography.bodyMedium

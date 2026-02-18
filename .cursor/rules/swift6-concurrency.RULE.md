@@ -1,15 +1,32 @@
 ---
-description: "Swift 6 strict concurrency patterns for LumiKit"
+description: "Swift 6.2 strict concurrency patterns for LumiKit"
 alwaysApply: true
 ---
 
-# Swift 6 Concurrency
+# Swift 6.2 Concurrency
 
-## @MainActor
+## Target-Level Default Isolation
 
-- **ALWAYS** mark UIViewController subclasses with `@MainActor`
-- **ALWAYS** mark `LMKThemeManager` and similar singletons with `@MainActor`
-- **NEVER** nest configurable strings inside `@MainActor` classes — they must be module-level
+LumiKitUI and LumiKitLottie set `defaultIsolation: MainActor` in `Package.swift`. This means:
+
+- **All types** in these targets are implicitly `@MainActor` — no explicit annotation needed
+- **Do NOT** add `@MainActor` to UIViewController subclasses, views, or components in LumiKitUI/Lottie — it is redundant
+- **LumiKitCore** has no default isolation — types are `nonisolated` by default
+
+## Opting Out of MainActor
+
+When a type in LumiKitUI must be callable from any isolation context, use:
+
+```swift
+// nonisolated enum (utility type, no mutable state)
+public nonisolated enum LMKImageUtil { ... }
+
+// nonisolated struct (data type, Sendable)
+public nonisolated struct LMKSpacingTheme: Sendable { ... }
+```
+
+- **ALWAYS** use `nonisolated struct: Sendable` for theme config structs
+- **ALWAYS** use `nonisolated enum` for static utility types that should be callable off-main
 
 ## Configurable Strings Pattern
 
@@ -32,6 +49,7 @@ nonisolated(unsafe) public var lmkFeatureStrings = LMKFeatureStrings()
 - **MUST** use `nonisolated(unsafe)` at module level — not inside a class
 - **MUST** provide reasonable defaults in `init`
 - Apps set strings once at launch before any UI runs
+- Two naming patterns in codebase: top-level `LMK*Strings` or nested `Type.Strings`
 
 ## Sendable
 

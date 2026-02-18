@@ -19,7 +19,7 @@ struct LMKCornerRadiusTests {
         #expect(LMKCornerRadius.small > LMKCornerRadius.xs)
         #expect(LMKCornerRadius.medium > LMKCornerRadius.small)
         #expect(LMKCornerRadius.large > LMKCornerRadius.medium)
-        #expect(LMKCornerRadius.xlarge > LMKCornerRadius.large)
+        #expect(LMKCornerRadius.xl > LMKCornerRadius.large)
     }
 }
 
@@ -35,8 +35,7 @@ struct LMKCornerRadiusConfigurationTests {
         #expect(config.small == 8)
         #expect(config.medium == 12)
         #expect(config.large == 16)
-        #expect(config.xlarge == 20)
-        #expect(config.circular == 999)
+        #expect(config.xl == 20)
     }
 
     @Test("Custom corner radius is applied via proxy")

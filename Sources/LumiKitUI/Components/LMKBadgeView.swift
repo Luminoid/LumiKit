@@ -8,6 +8,20 @@
 import SnapKit
 import UIKit
 
+// MARK: - Configurable Strings
+
+/// Configurable strings for badge accessibility.
+public nonisolated struct LMKBadgeStrings: Sendable {
+    /// Accessibility label for dot badge (no text).
+    public var dotAccessibilityLabel: String
+
+    public init(dotAccessibilityLabel: String = "New") {
+        self.dotAccessibilityLabel = dotAccessibilityLabel
+    }
+}
+
+public nonisolated(unsafe) var lmkBadgeStrings = LMKBadgeStrings()
+
 /// Small badge for notification counts, "New" labels, or status indicators.
 ///
 /// ```swift
@@ -105,7 +119,7 @@ public final class LMKBadgeView: UIView {
     public func configure() {
         isHidden = false
         countLabel.text = nil
-        accessibilityLabel = "New"
+        accessibilityLabel = lmkBadgeStrings.dotAccessibilityLabel
         invalidateIntrinsicContentSize()
     }
 
@@ -117,7 +131,7 @@ public final class LMKBadgeView: UIView {
             return CGSize(width: width, height: config.height)
         }
         // Dot badge: small circle
-        let dotSize = config.height * 0.55
+        let dotSize = config.height * config.dotSizeRatio
         return CGSize(width: dotSize, height: dotSize)
     }
 }

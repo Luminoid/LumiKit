@@ -21,16 +21,24 @@ public enum LMKFileUtil {
     }
 
     /// Remove all files in the app's temporary directory.
+    /// Continues past individual file errors, logging each failure.
     public static func clearTmpDirectory() {
+        let tmpDirUrl = FileManager.default.temporaryDirectory
+        let tmpDir: [String]
         do {
-            let tmpDirUrl = FileManager.default.temporaryDirectory
-            let tmpDir = try FileManager.default.contentsOfDirectory(atPath: tmpDirUrl.path)
-            for file in tmpDir {
-                let fileUrl = tmpDirUrl.appendingPathComponent(file)
-                try FileManager.default.removeItem(atPath: fileUrl.path)
-            }
+            tmpDir = try FileManager.default.contentsOfDirectory(atPath: tmpDirUrl.path)
         } catch {
-            LMKLogger.error("clearTmpDirectory failed", error: error, category: .data)
+            LMKLogger.error("clearTmpDirectory: failed to list directory", error: error, category: .data)
+            return
+        }
+        for file in tmpDir {
+            let fileUrl = tmpDirUrl.appendingPathComponent(file)
+            do {
+                try FileManager.default.removeItem(atPath: fileUrl.path)
+            } catch {
+                LMKLogger.error("clearTmpDirectory: failed to remove \(file)", error: error, category: .data)
+                continue
+            }
         }
     }
 }

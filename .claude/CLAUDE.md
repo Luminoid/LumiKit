@@ -24,10 +24,10 @@ LumiKit/
 ├── Sources/
 │   ├── LumiKitCore/
 │   │   ├── Concurrency/     # LMKConcurrencyHelpers (encode/decode off main)
-│   │   ├── Data/            # LMKFormatHelper, LMKLogger, Collection+LMK, NSAttributedString+LMK
+│   │   ├── Data/            # LMKFormatHelper, LMKLogger, String+LMK, Collection+LMK, NSAttributedString+LMK
 │   │   ├── Date/            # LMKDateHelper, LMKDateFormatterHelper
 │   │   ├── File/            # LMKFileUtil
-│   │   └── Validation/      # LMKURLValidator, String+LMK
+│   │   └── Validation/      # LMKURLValidator
 │   ├── LumiKitUI/
 │   │   ├── Alerts/          # LMKAlertPresenter, LMKErrorHandler
 │   │   ├── Animation/       # LMKAnimationHelper, LMKAnimationTheme
@@ -217,7 +217,7 @@ LMKThemeManager.shared.apply(spacing: .init(large: 20))
 | `UIView+LMKShadow` | `lmk_applyShadow(_:)`, `lmk_removeShadow()` |
 | `UIView+LMKBorder` | `lmk_applyBorder(...)`, `lmk_removeBorder()`, `lmk_applyCornerRadius(_:)`, `lmk_makeCircular()` |
 | `UIView+LMKFade` | `lmk_fadeIn(...)`, `lmk_fadeOut(...)` |
-| `UIView+LMKLayout` | `lmk_addSubviews(...)`, `lmk_pinToEdges(...)` |
+| `UIView+LMKLayout` | `lmk_safeAreaSnp`, `lmk_setEdgesEqualToSuperView()`, `lmk_setAutoLayoutSize(width:height:)` |
 | `UIStackView+LMK` | `init(lmk_axis:...)`, `lmk_addArrangedSubviews(_:)`, `lmk_removeAllArrangedSubviews()` |
 
 ### Share (`Share/`)

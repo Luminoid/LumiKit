@@ -110,7 +110,7 @@ public final class LMKPhotoBrowserViewController: UIViewController {
 
     override public func viewDidLoad() {
         super.viewDidLoad()
-        overrideUserInterfaceStyle = .light
+        overrideUserInterfaceStyle = .dark
         setupUI()
         setupMacOptimizations()
     }
@@ -244,37 +244,28 @@ public final class LMKPhotoBrowserViewController: UIViewController {
     #if targetEnvironment(macCatalyst)
         private static let hoverDuration = LMKAnimationHelper.Duration.uiShort
 
-        @objc private func dismissButtonHover() {
+        private static let hoverScale = CGAffineTransform(scaleX: 1.1, y: 1.1)
+
+        private func applyHover(to button: UIButton?) {
             guard LMKAnimationHelper.shouldAnimate else { return }
             UIView.animate(withDuration: Self.hoverDuration) {
-                self.dismissButton?.backgroundColor = LMKColor.black.withAlphaComponent(LMKAlpha.overlayStrong)
-                self.dismissButton?.transform = CGAffineTransform(scaleX: 1.1, y: 1.1)
+                button?.backgroundColor = LMKColor.black.withAlphaComponent(LMKAlpha.overlayStrong)
+                button?.transform = Self.hoverScale
             }
         }
 
-        @objc private func dismissButtonUnhover() {
+        private func removeHover(from button: UIButton?) {
             guard LMKAnimationHelper.shouldAnimate else { return }
             UIView.animate(withDuration: Self.hoverDuration) {
-                self.dismissButton?.backgroundColor = LMKColor.black.withAlphaComponent(LMKAlpha.overlay)
-                self.dismissButton?.transform = .identity
+                button?.backgroundColor = LMKColor.black.withAlphaComponent(LMKAlpha.overlay)
+                button?.transform = .identity
             }
         }
 
-        @objc private func actionButtonHover() {
-            guard LMKAnimationHelper.shouldAnimate else { return }
-            UIView.animate(withDuration: Self.hoverDuration) {
-                self.actionButton?.backgroundColor = LMKColor.black.withAlphaComponent(LMKAlpha.overlayStrong)
-                self.actionButton?.transform = CGAffineTransform(scaleX: 1.1, y: 1.1)
-            }
-        }
-
-        @objc private func actionButtonUnhover() {
-            guard LMKAnimationHelper.shouldAnimate else { return }
-            UIView.animate(withDuration: Self.hoverDuration) {
-                self.actionButton?.backgroundColor = LMKColor.black.withAlphaComponent(LMKAlpha.overlay)
-                self.actionButton?.transform = .identity
-            }
-        }
+        @objc private func dismissButtonHover() { applyHover(to: dismissButton) }
+        @objc private func dismissButtonUnhover() { removeHover(from: dismissButton) }
+        @objc private func actionButtonHover() { applyHover(to: actionButton) }
+        @objc private func actionButtonUnhover() { removeHover(from: actionButton) }
 
         // MARK: - Mouse/Trackpad Wheel Support
 
@@ -330,7 +321,7 @@ public final class LMKPhotoBrowserViewController: UIViewController {
             dismissButton.setImage(UIImage(systemName: "xmark"), for: .normal)
             dismissButton.tintColor = LMKColor.white
             dismissButton.backgroundColor = LMKColor.black.withAlphaComponent(LMKAlpha.overlay)
-            dismissButton.layer.cornerRadius = LMKCornerRadius.xlarge
+            dismissButton.layer.cornerRadius = LMKCornerRadius.xl
             dismissButton.addTarget(self, action: #selector(dismissTapped), for: .touchUpInside)
             view.addSubview(dismissButton)
 
@@ -373,7 +364,7 @@ public final class LMKPhotoBrowserViewController: UIViewController {
         dismissButton.setImage(UIImage(systemName: "xmark"), for: .normal)
         dismissButton.tintColor = LMKColor.white
         dismissButton.backgroundColor = LMKColor.black.withAlphaComponent(LMKAlpha.overlay)
-        dismissButton.layer.cornerRadius = LMKCornerRadius.xlarge
+        dismissButton.layer.cornerRadius = LMKCornerRadius.xl
         dismissButton.addTarget(self, action: #selector(dismissTapped), for: .touchUpInside)
         view.addSubview(dismissButton)
         view.bringSubviewToFront(dismissButton)
@@ -402,7 +393,7 @@ public final class LMKPhotoBrowserViewController: UIViewController {
         actionButton.setImage(UIImage(systemName: "ellipsis"), for: .normal)
         actionButton.tintColor = LMKColor.white
         actionButton.backgroundColor = LMKColor.black.withAlphaComponent(LMKAlpha.overlay)
-        actionButton.layer.cornerRadius = LMKCornerRadius.xlarge
+        actionButton.layer.cornerRadius = LMKCornerRadius.xl
         actionButton.addTarget(self, action: #selector(actionButtonTapped), for: .touchUpInside)
         view.addSubview(actionButton)
         view.bringSubviewToFront(actionButton)
@@ -738,24 +729,14 @@ extension LMKPhotoBrowserViewController: UICollectionViewDataSource {
 
 extension LMKPhotoBrowserViewController: UICollectionViewDelegate {
     public func scrollViewDidEndDecelerating(_ scrollView: UIScrollView) {
-        // Only handle collection view scrolling, not cell zoom scrolling
-        let photoCount = dataSource?.numberOfPhotos ?? 0
-        guard scrollView === collectionView,
-              collectionView.bounds.width > 0,
-              photoCount > 0 else {
-            return
-        }
-
-        let pageIndex = Int(round(collectionView.contentOffset.x / collectionView.bounds.width))
-        let safeIndex = max(0, min(pageIndex, photoCount - 1))
-        updateCurrentIndex(safeIndex)
-
-        // Reset zoom on visible cells when page changes
-        resetZoomOnVisibleCells()
+        handleScrollEnd(scrollView)
     }
 
     public func scrollViewDidEndScrollingAnimation(_ scrollView: UIScrollView) {
-        // Only handle collection view scrolling, not cell zoom scrolling
+        handleScrollEnd(scrollView)
+    }
+
+    private func handleScrollEnd(_ scrollView: UIScrollView) {
         let photoCount = dataSource?.numberOfPhotos ?? 0
         guard scrollView === collectionView,
               collectionView.bounds.width > 0,
@@ -767,7 +748,6 @@ extension LMKPhotoBrowserViewController: UICollectionViewDelegate {
         let safeIndex = max(0, min(pageIndex, photoCount - 1))
         updateCurrentIndex(safeIndex)
 
-        // Reset zoom on visible cells when page changes
         resetZoomOnVisibleCells()
     }
 

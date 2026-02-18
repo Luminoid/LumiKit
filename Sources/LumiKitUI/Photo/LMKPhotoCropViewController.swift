@@ -6,6 +6,7 @@
 //  aspect ratio presets, pinch-to-zoom, and rule-of-thirds grid.
 //
 
+import LumiKitCore
 import SnapKit
 import UIKit
 
@@ -92,9 +93,11 @@ public final class LMKPhotoCropViewController: UIViewController {
     private static let maxZoomScale: CGFloat = 3.0
     private static let minZoomScale: CGFloat = 1.0
     private static let borderWidth: CGFloat = 2.0
-    private static var aspectControlHeight: CGFloat { 32 + LMKSpacing.xl * 2 }
+    private static var aspectControlHeight: CGFloat { segmentedControlHeight + LMKSpacing.xl * 2 }
     private static var handleHitSize: CGFloat { handleSize + LMKSpacing.medium }
+    private static let segmentedControlHeight: CGFloat = 32
     private static let gridLineWidth: CGFloat = 0.5
+    private static let gridLineAlpha: CGFloat = 0.6
     private static let gridLineCount: Int = 2 // Rule of thirds
 
     // MARK: - Public Properties
@@ -274,7 +277,7 @@ public final class LMKPhotoCropViewController: UIViewController {
         aspectRatioControl.snp.makeConstraints { make in
             make.bottom.equalTo(view.safeAreaLayoutGuide).offset(-LMKSpacing.xl)
             make.leading.trailing.equalToSuperview().inset(LMKSpacing.xl)
-            make.height.equalTo(32)
+            make.height.equalTo(Self.segmentedControlHeight)
         }
     }
 
@@ -307,7 +310,7 @@ public final class LMKPhotoCropViewController: UIViewController {
     private func setupCachedLayers() {
         overlayView.layer.mask = overlayMaskLayer
 
-        gridLayer.strokeColor = UIColor.white.withAlphaComponent(0.6).cgColor
+        gridLayer.strokeColor = UIColor.white.withAlphaComponent(Self.gridLineAlpha).cgColor
         gridLayer.fillColor = nil
         gridLayer.lineWidth = Self.gridLineWidth
         cropFrameView.layer.addSublayer(gridLayer)
@@ -850,6 +853,7 @@ public final class LMKPhotoCropViewController: UIViewController {
     @objc private func doneTapped() {
         guard cropFrame.width > 0, cropFrame.height > 0,
               let croppedImage = cropImage() else {
+            LMKLogger.warning("Crop failed — delivering original image. cropFrame=\(cropFrame)", category: .ui)
             delegate?.photoCropViewController(self, didCropImage: image)
             navigationController?.popViewController(animated: true)
             return

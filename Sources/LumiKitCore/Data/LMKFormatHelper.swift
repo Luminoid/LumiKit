@@ -13,7 +13,9 @@ public enum LMKFormatHelper {
     public static let progressPercentFormat = "%.0f%%"
 
     /// Formats a progress value (0.0–1.0) as a percentage string (e.g. "75%").
+    /// Values outside the 0...1 range are clamped.
     public static func progressPercent(_ progress: Float) -> String {
-        String(format: progressPercentFormat, progress * 100)
+        let clamped = max(0, min(1, progress))
+        return String(format: progressPercentFormat, clamped * 100)
     }
 }

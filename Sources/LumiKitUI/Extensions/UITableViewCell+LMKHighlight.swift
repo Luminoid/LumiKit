@@ -13,19 +13,22 @@ extension UITableViewCell {
     private static let lmk_lightModeOverlayAlpha = LMKAlpha.overlayLight
     private static let lmk_animationDuration = LMKAnimationHelper.Duration.uiShort
     private static let lmk_overlayTag = 9999
-    private static let lmk_overlayVisibleAlpha: CGFloat = 1.0
     private static let lmk_containerDetectionSubviewsThreshold = 2
+
+    private static var lmk_highlightOverlayColor: UIColor {
+        UIColor { traitCollection in
+            if traitCollection.userInterfaceStyle == .dark {
+                LMKColor.black.withAlphaComponent(lmk_darkModeOverlayAlpha)
+            } else {
+                LMKColor.black.withAlphaComponent(lmk_lightModeOverlayAlpha)
+            }
+        }
+    }
 
     /// Apply custom highlight effect to the cell.
     /// Call from `setHighlighted(_:animated:)` in your cell subclass.
     public func lmk_applyCustomHighlight(highlighted: Bool, animated: Bool) {
-        let darkOverlayColor = UIColor { traitCollection in
-            if traitCollection.userInterfaceStyle == .dark {
-                LMKColor.black.withAlphaComponent(Self.lmk_darkModeOverlayAlpha)
-            } else {
-                LMKColor.black.withAlphaComponent(Self.lmk_lightModeOverlayAlpha)
-            }
-        }
+        let darkOverlayColor = Self.lmk_highlightOverlayColor
 
         let containerViews = lmk_findContainerViews(in: contentView)
         let shouldAnimate = animated && LMKAnimationHelper.shouldAnimate
@@ -68,7 +71,7 @@ extension UITableViewCell {
             newOverlay.snp.makeConstraints { make in make.edges.equalToSuperview() }
             overlay = newOverlay
         }
-        overlay?.alpha = Self.lmk_overlayVisibleAlpha
+        overlay?.alpha = 1.0
     }
 
     private func lmk_removeDarkOverlay(from view: UIView) {
@@ -94,13 +97,7 @@ extension UITableViewCell {
     /// Configure custom highlight for standard `UITableViewCell` instances.
     public func lmk_configureCustomHighlight() {
         let selectedBgView = UIView()
-        selectedBgView.backgroundColor = UIColor { traitCollection in
-            if traitCollection.userInterfaceStyle == .dark {
-                LMKColor.black.withAlphaComponent(Self.lmk_darkModeOverlayAlpha)
-            } else {
-                LMKColor.black.withAlphaComponent(Self.lmk_lightModeOverlayAlpha)
-            }
-        }
+        selectedBgView.backgroundColor = Self.lmk_highlightOverlayColor
         selectedBackgroundView = selectedBgView
     }
 }

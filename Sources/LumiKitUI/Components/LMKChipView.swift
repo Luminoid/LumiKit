@@ -92,15 +92,13 @@ public final class LMKChipView: UIView {
         isAccessibilityElement = true
         accessibilityTraits = .staticText
 
-        if style == .outlined {
-            _ = registerForTraitChanges([UITraitUserInterfaceStyle.self], action: #selector(refreshDynamicColors))
-        }
+        _ = registerForTraitChanges([UITraitUserInterfaceStyle.self], action: #selector(refreshDynamicColors))
 
         updateAppearance()
     }
 
     @objc private func refreshDynamicColors() {
-        layer.borderColor = chipColor.cgColor
+        updateAppearance()
     }
 
     // MARK: - Configuration

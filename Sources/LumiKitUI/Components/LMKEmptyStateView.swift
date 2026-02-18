@@ -36,6 +36,9 @@ public enum LMKEmptyStateStyle {
 /// Reusable empty state view for displaying messages when content is unavailable.
 public final class LMKEmptyStateView: UIView {
     private static var iconToLabelSpacing: CGFloat { LMKSpacing.small }
+    private static let iconAnimationScale: CGFloat = 0.95
+    private static let iconAnimationDelay: TimeInterval = 0.05
+    private static let labelAnimationDelay: TimeInterval = 0.1
 
     public static let inlineCellHeight: CGFloat = 44
     public static let cardCellHeight: CGFloat = 120
@@ -179,14 +182,14 @@ public final class LMKEmptyStateView: UIView {
         if LMKAnimationHelper.shouldAnimate {
             if !iconImageView.isHidden {
                 iconImageView.alpha = 0
-                iconImageView.transform = CGAffineTransform(scaleX: 0.95, y: 0.95)
-                UIView.animate(withDuration: LMKAnimationHelper.Duration.actionSheet, delay: 0.05, options: .curveEaseOut) {
+                iconImageView.transform = CGAffineTransform(scaleX: Self.iconAnimationScale, y: Self.iconAnimationScale)
+                UIView.animate(withDuration: LMKAnimationHelper.Duration.actionSheet, delay: Self.iconAnimationDelay, options: .curveEaseOut) {
                     self.iconImageView.alpha = 1
                     self.iconImageView.transform = .identity
                 }
             }
             messageLabel.alpha = 0
-            UIView.animate(withDuration: LMKAnimationHelper.Duration.actionSheet, delay: 0.1, options: .curveEaseOut) {
+            UIView.animate(withDuration: LMKAnimationHelper.Duration.actionSheet, delay: Self.labelAnimationDelay, options: .curveEaseOut) {
                 self.messageLabel.alpha = 1
             }
         } else {

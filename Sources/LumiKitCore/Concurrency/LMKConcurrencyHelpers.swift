@@ -43,9 +43,11 @@ public enum LMKConcurrencyHelpers {
     /// Use this instead of `DispatchQueue.main.asyncAfter`.
     public static func onMainActorAfter(delay: TimeInterval, _ work: @escaping @MainActor @Sendable () -> Void) {
         Task {
-            try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
-            await MainActor.run {
-                work()
+            do {
+                try await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
+                await MainActor.run { work() }
+            } catch {
+                // Task was cancelled — do not execute work
             }
         }
     }
@@ -73,8 +75,8 @@ public enum LMKConcurrencyHelpers {
                 LMKLogger.info("Task cancelled: object deallocated", category: .ui)
                 return
             }
-            try Task.checkCancellation()
             do {
+                try Task.checkCancellation()
                 try await operation(object)
             } catch is CancellationError {
                 LMKLogger.info("Task cancelled", category: .ui)

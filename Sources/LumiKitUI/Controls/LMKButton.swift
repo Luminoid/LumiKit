@@ -35,13 +35,22 @@ open class LMKButton: UIButton {
     open func initialize() {
         imageView?.contentMode = imageContentMode
         addTarget(self, action: #selector(didTap), for: .touchUpInside)
+        addTarget(self, action: #selector(handleTouchDown), for: .touchDown)
+        addTarget(self, action: #selector(handleTouchUp), for: [.touchUpInside, .touchUpOutside, .touchCancel])
+    }
+
+    @objc private func handleTouchDown() {
+        guard pressAnimationEnabled, LMKAnimationHelper.shouldAnimate else { return }
+        LMKHapticFeedbackHelper.medium()
+        LMKAnimationHelper.animateButtonPressDown(self)
+    }
+
+    @objc private func handleTouchUp() {
+        guard pressAnimationEnabled, LMKAnimationHelper.shouldAnimate else { return }
+        LMKAnimationHelper.animateButtonPressUp(self)
     }
 
     @objc open func didTap() {
-        if pressAnimationEnabled {
-            LMKAnimationHelper.animateButtonPress(self)
-            LMKHapticFeedbackHelper.medium()
-        }
         tapHandler?()
         didTapHandler?(self)
     }

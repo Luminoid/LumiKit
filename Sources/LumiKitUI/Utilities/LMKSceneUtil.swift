@@ -15,4 +15,10 @@ public enum LMKSceneUtil {
             .compactMap { ($0 as? UIWindowScene)?.keyWindow }
             .first
     }
+
+    /// Current screen scale factor (e.g., 2.0 on iPad, 3.0 on iPhone).
+    /// Falls back to `3.0` when no window is available.
+    public static var screenScale: CGFloat {
+        getKeyWindow()?.screen.scale ?? 3.0
+    }
 }

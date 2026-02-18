@@ -62,6 +62,10 @@ public enum LMKShareService {
         sourceView: UIView? = nil,
         sourceBarButtonItem: UIBarButtonItem? = nil
     ) {
+        guard FileManager.default.fileExists(atPath: url.path) else {
+            LMKLogger.error("shareFile: file does not exist at \(url.path)", category: .general)
+            return
+        }
         let activityVC = UIActivityViewController(activityItems: [url], applicationActivities: nil)
         configurePopover(activityVC, viewController: viewController, sourceView: sourceView, sourceBarButtonItem: sourceBarButtonItem)
 

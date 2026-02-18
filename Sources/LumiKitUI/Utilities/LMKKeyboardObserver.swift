@@ -18,8 +18,13 @@ import UIKit
 /// ```
 public final class LMKKeyboardObserver {
     /// Keyboard change info.
+    ///
+    /// - Note: The `height` value comes from `keyboardFrameEndUserInfoKey` and includes the
+    ///   home indicator safe area on devices with no physical home button. If adjusting a
+    ///   bottom constraint already pinned to `safeAreaLayoutGuide`, subtract
+    ///   `view.safeAreaInsets.bottom` to avoid double-compensating.
     public struct KeyboardInfo {
-        /// Keyboard height (0 when hidden).
+        /// Keyboard height (0 when hidden). Includes the home indicator safe area.
         public let height: CGFloat
         /// Animation duration.
         public let animationDuration: TimeInterval

@@ -18,23 +18,19 @@ public nonisolated struct LMKCornerRadiusTheme: Sendable {
     public var small: CGFloat
     public var medium: CGFloat
     public var large: CGFloat
-    public var xlarge: CGFloat
-    /// For circular views.
-    public var circular: CGFloat
+    public var xl: CGFloat
 
     public init(
         xs: CGFloat = 4,
         small: CGFloat = 8,
         medium: CGFloat = 12,
         large: CGFloat = 16,
-        xlarge: CGFloat = 20,
-        circular: CGFloat = 999
+        xl: CGFloat = 20
     ) {
         self.xs = xs
         self.small = small
         self.medium = medium
         self.large = large
-        self.xlarge = xlarge
-        self.circular = circular
+        self.xl = xl
     }
 }

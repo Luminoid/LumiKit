@@ -50,7 +50,8 @@ public enum LMKDeviceHelper {
 
     /// Screen size category based on screen bounds.
     public static var screenSize: LMKScreenSize {
-        let longestSide = max(UIScreen.main.bounds.width, UIScreen.main.bounds.height)
+        let screenBounds = LMKSceneUtil.getKeyWindow()?.windowScene?.screen.bounds ?? LMKSceneUtil.getKeyWindow()?.screen.bounds ?? .zero
+        let longestSide = max(screenBounds.width, screenBounds.height)
         switch deviceType {
         case .iPad, .macCatalyst:
             return .extraLarge

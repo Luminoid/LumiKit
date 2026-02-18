@@ -170,13 +170,13 @@ public final class LMKBannerView: UIView {
 
     // MARK: - Show / Dismiss
 
-    /// Show the banner at the top of a view controller. Removes any existing banners first.
+    /// Show the banner at the top of a view controller. Dismisses any existing banners first with animation.
     public func show(on viewController: UIViewController) {
         guard let view = viewController.view else { return }
 
-        // Remove existing banners
+        // Dismiss existing banners with animation
         for subview in view.subviews where subview is LMKBannerView {
-            subview.removeFromSuperview()
+            (subview as? LMKBannerView)?.dismiss()
         }
 
         view.addSubview(self)
@@ -188,7 +188,7 @@ public final class LMKBannerView: UIView {
         if LMKAnimationHelper.shouldAnimate {
             alpha = 0
             transform = CGAffineTransform(translationX: 0, y: -LMKSpacing.xl)
-            UIView.animate(withDuration: LMKAnimationHelper.Duration.actionSheet) {
+            UIView.animate(withDuration: LMKAnimationHelper.Duration.modalPresentation) {
                 self.alpha = 1
                 self.transform = .identity
             }

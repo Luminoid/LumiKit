@@ -35,7 +35,7 @@ LumiKit is organized into three targets so apps can import only what they need:
 | **LumiKitUI** | LumiKitCore + SnapKit | Design system tokens, theme manager, animation, haptics, alerts, components, controls, photo browser/crop, UIKit extensions |
 | **LumiKitLottie** | LumiKitUI + Lottie | Lottie-powered pull-to-refresh control |
 
-**78 source files** across 3 targets, with **234 tests** (56 Core + 178 UI) across 60 suites.
+**79 source files** across 3 targets, with **234 tests** (56 Core + 178 UI) across 60 suites.
 
 ---
 
@@ -119,7 +119,8 @@ LumiKit/
 │   │   ├── Animation/         # LMKAnimationHelper, LMKAnimationTheme
 │   │   ├── Components/        # EmptyState, Toast, SearchBar, Badge, Chip,
 │   │   │                      # Divider, Gradient, Card, Banner, Skeleton,
-│   │   │                      # ActionSheet, EnumSelectionBottomSheet, etc.
+│   │   │                      # ActionSheet, EnumSelectionBottomSheet,
+│   │   │                      # BottomSheetLayout (shared constants), etc.
 │   │   ├── Controls/          # Button, SegmentedControl, ToggleButton,
 │   │   │                      # TextField, TextView
 │   │   ├── DesignSystem/      # Token enums, theme configs, factories
@@ -129,7 +130,8 @@ LumiKit/
 │   │   │                      # LMKPhotoEXIFService
 │   │   ├── QRCode/            # LMKQRCodeGenerator
 │   │   ├── Share/             # LMKShareService, LMKSharePreviewViewController
-│   │   └── Utilities/         # LMKDeviceHelper, LMKKeyboardObserver
+│   │   └── Utilities/         # LMKDeviceHelper, LMKKeyboardObserver,
+│   │                          # LMKSceneUtil, LMKImageUtil
 │   └── LumiKitLottie/         # LMKLottieRefreshControl
 ├── Tests/
 │   ├── LumiKitCoreTests/      # 56 tests, 9 suites
@@ -232,7 +234,6 @@ LMKThemeManager.shared.apply(spacing: .init(large: 20))
 | `LMKEmptyStateView` | Empty state with icon, title, message, action button |
 | `LMKEnumSelectionBottomSheet` | Bottom sheet for selecting from an enum's cases |
 | `LMKGradientView` | `CAGradientLayer`-backed view with 4 direction options |
-| `LMKProgressViewController` | Progress indicator view controller |
 | `LMKLoadingStateView` | Loading indicator with optional message |
 | `LMKProgressViewController` | Progress indicator view controller |
 | `LMKSearchBar` | Search bar with configurable placeholder and cancel text |
@@ -264,7 +265,7 @@ All UIKit extensions use the `lmk_` prefix to avoid naming conflicts.
 | `UIView+LMKShadow` | `lmk_applyShadow(_:)`, `lmk_removeShadow()` |
 | `UIView+LMKBorder` | `lmk_applyBorder(...)`, `lmk_removeBorder()`, `lmk_applyCornerRadius(_:)`, `lmk_makeCircular()` |
 | `UIView+LMKFade` | `lmk_fadeIn(...)`, `lmk_fadeOut(...)` |
-| `UIView+LMKLayout` | `lmk_addSubviews(...)`, `lmk_pinToEdges(...)` |
+| `UIView+LMKLayout` | `lmk_safeAreaSnp`, `lmk_setEdgesEqualToSuperView()`, `lmk_setAutoLayoutSize(width:height:)` |
 | `UIStackView+LMK` | `init(lmk_axis:...)`, `lmk_addArrangedSubviews(_:)`, `lmk_removeAllArrangedSubviews()` |
 | `UIButton+LMKAnimation` | Tap animation helpers |
 | `UIControl+LMKTouchArea` | Expanded touch area support |

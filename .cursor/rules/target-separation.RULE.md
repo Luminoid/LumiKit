@@ -7,18 +7,18 @@ alwaysApply: true
 
 ## Three Targets — Strict Boundaries
 
-| Target | Dependencies | Allowed Imports |
-|--------|-------------|-----------------|
-| **LumiKitCore** | Foundation only | `Foundation` — nothing else |
-| **LumiKitUI** | LumiKitCore + SnapKit | `UIKit`, `SnapKit`, `LumiKitCore` |
-| **LumiKitLottie** | LumiKitUI + Lottie | `Lottie`, `LumiKitUI`, `UIKit` |
+| Target | Dependencies | Allowed Imports | Default Isolation |
+|--------|-------------|-----------------|-------------------|
+| **LumiKitCore** | Foundation only | `Foundation`, `UniformTypeIdentifiers` | None (nonisolated) |
+| **LumiKitUI** | LumiKitCore + SnapKit | `UIKit`, `SnapKit`, `LumiKitCore`, `CoreImage`, `Photos`, `CoreLocation` | `MainActor` |
+| **LumiKitLottie** | LumiKitUI + Lottie | `Lottie`, `LumiKitUI`, `UIKit` | `MainActor` |
 
 ## Rules
 
-- **NEVER** import UIKit in LumiKitCore — it must be pure Foundation
+- **NEVER** import UIKit in LumiKitCore
 - **NEVER** import Lottie in LumiKitUI — Lottie is isolated so apps can opt out
-- **ALWAYS** place Foundation-only utilities in LumiKitCore (Logger, DateHelper, FormatHelper, URLValidator, ConcurrencyHelpers, FileUtil, String extensions)
-- **ALWAYS** place UIKit components in LumiKitUI (DesignSystem, Components, Controls, Extensions, Photo, Haptics, Alerts, Animation)
+- **ALWAYS** place Foundation-only utilities in LumiKitCore (Logger, DateHelper, FormatHelper, URLValidator, ConcurrencyHelpers, FileUtil, String/Collection extensions)
+- **ALWAYS** place UIKit components in LumiKitUI (DesignSystem, Components, Controls, Extensions, Photo, Haptics, Alerts, Animation, Share, QRCode, Utilities)
 - **ALWAYS** use SnapKit for Auto Layout in LumiKitUI — never `NSLayoutConstraint` directly
 
 ## Adding New Files
