@@ -146,6 +146,10 @@ public final class LMKToastView: UIView {
             make.top.equalTo(safeAreaGuide.snp.top).offset(LMKSpacing.medium)
         }
 
+        // Force layout so constraints resolve before animation starts,
+        // preventing the toast from briefly using a stale/zero frame.
+        hostView.layoutIfNeeded()
+
         transform = CGAffineTransform(translationX: 0, y: Self.showInitialYOffset)
         alpha = 0
 

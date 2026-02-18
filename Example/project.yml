@@ -1,0 +1,36 @@
+name: LumiKitExample
+options:
+  bundleIdPrefix: com.lumi.lumikit
+  deploymentTarget:
+    iOS: "18.0"
+  xcodeVersion: "26.0"
+
+packages:
+  LumiKit:
+    path: ..
+
+targets:
+  LumiKitExample:
+    type: application
+    platform: iOS
+    sources:
+      - Sources
+    resources:
+      - Resources
+    dependencies:
+      - package: LumiKit
+        product: LumiKitUI
+    settings:
+      base:
+        SWIFT_VERSION: "6.2"
+        CODE_SIGN_STYLE: Automatic
+        PRODUCT_BUNDLE_IDENTIFIER: com.lumi.lumikit.example
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        GENERATE_INFOPLIST_FILE: true
+        INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents: true
+        INFOPLIST_KEY_UILaunchScreen_Generation: true
+        INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad: "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
+        INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone: "UIInterfaceOrientationPortrait"
+      configs:
+        debug:
+          SWIFT_ACTIVE_COMPILATION_CONDITIONS: DEBUG

@@ -102,17 +102,14 @@ public final class LMKSkeletonCell: UITableViewCell {
         shimmerView.layer.insertSublayer(gradientLayer, at: 0)
         guard LMKAnimationHelper.shouldAnimate else { return }
 
-        // Guard against zero bounds — retry after layout pass
-        guard shimmerView.bounds.width > 0 else {
-            DispatchQueue.main.async { [weak self] in
-                self?.startShimmer(staggerIndex: staggerIndex)
-            }
-            return
-        }
-
-        let animation = CABasicAnimation(keyPath: "transform.translation.x")
-        animation.fromValue = -shimmerView.bounds.width
-        animation.toValue = shimmerView.bounds.width
+        // Animate gradient locations to slide the highlight band across
+        // without moving the layer frame.
+        let animation = CAKeyframeAnimation(keyPath: "locations")
+        animation.values = [
+            [-1.0, -0.5, 0.0] as [NSNumber],
+            [0.0, 0.5, 1.0] as [NSNumber],
+            [1.0, 1.5, 2.0] as [NSNumber],
+        ]
         animation.duration = Self.shimmerAnimationDuration
         animation.repeatCount = .infinity
         animation.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)

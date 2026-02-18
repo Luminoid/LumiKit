@@ -61,8 +61,12 @@ public final class LMKChipView: UIView {
 
     // MARK: - Setup
 
+    override public func layoutSubviews() {
+        super.layoutSubviews()
+        layer.cornerRadius = bounds.height / 2
+    }
+
     private func setupUI() {
-        layer.cornerRadius = LMKCornerRadius.large
         layer.masksToBounds = true
 
         iconImageView.contentMode = .scaleAspectFit

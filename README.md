@@ -22,6 +22,9 @@ Shared Swift Package providing **design tokens**, **UI components**, and **utili
 14. [Error Handling](#error-handling)
 15. [Build & Test](#build--test)
 16. [Dependencies](#dependencies)
+17. [Built with LumiKit](#built-with-lumikit)
+18. [License](#license)
+19. [Changelog](#changelog)
 
 ---
 
@@ -55,7 +58,7 @@ Add LumiKit to your project via Swift Package Manager:
 dependencies: [
     .package(path: "../LumiKit")  // Local package
     // or
-    .package(url: "https://github.com/user/LumiKit.git", from: "1.0.0")
+    .package(url: "https://github.com/Luminoid/LumiKit.git", from: "0.1.0")
 ]
 ```
 
@@ -88,16 +91,29 @@ LMKThemeManager.shared.configure(
 )
 
 // 2. Use design tokens throughout your app
-let label = LMKLabelFactory.title("Hello")
+let label = LMKLabelFactory.heading(text: "Hello")
 view.backgroundColor = LMKColor.backgroundPrimary
 
 // 3. Use components
-let toast = LMKToastView()
-toast.show(message: "Saved!", in: view)
+LMKToast.showSuccess(message: "Saved!", on: self)
 
 let emptyState = LMKEmptyStateView()
-emptyState.configure(icon: UIImage(systemName: "leaf"), title: "No Plants", message: "Add your first plant")
+emptyState.configure(message: "Nothing here yet", icon: "tray", style: .card)
 ```
+
+---
+
+## Example App
+
+The `Example/` directory contains a full catalog app demonstrating every component. It uses [XcodeGen](https://github.com/yonaskolb/XcodeGen) to generate the Xcode project:
+
+```bash
+cd Example
+xcodegen generate
+open LumiKitExample.xcodeproj
+```
+
+The example includes 15 interactive pages: Typography, Colors, Cards, Badges, Chips, Empty State, Buttons, Toast, Controls, Gradient, Loading State, Banner, Action Sheet, QR Code, and Photo Browser.
 
 ---
 
@@ -397,3 +413,23 @@ Lottie is isolated in its own target so apps can opt out if they don't need pull
 LumiKitUI and LumiKitLottie use Swift 6.2 `defaultIsolation: MainActor` — all types are `@MainActor` by default. Pure data types (theme config structs) opt out with `nonisolated` and conform to `Sendable` so they can be created and passed from any context.
 
 LumiKitCore has no default isolation and is safe to use from any concurrency context.
+
+---
+
+## Built with LumiKit
+
+| App | Description |
+|-----|-------------|
+| [Plantfolio Plus](https://luminoid.github.io/plantfolio-site) | Plant care, watering schedules, collections, and photos for iOS, iPadOS, and Mac |
+
+---
+
+## License
+
+LumiKit is released under the MIT License. See [LICENSE](LICENSE) for details.
+
+---
+
+## Changelog
+
+See [CHANGELOG.md](CHANGELOG.md) for a detailed history of changes.
