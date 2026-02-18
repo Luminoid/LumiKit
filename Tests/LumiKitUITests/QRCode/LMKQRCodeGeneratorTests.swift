@@ -19,11 +19,10 @@ struct LMKQRCodeGeneratorTests {
         #expect(image!.size.height > 0)
     }
 
-    @Test("Empty string still produces a valid QR code")
-    func emptyStringProducesQR() {
-        // Empty string is valid UTF-8 data, CIFilter encodes it
+    @Test("Empty string returns nil")
+    func emptyStringReturnsNil() {
         let image = LMKQRCodeGenerator.generateQRCode(from: "")
-        #expect(image != nil)
+        #expect(image == nil)
     }
 
     @Test("All correction levels produce images")

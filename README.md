@@ -35,7 +35,7 @@ LumiKit is organized into three targets so apps can import only what they need:
 | **LumiKitUI** | LumiKitCore + SnapKit | Design system tokens, theme manager, animation, haptics, alerts, components, controls, photo browser/crop, UIKit extensions |
 | **LumiKitLottie** | LumiKitUI + Lottie | Lottie-powered pull-to-refresh control |
 
-**79 source files** across 3 targets, with **234 tests** (56 Core + 178 UI) across 60 suites.
+**79 source files** across 3 targets, with **284 tests** (61 Core + 223 UI) across 70 suites.
 
 ---
 
@@ -134,25 +134,29 @@ LumiKit/
 │   │                          # LMKSceneUtil, LMKImageUtil
 │   └── LumiKitLottie/         # LMKLottieRefreshControl
 ├── Tests/
-│   ├── LumiKitCoreTests/      # 56 tests, 9 suites
+│   ├── LumiKitCoreTests/      # 61 tests, 10 suites
 │   │   ├── Concurrency/       # LMKConcurrencyHelpers
 │   │   ├── Data/              # Logger, String+LMK, Collection+LMK, NSAttributedString+LMK, FormatHelper
 │   │   ├── Date/              # DateHelper, DateFormatterHelper
+│   │   ├── File/              # FileUtil
 │   │   └── Validation/        # URLValidator
-│   └── LumiKitUITests/        # 178 tests, 51 suites
+│   └── LumiKitUITests/        # 223 tests, 60 suites
 │       ├── Alerts/            # AlertPresenter, ErrorHandler
 │       ├── Animation/         # AnimationHelper
-│       ├── Components/        # ActionSheet, Badge, Banner, Card, Chip, Divider,
-│       │                      # EmptyState, Gradient, LoadingState, Skeleton, Toast
-│       ├── Controls/          # SegmentedControl, TextField, TextView, ToggleButton
+│       ├── Components/        # ActionSheet, Badge, Banner, BottomSheetLayout, Card,
+│       │                      # Chip, Divider, EmptyState, Gradient, LoadingState,
+│       │                      # SearchBar, Skeleton, Toast
+│       ├── Controls/          # Button, SegmentedControl, TextField, TextView, ToggleButton
 │       ├── DesignSystem/      # ThemeManager, Color, Spacing, CornerRadius, Alpha,
 │       │                      # Typography, Layout, Shadow, AnimationTheme, BadgeTheme,
+│       │                      # ButtonFactory, CardFactory, LabelFactory,
 │       │                      # Sendable compliance, ComponentToken integration
-│       ├── Extensions/        # UIColor, UIImage, UIStackView, UIView (shadow/border/fade)
+│       ├── Extensions/        # UIColor, UIImage, UIStackView,
+│       │                      # UIView (shadow/border/fade/layout)
 │       ├── Photo/             # CropAspectRatio, PhotoEXIF
 │       ├── QRCode/            # QRCodeGenerator
 │       ├── Share/             # SharePreview, ShareService
-│       └── Utilities/         # DeviceHelper, KeyboardObserver
+│       └── Utilities/         # DeviceHelper, ImageUtil, KeyboardObserver
 ```
 
 ---
