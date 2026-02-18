@@ -70,7 +70,7 @@ public final class LMKPhotoBrowserViewController: UIViewController {
         collectionView.isPagingEnabled = true
         collectionView.showsHorizontalScrollIndicator = false
         collectionView.showsVerticalScrollIndicator = false
-        collectionView.backgroundColor = LMKColor.black
+        collectionView.backgroundColor = LMKColor.photoBrowserBackground
         collectionView.contentInsetAdjustmentBehavior = .never
         collectionView.register(LMKPhotoBrowserCell.self, forCellWithReuseIdentifier: LMKPhotoBrowserCell.identifier)
         return collectionView
@@ -249,7 +249,7 @@ public final class LMKPhotoBrowserViewController: UIViewController {
         private func applyHover(to button: UIButton?) {
             guard LMKAnimationHelper.shouldAnimate else { return }
             UIView.animate(withDuration: Self.hoverDuration) {
-                button?.backgroundColor = LMKColor.black.withAlphaComponent(LMKAlpha.overlayStrong)
+                button?.backgroundColor = LMKColor.photoBrowserBackground.withAlphaComponent(LMKAlpha.overlayStrong)
                 button?.transform = Self.hoverScale
             }
         }
@@ -257,7 +257,7 @@ public final class LMKPhotoBrowserViewController: UIViewController {
         private func removeHover(from button: UIButton?) {
             guard LMKAnimationHelper.shouldAnimate else { return }
             UIView.animate(withDuration: Self.hoverDuration) {
-                button?.backgroundColor = LMKColor.black.withAlphaComponent(LMKAlpha.overlay)
+                button?.backgroundColor = LMKColor.photoBrowserBackground.withAlphaComponent(LMKAlpha.overlay)
                 button?.transform = .identity
             }
         }
@@ -301,7 +301,7 @@ public final class LMKPhotoBrowserViewController: UIViewController {
     // MARK: - Setup
 
     private func setupUI() {
-        view.backgroundColor = LMKColor.black
+        view.backgroundColor = LMKColor.photoBrowserBackground
 
         let photoCount = dataSource?.numberOfPhotos ?? 0
 
@@ -320,7 +320,7 @@ public final class LMKPhotoBrowserViewController: UIViewController {
             let dismissButton = UIButton(type: .system)
             dismissButton.setImage(UIImage(systemName: "xmark"), for: .normal)
             dismissButton.tintColor = LMKColor.white
-            dismissButton.backgroundColor = LMKColor.black.withAlphaComponent(LMKAlpha.overlay)
+            dismissButton.backgroundColor = LMKColor.photoBrowserBackground.withAlphaComponent(LMKAlpha.overlay)
             dismissButton.layer.cornerRadius = LMKCornerRadius.xl
             dismissButton.addTarget(self, action: #selector(dismissTapped), for: .touchUpInside)
             view.addSubview(dismissButton)
@@ -363,7 +363,7 @@ public final class LMKPhotoBrowserViewController: UIViewController {
         let dismissButton = UIButton(type: .system)
         dismissButton.setImage(UIImage(systemName: "xmark"), for: .normal)
         dismissButton.tintColor = LMKColor.white
-        dismissButton.backgroundColor = LMKColor.black.withAlphaComponent(LMKAlpha.overlay)
+        dismissButton.backgroundColor = LMKColor.photoBrowserBackground.withAlphaComponent(LMKAlpha.overlay)
         dismissButton.layer.cornerRadius = LMKCornerRadius.xl
         dismissButton.addTarget(self, action: #selector(dismissTapped), for: .touchUpInside)
         view.addSubview(dismissButton)
@@ -392,7 +392,7 @@ public final class LMKPhotoBrowserViewController: UIViewController {
         let actionButton = UIButton(type: .system)
         actionButton.setImage(UIImage(systemName: "ellipsis"), for: .normal)
         actionButton.tintColor = LMKColor.white
-        actionButton.backgroundColor = LMKColor.black.withAlphaComponent(LMKAlpha.overlay)
+        actionButton.backgroundColor = LMKColor.photoBrowserBackground.withAlphaComponent(LMKAlpha.overlay)
         actionButton.layer.cornerRadius = LMKCornerRadius.xl
         actionButton.addTarget(self, action: #selector(actionButtonTapped), for: .touchUpInside)
         view.addSubview(actionButton)
@@ -435,7 +435,7 @@ public final class LMKPhotoBrowserViewController: UIViewController {
         }
 
         // Date label container (add after collectionView so it's on top)
-        dateLabelContainer.backgroundColor = LMKColor.black.withAlphaComponent(LMKAlpha.overlay)
+        dateLabelContainer.backgroundColor = LMKColor.photoBrowserBackground.withAlphaComponent(LMKAlpha.overlay)
         dateLabelContainer.layer.cornerRadius = LMKCornerRadius.small
         dateLabelContainer.clipsToBounds = true
         view.addSubview(dateLabelContainer)

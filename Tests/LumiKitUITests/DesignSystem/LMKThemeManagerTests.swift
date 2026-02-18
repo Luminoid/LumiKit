@@ -43,6 +43,7 @@ struct LMKThemeManagerTests {
             var grayMuted: UIColor { .systemGray5 }
             var white: UIColor { .white }
             var black: UIColor { .black }
+            var photoBrowserBackground: UIColor { UIColor(white: 0.1, alpha: 1) }
         }
 
         LMKThemeManager.shared.apply(TestTheme())

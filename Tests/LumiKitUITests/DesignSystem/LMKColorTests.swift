@@ -33,4 +33,10 @@ struct LMKColorProxyTests {
         let color = LMKColor.imageBorder
         #expect(color == LMKThemeManager.shared.current.imageBorder)
     }
+
+    @Test("photoBrowserBackground token resolves from theme")
+    func photoBrowserBackgroundToken() {
+        let color = LMKColor.photoBrowserBackground
+        #expect(color == LMKThemeManager.shared.current.photoBrowserBackground)
+    }
 }

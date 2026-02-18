@@ -39,4 +39,5 @@ struct ExampleTheme: LMKTheme {
     var grayMuted: UIColor { UIColor(white: 0.85, alpha: 1) }
     var white: UIColor { UIColor(white: 0.98, alpha: 1) }
     var black: UIColor { UIColor(white: 0.1, alpha: 1) }
+    var photoBrowserBackground: UIColor { UIColor(white: 0.1, alpha: 1) }
 }

@@ -755,7 +755,7 @@ final class PhotoBrowserDetailViewController: DetailViewController, LMKPhotoBrow
         let browser = LMKPhotoBrowserViewController(initialIndex: index)
         browser.dataSource = self
         browser.delegate = self
-        browser.modalPresentationStyle = .fullScreen
+        browser.modalPresentationStyle = .overFullScreen
         present(browser, animated: true)
     }
 
@@ -802,4 +802,100 @@ final class PhotoBrowserDetailViewController: DetailViewController, LMKPhotoBrow
     }
 
     func photoBrowserDidDismiss(_ browser: LMKPhotoBrowserViewController) {}
+}
+
+// MARK: - Photo Crop
+
+final class PhotoCropDetailViewController: DetailViewController, LMKPhotoCropDelegate {
+    private var sampleImage: UIImage?
+
+    override func viewDidLoad() {
+        super.viewDidLoad()
+
+        sampleImage = createSampleImage()
+
+        addSectionHeader("Photo Crop")
+        stack.addArrangedSubview(LMKLabelFactory.body(text: "Resizable crop frame with aspect ratio presets, pinch-to-zoom, and rule-of-thirds grid."))
+
+        if let sampleImage {
+            let preview = UIImageView(image: sampleImage)
+            preview.contentMode = .scaleAspectFill
+            preview.clipsToBounds = true
+            preview.layer.cornerRadius = LMKCornerRadius.medium
+            preview.snp.makeConstraints { $0.height.equalTo(200) }
+            stack.addArrangedSubview(preview)
+        }
+
+        let cropButton = LMKButtonFactory.primary(title: "Open Photo Crop", target: self, action: #selector(openCrop))
+        stack.addArrangedSubview(cropButton)
+
+        addDivider()
+        addSectionHeader("Aspect Ratios")
+        let ratioRow = UIStackView(lmk_axis: .horizontal, spacing: LMKSpacing.small)
+        ratioRow.distribution = .fillEqually
+        for ratio in LMKCropAspectRatio.allCases {
+            let chip = LMKChipView(text: ratio.displayName, style: .outlined)
+            ratioRow.addArrangedSubview(chip)
+        }
+        stack.addArrangedSubview(ratioRow)
+
+        addDivider()
+        addSectionHeader("Features")
+        let features = [
+            "Drag corners and edges to resize",
+            "Pinch to zoom the image",
+            "Aspect ratio presets (1:1, 4:3, 3:2, etc.)",
+            "Free-form cropping",
+            "Rule-of-thirds grid overlay",
+        ]
+        for feature in features {
+            let label = LMKLabelFactory.caption(text: "\u{2022} \(feature)")
+            stack.addArrangedSubview(label)
+        }
+    }
+
+    @objc private func openCrop() {
+        guard let sampleImage else { return }
+        let cropVC = LMKPhotoCropViewController(image: sampleImage)
+        cropVC.delegate = self
+        let nav = UINavigationController(rootViewController: cropVC)
+        nav.modalPresentationStyle = .fullScreen
+        present(nav, animated: true)
+    }
+
+    private func createSampleImage() -> UIImage? {
+        let size = CGSize(width: 600, height: 400)
+        let renderer = UIGraphicsImageRenderer(size: size)
+        return renderer.image { ctx in
+            // Background gradient
+            let colors = [LMKColor.primary.cgColor, LMKColor.secondary.cgColor]
+            let gradient = CGGradient(colorsSpace: CGColorSpaceCreateDeviceRGB(), colors: colors as CFArray, locations: [0, 1])!
+            ctx.cgContext.drawLinearGradient(gradient, start: .zero, end: CGPoint(x: size.width, y: size.height), options: [])
+
+            // Center symbol
+            let config = UIImage.SymbolConfiguration(pointSize: 80, weight: .regular)
+            if let symbol = UIImage(systemName: "leaf.fill", withConfiguration: config) {
+                let symbolSize = symbol.size
+                let origin = CGPoint(
+                    x: (size.width - symbolSize.width) / 2,
+                    y: (size.height - symbolSize.height) / 2
+                )
+                symbol.withTintColor(.white.withAlphaComponent(0.8), renderingMode: .alwaysOriginal)
+                    .draw(at: origin)
+            }
+        }
+    }
+
+    // MARK: - LMKPhotoCropDelegate
+
+    func photoCropViewController(_ controller: LMKPhotoCropViewController, didCropImage image: UIImage) {
+        controller.dismiss(animated: true) { [weak self] in
+            guard let self else { return }
+            LMKToast.showSuccess(message: "Image cropped (\(Int(image.size.width))×\(Int(image.size.height)))", on: self)
+        }
+    }
+
+    func photoCropViewControllerDidCancel(_ controller: LMKPhotoCropViewController) {
+        controller.dismiss(animated: true)
+    }
 }

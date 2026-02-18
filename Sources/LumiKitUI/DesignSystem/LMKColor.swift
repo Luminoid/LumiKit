@@ -50,4 +50,8 @@ public enum LMKColor {
     public static var white: UIColor { LMKThemeManager.shared.current.white }
     public static var black: UIColor { LMKThemeManager.shared.current.black }
 
+    // MARK: - Specialist
+
+    public static var photoBrowserBackground: UIColor { LMKThemeManager.shared.current.photoBrowserBackground }
+
 }

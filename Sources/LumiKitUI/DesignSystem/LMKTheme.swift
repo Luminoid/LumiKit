@@ -51,6 +51,17 @@ public nonisolated protocol LMKTheme: Sendable {
     var grayMuted: UIColor { get }
     var white: UIColor { get }
     var black: UIColor { get }
+
+    // Specialist
+    var photoBrowserBackground: UIColor { get }
+}
+
+// MARK: - Theme Defaults
+
+extension LMKTheme {
+    /// Near-black background for full-screen photo browser.
+    /// Always dark regardless of light/dark mode.
+    public var photoBrowserBackground: UIColor { UIColor(white: 0.1, alpha: 1) }
 }
 
 // MARK: - Default Theme
@@ -79,6 +90,7 @@ public nonisolated struct LMKDefaultTheme: LMKTheme {
     public var grayMuted: UIColor { UIColor(white: 0.85, alpha: 1) }
     public var white: UIColor { UIColor(white: 0.98, alpha: 1) }
     public var black: UIColor { UIColor(white: 0.1, alpha: 1) }
+    public var photoBrowserBackground: UIColor { UIColor(white: 0.1, alpha: 1) }
 }
 
 // MARK: - Theme Manager

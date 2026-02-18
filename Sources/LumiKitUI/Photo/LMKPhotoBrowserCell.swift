@@ -14,6 +14,7 @@ import UIKit
 /// accumulated offset bug on the final page.
 let lmkPhotoBrowserInterPageSpacing: CGFloat = 16
 
+
 // MARK: - LMKPhotoBrowserCell
 
 public final class LMKPhotoBrowserCell: UICollectionViewCell {
@@ -79,8 +80,8 @@ public final class LMKPhotoBrowserCell: UICollectionViewCell {
     }
 
     private func setupUI() {
-        backgroundColor = LMKColor.black
-        contentView.backgroundColor = LMKColor.black
+        backgroundColor = LMKColor.photoBrowserBackground
+        contentView.backgroundColor = LMKColor.photoBrowserBackground
 
         // Setup scroll view for zooming
         scrollView.delegate = self
@@ -100,7 +101,7 @@ public final class LMKPhotoBrowserCell: UICollectionViewCell {
             scrollView.showsVerticalScrollIndicator = false
         #endif
 
-        scrollView.backgroundColor = LMKColor.black
+        scrollView.backgroundColor = LMKColor.photoBrowserBackground
         contentView.addSubview(scrollView)
         scrollView.snp.makeConstraints { make in
             // Trailing inset = inter-page spacing. The spacing is part of the cell
@@ -116,7 +117,7 @@ public final class LMKPhotoBrowserCell: UICollectionViewCell {
         // at fractional pixel positions during zoom animations (white line artifact).
         imageView.contentMode = .scaleAspectFit
         imageView.clipsToBounds = false
-        imageView.backgroundColor = LMKColor.black
+        imageView.backgroundColor = LMKColor.photoBrowserBackground
         scrollView.addSubview(imageView)
 
         // Center the image view in the scroll view

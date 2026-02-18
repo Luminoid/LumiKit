@@ -6,9 +6,10 @@
 //
 
 import LumiKitUI
+import SnapKit
 import UIKit
 
-final class ExampleViewController: UITableViewController {
+final class ExampleViewController: UIViewController, UITableViewDataSource, UITableViewDelegate {
     // MARK: - Data
 
     private enum Row: Int, CaseIterable {
@@ -27,6 +28,7 @@ final class ExampleViewController: UITableViewController {
         case actionSheet
         case qrCode
         case photoBrowser
+        case photoCrop
 
         var title: String {
             switch self {
@@ -45,6 +47,7 @@ final class ExampleViewController: UITableViewController {
             case .actionSheet: "Action Sheet"
             case .qrCode: "QR Code"
             case .photoBrowser: "Photo Browser"
+            case .photoCrop: "Photo Crop"
             }
         }
 
@@ -65,6 +68,7 @@ final class ExampleViewController: UITableViewController {
             case .actionSheet: "Custom action sheets with icons"
             case .qrCode: "Generate QR codes from text"
             case .photoBrowser: "Full-screen photo viewer with zoom"
+            case .photoCrop: "Crop with aspect ratios and zoom"
             }
         }
 
@@ -85,6 +89,7 @@ final class ExampleViewController: UITableViewController {
             case .actionSheet: "list.bullet"
             case .qrCode: "qrcode"
             case .photoBrowser: "photo.on.rectangle"
+            case .photoCrop: "crop"
             }
         }
 
@@ -105,36 +110,40 @@ final class ExampleViewController: UITableViewController {
             case .actionSheet: ActionSheetDetailViewController()
             case .qrCode: QRCodeDetailViewController()
             case .photoBrowser: PhotoBrowserDetailViewController()
+            case .photoCrop: PhotoCropDetailViewController()
             }
         }
     }
 
+    // MARK: - Properties
+
+    private lazy var tableView: UITableView = {
+        let tableView = UITableView(frame: .zero, style: .insetGrouped)
+        tableView.dataSource = self
+        tableView.delegate = self
+        tableView.register(UITableViewCell.self, forCellReuseIdentifier: "cell")
+        return tableView
+    }()
+
     // MARK: - Lifecycle
-
-    init() {
-        super.init(style: .insetGrouped)
-    }
-
-    @available(*, unavailable)
-    required init?(coder: NSCoder) {
-        fatalError("init(coder:) has not been implemented")
-    }
 
     override func viewDidLoad() {
         super.viewDidLoad()
         LMKThemeManager.shared.apply(ExampleTheme())
         title = "LumiKit"
         view.backgroundColor = LMKColor.backgroundPrimary
-        tableView.register(UITableViewCell.self, forCellReuseIdentifier: "cell")
+
+        view.addSubview(tableView)
+        tableView.snp.makeConstraints { $0.edges.equalToSuperview() }
     }
 
     // MARK: - Data Source
 
-    override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
+    func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
         Row.allCases.count
     }
 
-    override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
+    func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCell(withIdentifier: "cell", for: indexPath)
         guard let row = Row(rawValue: indexPath.row) else { return cell }
 
@@ -150,7 +159,7 @@ final class ExampleViewController: UITableViewController {
 
     // MARK: - Delegate
 
-    override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
+    func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         tableView.deselectRow(at: indexPath, animated: true)
         guard let row = Row(rawValue: indexPath.row) else { return }
         let detail = row.makeDetailViewController()
