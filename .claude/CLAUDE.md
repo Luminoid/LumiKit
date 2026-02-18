@@ -292,6 +292,40 @@ swift build --target LumiKitCore
 
 ---
 
+## Forced Dark Mode + Status Bar Pattern
+
+View controllers that force dark mode (e.g., photo browser, crop editor) must follow this 3-step pattern:
+
+```swift
+public final class LMKExampleViewController: UIViewController {
+    // 1. Explicitly return .lightContent (don't rely on system inference)
+    override public var preferredStatusBarStyle: UIStatusBarStyle { .lightContent }
+
+    public init() {
+        super.init(nibName: nil, bundle: nil)
+        // 2. Tell UIKit this presented VC controls the status bar
+        modalPresentationCapturesStatusBarAppearance = true
+    }
+
+    override public func viewDidLoad() {
+        super.viewDidLoad()
+        // 3. Force dark appearance on this VC's view hierarchy
+        overrideUserInterfaceStyle = .dark
+    }
+}
+```
+
+**Why all three?**
+- `overrideUserInterfaceStyle = .dark` — forces dark appearance for colors, materials, and vibrancy
+- `preferredStatusBarStyle = .lightContent` — explicit is safer than relying on system inference from interface style
+- `modalPresentationCapturesStatusBarAppearance = true` — required for modally presented VCs to control the status bar; without this, the **presenting** VC's status bar style is used
+
+**UINavigationController gotcha**: UIKit asks the **container** (not the child) for `preferredStatusBarStyle`. If a forced-dark VC is embedded in a navigation controller, either:
+- Subclass the nav controller and override `childForStatusBarStyle` to return `topViewController`
+- Or set `navigationBar.barStyle = .black` to force light status bar content
+
+---
+
 ## Adding New Tokens / Components
 
 1. **New design token**: Add to appropriate `LMK*Theme` config struct + proxy in the token enum

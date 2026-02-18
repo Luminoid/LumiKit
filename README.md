@@ -15,18 +15,20 @@ Shared Swift Package providing **design tokens**, **UI components**, and **utili
 7. [Components](#components)
 8. [Controls](#controls)
 9. [Extensions](#extensions)
-10. [Core Utilities](#core-utilities)
-11. [Photo](#photo)
-12. [Share](#share)
-13. [QR Code](#qr-code)
-14. [Error Handling](#error-handling)
-15. [Build & Test](#build--test)
-16. [Release](#release)
-17. [Dependencies](#dependencies)
-18. [Built with LumiKit](#built-with-lumikit)
-19. [TODO](#todo)
-20. [License](#license)
-21. [Changelog](#changelog)
+10. [Animation & Haptics](#animation--haptics)
+11. [Core Utilities](#core-utilities)
+12. [UI Utilities](#ui-utilities)
+13. [Photo](#photo)
+14. [Share](#share)
+15. [QR Code](#qr-code)
+16. [Error Handling](#error-handling)
+17. [Build & Test](#build--test)
+18. [Release](#release)
+19. [Dependencies](#dependencies)
+20. [Built with LumiKit](#built-with-lumikit)
+21. [TODO](#todo)
+22. [License](#license)
+23. [Changelog](#changelog)
 
 ---
 
@@ -299,6 +301,16 @@ All UIKit extensions use the `lmk_` prefix to avoid naming conflicts.
 
 ---
 
+## Animation & Haptics
+
+| Utility | Purpose |
+|---------|---------|
+| `LMKAnimationHelper` | Centralized animation timing with Reduce Motion support (`shouldAnimate`), spring damping, and duration presets |
+| `LMKAnimationTheme` | Configurable animation token struct (durations, spring parameters) via `LMKThemeManager` |
+| `LMKHapticFeedbackHelper` | Haptic feedback helpers — light, medium, heavy impact and success/error notification feedback |
+
+---
+
 ## Core Utilities
 
 LumiKitCore provides Foundation-only utilities with zero dependencies:
@@ -318,6 +330,19 @@ LumiKitCore provides Foundation-only utilities with zero dependencies:
 
 ---
 
+## UI Utilities
+
+LumiKitUI includes device-aware helpers and system observers:
+
+| Utility | Purpose |
+|---------|---------|
+| `LMKDeviceHelper` | Device type detection (`.iPhone`, `.iPad`, `.macCatalyst`), screen size classification, notch detection |
+| `LMKKeyboardObserver` | Keyboard show/hide observer with height and animation duration info |
+| `LMKImageUtil` | SF Symbol creation and `CVPixelBuffer` to JPEG conversion |
+| `LMKSceneUtil` | Key window and connected scene retrieval |
+
+---
+
 ## Photo
 
 | Component | Purpose |
@@ -325,6 +350,8 @@ LumiKitCore provides Foundation-only utilities with zero dependencies:
 | `LMKPhotoBrowserViewController` | Full-screen photo browser with zoom and swipe navigation |
 | `LMKPhotoCropViewController` | Photo cropping with aspect ratio support |
 | `LMKPhotoEXIFService` | EXIF date and GPS extraction from UIImage or PHPickerResult |
+
+Both photo view controllers force dark mode (`overrideUserInterfaceStyle = .dark`) and set `preferredStatusBarStyle = .lightContent`. They handle `modalPresentationCapturesStatusBarAppearance` automatically, so the status bar is correct when presented modally. If you embed them in a `UINavigationController`, override `childForStatusBarStyle` on the nav controller to return `topViewController`.
 
 ---
 
