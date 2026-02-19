@@ -211,7 +211,7 @@ public final class LMKPhotoCropViewController: UIViewController {
     // MARK: - Setup
 
     private func setupUI() {
-        view.backgroundColor = LMKColor.black
+        view.backgroundColor = LMKColor.photoBrowserBackground
 
         // Cancel button
         cancelButton.setImage(UIImage(systemName: "xmark"), for: .normal)
@@ -258,7 +258,7 @@ public final class LMKPhotoCropViewController: UIViewController {
         view.addSubview(imageView)
 
         // Overlay view for darkening outside crop area
-        overlayView.backgroundColor = LMKColor.black.withAlphaComponent(LMKAlpha.overlay)
+        overlayView.backgroundColor = LMKColor.photoBrowserBackground.withAlphaComponent(LMKAlpha.overlay)
         overlayView.isUserInteractionEnabled = false
         view.addSubview(overlayView)
         overlayView.snp.makeConstraints { make in
@@ -299,10 +299,10 @@ public final class LMKPhotoCropViewController: UIViewController {
         }
         aspectRatioControl.selectedSegmentIndex = 0
         aspectRatioControl.addTarget(self, action: #selector(aspectRatioChanged), for: .valueChanged)
-        aspectRatioControl.backgroundColor = LMKColor.black.withAlphaComponent(LMKAlpha.overlayStrong)
+        aspectRatioControl.backgroundColor = LMKColor.photoBrowserBackground.withAlphaComponent(LMKAlpha.overlayStrong)
         aspectRatioControl.selectedSegmentTintColor = LMKColor.white
         aspectRatioControl.setTitleTextAttributes([.foregroundColor: LMKColor.white], for: .normal)
-        aspectRatioControl.setTitleTextAttributes([.foregroundColor: LMKColor.black], for: .selected)
+        aspectRatioControl.setTitleTextAttributes([.foregroundColor: LMKColor.photoBrowserBackground], for: .selected)
         aspectRatioControl.isUserInteractionEnabled = true
         view.addSubview(aspectRatioControl)
         aspectRatioControl.snp.makeConstraints { make in
