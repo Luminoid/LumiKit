@@ -193,7 +193,7 @@ LMKThemeManager.shared.apply(spacing: .init(large: 20))
 | `LMKEnumSelectionBottomSheet` | `final class` | Generic bottom sheet for selecting from an enum's cases |
 | `LMKGradientView` | `final class` | CAGradientLayer-backed view with 4 direction options |
 | `LMKLoadingStateView` | `final class` | Loading indicator with optional message |
-| `LMKProgressViewController` | `final class` | Progress indicator view controller |
+| `LMKProgressViewController` | `final class` | Blocking progress modal (`.determinate` with progress bar, `.indeterminate` spinner-only) |
 | `LMKSearchBar` | `final class` | Search bar with configurable strings |
 | `LMKSkeletonCell` | `final class` | Skeleton loading placeholder cell |
 | `LMKToastView` | `final class` | Auto-dismissing toast notification |

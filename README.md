@@ -259,7 +259,7 @@ LMKThemeManager.shared.apply(spacing: .init(large: 20))
 | `LMKEnumSelectionBottomSheet` | Bottom sheet for selecting from an enum's cases |
 | `LMKGradientView` | `CAGradientLayer`-backed view with 4 direction options |
 | `LMKLoadingStateView` | Loading indicator with optional message |
-| `LMKProgressViewController` | Progress indicator view controller |
+| `LMKProgressViewController` | Blocking progress modal (`.determinate` with progress bar, `.indeterminate` spinner-only) |
 | `LMKSearchBar` | Search bar with configurable placeholder and cancel text |
 | `LMKSkeletonCell` | Skeleton loading placeholder cell |
 | `LMKToastView` | Auto-dismissing toast notification |

@@ -11,6 +11,16 @@ import UIKit
 
 /// Blocking progress view controller with activity indicator, progress bar, and cancel button.
 public final class LMKProgressViewController: UIViewController {
+    // MARK: - Types
+
+    /// Display style for the progress view.
+    /// - `determinate`: Shows progress bar and percentage (for operations with progress tracking).
+    /// - `indeterminate`: Shows only spinner and title (for single-shot async operations).
+    public enum Style {
+        case determinate
+        case indeterminate
+    }
+
     // MARK: - Layout Constants
 
     private static let containerWidth: CGFloat = 280
@@ -90,9 +100,12 @@ public final class LMKProgressViewController: UIViewController {
     private var lastAnnouncementTime: Date = .distantPast
     private static let announcementThrottleInterval: TimeInterval = 2.0
 
+    private let style: Style
+
     // MARK: - Initialization
 
-    public init(title: String) {
+    public init(title: String, style: Style = .determinate) {
+        self.style = style
         super.init(nibName: nil, bundle: nil)
         titleLabel.text = title
         modalPresentationStyle = .overFullScreen
@@ -150,28 +163,37 @@ public final class LMKProgressViewController: UIViewController {
             make.leading.trailing.equalToSuperview().inset(Self.horizontalInsets)
         }
 
-        containerView.addSubview(taskLabel)
-        taskLabel.snp.makeConstraints { make in
-            make.top.equalTo(titleLabel.snp.bottom).offset(Self.titleToTaskSpacing)
-            make.leading.trailing.equalToSuperview().inset(Self.horizontalInsets)
-        }
+        // Anchor for the cancel button changes based on style
+        let cancelTopAnchor: ConstraintItem
 
-        containerView.addSubview(progressView)
-        progressView.snp.makeConstraints { make in
-            make.top.equalTo(taskLabel.snp.bottom).offset(Self.taskToProgressSpacing)
-            make.leading.trailing.equalToSuperview().inset(Self.horizontalInsets)
-            make.height.equalTo(Self.progressBarHeight)
-        }
+        if style == .determinate {
+            containerView.addSubview(taskLabel)
+            taskLabel.snp.makeConstraints { make in
+                make.top.equalTo(titleLabel.snp.bottom).offset(Self.titleToTaskSpacing)
+                make.leading.trailing.equalToSuperview().inset(Self.horizontalInsets)
+            }
 
-        containerView.addSubview(progressLabel)
-        progressLabel.snp.makeConstraints { make in
-            make.top.equalTo(progressView.snp.bottom).offset(Self.progressToLabelSpacing)
-            make.leading.trailing.equalToSuperview().inset(Self.horizontalInsets)
+            containerView.addSubview(progressView)
+            progressView.snp.makeConstraints { make in
+                make.top.equalTo(taskLabel.snp.bottom).offset(Self.taskToProgressSpacing)
+                make.leading.trailing.equalToSuperview().inset(Self.horizontalInsets)
+                make.height.equalTo(Self.progressBarHeight)
+            }
+
+            containerView.addSubview(progressLabel)
+            progressLabel.snp.makeConstraints { make in
+                make.top.equalTo(progressView.snp.bottom).offset(Self.progressToLabelSpacing)
+                make.leading.trailing.equalToSuperview().inset(Self.horizontalInsets)
+            }
+
+            cancelTopAnchor = progressLabel.snp.bottom
+        } else {
+            cancelTopAnchor = titleLabel.snp.bottom
         }
 
         containerView.addSubview(cancelButton)
         cancelButton.snp.makeConstraints { make in
-            make.top.equalTo(progressLabel.snp.bottom).offset(Self.labelToButtonSpacing)
+            make.top.equalTo(cancelTopAnchor).offset(Self.labelToButtonSpacing)
             make.centerX.equalToSuperview()
             make.bottom.equalToSuperview().offset(-Self.bottomOffset)
         }
