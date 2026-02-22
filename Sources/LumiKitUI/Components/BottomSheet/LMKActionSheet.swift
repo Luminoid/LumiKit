@@ -25,7 +25,7 @@ import UIKit
 ///     ]
 /// )
 /// ```
-public final class LMKActionSheet: UIViewController {
+public final class LMKActionSheet: LMKBottomSheetController {
     // MARK: - Types
 
     /// Visual style for an action row.
@@ -66,36 +66,11 @@ public final class LMKActionSheet: UIViewController {
     private let customContentHeight: CGFloat
     private let confirmText: String?
     private let confirmHandler: (() -> Void)?
-    private let cancelText: String
-    private let onDismiss: (() -> Void)?
+    private let onDismissCallback: (() -> Void)?
 
-    private var containerBottomConstraint: Constraint?
     private var actionRows: [ActionRowView] = []
 
     // MARK: - Lazy Views
-
-    private lazy var dimmingView: UIView = {
-        let view = UIView()
-        view.backgroundColor = LMKColor.black.withAlphaComponent(LMKAlpha.dimmingOverlay)
-        view.alpha = 0
-        view.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(dimmingViewTapped)))
-        return view
-    }()
-
-    private lazy var containerView: UIView = {
-        let view = UIView()
-        view.backgroundColor = LMKColor.backgroundPrimary
-        view.layer.cornerRadius = LMKCornerRadius.large
-        view.layer.maskedCorners = [.layerMinXMinYCorner, .layerMaxXMinYCorner]
-        return view
-    }()
-
-    private lazy var dragIndicator: UIView = {
-        let view = UIView()
-        view.backgroundColor = LMKColor.divider
-        view.layer.cornerRadius = LMKBottomSheetLayout.dragIndicatorCornerRadius
-        return view
-    }()
 
     private lazy var scrollView: UIScrollView = {
         let sv = UIScrollView()
@@ -135,17 +110,6 @@ public final class LMKActionSheet: UIViewController {
         return button
     }()
 
-    private lazy var cancelButton: UIButton = {
-        let button = UIButton(type: .system)
-        button.setTitle(cancelText, for: .normal)
-        button.titleLabel?.font = LMKTypography.bodyMedium
-        button.setTitleColor(LMKColor.textPrimary, for: .normal)
-        button.backgroundColor = LMKColor.backgroundSecondary
-        button.layer.cornerRadius = LMKCornerRadius.medium
-        button.addTarget(self, action: #selector(cancelTapped), for: .touchUpInside)
-        return button
-    }()
-
     // MARK: - Initialization
 
     /// Create an action sheet with a list of actions.
@@ -165,9 +129,8 @@ public final class LMKActionSheet: UIViewController {
         self.customContentHeight = 0
         self.confirmText = confirmTitle
         self.confirmHandler = onConfirm
-        self.cancelText = cancelTitle ?? LMKAlertPresenter.strings.cancel
-        self.onDismiss = onDismiss
-        super.init(nibName: nil, bundle: nil)
+        self.onDismissCallback = onDismiss
+        super.init(cancelTitle: cancelTitle)
     }
 
     /// Create an action sheet with custom content and actions.
@@ -189,63 +152,13 @@ public final class LMKActionSheet: UIViewController {
         self.customContentHeight = contentHeight
         self.confirmText = confirmTitle
         self.confirmHandler = onConfirm
-        self.cancelText = cancelTitle ?? LMKAlertPresenter.strings.cancel
-        self.onDismiss = onDismiss
-        super.init(nibName: nil, bundle: nil)
+        self.onDismissCallback = onDismiss
+        super.init(cancelTitle: cancelTitle)
     }
 
-    @available(*, unavailable)
-    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+    // MARK: - Sheet Content
 
-    // MARK: - Lifecycle
-
-    override public func viewDidLoad() {
-        super.viewDidLoad()
-        setupUI()
-        registerForTraitChanges([UITraitUserInterfaceStyle.self]) { (self: LMKActionSheet, _: UITraitCollection) in
-            self.refreshDynamicColors()
-        }
-    }
-
-    override public func viewDidAppear(_ animated: Bool) {
-        super.viewDidAppear(animated)
-        animateIn()
-    }
-
-    // MARK: - Setup
-
-    private func setupUI() {
-        view.backgroundColor = .clear
-
-        view.addSubview(dimmingView)
-        dimmingView.snp.makeConstraints { make in make.edges.equalToSuperview() }
-
-        view.addSubview(containerView)
-        let screenHeight = view.window?.windowScene?.screen.bounds.height
-            ?? LMKSceneUtil.getKeyWindow()?.screen.bounds.height
-            ?? view.bounds.height
-        let maxHeight = screenHeight * LMKBottomSheetLayout.maxScreenHeightRatio
-        containerView.snp.makeConstraints { make in
-            make.leading.trailing.equalToSuperview()
-            make.height.lessThanOrEqualTo(maxHeight)
-            containerBottomConstraint = make.bottom.equalToSuperview().offset(maxHeight).constraint
-        }
-
-        containerView.addSubview(dragIndicator)
-        dragIndicator.snp.makeConstraints { make in
-            make.top.equalToSuperview().offset(LMKSpacing.small)
-            make.centerX.equalToSuperview()
-            make.width.equalTo(LMKBottomSheetLayout.dragIndicatorWidth)
-            make.height.equalTo(LMKBottomSheetLayout.dragIndicatorHeight)
-        }
-
-        containerView.addSubview(cancelButton)
-        cancelButton.snp.makeConstraints { make in
-            make.leading.trailing.equalToSuperview().inset(LMKSpacing.xl)
-            make.bottom.equalTo(containerView.safeAreaLayoutGuide.snp.bottom).inset(LMKSpacing.xl)
-            make.height.equalTo(LMKBottomSheetLayout.buttonHeight)
-        }
-
+    override public func setupSheetContent() {
         let scrollBottomAnchor: ConstraintRelatableTarget
         if confirmText != nil {
             containerView.addSubview(confirmButton)
@@ -276,10 +189,10 @@ public final class LMKActionSheet: UIViewController {
             make.height.equalTo(contentStackView).priority(.high)
         }
 
-        setupContent()
+        setupActionContent()
     }
 
-    private func setupContent() {
+    private func setupActionContent() {
         if let titleText {
             titleLabel.text = titleText
             let wrapper = makeInsetWrapper(for: titleLabel)
@@ -337,44 +250,24 @@ public final class LMKActionSheet: UIViewController {
 
     // MARK: - Dynamic Colors
 
-    private func refreshDynamicColors() {
-        dimmingView.backgroundColor = LMKColor.black.withAlphaComponent(LMKAlpha.dimmingOverlay)
-        containerView.backgroundColor = LMKColor.backgroundPrimary
-        dragIndicator.backgroundColor = LMKColor.divider
+    override public func refreshSheetColors() {
         titleLabel.textColor = LMKColor.textPrimary
         messageLabel.textColor = LMKColor.textSecondary
         if confirmText != nil {
             confirmButton.setTitleColor(LMKColor.white, for: .normal)
             confirmButton.backgroundColor = LMKColor.primary
         }
-        cancelButton.setTitleColor(LMKColor.textPrimary, for: .normal)
-        cancelButton.backgroundColor = LMKColor.backgroundSecondary
         for row in actionRows {
             row.refreshColors()
         }
     }
 
-    // MARK: - Animation
-
-    private func animateIn() {
-        containerBottomConstraint?.update(offset: 0)
-        let duration = LMKAnimationHelper.shouldAnimate ? LMKAnimationHelper.Duration.modalPresentation : 0
-        UIView.animate(withDuration: duration, delay: 0, options: .curveEaseOut) {
-            self.view.layoutIfNeeded()
-            self.dimmingView.alpha = 1
-        }
-    }
-
-    private func animateOut(completion: @escaping () -> Void) {
-        containerBottomConstraint?.update(offset: containerView.frame.height)
-        let duration = LMKAnimationHelper.shouldAnimate ? LMKAnimationHelper.Duration.actionSheet : 0
-        UIView.animate(withDuration: duration, delay: 0, options: .curveEaseIn) {
-            self.view.layoutIfNeeded()
-            self.dimmingView.alpha = 0
-        } completion: { _ in completion() }
-    }
-
     // MARK: - Actions
+
+    override public func onDismissTapped() {
+        onDismissCallback?()
+        dismissSheet()
+    }
 
     @objc private func confirmTapped() {
         let handler = confirmHandler
@@ -382,31 +275,10 @@ public final class LMKActionSheet: UIViewController {
         handler?()
     }
 
-    @objc private func cancelTapped() {
-        onDismiss?()
-        dismissSheet()
-    }
-
-    @objc private func dimmingViewTapped() {
-        onDismiss?()
-        dismissSheet()
-    }
-
     private func actionTapped(at index: Int) {
         let action = sheetActions[index]
         dismissSheet()
         action.handler()
-    }
-
-    // MARK: - Dismissal
-
-    private func dismissSheet() {
-        animateOut { [weak self] in
-            guard let self else { return }
-            self.willMove(toParent: nil)
-            self.view.removeFromSuperview()
-            self.removeFromParent()
-        }
     }
 
     // MARK: - Static Convenience
@@ -459,14 +331,6 @@ public final class LMKActionSheet: UIViewController {
             onDismiss: onDismiss
         )
         addAsChild(sheet, in: viewController)
-    }
-
-    private static func addAsChild(_ sheet: LMKActionSheet, in parent: UIViewController) {
-        parent.addChild(sheet)
-        sheet.view.frame = parent.view.bounds
-        sheet.view.autoresizingMask = [.flexibleWidth, .flexibleHeight]
-        parent.view.addSubview(sheet.view)
-        sheet.didMove(toParent: parent)
     }
 }
 

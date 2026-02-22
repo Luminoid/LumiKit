@@ -15,12 +15,18 @@ public nonisolated protocol LMKEnumSelectable {
 }
 
 /// Bottom sheet for selecting from a list of `LMKEnumSelectable` options.
-public final class LMKEnumSelectionBottomSheet<T: Equatable & LMKEnumSelectable>: UIViewController, UITableViewDataSource, UITableViewDelegate {
-    // MARK: - Layout Constants
-
-    private static var headerHeight: CGFloat { LMKSpacing.xxl + LMKSpacing.xl + LMKSpacing.large }
-    private static var footerHeight: CGFloat { LMKSpacing.large + LMKBottomSheetLayout.buttonHeight + LMKSpacing.xl }
-
+///
+/// Usage:
+/// ```swift
+/// LMKEnumSelectionBottomSheet.present(
+///     in: self,
+///     title: "Sort By",
+///     options: SortOption.allCases,
+///     currentSelection: viewModel.sortOption,
+///     onSelect: { option in viewModel.sortOption = option }
+/// )
+/// ```
+public final class LMKEnumSelectionBottomSheet<T: Equatable & LMKEnumSelectable>: LMKBottomSheetController, UITableViewDataSource, UITableViewDelegate {
     // MARK: - Properties
 
     private let titleText: String
@@ -29,30 +35,7 @@ public final class LMKEnumSelectionBottomSheet<T: Equatable & LMKEnumSelectable>
     private let onSelect: (T) -> Void
     private let showIcons: Bool
 
-    private var containerBottomConstraint: Constraint?
-
-    private lazy var dimmingView: UIView = {
-        let view = UIView()
-        view.backgroundColor = LMKColor.black.withAlphaComponent(LMKAlpha.dimmingOverlay)
-        view.alpha = 0
-        view.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(dimmingViewTapped)))
-        return view
-    }()
-
-    private lazy var containerView: UIView = {
-        let view = UIView()
-        view.backgroundColor = LMKColor.backgroundPrimary
-        view.layer.cornerRadius = LMKCornerRadius.large
-        view.layer.maskedCorners = [.layerMinXMinYCorner, .layerMaxXMinYCorner]
-        return view
-    }()
-
-    private lazy var dragIndicator: UIView = {
-        let view = UIView()
-        view.backgroundColor = LMKColor.divider
-        view.layer.cornerRadius = LMKBottomSheetLayout.dragIndicatorCornerRadius
-        return view
-    }()
+    // MARK: - Lazy Views
 
     private lazy var titleLabel: UILabel = {
         let label = UILabel()
@@ -74,16 +57,7 @@ public final class LMKEnumSelectionBottomSheet<T: Equatable & LMKEnumSelectable>
         return tv
     }()
 
-    private lazy var cancelButton: UIButton = {
-        let button = UIButton(type: .system)
-        button.setTitle(LMKAlertPresenter.strings.cancel, for: .normal)
-        button.titleLabel?.font = LMKTypography.bodyMedium
-        button.setTitleColor(LMKColor.textPrimary, for: .normal)
-        button.backgroundColor = LMKColor.backgroundSecondary
-        button.layer.cornerRadius = LMKCornerRadius.medium
-        button.addTarget(self, action: #selector(cancelTapped), for: .touchUpInside)
-        return button
-    }()
+    // MARK: - Initialization
 
     public init(title: String, options: [T], currentSelection: T, showIcons: Bool = false, onSelect: @escaping (T) -> Void) {
         self.titleText = title
@@ -91,77 +65,16 @@ public final class LMKEnumSelectionBottomSheet<T: Equatable & LMKEnumSelectable>
         self.currentSelection = currentSelection
         self.showIcons = showIcons
         self.onSelect = onSelect
-        super.init(nibName: nil, bundle: nil)
+        super.init()
     }
 
-    @available(*, unavailable)
-    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+    // MARK: - Sheet Content
 
-    override public func viewDidLoad() {
-        super.viewDidLoad()
-        setupUI()
-        registerForTraitChanges([UITraitUserInterfaceStyle.self]) { (self: LMKEnumSelectionBottomSheet, _: UITraitCollection) in
-            self.refreshDynamicColors()
-        }
-    }
-
-    private func refreshDynamicColors() {
-        dimmingView.backgroundColor = LMKColor.black.withAlphaComponent(LMKAlpha.dimmingOverlay)
-        containerView.backgroundColor = LMKColor.backgroundPrimary
-        dragIndicator.backgroundColor = LMKColor.divider
-        titleLabel.textColor = LMKColor.textPrimary
-        cancelButton.setTitleColor(LMKColor.textPrimary, for: .normal)
-        cancelButton.backgroundColor = LMKColor.backgroundSecondary
-        tableView.reloadData()
-    }
-
-    override public func viewDidAppear(_ animated: Bool) {
-        super.viewDidAppear(animated)
-        animateIn()
-    }
-
-    private var computedHeight: CGFloat {
-        let contentHeight = Self.headerHeight + LMKBottomSheetLayout.rowHeight * CGFloat(options.count) + Self.footerHeight
-        let screenHeight = view.window?.windowScene?.screen.bounds.height
-            ?? LMKSceneUtil.getKeyWindow()?.screen.bounds.height
-            ?? view.bounds.height
-        let maxHeight = screenHeight * LMKBottomSheetLayout.maxScreenHeightRatio
-        return min(contentHeight, maxHeight)
-    }
-
-    private func setupUI() {
-        view.backgroundColor = .clear
-
-        view.addSubview(dimmingView)
-        dimmingView.snp.makeConstraints { make in make.edges.equalToSuperview() }
-
-        view.addSubview(containerView)
-        let finalHeight = computedHeight
-        containerView.snp.makeConstraints { make in
-            make.leading.trailing.equalToSuperview()
-            make.height.equalTo(finalHeight)
-            containerBottomConstraint = make.bottom.equalToSuperview().offset(finalHeight).constraint
-        }
-
-        containerView.addSubview(dragIndicator)
-        dragIndicator.snp.makeConstraints { make in
-            make.top.equalToSuperview().offset(LMKSpacing.small)
-            make.centerX.equalToSuperview()
-            make.width.equalTo(LMKBottomSheetLayout.dragIndicatorWidth)
-            make.height.equalTo(LMKBottomSheetLayout.dragIndicatorHeight)
-        }
-
+    override public func setupSheetContent() {
         containerView.addSubview(titleLabel)
         titleLabel.snp.makeConstraints { make in
-            make.top.equalToSuperview().offset(LMKSpacing.xxl)
+            make.top.equalTo(dragIndicator.snp.bottom).offset(LMKSpacing.large)
             make.leading.trailing.equalToSuperview().inset(LMKSpacing.xl)
-        }
-
-        containerView.addSubview(cancelButton)
-        cancelButton.snp.makeConstraints { make in
-            make.leading.trailing.equalToSuperview().inset(LMKSpacing.xl)
-            make.bottom.equalToSuperview().inset(LMKSpacing.xl)
-            make.height.equalTo(LMKBottomSheetLayout.buttonHeight)
         }
 
         containerView.addSubview(tableView)
@@ -170,36 +83,19 @@ public final class LMKEnumSelectionBottomSheet<T: Equatable & LMKEnumSelectable>
             make.leading.trailing.equalToSuperview()
             make.bottom.equalTo(cancelButton.snp.top).offset(-LMKSpacing.large)
         }
-    }
 
-    private func animateIn() {
-        containerBottomConstraint?.update(offset: 0)
-        let duration = LMKAnimationHelper.shouldAnimate ? LMKAnimationHelper.Duration.modalPresentation : 0
-        UIView.animate(withDuration: duration, delay: 0, options: .curveEaseOut) {
-            self.view.layoutIfNeeded()
-            self.dimmingView.alpha = 1
+        // Preferred table height based on content; shrinks if capped by max height.
+        let tableHeight = LMKBottomSheetLayout.rowHeight * CGFloat(options.count)
+        tableView.snp.makeConstraints { make in
+            make.height.equalTo(tableHeight).priority(.high)
         }
     }
 
-    private func animateOut(completion: @escaping () -> Void) {
-        containerBottomConstraint?.update(offset: computedHeight)
-        let duration = LMKAnimationHelper.shouldAnimate ? LMKAnimationHelper.Duration.actionSheet : 0
-        UIView.animate(withDuration: duration, delay: 0, options: .curveEaseIn) {
-            self.view.layoutIfNeeded()
-            self.dimmingView.alpha = 0
-        } completion: { _ in completion() }
-    }
+    // MARK: - Dynamic Colors
 
-    @objc private func cancelTapped() { dismissSheet() }
-    @objc private func dimmingViewTapped() { dismissSheet() }
-
-    private func dismissSheet() {
-        animateOut { [weak self] in
-            guard let self else { return }
-            self.willMove(toParent: nil)
-            self.view.removeFromSuperview()
-            self.removeFromParent()
-        }
+    override public func refreshSheetColors() {
+        titleLabel.textColor = LMKColor.textPrimary
+        tableView.reloadData()
     }
 
     // MARK: - UITableViewDataSource
@@ -221,8 +117,31 @@ public final class LMKEnumSelectionBottomSheet<T: Equatable & LMKEnumSelectable>
 
     public func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         tableView.deselectRow(at: indexPath, animated: true)
-        onSelect(options[indexPath.row])
+        let handler = onSelect
+        let option = options[indexPath.row]
         dismissSheet()
+        handler(option)
+    }
+
+    // MARK: - Static Convenience
+
+    /// Present an enum selection bottom sheet.
+    public static func present(
+        in viewController: UIViewController,
+        title: String,
+        options: [T],
+        currentSelection: T,
+        showIcons: Bool = false,
+        onSelect: @escaping (T) -> Void
+    ) {
+        let sheet = LMKEnumSelectionBottomSheet(
+            title: title,
+            options: options,
+            currentSelection: currentSelection,
+            showIcons: showIcons,
+            onSelect: onSelect
+        )
+        addAsChild(sheet, in: viewController)
     }
 }
 

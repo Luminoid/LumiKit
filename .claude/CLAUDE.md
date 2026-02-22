@@ -34,19 +34,31 @@ LumiKit/
 │   ├── LumiKitUI/
 │   │   ├── Alerts/          # LMKAlertPresenter, LMKErrorHandler
 │   │   ├── Animation/       # LMKAnimationHelper, LMKAnimationTheme
-│   │   ├── Components/      # LMKEmptyStateView, LMKToastView, LMKSearchBar, LMKBadgeView,
-│   │   │                    # LMKChipView, LMKDividerView, LMKGradientView, LMKCardView,
-│   │   │                    # LMKBannerView, LMKSkeletonCell, LMKLoadingStateView, etc.
+│   │   ├── Components/
+│   │   │   ├── BottomSheet/  # LMKBottomSheetController (base), LMKActionSheet,
+│   │   │   │                 # LMKEnumSelectionBottomSheet, LMKBottomSheetLayout
+│   │   │   ├── Pickers/      # LMKDatePickerHelper
+│   │   │   └── (root)        # Badge, Banner, Card, Chip, Divider, EmptyState,
+│   │   │                     # Gradient, LoadingState, Progress, SearchBar, Skeleton, Toast
 │   │   ├── Controls/        # LMKButton, LMKSegmentedControl, LMKToggleButton,
 │   │   │                    # LMKTextField, LMKTextView
-│   │   ├── DesignSystem/    # Token enums + Theme configs (see below)
+│   │   ├── DesignSystem/
+│   │   │   ├── Tokens/       # LMKColor, LMKSpacing, LMKCornerRadius, LMKAlpha,
+│   │   │   │                 # LMKLayout, LMKShadow, LMKTypography
+│   │   │   ├── Themes/       # LMKSpacingTheme, LMKCornerRadiusTheme, LMKAlphaTheme,
+│   │   │   │                 # LMKLayoutTheme, LMKShadowTheme, LMKTypographyTheme,
+│   │   │   │                 # LMKBadgeTheme
+│   │   │   ├── Factories/    # LMKButtonFactory, LMKCardFactory, LMKLabelFactory
+│   │   │   └── LMKTheme.swift  # LMKTheme protocol + LMKThemeManager + LMKDefaultTheme
 │   │   ├── Extensions/      # UIKit extensions (lmk_ prefix): UIColor, UIImage, UIView,
 │   │   │                    # UIStackView, UITextField, UIButton, UITableViewCell, etc.
 │   │   ├── Haptics/         # LMKHapticFeedbackHelper
-│   │   ├── Photo/           # LMKPhotoBrowserViewController, LMKPhotoCropViewController, LMKPhotoEXIFService
+│   │   ├── Photo/           # LMKPhotoBrowserViewController, LMKPhotoBrowserCell,
+│   │   │                    # LMKPhotoCropViewController, LMKPhotoEXIFService,
+│   │   │                    # LMKPhotoBrowserConfig
 │   │   ├── QRCode/          # LMKQRCodeGenerator
 │   │   ├── Share/           # LMKShareService, LMKSharePreviewViewController
-│   │   └── Utilities/       # LMKDatePickerHelper, LMKDeviceHelper, LMKKeyboardObserver
+│   │   └── Utilities/       # LMKDeviceHelper, LMKKeyboardObserver, LMKSceneUtil, LMKImageUtil
 │   └── LumiKitLottie/       # LMKLottieRefreshControl
 ├── Tests/
 │   ├── LumiKitCoreTests/    # 60 tests, 10 suites — mirrors Sources/LumiKitCore/ subfolders
@@ -55,23 +67,26 @@ LumiKit/
 │   │   ├── Date/            # DateHelper, DateFormatterHelper
 │   │   ├── File/            # FileUtil
 │   │   └── Validation/      # URLValidator
-│   └── LumiKitUITests/      # 243 tests, 61 suites — mirrors Sources/LumiKitUI/ subfolders
+│   └── LumiKitUITests/      # 243+ tests, 61+ suites — mirrors Sources/LumiKitUI/ subfolders
 │       ├── Alerts/          # AlertPresenter, ErrorHandler
 │       ├── Animation/       # AnimationHelper
-│       ├── Components/      # ActionSheet, Badge, Banner, BottomSheetLayout, Card,
-│       │                    # Chip, Divider, EmptyState, Gradient, LoadingState,
-│       │                    # SearchBar, Skeleton, Toast
+│       ├── Components/
+│       │   ├── BottomSheet/  # BottomSheetController, ActionSheet, BottomSheetLayout
+│       │   ├── Pickers/      # DatePickerHelper
+│       │   └── (root)        # Badge, Banner, Card, Chip, Divider, EmptyState,
+│       │                     # Gradient, LoadingState, SearchBar, Skeleton, Toast
 │       ├── Controls/        # Button, SegmentedControl, TextField, TextView, ToggleButton
-│       ├── DesignSystem/    # ThemeManager, Color, Spacing, CornerRadius, Alpha,
-│       │                    # Typography, Layout, Shadow, AnimationTheme, BadgeTheme,
-│       │                    # ButtonFactory, CardFactory, LabelFactory,
-│       │                    # Sendable compliance, ComponentToken integration
+│       ├── DesignSystem/
+│       │   ├── Tokens/       # Color, Spacing, CornerRadius, Alpha, Typography, Layout, Shadow
+│       │   ├── Themes/       # AnimationTheme, BadgeTheme, SendableCompliance
+│       │   ├── Factories/    # ButtonFactory, CardFactory, LabelFactory
+│       │   └── (root)        # ThemeManager, ComponentToken integration
 │       ├── Extensions/      # UIColor, UIImage, UIStackView,
 │       │                    # UIView (shadow/border/fade/layout)
 │       ├── Photo/           # CropAspectRatio, PhotoEXIF
 │       ├── QRCode/          # QRCodeGenerator
 │       ├── Share/           # SharePreview, ShareService
-│       └── Utilities/       # DatePickerHelper, DeviceHelper, ImageUtil, KeyboardObserver
+│       └── Utilities/       # DeviceHelper, ImageUtil, KeyboardObserver
 ```
 
 ---
@@ -136,24 +151,27 @@ LMKThemeManager.shared.apply(spacing: .init(large: 20))
 
 ```
 DesignSystem/
-├── LMKTheme.swift              # LMKTheme protocol + LMKThemeManager (holds all configs)
-├── LMKColor.swift              # Color proxy -> LMKThemeManager.shared.current
-├── LMKTypography.swift         # Font proxy -> LMKThemeManager.shared.typography
-├── LMKTypographyTheme.swift    # Configuration struct (fontFamily, sizes, weights)
-├── LMKSpacing.swift            # Spacing proxy -> LMKThemeManager.shared.spacing
-├── LMKSpacingTheme.swift       # Configuration struct
-├── LMKCornerRadius.swift       # Corner radius proxy
-├── LMKCornerRadiusTheme.swift  # Configuration struct
-├── LMKAlpha.swift              # Alpha proxy
-├── LMKAlphaTheme.swift         # Configuration struct
-├── LMKLayout.swift             # Layout dimensions proxy
-├── LMKLayoutTheme.swift        # Configuration struct
-├── LMKShadow.swift             # Shadow proxy
-├── LMKShadowTheme.swift        # Configuration struct
-├── LMKBadgeTheme.swift         # Badge sizing configuration struct
-├── LMKButtonFactory.swift      # Factory methods for styled buttons
-├── LMKCardFactory.swift        # Factory methods for card views
-└── LMKLabelFactory.swift       # Factory methods for styled labels
+├── LMKTheme.swift              # LMKTheme protocol + LMKThemeManager + LMKDefaultTheme
+├── Tokens/
+│   ├── LMKColor.swift          # Color proxy -> LMKThemeManager.shared.current
+│   ├── LMKTypography.swift     # Font proxy -> LMKThemeManager.shared.typography
+│   ├── LMKSpacing.swift        # Spacing proxy
+│   ├── LMKCornerRadius.swift   # Corner radius proxy
+│   ├── LMKAlpha.swift          # Alpha proxy
+│   ├── LMKLayout.swift         # Layout dimensions proxy
+│   └── LMKShadow.swift         # Shadow proxy
+├── Themes/
+│   ├── LMKTypographyTheme.swift    # fontFamily, sizes, weights, line heights
+│   ├── LMKSpacingTheme.swift       # 4pt grid values
+│   ├── LMKCornerRadiusTheme.swift  # Corner radius config
+│   ├── LMKAlphaTheme.swift         # Alpha/opacity config
+│   ├── LMKLayoutTheme.swift        # Layout dimensions config
+│   ├── LMKShadowTheme.swift        # Shadow config
+│   └── LMKBadgeTheme.swift         # Badge sizing config
+└── Factories/
+    ├── LMKButtonFactory.swift      # Factory methods for styled buttons
+    ├── LMKCardFactory.swift        # Factory methods for card views
+    └── LMKLabelFactory.swift       # Factory methods for styled labels
 ```
 
 ### Pattern: Token Enum -> Config Struct -> ThemeManager
@@ -183,6 +201,7 @@ LMKThemeManager.shared.apply(spacing: .init(large: 20))
 
 | Component | Type | Purpose |
 |-----------|------|---------|
+| `LMKBottomSheetController` | `open class` | Base class for bottom sheet presentation — shared dimming, container, animation, dismiss |
 | `LMKActionSheet` | `final class` | Custom bottom-sheet action sheet with design-token styling and optional custom content |
 | `LMKBadgeView` | `final class` | Notification count / status dot / custom text badge |
 | `LMKBannerView` | `final class` | Persistent notification bar with optional action & dismiss |
@@ -238,14 +257,20 @@ LMKThemeManager.shared.apply(spacing: .init(large: 20))
 | Component | Type | Purpose |
 |-----------|------|---------|
 | `LMKPhotoBrowserViewController` | `final class` | Full-screen photo browser with zoom, swipe, delete |
+| `LMKPhotoBrowserConfig` | `enum` | Shared configuration constants (e.g. `interPageSpacing`) |
 | `LMKPhotoCropViewController` | `final class` | Square crop editor with pan/zoom |
 | `LMKPhotoEXIFService` | `nonisolated enum` (static) | EXIF date + GPS extraction from UIImage or PHPickerResult |
+
+### Pickers (`Components/Pickers/`)
+
+| Component | Type | Purpose |
+|-----------|------|---------|
+| `LMKDatePickerHelper` | `enum` (static) | Date picker presentation via `LMKActionSheet` — single date (past/future), date range with live enforcement, date with text field. Configurable strings, auto-clamping |
 
 ### Utilities (`Utilities/`)
 
 | Utility | Purpose |
 |---------|---------|
-| `LMKDatePickerHelper` | Date picker presentation via `LMKActionSheet` — single date (past/future), date range with live enforcement, date with text field. Configurable strings, auto-clamping |
 | `LMKDeviceHelper` | Device type (`.iPhone`, `.iPad`, `.macCatalyst`), screen size classification, notch detection |
 | `LMKKeyboardObserver` | Keyboard show/hide observer with height + animation info |
 
@@ -349,4 +374,4 @@ public final class LMKExampleViewController: UIViewController {
 
 ---
 
-*Optimized for Claude Code • Last updated: 2026-02-21*
+*Optimized for Claude Code • Last updated: 2026-02-22*

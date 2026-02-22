@@ -137,21 +137,33 @@ LumiKit/
 │   ├── LumiKitUI/
 │   │   ├── Alerts/            # LMKAlertPresenter, LMKErrorHandler
 │   │   ├── Animation/         # LMKAnimationHelper, LMKAnimationTheme
-│   │   ├── Components/        # EmptyState, Toast, SearchBar, Badge, Chip,
-│   │   │                      # Divider, Gradient, Card, Banner, Skeleton,
-│   │   │                      # ActionSheet, EnumSelectionBottomSheet,
-│   │   │                      # BottomSheetLayout (shared constants), etc.
-│   │   ├── Controls/          # Button, SegmentedControl, ToggleButton,
-│   │   │                      # TextField, TextView
-│   │   ├── DesignSystem/      # Token enums, theme configs, factories
+│   │   ├── Components/
+│   │   │   ├── BottomSheet/   # LMKBottomSheetController (base), LMKActionSheet,
+│   │   │   │                  # LMKEnumSelectionBottomSheet, LMKBottomSheetLayout
+│   │   │   ├── Pickers/       # LMKDatePickerHelper
+│   │   │   ├── LMKBadgeView, LMKBannerView, LMKCardView, LMKChipView,
+│   │   │   ├── LMKDividerView, LMKEmptyStateView, LMKGradientView,
+│   │   │   ├── LMKLoadingStateView, LMKProgressViewController,
+│   │   │   └── LMKSearchBar, LMKSkeletonCell, LMKToastView
+│   │   ├── Controls/          # LMKButton, LMKSegmentedControl, LMKToggleButton,
+│   │   │                      # LMKTextField, LMKTextView
+│   │   ├── DesignSystem/
+│   │   │   ├── Tokens/        # LMKColor, LMKSpacing, LMKCornerRadius, LMKAlpha,
+│   │   │   │                  # LMKLayout, LMKShadow, LMKTypography
+│   │   │   ├── Themes/        # LMKSpacingTheme, LMKCornerRadiusTheme, LMKAlphaTheme,
+│   │   │   │                  # LMKLayoutTheme, LMKShadowTheme, LMKTypographyTheme,
+│   │   │   │                  # LMKBadgeTheme
+│   │   │   ├── Factories/     # LMKButtonFactory, LMKCardFactory, LMKLabelFactory
+│   │   │   └── LMKTheme.swift # LMKTheme protocol + LMKThemeManager + LMKDefaultTheme
 │   │   ├── Extensions/        # UIKit extensions (lmk_ prefix)
 │   │   ├── Haptics/           # LMKHapticFeedbackHelper
-│   │   ├── Photo/             # LMKPhotoBrowserViewController, LMKPhotoCropViewController,
-│   │   │                      # LMKPhotoEXIFService
+│   │   ├── Photo/             # LMKPhotoBrowserViewController, LMKPhotoBrowserCell,
+│   │   │                      # LMKPhotoCropViewController, LMKPhotoEXIFService,
+│   │   │                      # LMKPhotoBrowserConfig
 │   │   ├── QRCode/            # LMKQRCodeGenerator
 │   │   ├── Share/             # LMKShareService, LMKSharePreviewViewController
-│   │   └── Utilities/         # LMKDatePickerHelper, LMKDeviceHelper,
-│   │                          # LMKKeyboardObserver, LMKSceneUtil, LMKImageUtil
+│   │   └── Utilities/         # LMKDeviceHelper, LMKKeyboardObserver,
+│   │                          # LMKSceneUtil, LMKImageUtil
 │   └── LumiKitLottie/         # LMKLottieRefreshControl
 ├── Tests/
 │   ├── LumiKitCoreTests/      # 60 tests, 10 suites
@@ -160,17 +172,20 @@ LumiKit/
 │   │   ├── Date/              # DateHelper, DateFormatterHelper
 │   │   ├── File/              # FileUtil
 │   │   └── Validation/        # URLValidator
-│   └── LumiKitUITests/        # 243 tests, 61 suites
+│   └── LumiKitUITests/        # 243+ tests, 61+ suites
 │       ├── Alerts/            # AlertPresenter, ErrorHandler
 │       ├── Animation/         # AnimationHelper
-│       ├── Components/        # ActionSheet, Badge, Banner, BottomSheetLayout, Card,
-│       │                      # Chip, Divider, EmptyState, Gradient, LoadingState,
-│       │                      # SearchBar, Skeleton, Toast
+│       ├── Components/
+│       │   ├── BottomSheet/   # BottomSheetController, ActionSheet, BottomSheetLayout
+│       │   ├── Pickers/       # DatePickerHelper
+│       │   ├── Badge, Banner, Card, Chip, Divider, EmptyState,
+│       │   └── Gradient, LoadingState, SearchBar, Skeleton, Toast
 │       ├── Controls/          # Button, SegmentedControl, TextField, TextView, ToggleButton
-│       ├── DesignSystem/      # ThemeManager, Color, Spacing, CornerRadius, Alpha,
-│       │                      # Typography, Layout, Shadow, AnimationTheme, BadgeTheme,
-│       │                      # ButtonFactory, CardFactory, LabelFactory,
-│       │                      # Sendable compliance, ComponentToken integration
+│       ├── DesignSystem/
+│       │   ├── Tokens/        # Color, Spacing, CornerRadius, Alpha, Typography, Layout, Shadow
+│       │   ├── Themes/        # AnimationTheme, BadgeTheme, SendableCompliance
+│       │   ├── Factories/     # ButtonFactory, CardFactory, LabelFactory
+│       │   └── ThemeManager, ComponentToken integration
 │       ├── Extensions/        # UIColor, UIImage, UIStackView,
 │       │                      # UIView (shadow/border/fade/layout)
 │       ├── Photo/             # CropAspectRatio, PhotoEXIF
@@ -249,6 +264,7 @@ LMKThemeManager.shared.apply(spacing: .init(large: 20))
 
 | Component | Purpose |
 |-----------|---------|
+| `LMKBottomSheetController` | Base class for bottom sheet presentation with shared dimming, container, animation, and dismiss |
 | `LMKActionSheet` | Custom bottom-sheet action sheet with design-token styling and optional custom content |
 | `LMKBadgeView` | Notification count, status dot, or custom text badge |
 | `LMKBannerView` | Persistent notification bar with optional action and dismiss |
@@ -262,6 +278,7 @@ LMKThemeManager.shared.apply(spacing: .init(large: 20))
 | `LMKProgressViewController` | Blocking progress modal (`.determinate` with progress bar, `.indeterminate` spinner-only) |
 | `LMKSearchBar` | Search bar with configurable placeholder and cancel text |
 | `LMKSkeletonCell` | Skeleton loading placeholder cell |
+| `LMKDatePickerHelper` | Date picker presentation via `LMKActionSheet` — single date, date range, date with text field |
 | `LMKToastView` | Auto-dismissing toast notification |
 
 ---
@@ -336,7 +353,6 @@ LumiKitUI includes device-aware helpers and system observers:
 
 | Utility | Purpose |
 |---------|---------|
-| `LMKDatePickerHelper` | Date picker presentation via `LMKActionSheet` — single date (past/future), date range with live enforcement, date with text field. Configurable strings, auto-clamping |
 | `LMKDeviceHelper` | Device type detection (`.iPhone`, `.iPad`, `.macCatalyst`), screen size classification, notch detection |
 | `LMKKeyboardObserver` | Keyboard show/hide observer with height and animation duration info |
 | `LMKImageUtil` | SF Symbol creation and `CVPixelBuffer` to JPEG conversion |

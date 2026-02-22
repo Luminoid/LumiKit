@@ -351,7 +351,7 @@ public final class LMKPhotoBrowserViewController: UIViewController {
         view.addSubview(collectionView)
         collectionView.snp.makeConstraints { make in
             make.top.bottom.leading.equalToSuperview()
-            make.width.equalToSuperview().offset(lmkPhotoBrowserInterPageSpacing)
+            make.width.equalToSuperview().offset(LMKPhotoBrowserConfig.interPageSpacing)
         }
 
         // Tap: single = toggle overlay, double = zoom (single requires double to fail)
@@ -476,7 +476,7 @@ public final class LMKPhotoBrowserViewController: UIViewController {
         // Cell width = screen width + spacing. The spacing is part of the cell
         // (trailing gap), so minimumLineSpacing can be 0 and paging works perfectly.
         let screenSize = view.bounds.size
-        let cellSize = CGSize(width: screenSize.width + lmkPhotoBrowserInterPageSpacing,
+        let cellSize = CGSize(width: screenSize.width + LMKPhotoBrowserConfig.interPageSpacing,
                               height: screenSize.height)
         if let layout = collectionView.collectionViewLayout as? UICollectionViewFlowLayout {
             layout.itemSize = cellSize
@@ -707,6 +707,9 @@ extension LMKPhotoBrowserViewController: UICollectionViewDataSource {
         cell.onVerticalPanProgressForDismiss = { [weak self] progress in
             self?.updateDismissProgress(progress)
         }
+        cell.onPagingScrollEnabled = { [weak self] enabled in
+            self?.collectionView.isScrollEnabled = enabled
+        }
         cell.onZoomStateChanged = { [weak self] zoomed in
             guard let self else { return }
             if zoomed {
@@ -799,7 +802,7 @@ extension LMKPhotoBrowserViewController: UICollectionViewDelegateFlowLayout {
     public func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, sizeForItemAt indexPath: IndexPath) -> CGSize {
         // Cell width includes the inter-page gap (trailing padding inside the cell).
         // minimumLineSpacing is 0, so cells are contiguous and paging has no offset drift.
-        CGSize(width: view.bounds.width + lmkPhotoBrowserInterPageSpacing,
+        CGSize(width: view.bounds.width + LMKPhotoBrowserConfig.interPageSpacing,
                height: view.bounds.height)
     }
 }

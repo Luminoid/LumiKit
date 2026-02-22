@@ -8,11 +8,15 @@
 import SnapKit
 import UIKit
 
-/// Inter-page gap between photos in the photo browser. The spacing is included within each
-/// cell (cell width = screen width + this value) rather than as layout-level minimumLineSpacing,
-/// because UICollectionViewFlowLayout doesn't add spacing after the last cell — causing an
-/// accumulated offset bug on the final page.
-let lmkPhotoBrowserInterPageSpacing: CGFloat = 16
+/// Shared configuration for the photo browser.
+public enum LMKPhotoBrowserConfig {
+    /// Inter-page gap between photos. The spacing is included within each cell
+    /// (cell width = screen width + this value) rather than as layout-level
+    /// `minimumLineSpacing`, because `UICollectionViewFlowLayout` doesn't add
+    /// spacing after the last cell — causing an accumulated offset bug on the
+    /// final page.
+    public static let interPageSpacing: CGFloat = 16
+}
 
 
 // MARK: - LMKPhotoBrowserCell
@@ -49,6 +53,9 @@ public final class LMKPhotoBrowserCell: UICollectionViewCell {
     public var onVerticalPanProgressForDismiss: ((CGFloat) -> Void)?
     /// Called when zoom state changes: true = zooming in / zoomed, false = back to 1x
     public var onZoomStateChanged: ((Bool) -> Void)?
+    /// Called when the cell needs to enable/disable parent collection view scrolling.
+    /// true = enable scrolling, false = disable scrolling.
+    public var onPagingScrollEnabled: ((Bool) -> Void)?
 
     private let scrollView = UIScrollView()
     private let imageView = UIImageView()
@@ -108,7 +115,7 @@ public final class LMKPhotoBrowserCell: UICollectionViewCell {
             // (cell width = screen width + spacing), so the scroll view fills only
             // the screen-width portion. The trailing gap shows the cell's dark background.
             make.top.bottom.leading.equalToSuperview()
-            make.trailing.equalToSuperview().offset(-lmkPhotoBrowserInterPageSpacing)
+            make.trailing.equalToSuperview().offset(-LMKPhotoBrowserConfig.interPageSpacing)
         }
 
         // Setup image view — clipsToBounds is intentionally false: scaleAspectFit already
@@ -387,6 +394,7 @@ public final class LMKPhotoBrowserCell: UICollectionViewCell {
         onVerticalSwipeToDismiss = nil
         onVerticalPanProgressForDismiss = nil
         onZoomStateChanged = nil
+        onPagingScrollEnabled = nil
     }
 }
 
@@ -499,10 +507,8 @@ extension LMKPhotoBrowserCell: UIScrollViewDelegate {
         isDismissDragActive = false
         // Disable vertical bounce so dismiss-drag can't start during zoom
         scrollView.alwaysBounceVertical = false
-        // Notify parent collection view to disable scrolling
-        if let collectionView = findCollectionView() {
-            collectionView.isScrollEnabled = false
-        }
+        // Notify parent to disable paging while zoomed
+        onPagingScrollEnabled?(false)
         // Auto-hide overlay when zooming begins
         onZoomStateChanged?(true)
     }
@@ -512,9 +518,7 @@ extension LMKPhotoBrowserCell: UIScrollViewDelegate {
         if scale == 1.0 {
             // Restore vertical bounce for dismiss-drag now that zoom is done
             scrollView.alwaysBounceVertical = true
-            if let collectionView = findCollectionView() {
-                collectionView.isScrollEnabled = true
-            }
+            onPagingScrollEnabled?(true)
             // Snap to center when zoom returns to 1.0
             snapToCenterIfNeeded(animated: true)
             // Restore overlay when zoom returns to 1x (skip if sub-1x spring animation is in progress)
@@ -524,16 +528,6 @@ extension LMKPhotoBrowserCell: UIScrollViewDelegate {
         }
     }
 
-    private func findCollectionView() -> UICollectionView? {
-        var superview = self.superview
-        while superview != nil {
-            if let collectionView = superview as? UICollectionView {
-                return collectionView
-            }
-            superview = superview?.superview
-        }
-        return nil
-    }
 }
 
 // MARK: - UIGestureRecognizerDelegate (LMKPhotoBrowserCell)
