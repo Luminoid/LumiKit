@@ -213,9 +213,9 @@ public final class LMKUserTipView: UIView {
             make.leading.trailing.equalToSuperview().inset(LMKSpacing.large)
         }
 
-        // Arrow layer (hidden until pointed style is applied)
+        // Arrow layer on bubbleView so it inherits bubble's alpha animation
         arrowLayer.isHidden = true
-        layer.addSublayer(arrowLayer)
+        bubbleView.layer.addSublayer(arrowLayer)
 
         // Accessibility
         isAccessibilityElement = false
@@ -348,24 +348,26 @@ public final class LMKUserTipView: UIView {
     // MARK: - Arrow
 
     private func drawArrow(direction: LMKUserTipArrowDirection, sourceFrame: CGRect) {
-        let bubbleFrame = bubbleView.convert(bubbleView.bounds, to: self)
+        // Convert sourceFrame from self's coordinate space to bubbleView's coordinate space
+        let sourceInBubble = convert(sourceFrame, to: bubbleView)
+        let bubbleBounds = bubbleView.bounds
         let arrowW = LMKUserTipLayout.arrowWidth
         let arrowH = LMKUserTipLayout.arrowHeight
         let r = LMKUserTipLayout.arrowTipRadius
 
-        // Arrow X in self's coordinate space, centered on source
-        let arrowCenterX = sourceFrame.midX
-        let bubbleMinX = bubbleFrame.minX + LMKCornerRadius.medium + arrowW / 2
-        let bubbleMaxX = bubbleFrame.maxX - LMKCornerRadius.medium - arrowW / 2
+        // Arrow X in bubbleView's coordinate space, centered on source
+        let arrowCenterX = sourceInBubble.midX
+        let bubbleMinX = bubbleBounds.minX + LMKCornerRadius.medium + arrowW / 2
+        let bubbleMaxX = bubbleBounds.maxX - LMKCornerRadius.medium - arrowW / 2
         let clampedCenterX = min(max(arrowCenterX, bubbleMinX), bubbleMaxX)
 
         let path = UIBezierPath()
 
         switch direction {
         case .up:
-            let baseY = bubbleFrame.minY
+            // Arrow sits above bubble's top edge (extends beyond bounds)
+            let baseY = bubbleBounds.minY
             let tipY = baseY - arrowH
-            // Left base → tip (with rounded top) → right base
             path.move(to: CGPoint(x: clampedCenterX - arrowW / 2, y: baseY))
             path.addLine(to: CGPoint(x: clampedCenterX - r, y: tipY + r))
             path.addQuadCurve(
@@ -376,7 +378,8 @@ public final class LMKUserTipView: UIView {
             path.close()
 
         case .down:
-            let baseY = bubbleFrame.maxY
+            // Arrow sits below bubble's bottom edge (extends beyond bounds)
+            let baseY = bubbleBounds.maxY
             let tipY = baseY + arrowH
             path.move(to: CGPoint(x: clampedCenterX - arrowW / 2, y: baseY))
             path.addLine(to: CGPoint(x: clampedCenterX - r, y: tipY - r))
@@ -408,7 +411,6 @@ public final class LMKUserTipView: UIView {
 
         dimmingView.alpha = 0
         bubbleView.alpha = 0
-        arrowLayer.opacity = 0
 
         if shouldAnimate {
             switch style {
@@ -419,6 +421,7 @@ public final class LMKUserTipView: UIView {
             }
         }
 
+        // Arrow is a sublayer of bubbleView, so it inherits bubbleView's alpha
         UIView.animate(
             withDuration: duration,
             delay: 0,
@@ -431,14 +434,6 @@ public final class LMKUserTipView: UIView {
                 self.bubbleView.transform = .identity
             }
         )
-
-        // Fade arrow separately (CALayer)
-        let arrowFade = CABasicAnimation(keyPath: "opacity")
-        arrowFade.fromValue = 0
-        arrowFade.toValue = 1
-        arrowFade.duration = shouldAnimate ? duration : 0
-        arrowLayer.opacity = 1
-        arrowLayer.add(arrowFade, forKey: "fadeIn")
     }
 
     // MARK: - Actions
