@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="Example/Resources/Assets.xcassets/AppIcon.appiconset/app_icon.png" width="128" alt="LumiKit">
+</p>
+
 # LumiKit
 
 Shared Swift Package providing **design tokens**, **UI components**, and **utilities** for Lumi apps. Built with Swift 6.2 strict concurrency, UIKit + SnapKit, and a fully configurable theming system.
@@ -42,7 +46,7 @@ LumiKit is organized into three targets so apps can import only what they need:
 | **LumiKitUI** | LumiKitCore + SnapKit | Design system tokens, theme manager, animation, haptics, alerts, components, controls, photo browser/crop, UIKit extensions |
 | **LumiKitLottie** | LumiKitUI + Lottie | Lottie-powered pull-to-refresh control |
 
-**81 source files** across 3 targets, with **303 tests** (60 Core + 243 UI) across 71 suites.
+**83 source files** across 3 targets, with **340 tests** (60 Core + 280 UI) across 74 suites.
 
 ---
 
@@ -117,7 +121,7 @@ xcodegen generate
 open LumiKitExample.xcodeproj
 ```
 
-The example includes 15 interactive pages: Typography, Colors, Cards, Badges, Chips, Empty State, Buttons, Toast, Controls, Gradient, Loading State, Banner, Action Sheet, QR Code, and Photo Browser.
+The example includes 18 interactive pages: Typography, Colors, Cards, Badges, Chips, Empty State, Buttons, Toast, Controls, Gradient, Loading State, Banner, Action Sheet, QR Code, Photo Browser, Photo Crop, User Tip, and Floating Button.
 
 ---
 
@@ -142,9 +146,9 @@ LumiKit/
 │   │   │   │                  # LMKEnumSelectionBottomSheet, LMKBottomSheetLayout
 │   │   │   ├── Pickers/       # LMKDatePickerHelper
 │   │   │   ├── LMKBadgeView, LMKBannerView, LMKCardView, LMKChipView,
-│   │   │   ├── LMKDividerView, LMKEmptyStateView, LMKGradientView,
-│   │   │   ├── LMKLoadingStateView, LMKProgressViewController,
-│   │   │   └── LMKSearchBar, LMKSkeletonCell, LMKToastView
+│   │   │   ├── LMKDividerView, LMKEmptyStateView, LMKFloatingButton,
+│   │   │   ├── LMKGradientView, LMKLoadingStateView, LMKProgressViewController,
+│   │   │   └── LMKSearchBar, LMKSkeletonCell, LMKToastView, LMKUserTipView
 │   │   ├── Controls/          # LMKButton, LMKSegmentedControl, LMKToggleButton,
 │   │   │                      # LMKTextField, LMKTextView
 │   │   ├── DesignSystem/
@@ -280,6 +284,8 @@ LMKThemeManager.shared.apply(spacing: .init(large: 20))
 | `LMKSkeletonCell` | Skeleton loading placeholder cell |
 | `LMKDatePickerHelper` | Date picker presentation via `LMKActionSheet` — single date, date range, date with text field |
 | `LMKToastView` | Auto-dismissing toast notification |
+| `LMKUserTipView` | Onboarding tip with centered or pointed (arrow) styles — tap to dismiss |
+| `LMKFloatingButton` | Draggable floating action button with edge snapping and optional badge |
 
 ---
 

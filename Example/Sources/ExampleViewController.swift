@@ -29,6 +29,8 @@ final class ExampleViewController: UIViewController, UITableViewDataSource, UITa
         case qrCode
         case photoBrowser
         case photoCrop
+        case userTip
+        case floatingButton
 
         var title: String {
             switch self {
@@ -48,6 +50,8 @@ final class ExampleViewController: UIViewController, UITableViewDataSource, UITa
             case .qrCode: "QR Code"
             case .photoBrowser: "Photo Browser"
             case .photoCrop: "Photo Crop"
+            case .userTip: "User Tip"
+            case .floatingButton: "Floating Button"
             }
         }
 
@@ -69,6 +73,8 @@ final class ExampleViewController: UIViewController, UITableViewDataSource, UITa
             case .qrCode: "Generate QR codes from text"
             case .photoBrowser: "Full-screen photo viewer with zoom"
             case .photoCrop: "Crop with aspect ratios and zoom"
+            case .userTip: "Centered and pointed onboarding tips"
+            case .floatingButton: "Draggable floating action button"
             }
         }
 
@@ -90,6 +96,8 @@ final class ExampleViewController: UIViewController, UITableViewDataSource, UITa
             case .qrCode: "qrcode"
             case .photoBrowser: "photo.on.rectangle"
             case .photoCrop: "crop"
+            case .userTip: "lightbulb"
+            case .floatingButton: "circle.circle"
             }
         }
 
@@ -111,6 +119,8 @@ final class ExampleViewController: UIViewController, UITableViewDataSource, UITa
             case .qrCode: QRCodeDetailViewController()
             case .photoBrowser: PhotoBrowserDetailViewController()
             case .photoCrop: PhotoCropDetailViewController()
+            case .userTip: UserTipDetailViewController()
+            case .floatingButton: FloatingButtonDetailViewController()
             }
         }
     }

@@ -898,3 +898,133 @@ final class PhotoCropDetailViewController: DetailViewController, LMKPhotoCropDel
         controller.dismiss(animated: true)
     }
 }
+
+// MARK: - User Tip
+
+final class UserTipDetailViewController: DetailViewController {
+    override func viewDidLoad() {
+        super.viewDidLoad()
+
+        addSectionHeader("Center Style")
+        let centerButton = LMKButton()
+        centerButton.setTitle("Show Centered Tip", for: .normal)
+        centerButton.setTitleColor(LMKColor.primary, for: .normal)
+        centerButton.titleLabel?.font = LMKTypography.bodyMedium
+        centerButton.snp.makeConstraints { $0.height.equalTo(LMKLayout.minimumTouchTarget) }
+        centerButton.tapHandler = { [weak self] in
+            guard let self else { return }
+            LMKUserTip.show(
+                title: "Did you know?",
+                message: "You can long-press any item to see more options. Try it out!",
+                icon: UIImage(systemName: "lightbulb"),
+                style: .center,
+                on: self
+            )
+        }
+        stack.addArrangedSubview(centerButton)
+
+        addDivider()
+        addSectionHeader("Pointed Style")
+
+        let targetChip = LMKChipView(text: "Target View", style: .filled)
+        stack.addArrangedSubview(targetChip)
+
+        let pointedButton = LMKButton()
+        pointedButton.setTitle("Show Pointed Tip", for: .normal)
+        pointedButton.setTitleColor(LMKColor.secondary, for: .normal)
+        pointedButton.titleLabel?.font = LMKTypography.bodyMedium
+        pointedButton.snp.makeConstraints { $0.height.equalTo(LMKLayout.minimumTouchTarget) }
+        pointedButton.tapHandler = { [weak self] in
+            guard let self else { return }
+            LMKUserTip.show(
+                message: "This tip points at the target view above",
+                style: .pointed(sourceView: targetChip, arrowDirection: .automatic),
+                on: self
+            )
+        }
+        stack.addArrangedSubview(pointedButton)
+
+        addDivider()
+        addSectionHeader("Message Only")
+        let simpleButton = LMKButton()
+        simpleButton.setTitle("Show Simple Tip", for: .normal)
+        simpleButton.setTitleColor(LMKColor.info, for: .normal)
+        simpleButton.titleLabel?.font = LMKTypography.bodyMedium
+        simpleButton.snp.makeConstraints { $0.height.equalTo(LMKLayout.minimumTouchTarget) }
+        simpleButton.tapHandler = { [weak self] in
+            guard let self else { return }
+            LMKUserTip.show(
+                message: "Swipe down to refresh the list. New items will appear at the top.",
+                on: self
+            )
+        }
+        stack.addArrangedSubview(simpleButton)
+    }
+}
+
+// MARK: - Floating Button
+
+final class FloatingButtonDetailViewController: DetailViewController {
+    override func viewDidLoad() {
+        super.viewDidLoad()
+
+        addSectionHeader("Floating Button")
+        stack.addArrangedSubview(LMKLabelFactory.body(text: "A draggable button that stays on top of all content. Drag it to reposition — it snaps to the nearest edge."))
+
+        let showButton = LMKButtonFactory.primary(title: "Show Floating Button", target: self, action: #selector(showFloating))
+        stack.addArrangedSubview(showButton)
+
+        addDivider()
+        addSectionHeader("Badge")
+        let badgeButton = LMKButton()
+        badgeButton.setTitle("Show Badge (count: 5)", for: .normal)
+        badgeButton.setTitleColor(LMKColor.error, for: .normal)
+        badgeButton.titleLabel?.font = LMKTypography.bodyMedium
+        badgeButton.snp.makeConstraints { $0.height.equalTo(LMKLayout.minimumTouchTarget) }
+        badgeButton.tapHandler = {
+            LMKFloatingButton.current?.showBadge(count: 5)
+        }
+        stack.addArrangedSubview(badgeButton)
+
+        let dotButton = LMKButton()
+        dotButton.setTitle("Show Dot Badge", for: .normal)
+        dotButton.setTitleColor(LMKColor.warning, for: .normal)
+        dotButton.titleLabel?.font = LMKTypography.bodyMedium
+        dotButton.snp.makeConstraints { $0.height.equalTo(LMKLayout.minimumTouchTarget) }
+        dotButton.tapHandler = {
+            LMKFloatingButton.current?.showBadge()
+        }
+        stack.addArrangedSubview(dotButton)
+
+        let hideBadgeButton = LMKButton()
+        hideBadgeButton.setTitle("Hide Badge", for: .normal)
+        hideBadgeButton.setTitleColor(LMKColor.textSecondary, for: .normal)
+        hideBadgeButton.titleLabel?.font = LMKTypography.bodyMedium
+        hideBadgeButton.snp.makeConstraints { $0.height.equalTo(LMKLayout.minimumTouchTarget) }
+        hideBadgeButton.tapHandler = {
+            LMKFloatingButton.current?.hideBadge()
+        }
+        stack.addArrangedSubview(hideBadgeButton)
+
+        addDivider()
+        addSectionHeader("Dismiss")
+        let dismissButton = LMKButtonFactory.destructive(title: "Dismiss Floating Button", target: self, action: #selector(dismissFloating))
+        stack.addArrangedSubview(dismissButton)
+    }
+
+    override func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
+        LMKFloatingButton.dismissCurrent()
+    }
+
+    @objc private func showFloating() {
+        LMKFloatingButton.show(icon: UIImage(systemName: "ladybug")) { [weak self] in
+            guard let self else { return }
+            LMKToast.showInfo(message: "Floating button tapped!", on: self)
+        }
+    }
+
+    @objc private func dismissFloating() {
+        LMKFloatingButton.dismissCurrent()
+    }
+}
