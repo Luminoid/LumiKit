@@ -1,6 +1,9 @@
 # LumiKit — Claude Code Guide
 
 > Shared Swift Package providing design tokens, UI components, and utilities for Lumi apps.
+> **Inherits general Swift/UIKit standards from [workspace CLAUDE.md](../../.claude/CLAUDE.md).** This file contains LumiKit-specific rules only.
+
+- **Review**: [REVIEW.md](../REVIEW.md) — comprehensive code review (2026-02-17), ~140 issues identified
 
 ---
 
@@ -81,13 +84,6 @@ LumiKit/
 - **Configurable strings**: Module-level `nonisolated(unsafe)` variable + `Sendable` struct
 - **Protocols for data/delegates**: `LMKPhotoBrowserDataSource`, `LMKPhotoCropDelegate`, `LMKSharePreviewDelegate`
 
-### Modern Swift Syntax
-
-- **Implicit returns** — already adopted; all switch cases use implicit returns
-- **`any` for existentials** — use on delegate/dataSource properties: `public weak var delegate: (any LMKPhotoCropDelegate)?`
-- **`some` for opaque parameters** — already adopted: `func apply(_ theme: some LMKTheme)`
-- **if-let shorthand** — use `if let x {` when rebinding the same name
-
 ---
 
 ## Swift 6.2 Concurrency Patterns
@@ -141,10 +137,10 @@ LMKThemeManager.shared.apply(spacing: .init(large: 20))
 ```
 DesignSystem/
 ├── LMKTheme.swift              # LMKTheme protocol + LMKThemeManager (holds all configs)
-├── LMKColor.swift              # Color proxy → LMKThemeManager.shared.current
-├── LMKTypography.swift         # Font proxy → LMKThemeManager.shared.typography
+├── LMKColor.swift              # Color proxy -> LMKThemeManager.shared.current
+├── LMKTypography.swift         # Font proxy -> LMKThemeManager.shared.typography
 ├── LMKTypographyTheme.swift    # Configuration struct (fontFamily, sizes, weights)
-├── LMKSpacing.swift            # Spacing proxy → LMKThemeManager.shared.spacing
+├── LMKSpacing.swift            # Spacing proxy -> LMKThemeManager.shared.spacing
 ├── LMKSpacingTheme.swift       # Configuration struct
 ├── LMKCornerRadius.swift       # Corner radius proxy
 ├── LMKCornerRadiusTheme.swift  # Configuration struct
@@ -160,7 +156,7 @@ DesignSystem/
 └── LMKLabelFactory.swift       # Factory methods for styled labels
 ```
 
-### Pattern: Token Enum → Config Struct → ThemeManager
+### Pattern: Token Enum -> Config Struct -> ThemeManager
 
 ```swift
 // 1. Config struct with defaults (nonisolated, Sendable)
@@ -258,10 +254,10 @@ LMKThemeManager.shared.apply(spacing: .init(large: 20))
 ## Error Handling
 
 - **`LMKErrorHandler`** for user-facing errors — supports severity-based presentation:
-  - `.info` → info toast
-  - `.warning` → alert with OK
-  - `.error` → toast (transient) or alert with retry (recoverable)
-  - `.critical` → always alert, retry if available
+  - `.info` -> info toast
+  - `.warning` -> alert with OK
+  - `.error` -> toast (transient) or alert with retry (recoverable)
+  - `.critical` -> always alert, retry if available
 - All presentation methods auto-log via `LMKLogger`
 - **`LMKAlertPresenter`** for generic alerts and action sheets
 
