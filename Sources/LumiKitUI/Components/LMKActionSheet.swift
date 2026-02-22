@@ -37,17 +37,20 @@ public final class LMKActionSheet: UIViewController {
     /// A single action displayed as a tappable row in the sheet.
     public struct Action {
         public let title: String
+        public let subtitle: String?
         public let icon: UIImage?
         public let style: ActionStyle
         public let handler: () -> Void
 
         public init(
             title: String,
+            subtitle: String? = nil,
             style: ActionStyle = .default,
             icon: UIImage? = nil,
             handler: @escaping () -> Void
         ) {
             self.title = title
+            self.subtitle = subtitle
             self.style = style
             self.icon = icon
             self.handler = handler
@@ -306,7 +309,14 @@ public final class LMKActionSheet: UIViewController {
             actionRows.append(row)
 
             let wrapper = makeInsetWrapper(for: row)
-            row.snp.makeConstraints { make in make.height.equalTo(LMKBottomSheetLayout.rowHeight - 2 * LMKSpacing.xs) }
+            let baseHeight = LMKBottomSheetLayout.rowHeight - 2 * LMKSpacing.xs
+            row.snp.makeConstraints { make in
+                if action.subtitle != nil {
+                    make.height.greaterThanOrEqualTo(baseHeight)
+                } else {
+                    make.height.equalTo(baseHeight)
+                }
+            }
             contentStackView.addArrangedSubview(wrapper)
 
             if index < sheetActions.count - 1 {
@@ -490,6 +500,14 @@ private final class ActionRowView: UIControl {
         return label
     }()
 
+    private lazy var subtitleLabel: UILabel = {
+        let label = UILabel()
+        label.font = LMKTypography.caption
+        label.textColor = LMKColor.textSecondary
+        label.numberOfLines = 2
+        return label
+    }()
+
     init(action: LMKActionSheet.Action) {
         self.action = action
         super.init(frame: .zero)
@@ -505,6 +523,8 @@ private final class ActionRowView: UIControl {
         containerView.snp.makeConstraints { make in make.edges.equalToSuperview() }
 
         let hasIcon = action.icon != nil
+        let hasSubtitle = action.subtitle != nil
+
         containerView.addSubview(iconImageView)
         iconImageView.isHidden = !hasIcon
         iconImageView.image = action.icon
@@ -515,15 +535,34 @@ private final class ActionRowView: UIControl {
             make.height.equalTo(LMKLayout.iconMedium)
         }
 
-        containerView.addSubview(titleLabel)
-        titleLabel.snp.makeConstraints { make in
-            if hasIcon {
-                make.leading.equalTo(iconImageView.snp.trailing).offset(LMKSpacing.medium)
-            } else {
-                make.leading.equalToSuperview().offset(LMKSpacing.large)
+        let textLeading: ConstraintRelatableTarget = hasIcon
+            ? iconImageView.snp.trailing
+            : containerView.snp.leading
+        let textLeadingOffset = hasIcon ? LMKSpacing.medium : LMKSpacing.large
+
+        if hasSubtitle {
+            subtitleLabel.text = action.subtitle
+            containerView.addSubview(titleLabel)
+            containerView.addSubview(subtitleLabel)
+
+            titleLabel.snp.makeConstraints { make in
+                make.leading.equalTo(textLeading).offset(textLeadingOffset)
+                make.trailing.lessThanOrEqualToSuperview().inset(LMKSpacing.large)
+                make.top.equalToSuperview().offset(LMKSpacing.medium)
             }
-            make.centerY.equalToSuperview()
-            make.trailing.lessThanOrEqualToSuperview().inset(LMKSpacing.large)
+            subtitleLabel.snp.makeConstraints { make in
+                make.leading.equalTo(titleLabel)
+                make.trailing.lessThanOrEqualToSuperview().inset(LMKSpacing.large)
+                make.top.equalTo(titleLabel.snp.bottom).offset(LMKSpacing.xs)
+                make.bottom.equalToSuperview().offset(-LMKSpacing.medium)
+            }
+        } else {
+            containerView.addSubview(titleLabel)
+            titleLabel.snp.makeConstraints { make in
+                make.leading.equalTo(textLeading).offset(textLeadingOffset)
+                make.centerY.equalToSuperview()
+                make.trailing.lessThanOrEqualToSuperview().inset(LMKSpacing.large)
+            }
         }
 
         addTarget(self, action: #selector(tapped), for: .touchUpInside)
@@ -531,7 +570,11 @@ private final class ActionRowView: UIControl {
 
     private func setupAccessibility() {
         isAccessibilityElement = true
-        accessibilityLabel = action.title
+        accessibilityLabel = if let subtitle = action.subtitle {
+            "\(action.title), \(subtitle)"
+        } else {
+            action.title
+        }
         accessibilityTraits = .button
     }
 
@@ -540,6 +583,7 @@ private final class ActionRowView: UIControl {
         containerView.backgroundColor = LMKColor.backgroundSecondary
         iconImageView.tintColor = isDestructive ? LMKColor.error : LMKColor.primary
         titleLabel.textColor = isDestructive ? LMKColor.error : LMKColor.textPrimary
+        subtitleLabel.textColor = LMKColor.textSecondary
     }
 
     override var isHighlighted: Bool {

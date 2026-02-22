@@ -43,28 +43,32 @@ LumiKit/
 │   │   ├── Photo/           # LMKPhotoBrowserViewController, LMKPhotoCropViewController, LMKPhotoEXIFService
 │   │   ├── QRCode/          # LMKQRCodeGenerator
 │   │   ├── Share/           # LMKShareService, LMKSharePreviewViewController
-│   │   └── Utilities/       # LMKDeviceHelper, LMKKeyboardObserver
+│   │   └── Utilities/       # LMKDatePickerHelper, LMKDeviceHelper, LMKKeyboardObserver
 │   └── LumiKitLottie/       # LMKLottieRefreshControl
 ├── Tests/
-│   ├── LumiKitCoreTests/    # 56 tests, 9 suites — mirrors Sources/LumiKitCore/ subfolders
+│   ├── LumiKitCoreTests/    # 60 tests, 10 suites — mirrors Sources/LumiKitCore/ subfolders
 │   │   ├── Concurrency/     # LMKConcurrencyHelpersTests
 │   │   ├── Data/            # Logger, String+LMK, Collection+LMK, NSAttributedString+LMK, FormatHelper
 │   │   ├── Date/            # DateHelper, DateFormatterHelper
+│   │   ├── File/            # FileUtil
 │   │   └── Validation/      # URLValidator
-│   └── LumiKitUITests/      # 178 tests, 51 suites — mirrors Sources/LumiKitUI/ subfolders
+│   └── LumiKitUITests/      # 243 tests, 61 suites — mirrors Sources/LumiKitUI/ subfolders
 │       ├── Alerts/          # AlertPresenter, ErrorHandler
 │       ├── Animation/       # AnimationHelper
-│       ├── Components/      # ActionSheet, Badge, Banner, Card, Chip, Divider,
-│       │                    # EmptyState, Gradient, LoadingState, Skeleton, Toast
-│       ├── Controls/        # SegmentedControl, TextField, TextView, ToggleButton
+│       ├── Components/      # ActionSheet, Badge, Banner, BottomSheetLayout, Card,
+│       │                    # Chip, Divider, EmptyState, Gradient, LoadingState,
+│       │                    # SearchBar, Skeleton, Toast
+│       ├── Controls/        # Button, SegmentedControl, TextField, TextView, ToggleButton
 │       ├── DesignSystem/    # ThemeManager, Color, Spacing, CornerRadius, Alpha,
 │       │                    # Typography, Layout, Shadow, AnimationTheme, BadgeTheme,
+│       │                    # ButtonFactory, CardFactory, LabelFactory,
 │       │                    # Sendable compliance, ComponentToken integration
-│       ├── Extensions/      # UIColor, UIImage, UIStackView, UIView (shadow/border/fade)
+│       ├── Extensions/      # UIColor, UIImage, UIStackView,
+│       │                    # UIView (shadow/border/fade/layout)
 │       ├── Photo/           # CropAspectRatio, PhotoEXIF
 │       ├── QRCode/          # QRCodeGenerator
 │       ├── Share/           # SharePreview, ShareService
-│       └── Utilities/       # DeviceHelper, KeyboardObserver
+│       └── Utilities/       # DatePickerHelper, DeviceHelper, ImageUtil, KeyboardObserver
 ```
 
 ---
@@ -245,6 +249,7 @@ LMKThemeManager.shared.apply(spacing: .init(large: 20))
 
 | Utility | Purpose |
 |---------|---------|
+| `LMKDatePickerHelper` | Date picker presentation via `LMKActionSheet` — single date (past/future), date range with live enforcement, date with text field. Configurable strings, auto-clamping |
 | `LMKDeviceHelper` | Device type (`.iPhone`, `.iPad`, `.macCatalyst`), screen size classification, notch detection |
 | `LMKKeyboardObserver` | Keyboard show/hide observer with height + animation info |
 
@@ -348,4 +353,4 @@ public final class LMKExampleViewController: UIViewController {
 
 ---
 
-*Optimized for Claude Code • Last updated: 2026-02-16*
+*Optimized for Claude Code • Last updated: 2026-02-21*

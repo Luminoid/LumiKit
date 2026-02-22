@@ -77,8 +77,8 @@ public final class LMKEmptyStateView: UIView {
         containerView.backgroundColor = .clear
         addSubview(containerView)
         containerView.snp.makeConstraints { make in
-            make.centerX.centerY.equalToSuperview()
-            make.leading.trailing.equalToSuperview().inset(LMKSpacing.xxl)
+            make.center.equalToSuperview()
+            make.leading.trailing.equalToSuperview().inset(LMKSpacing.xxl).priority(.high)
         }
 
         iconImageView.contentMode = .scaleAspectFit

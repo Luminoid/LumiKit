@@ -42,7 +42,7 @@ LumiKit is organized into three targets so apps can import only what they need:
 | **LumiKitUI** | LumiKitCore + SnapKit | Design system tokens, theme manager, animation, haptics, alerts, components, controls, photo browser/crop, UIKit extensions |
 | **LumiKitLottie** | LumiKitUI + Lottie | Lottie-powered pull-to-refresh control |
 
-**79 source files** across 3 targets, with **284 tests** (61 Core + 223 UI) across 70 suites.
+**81 source files** across 3 targets, with **303 tests** (60 Core + 243 UI) across 71 suites.
 
 ---
 
@@ -150,17 +150,17 @@ LumiKit/
 │   │   │                      # LMKPhotoEXIFService
 │   │   ├── QRCode/            # LMKQRCodeGenerator
 │   │   ├── Share/             # LMKShareService, LMKSharePreviewViewController
-│   │   └── Utilities/         # LMKDeviceHelper, LMKKeyboardObserver,
-│   │                          # LMKSceneUtil, LMKImageUtil
+│   │   └── Utilities/         # LMKDatePickerHelper, LMKDeviceHelper,
+│   │                          # LMKKeyboardObserver, LMKSceneUtil, LMKImageUtil
 │   └── LumiKitLottie/         # LMKLottieRefreshControl
 ├── Tests/
-│   ├── LumiKitCoreTests/      # 61 tests, 10 suites
+│   ├── LumiKitCoreTests/      # 60 tests, 10 suites
 │   │   ├── Concurrency/       # LMKConcurrencyHelpers
 │   │   ├── Data/              # Logger, String+LMK, Collection+LMK, NSAttributedString+LMK, FormatHelper
 │   │   ├── Date/              # DateHelper, DateFormatterHelper
 │   │   ├── File/              # FileUtil
 │   │   └── Validation/        # URLValidator
-│   └── LumiKitUITests/        # 223 tests, 60 suites
+│   └── LumiKitUITests/        # 243 tests, 61 suites
 │       ├── Alerts/            # AlertPresenter, ErrorHandler
 │       ├── Animation/         # AnimationHelper
 │       ├── Components/        # ActionSheet, Badge, Banner, BottomSheetLayout, Card,
@@ -336,6 +336,7 @@ LumiKitUI includes device-aware helpers and system observers:
 
 | Utility | Purpose |
 |---------|---------|
+| `LMKDatePickerHelper` | Date picker presentation via `LMKActionSheet` — single date (past/future), date range with live enforcement, date with text field. Configurable strings, auto-clamping |
 | `LMKDeviceHelper` | Device type detection (`.iPhone`, `.iPad`, `.macCatalyst`), screen size classification, notch detection |
 | `LMKKeyboardObserver` | Keyboard show/hide observer with height and animation duration info |
 | `LMKImageUtil` | SF Symbol creation and `CVPixelBuffer` to JPEG conversion |
