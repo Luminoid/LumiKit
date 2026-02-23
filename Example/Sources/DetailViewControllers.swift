@@ -564,6 +564,18 @@ final class ActionSheetDetailViewController: DetailViewController {
         addSectionHeader("With Icons")
         let iconButton = LMKButtonFactory.secondary(title: "Show Action Sheet with Icons", target: self, action: #selector(showIconSheet))
         stack.addArrangedSubview(iconButton)
+
+        addDivider()
+        addSectionHeader("Sub-Page Navigation")
+        stack.addArrangedSubview(LMKLabelFactory.caption(text: "Actions can navigate to sub-pages within the same sheet. Tap back or cancel to return/dismiss."))
+        let subPageButton = LMKButtonFactory.primary(title: "Show with Sub-Pages", target: self, action: #selector(showSubPageSheet))
+        stack.addArrangedSubview(subPageButton)
+
+        addDivider()
+        addSectionHeader("Sub-Page with Content View")
+        stack.addArrangedSubview(LMKLabelFactory.caption(text: "Sub-pages can embed custom views (e.g. a date picker) with a confirm button."))
+        let contentButton = LMKButtonFactory.secondary(title: "Show with Date Picker", target: self, action: #selector(showContentSubPageSheet))
+        stack.addArrangedSubview(contentButton)
     }
 
     @objc private func showBasicSheet() {
@@ -602,6 +614,91 @@ final class ActionSheetDetailViewController: DetailViewController {
                     LMKToast.showInfo(message: "Library tapped", on: self)
                 },
                 .init(title: "Delete Photo", style: .destructive, icon: UIImage(systemName: "trash")) { [weak self] in
+                    guard let self else { return }
+                    LMKToast.showError(message: "Delete tapped", on: self)
+                },
+            ]
+        )
+    }
+
+    @objc private func showSubPageSheet() {
+        LMKActionSheet.present(
+            in: self,
+            title: "Photo Actions",
+            actions: [
+                .init(
+                    title: "Edit Category",
+                    icon: UIImage(systemName: "tag"),
+                    page: .init(
+                        title: "Select Category",
+                        actions: ["Flower", "Progress", "Leaf", "Issue"].map { name in
+                            .init(title: name) { [weak self] in
+                                guard let self else { return }
+                                LMKToast.showSuccess(message: "Selected: \(name)", on: self)
+                            }
+                        }
+                    )
+                ),
+                .init(
+                    title: "Share",
+                    icon: UIImage(systemName: "square.and.arrow.up"),
+                    page: .init(
+                        title: "Share via",
+                        actions: [
+                            .init(title: "Messages", icon: UIImage(systemName: "message")) { [weak self] in
+                                guard let self else { return }
+                                LMKToast.showInfo(message: "Messages tapped", on: self)
+                            },
+                            .init(title: "Email", icon: UIImage(systemName: "envelope")) { [weak self] in
+                                guard let self else { return }
+                                LMKToast.showInfo(message: "Email tapped", on: self)
+                            },
+                            .init(title: "Copy Link", icon: UIImage(systemName: "link")) { [weak self] in
+                                guard let self else { return }
+                                LMKToast.showSuccess(message: "Link copied!", on: self)
+                            },
+                        ]
+                    )
+                ),
+                .init(title: "Delete", style: .destructive, icon: UIImage(systemName: "trash")) { [weak self] in
+                    guard let self else { return }
+                    LMKToast.showError(message: "Delete tapped", on: self)
+                },
+            ]
+        )
+    }
+
+    @objc private func showContentSubPageSheet() {
+        let datePicker = UIDatePicker()
+        datePicker.datePickerMode = .date
+        datePicker.preferredDatePickerStyle = .wheels
+        datePicker.date = Date()
+
+        LMKActionSheet.present(
+            in: self,
+            title: "Photo Actions",
+            actions: [
+                .init(
+                    title: "Edit Date",
+                    icon: UIImage(systemName: "calendar"),
+                    page: .init(
+                        title: "Select Date",
+                        contentView: datePicker,
+                        contentHeight: 200,
+                        confirmTitle: "Save",
+                        onConfirm: { [weak self] in
+                            guard let self else { return }
+                            let formatter = DateFormatter()
+                            formatter.dateStyle = .medium
+                            LMKToast.showSuccess(message: "Date: \(formatter.string(from: datePicker.date))", on: self)
+                        }
+                    )
+                ),
+                .init(title: "Crop", icon: UIImage(systemName: "crop")) { [weak self] in
+                    guard let self else { return }
+                    LMKToast.showInfo(message: "Crop tapped", on: self)
+                },
+                .init(title: "Delete", style: .destructive, icon: UIImage(systemName: "trash")) { [weak self] in
                     guard let self else { return }
                     LMKToast.showError(message: "Delete tapped", on: self)
                 },

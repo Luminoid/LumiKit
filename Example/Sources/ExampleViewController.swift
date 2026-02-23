@@ -69,7 +69,7 @@ final class ExampleViewController: UIViewController, UITableViewDataSource, UITa
             case .gradient: "Linear gradients with configurable directions"
             case .loadingState: "Inline and overlay loading indicators"
             case .banner: "Persistent info, warning, and error banners"
-            case .actionSheet: "Custom action sheets with icons"
+            case .actionSheet: "Action sheets with icons and sub-pages"
             case .qrCode: "Generate QR codes from text"
             case .photoBrowser: "Full-screen photo viewer with zoom"
             case .photoCrop: "Crop with aspect ratios and zoom"

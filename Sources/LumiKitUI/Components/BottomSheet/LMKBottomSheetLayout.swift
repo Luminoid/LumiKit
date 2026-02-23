@@ -15,4 +15,5 @@ public enum LMKBottomSheetLayout {
     public static let rowHeight: CGFloat = 56
     public static let buttonHeight: CGFloat = 50
     public static let maxScreenHeightRatio: CGFloat = 0.9
+    public static let backButtonHeight: CGFloat = 44
 }

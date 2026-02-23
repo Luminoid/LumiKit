@@ -35,4 +35,9 @@ struct LMKBottomSheetLayoutTests {
         #expect(LMKBottomSheetLayout.maxScreenHeightRatio > 0)
         #expect(LMKBottomSheetLayout.maxScreenHeightRatio < 1.0)
     }
+
+    @Test("Back button height meets HIG minimum touch target")
+    func backButtonHeightMeetsHIG() {
+        #expect(LMKBottomSheetLayout.backButtonHeight >= 44)
+    }
 }

@@ -2,8 +2,8 @@
 //  LMKActionSheetTests.swift
 //  LumiKit
 //
-//  Tests for LMKActionSheet: Action struct, initialization,
-//  view hierarchy, static presentation, and dynamic colors.
+//  Tests for LMKActionSheet: Action struct, Page struct, initialization,
+//  view hierarchy, navigation, static presentation, and dynamic colors.
 //
 
 import Testing
@@ -24,6 +24,7 @@ struct LMKActionSheetTests {
         #expect(action.title == "Edit")
         #expect(action.style == .default)
         #expect(action.icon == nil)
+        #expect(action.page == nil)
     }
 
     @Test("Action destructive style")
@@ -43,6 +44,88 @@ struct LMKActionSheetTests {
     @Test("ActionStyle default and destructive are distinct")
     func actionStyleDistinct() {
         #expect(LMKActionSheet.ActionStyle.default != .destructive)
+    }
+
+    @Test("Action with subtitle preserves subtitle")
+    func actionWithSubtitle() {
+        let action = LMKActionSheet.Action(title: "Test", subtitle: "Detail") { }
+        #expect(action.subtitle == "Detail")
+    }
+
+    // MARK: - Action Navigation Init
+
+    @Test("Action with page has non-nil page")
+    func actionWithPage() {
+        let page = LMKActionSheet.Page(title: "Sub Page")
+        let action = LMKActionSheet.Action(title: "Navigate", page: page)
+        #expect(action.page != nil)
+        #expect(action.page?.title == "Sub Page")
+    }
+
+    @Test("Action without page has nil page")
+    func actionWithoutPage() {
+        let action = LMKActionSheet.Action(title: "Regular") { }
+        #expect(action.page == nil)
+    }
+
+    @Test("Navigation action preserves style and icon")
+    func navigationActionPreservesProperties() {
+        let icon = UIImage(systemName: "tag")
+        let page = LMKActionSheet.Page(title: "Categories")
+        let action = LMKActionSheet.Action(title: "Edit", style: .default, icon: icon, page: page)
+        #expect(action.title == "Edit")
+        #expect(action.style == .default)
+        #expect(action.icon != nil)
+        #expect(action.page != nil)
+    }
+
+    // MARK: - Page Struct
+
+    @Test("Page with all properties")
+    func pageWithAllProperties() {
+        let contentView = UIView()
+        let page = LMKActionSheet.Page(
+            title: "Title",
+            message: "Message",
+            actions: [.init(title: "OK") { }],
+            contentView: contentView,
+            contentHeight: 200,
+            confirmTitle: "Confirm",
+            onConfirm: { }
+        )
+        #expect(page.title == "Title")
+        #expect(page.message == "Message")
+        #expect(page.actions.count == 1)
+        #expect(page.contentView === contentView)
+        #expect(page.contentHeight == 200)
+        #expect(page.confirmTitle == "Confirm")
+        #expect(page.onConfirm != nil)
+    }
+
+    @Test("Page with defaults only")
+    func pageWithDefaults() {
+        let page = LMKActionSheet.Page()
+        #expect(page.title == nil)
+        #expect(page.message == nil)
+        #expect(page.actions.isEmpty)
+        #expect(page.contentView == nil)
+        #expect(page.contentHeight == 0)
+        #expect(page.confirmTitle == nil)
+        #expect(page.onConfirm == nil)
+    }
+
+    @Test("Page with content view and confirm")
+    func pageWithContentAndConfirm() {
+        let picker = UIDatePicker()
+        let page = LMKActionSheet.Page(
+            title: "Select Date",
+            contentView: picker,
+            contentHeight: 200,
+            confirmTitle: "Save"
+        )
+        #expect(page.title == "Select Date")
+        #expect(page.contentView === picker)
+        #expect(page.confirmTitle == "Save")
     }
 
     // MARK: - Initialization
@@ -93,6 +176,23 @@ struct LMKActionSheetTests {
     @Test("Init with empty actions array")
     func initWithEmptyActions() {
         let sheet = LMKActionSheet(title: "Empty", actions: [])
+        sheet.loadViewIfNeeded()
+        #expect(sheet.view != nil)
+    }
+
+    @Test("Init with navigation actions")
+    func initWithNavigationActions() {
+        let subPage = LMKActionSheet.Page(
+            title: "Sub",
+            actions: [.init(title: "Item") { }]
+        )
+        let sheet = LMKActionSheet(
+            title: "Root",
+            actions: [
+                .init(title: "Navigate", page: subPage),
+                .init(title: "Regular") { },
+            ]
+        )
         sheet.loadViewIfNeeded()
         #expect(sheet.view != nil)
     }
@@ -150,8 +250,8 @@ struct LMKActionSheetTests {
         sheet.loadViewIfNeeded()
 
         let controls = findAllControls(in: sheet.view)
-        // 3 action rows + 1 cancel button = 4 controls
-        #expect(controls.count == 4)
+        // 3 action rows + 1 cancel button + 1 back button (hidden) = 5 controls
+        #expect(controls.count == 5)
     }
 
     // MARK: - Static Presentation
@@ -205,6 +305,122 @@ struct LMKActionSheetTests {
         #expect(handlerCalled)
     }
 
+    // MARK: - Configurable Strings
+
+    @Test("Default back string is Back")
+    func defaultBackString() {
+        let original = LMKActionSheet.strings
+        defer { LMKActionSheet.strings = original }
+
+        #expect(LMKActionSheet.strings.back == "Back")
+    }
+
+    @Test("Custom back string is used")
+    func customBackString() {
+        let original = LMKActionSheet.strings
+        defer { LMKActionSheet.strings = original }
+
+        LMKActionSheet.strings = .init(back: "Atrás")
+        #expect(LMKActionSheet.strings.back == "Atrás")
+    }
+
+    // MARK: - Back Button
+
+    @Test("Back button is hidden on root page")
+    func backButtonHiddenAtRoot() {
+        let sheet = LMKActionSheet(
+            title: "Root",
+            actions: [.init(title: "OK") { }]
+        )
+        sheet.loadViewIfNeeded()
+
+        let backBtn = findBackButton(in: sheet.containerView)
+        #expect(backBtn != nil)
+        #expect(backBtn?.isHidden == true)
+    }
+
+    // MARK: - Chevron Indicator
+
+    @Test("Navigation action row shows chevron image view")
+    func navigationActionShowsChevron() {
+        let page = LMKActionSheet.Page(title: "Sub", actions: [.init(title: "Item") { }])
+        let sheet = LMKActionSheet(
+            title: "Root",
+            actions: [.init(title: "Navigate", page: page)]
+        )
+        sheet.loadViewIfNeeded()
+
+        let actionRow = findFirstActionRow(in: sheet.view)
+        #expect(actionRow != nil)
+
+        let chevron = findChevronImageView(in: actionRow!)
+        #expect(chevron != nil)
+        #expect(chevron?.isHidden == false)
+    }
+
+    @Test("Regular action row hides chevron")
+    func regularActionHidesChevron() {
+        let sheet = LMKActionSheet(
+            title: "Root",
+            actions: [.init(title: "Regular") { }]
+        )
+        sheet.loadViewIfNeeded()
+
+        let actionRow = findFirstActionRow(in: sheet.view)
+        #expect(actionRow != nil)
+
+        let chevron = findChevronImageView(in: actionRow!)
+        #expect(chevron != nil)
+        #expect(chevron?.isHidden == true)
+    }
+
+    // MARK: - Mixed Actions
+
+    @Test("Mixed navigation and regular actions have correct row count")
+    func mixedActionsCorrectRowCount() {
+        let page = LMKActionSheet.Page(title: "Sub")
+        let sheet = LMKActionSheet(
+            title: "Root",
+            actions: [
+                .init(title: "Navigate", page: page),
+                .init(title: "Regular") { },
+                .init(title: "Delete", style: .destructive) { },
+            ]
+        )
+        sheet.loadViewIfNeeded()
+
+        let controls = findAllControls(in: sheet.view)
+        // 3 action rows + 1 cancel button + 1 back button (hidden) = 5
+        #expect(controls.count == 5)
+    }
+
+    // MARK: - Page with Confirm Button
+
+    @Test("Sheet with confirm title shows confirm button")
+    func sheetWithConfirmShowsButton() {
+        let sheet = LMKActionSheet(
+            title: "Test",
+            actions: [.init(title: "Option") { }],
+            confirmTitle: "Save"
+        )
+        sheet.loadViewIfNeeded()
+
+        let confirmBtn = findButton(in: sheet.view, withTitle: "Save")
+        #expect(confirmBtn != nil)
+    }
+
+    @Test("Sheet without confirm title has no confirm button")
+    func sheetWithoutConfirmNoButton() {
+        let sheet = LMKActionSheet(
+            title: "Test",
+            actions: [.init(title: "Option") { }]
+        )
+        sheet.loadViewIfNeeded()
+
+        let confirmBtn = findButton(in: sheet.view, withTitle: "Save")
+        #expect(confirmBtn == nil)
+    }
+
     // MARK: - Helpers
 
     private func findButton(in view: UIView, withTitle title: String) -> UIButton? {
@@ -228,5 +444,46 @@ struct LMKActionSheetTests {
             controls.append(contentsOf: findAllControls(in: subview))
         }
         return controls
+    }
+
+    private func findBackButton(in view: UIView) -> UIButton? {
+        if let button = view as? UIButton,
+           button.image(for: .normal) != nil,
+           button.accessibilityLabel == LMKActionSheet.strings.back {
+            return button
+        }
+        for subview in view.subviews {
+            if let found = findBackButton(in: subview) {
+                return found
+            }
+        }
+        return nil
+    }
+
+    private func findFirstActionRow(in view: UIView) -> ActionRowView? {
+        if let row = view as? ActionRowView {
+            return row
+        }
+        for subview in view.subviews {
+            if let found = findFirstActionRow(in: subview) {
+                return found
+            }
+        }
+        return nil
+    }
+
+    private func findChevronImageView(in view: UIView) -> UIImageView? {
+        for subview in view.subviews {
+            if let iv = subview as? UIImageView, iv.image == UIImage(systemName: "chevron.right") {
+                return iv
+            }
+            // Check in container views
+            for inner in subview.subviews {
+                if let iv = inner as? UIImageView, iv.image == UIImage(systemName: "chevron.right") {
+                    return iv
+                }
+            }
+        }
+        return nil
     }
 }
