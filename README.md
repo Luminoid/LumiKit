@@ -133,10 +133,12 @@ LumiKit/
 ├── Sources/
 │   ├── LumiKitCore/
 │   │   ├── Concurrency/       # LMKConcurrencyHelpers (encode/decode off main)
-│   │   ├── Data/              # LMKFormatHelper, LMKLogger, Collection+LMK,
+│   │   ├── Data/              # LMKFormatHelper, Collection+LMK,
 │   │   │                      # NSAttributedString+LMK, String+LMK
 │   │   ├── Date/              # LMKDateHelper, LMKDateFormatterHelper
 │   │   ├── File/              # LMKFileUtil
+│   │   ├── Log/               # LMKLogger, LMKLogStore (ring buffer),
+│   │   │                      # LMKLogLevel, LMKLogEntry
 │   │   └── Validation/        # LMKURLValidator
 │   ├── LumiKitUI/
 │   │   ├── Alerts/            # LMKAlertPresenter, LMKErrorHandler
@@ -170,11 +172,13 @@ LumiKit/
 │   │                          # LMKSceneUtil, LMKImageUtil
 │   └── LumiKitLottie/         # LMKLottieRefreshControl
 ├── Tests/
-│   ├── LumiKitCoreTests/      # 60 tests, 10 suites
+│   ├── LumiKitCoreTests/      # 77 tests, 12 suites
 │   │   ├── Concurrency/       # LMKConcurrencyHelpers
-│   │   ├── Data/              # Logger, String+LMK, Collection+LMK, NSAttributedString+LMK, FormatHelper
+│   │   ├── Data/              # String+LMK, Collection+LMK, NSAttributedString+LMK, FormatHelper
 │   │   ├── Date/              # DateHelper, DateFormatterHelper
 │   │   ├── File/              # FileUtil
+│   │   ├── Log/               # LMKLogStore (ring buffer, thread safety),
+│   │   │                      # LMKLogger (log store integration)
 │   │   └── Validation/        # URLValidator
 │   └── LumiKitUITests/        # 243+ tests, 61+ suites
 │       ├── Alerts/            # AlertPresenter, ErrorHandler
@@ -340,7 +344,7 @@ LumiKitCore provides Foundation-only utilities with zero dependencies:
 
 | Utility | Purpose |
 |---------|---------|
-| `LMKLogger` | Structured logging with categories (`.general`, `.data`, `.ui`, `.network`, `.error`) |
+| `LMKLogger` | Structured logging with categories (`.general`, `.data`, `.ui`, `.network`, `.error`) and opt-in in-memory log store (`LMKLogStore`) |
 | `LMKDateHelper` | Date calculation, comparison, and formatting helpers |
 | `LMKDateFormatterHelper` | Cached date formatters for performance |
 | `LMKFormatHelper` | Number and string formatting utilities |

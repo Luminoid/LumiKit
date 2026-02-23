@@ -7,6 +7,7 @@
 //  - Debug logs are automatically disabled in release builds
 //  - Uses unified logging subsystem for better performance
 //  - Subsystem is configurable via `configure(subsystem:)`
+//  - Optional in-memory log store via `enableLogStore()`
 //
 
 import Foundation
@@ -17,6 +18,7 @@ import os.log
 /// Configure once at app launch:
 /// ```swift
 /// LMKLogger.configure(subsystem: Bundle.main.bundleIdentifier ?? "com.example")
+/// LMKLogger.enableLogStore() // optional: capture logs in memory
 /// ```
 public enum LMKLogger {
     // MARK: - Configuration
@@ -32,6 +34,22 @@ public enum LMKLogger {
         LogCategory.rebuildLogs()
     }
 
+    // MARK: - Log Store
+
+    /// Optional in-memory log store. Populated when enabled via `enableLogStore()`.
+    public private(set) nonisolated(unsafe) static var logStore: LMKLogStore?
+
+    /// Enable in-memory log capture with a bounded ring buffer.
+    /// - Parameter maxEntries: Maximum number of entries to retain (default 500).
+    public static func enableLogStore(maxEntries: Int = 500) {
+        logStore = LMKLogStore(maxEntries: maxEntries)
+    }
+
+    /// Disable and discard the in-memory log store.
+    public static func disableLogStore() {
+        logStore = nil
+    }
+
     // MARK: - Log Categories
 
     /// Extensible log category backed by an `OSLog` instance.
@@ -39,11 +57,14 @@ public enum LMKLogger {
     /// Built-in categories: `.general`, `.data`, `.ui`, `.network`, `.error`, `.localization`.
     /// Create custom categories via `LogCategory(name:)`.
     public final class LogCategory: Sendable {
+        /// The category name (e.g. "General", "Data", "Network").
+        public let name: String
         public let osLog: OSLog
 
         /// Create a custom log category.
         /// - Parameter name: The category name shown in Console.app.
         public init(name: String) {
+            self.name = name
             self.osLog = OSLog(subsystem: LMKLogger.subsystem, category: name)
         }
 
@@ -85,6 +106,7 @@ public enum LMKLogger {
         #if DEBUG
             let logMessage = formatLogMessage(message, file: file, function: function, line: line)
             os_log("%{public}@", log: category.osLog, type: .debug, logMessage)
+            storeEntry(level: .debug, category: category.name, message: logMessage)
         #endif
     }
 
@@ -98,6 +120,7 @@ public enum LMKLogger {
     ) {
         let logMessage = formatLogMessage(message, file: file, function: function, line: line)
         os_log("%{public}@", log: category.osLog, type: .info, logMessage)
+        storeEntry(level: .info, category: category.name, message: logMessage)
     }
 
     /// Error logs — always emitted, highest priority.
@@ -114,6 +137,7 @@ public enum LMKLogger {
             logMessage += " | Error: \(error.localizedDescription)"
         }
         os_log("%{public}@", log: category.osLog, type: .error, logMessage)
+        storeEntry(level: .error, category: category.name, message: logMessage)
     }
 
     /// Warning logs — emitted in all builds.
@@ -126,5 +150,17 @@ public enum LMKLogger {
     ) {
         let logMessage = formatLogMessage(message, file: file, function: function, line: line)
         os_log("%{public}@", log: category.osLog, type: .default, logMessage)
+        storeEntry(level: .warning, category: category.name, message: logMessage)
+    }
+
+    // MARK: - Private Helpers
+
+    private static func storeEntry(level: LMKLogLevel, category: String, message: String) {
+        logStore?.append(LMKLogEntry(
+            timestamp: Date(),
+            level: level,
+            category: category,
+            message: message
+        ))
     }
 }

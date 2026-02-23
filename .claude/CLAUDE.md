@@ -11,7 +11,7 @@
 
 | Target | Dependencies | Purpose |
 |--------|-------------|---------|
-| **LumiKitCore** | Foundation only | Logger, DateHelper, URLValidator, ConcurrencyHelpers, FormatHelper, FileHelper, String/Collection/NSAttributedString extensions |
+| **LumiKitCore** | Foundation only | Logger (+ LogStore ring buffer), DateHelper, URLValidator, ConcurrencyHelpers, FormatHelper, FileHelper, String/Collection/NSAttributedString extensions |
 | **LumiKitUI** | LumiKitCore + SnapKit | Design system tokens, theme, animation, haptics, alerts, components, controls, utilities, photo browser/crop/EXIF, share, QR code, extensions |
 | **LumiKitLottie** | LumiKitUI + Lottie | Lottie-powered pull-to-refresh control |
 
@@ -27,9 +27,10 @@ LumiKit/
 ├── Sources/
 │   ├── LumiKitCore/
 │   │   ├── Concurrency/     # LMKConcurrencyHelpers (encode/decode off main)
-│   │   ├── Data/            # LMKFormatHelper, LMKLogger, String+LMK, Collection+LMK, NSAttributedString+LMK
+│   │   ├── Data/            # LMKFormatHelper, String+LMK, Collection+LMK, NSAttributedString+LMK
 │   │   ├── Date/            # LMKDateHelper, LMKDateFormatterHelper
 │   │   ├── File/            # LMKFileUtil
+│   │   ├── Log/             # LMKLogger, LMKLogStore (ring buffer), LMKLogLevel, LMKLogEntry
 │   │   └── Validation/      # LMKURLValidator
 │   ├── LumiKitUI/
 │   │   ├── Alerts/          # LMKAlertPresenter, LMKErrorHandler
@@ -61,11 +62,12 @@ LumiKit/
 │   │   └── Utilities/       # LMKDeviceHelper, LMKKeyboardObserver, LMKSceneUtil, LMKImageUtil
 │   └── LumiKitLottie/       # LMKLottieRefreshControl
 ├── Tests/
-│   ├── LumiKitCoreTests/    # 60 tests, 10 suites — mirrors Sources/LumiKitCore/ subfolders
+│   ├── LumiKitCoreTests/    # 77 tests, 12 suites — mirrors Sources/LumiKitCore/ subfolders
 │   │   ├── Concurrency/     # LMKConcurrencyHelpersTests
-│   │   ├── Data/            # Logger, String+LMK, Collection+LMK, NSAttributedString+LMK, FormatHelper
+│   │   ├── Data/            # String+LMK, Collection+LMK, NSAttributedString+LMK, FormatHelper
 │   │   ├── Date/            # DateHelper, DateFormatterHelper
 │   │   ├── File/            # FileUtil
+│   │   ├── Log/             # LMKLogStoreTests (ring buffer, thread safety), LMKLoggerTests (log store integration)
 │   │   └── Validation/      # URLValidator
 │   └── LumiKitUITests/      # 243+ tests, 61+ suites — mirrors Sources/LumiKitUI/ subfolders
 │       ├── Alerts/          # AlertPresenter, ErrorHandler

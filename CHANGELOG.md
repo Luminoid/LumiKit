@@ -5,6 +5,18 @@ All notable changes to LumiKit will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- **LMKLogStore** — Thread-safe in-memory ring buffer for log entries with FIFO eviction, formatted output, and `OSAllocatedUnfairLock` concurrency
+- **LMKLogLevel** — Log level enum (`debug`, `info`, `warning`, `error`)
+- **LMKLogEntry** — Sendable log entry struct with timestamp, level, category, and message
+
+### Changed
+- **LMKLogger** — Added opt-in in-memory log store via `enableLogStore(maxEntries:)` / `disableLogStore()`; each log call now appends to the store when enabled
+- **LMKLogger.LogCategory** — Added public `name` property for log store category tracking
+- Moved `LMKLogger` from `Data/` to new `Log/` subfolder alongside `LMKLogStore`
+
 ## [0.1.0] - 2026-02-18
 
 ### Added
