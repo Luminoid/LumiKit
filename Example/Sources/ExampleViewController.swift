@@ -3,6 +3,7 @@
 //  LumiKitExample
 //
 //  Catalog list that navigates to detail pages for each component group.
+//  Organized into sections: Design System, Components, Controls, Feedback, Overlays, Media.
 //
 
 import LumiKitUI
@@ -12,25 +13,65 @@ import UIKit
 final class ExampleViewController: UIViewController, UITableViewDataSource, UITableViewDelegate {
     // MARK: - Data
 
-    private enum Row: Int, CaseIterable {
+    private enum Section: Int, CaseIterable {
+        case designSystem
+        case components
+        case controls
+        case feedback
+        case overlays
+        case media
+
+        var title: String {
+            switch self {
+            case .designSystem: "Design System"
+            case .components: "Components"
+            case .controls: "Controls"
+            case .feedback: "Feedback"
+            case .overlays: "Overlays"
+            case .media: "Media"
+            }
+        }
+
+        var rows: [Row] {
+            switch self {
+            case .designSystem: [.typography, .colors]
+            case .components: [.cards, .badges, .chips, .banners, .emptyState, .gradient, .loadingState]
+            case .controls: [.buttons, .segmentedControl, .textField, .textView, .searchToggle]
+            case .feedback: [.toast, .alerts, .progress, .haptics]
+            case .overlays: [.actionSheet, .datePicker, .userTip, .cardPage, .cardPanel, .floatingButton]
+            case .media: [.photoBrowser, .photoCrop, .qrCode]
+            }
+        }
+    }
+
+    private enum Row {
         case typography
         case colors
         case cards
         case badges
         case chips
+        case banners
         case emptyState
-        case buttons
-        case toast
-        case controls
         case gradient
         case loadingState
-        case banner
+        case buttons
+        case segmentedControl
+        case textField
+        case textView
+        case searchToggle
+        case toast
+        case alerts
+        case progress
+        case haptics
         case actionSheet
-        case qrCode
+        case datePicker
+        case userTip
+        case cardPage
+        case cardPanel
+        case floatingButton
         case photoBrowser
         case photoCrop
-        case userTip
-        case floatingButton
+        case qrCode
 
         var title: String {
             switch self {
@@ -39,42 +80,60 @@ final class ExampleViewController: UIViewController, UITableViewDataSource, UITa
             case .cards: "Cards"
             case .badges: "Badges"
             case .chips: "Chips"
+            case .banners: "Banners"
             case .emptyState: "Empty State"
-            case .buttons: "Buttons"
-            case .toast: "Toast"
-            case .controls: "Controls"
             case .gradient: "Gradient"
             case .loadingState: "Loading State"
-            case .banner: "Banner"
+            case .buttons: "Buttons"
+            case .segmentedControl: "Segmented Control"
+            case .textField: "Text Field"
+            case .textView: "Text View"
+            case .searchToggle: "Search & Toggle"
+            case .toast: "Toast"
+            case .alerts: "Alerts & Errors"
+            case .progress: "Progress"
+            case .haptics: "Haptics"
             case .actionSheet: "Action Sheet"
-            case .qrCode: "QR Code"
+            case .datePicker: "Date Picker"
+            case .userTip: "User Tip"
+            case .cardPage: "Card Page"
+            case .cardPanel: "Card Panel"
+            case .floatingButton: "Floating Button"
             case .photoBrowser: "Photo Browser"
             case .photoCrop: "Photo Crop"
-            case .userTip: "User Tip"
-            case .floatingButton: "Floating Button"
+            case .qrCode: "QR Code"
             }
         }
 
         var subtitle: String {
             switch self {
             case .typography: "Headings, body, caption, scientific name"
-            case .colors: "Primary, semantic, and neutral colors"
+            case .colors: "Primary, semantic, text, and background colors"
             case .cards: "Card view and card factory"
             case .badges: "Count, text, and dot badges"
             case .chips: "Filled and outlined chip styles"
+            case .banners: "Persistent info, warning, and error banners"
             case .emptyState: "Full screen, card, and inline styles"
-            case .buttons: "Primary, secondary, destructive, warning"
-            case .toast: "Success, error, warning, info toasts"
-            case .controls: "Toggle, search bar, text field"
             case .gradient: "Linear gradients with configurable directions"
-            case .loadingState: "Inline and overlay loading indicators"
-            case .banner: "Persistent info, warning, and error banners"
+            case .loadingState: "Inline, overlay, and skeleton loading"
+            case .buttons: "Primary, secondary, destructive, warning"
+            case .segmentedControl: "Multi-option selection with handlers"
+            case .textField: "Validation states, icons, helper text"
+            case .textView: "Multi-line input with character limit"
+            case .searchToggle: "Search bar, toggle button, divider"
+            case .toast: "Success, error, warning, info toasts"
+            case .alerts: "Confirmation, alert, and error presentation"
+            case .progress: "Determinate and indeterminate progress"
+            case .haptics: "Success, warning, error, impact feedback"
             case .actionSheet: "Action sheets with icons and sub-pages"
-            case .qrCode: "Generate QR codes from text"
+            case .datePicker: "Single date, range, and date with notes"
+            case .userTip: "Centered and pointed onboarding tips"
+            case .cardPage: "Card page with multi-page navigation"
+            case .cardPanel: "Floating card panel with passthrough"
+            case .floatingButton: "Draggable floating action button"
             case .photoBrowser: "Full-screen photo viewer with zoom"
             case .photoCrop: "Crop with aspect ratios and zoom"
-            case .userTip: "Centered and pointed onboarding tips"
-            case .floatingButton: "Draggable floating action button"
+            case .qrCode: "Generate QR codes from text"
             }
         }
 
@@ -85,19 +144,28 @@ final class ExampleViewController: UIViewController, UITableViewDataSource, UITa
             case .cards: "rectangle.on.rectangle"
             case .badges: "app.badge"
             case .chips: "tag"
+            case .banners: "exclamationmark.bubble"
             case .emptyState: "square.dashed"
-            case .buttons: "rectangle.and.hand.point.up.left"
-            case .toast: "bell"
-            case .controls: "slider.horizontal.3"
             case .gradient: "rectangle.fill"
             case .loadingState: "progress.indicator"
-            case .banner: "exclamationmark.bubble"
+            case .buttons: "rectangle.and.hand.point.up.left"
+            case .segmentedControl: "rectangle.split.3x1"
+            case .textField: "character.cursor.ibeam"
+            case .textView: "text.alignleft"
+            case .searchToggle: "slider.horizontal.3"
+            case .toast: "bell"
+            case .alerts: "exclamationmark.triangle"
+            case .progress: "gauge.with.dots.needle.33percent"
+            case .haptics: "iphone.radiowaves.left.and.right"
             case .actionSheet: "list.bullet"
-            case .qrCode: "qrcode"
+            case .datePicker: "calendar"
+            case .userTip: "lightbulb"
+            case .cardPage: "square.stack"
+            case .cardPanel: "rectangle.inset.filled"
+            case .floatingButton: "circle.circle"
             case .photoBrowser: "photo.on.rectangle"
             case .photoCrop: "crop"
-            case .userTip: "lightbulb"
-            case .floatingButton: "circle.circle"
+            case .qrCode: "qrcode"
             }
         }
 
@@ -108,19 +176,28 @@ final class ExampleViewController: UIViewController, UITableViewDataSource, UITa
             case .cards: CardsDetailViewController()
             case .badges: BadgesDetailViewController()
             case .chips: ChipsDetailViewController()
+            case .banners: BannerDetailViewController()
             case .emptyState: EmptyStateDetailViewController()
-            case .buttons: ButtonsDetailViewController()
-            case .toast: ToastDetailViewController()
-            case .controls: ControlsDetailViewController()
             case .gradient: GradientDetailViewController()
             case .loadingState: LoadingStateDetailViewController()
-            case .banner: BannerDetailViewController()
+            case .buttons: ButtonsDetailViewController()
+            case .segmentedControl: SegmentedControlDetailViewController()
+            case .textField: TextFieldDetailViewController()
+            case .textView: TextViewDetailViewController()
+            case .searchToggle: SearchToggleDetailViewController()
+            case .toast: ToastDetailViewController()
+            case .alerts: AlertsDetailViewController()
+            case .progress: ProgressDetailViewController()
+            case .haptics: HapticsDetailViewController()
             case .actionSheet: ActionSheetDetailViewController()
-            case .qrCode: QRCodeDetailViewController()
+            case .datePicker: DatePickerDetailViewController()
+            case .userTip: UserTipDetailViewController()
+            case .cardPage: CardPageDetailViewController()
+            case .cardPanel: CardPanelDetailViewController()
+            case .floatingButton: FloatingButtonDetailViewController()
             case .photoBrowser: PhotoBrowserDetailViewController()
             case .photoCrop: PhotoCropDetailViewController()
-            case .userTip: UserTipDetailViewController()
-            case .floatingButton: FloatingButtonDetailViewController()
+            case .qrCode: QRCodeDetailViewController()
             }
         }
     }
@@ -132,7 +209,6 @@ final class ExampleViewController: UIViewController, UITableViewDataSource, UITa
         tableView.dataSource = self
         tableView.delegate = self
         tableView.register(UITableViewCell.self, forCellReuseIdentifier: "cell")
-        tableView.contentInset.top = -LMKSpacing.large
         return tableView
     }()
 
@@ -150,13 +226,22 @@ final class ExampleViewController: UIViewController, UITableViewDataSource, UITa
 
     // MARK: - Data Source
 
+    func numberOfSections(in tableView: UITableView) -> Int {
+        Section.allCases.count
+    }
+
+    func tableView(_ tableView: UITableView, titleForHeaderInSection section: Int) -> String? {
+        Section(rawValue: section)?.title
+    }
+
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        Row.allCases.count
+        Section(rawValue: section)?.rows.count ?? 0
     }
 
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCell(withIdentifier: "cell", for: indexPath)
-        guard let row = Row(rawValue: indexPath.row) else { return cell }
+        guard let section = Section(rawValue: indexPath.section) else { return cell }
+        let row = section.rows[indexPath.row]
 
         var config = cell.defaultContentConfiguration()
         config.text = row.title
@@ -172,7 +257,8 @@ final class ExampleViewController: UIViewController, UITableViewDataSource, UITa
 
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         tableView.deselectRow(at: indexPath, animated: true)
-        guard let row = Row(rawValue: indexPath.row) else { return }
+        guard let section = Section(rawValue: indexPath.section) else { return }
+        let row = section.rows[indexPath.row]
         let detail = row.makeDetailViewController()
         detail.title = row.title
         navigationController?.pushViewController(detail, animated: true)

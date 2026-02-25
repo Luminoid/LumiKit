@@ -8,8 +8,31 @@
 import SnapKit
 import UIKit
 
-/// Banner type (reuses toast type for color/icon consistency).
-public typealias LMKBannerType = LMKToastType
+/// Banner type with semantic colors and icons.
+public enum LMKBannerType {
+    case error
+    case success
+    case warning
+    case info
+
+    public var iconName: String {
+        switch self {
+        case .error: "exclamationmark.circle.fill"
+        case .success: "checkmark.circle.fill"
+        case .warning: "exclamationmark.triangle.fill"
+        case .info: "info.circle.fill"
+        }
+    }
+
+    public var color: UIColor {
+        switch self {
+        case .error: LMKColor.error
+        case .success: LMKColor.success
+        case .warning: LMKColor.warning
+        case .info: LMKColor.info
+        }
+    }
+}
 
 /// Persistent banner for status messages, warnings, or actionable notifications.
 ///

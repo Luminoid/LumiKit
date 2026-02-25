@@ -8,22 +8,34 @@
 
 /* Begin PBXBuildFile section */
 		047822D6720CE3A9B3F0D39B /* LumiKitUI in Frameworks */ = {isa = PBXBuildFile; productRef = 2F68DA943A7AC838DB04D706 /* LumiKitUI */; };
-		6FCFDA026B557679B16628AC /* DetailViewControllers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8892E508D4C9EEC35C2203DC /* DetailViewControllers.swift */; };
+		105EFE9D5ADB91AEC2FDE413 /* DetailViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42FBB04A148E7139E1FF0995 /* DetailViewController.swift */; };
+		38C672D29A5229EBE665C848 /* DesignSystemExamples.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60BB8EFB6C137EBC751F20AC /* DesignSystemExamples.swift */; };
+		6866F8211967DA823D406767 /* OverlayExamples.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3E0F5BA6A2392ED7B59E6CAD /* OverlayExamples.swift */; };
+		6B0AEE6A79436BDB59D8BC52 /* ControlExamples.swift in Sources */ = {isa = PBXBuildFile; fileRef = BDB4E383EA3A05318909A092 /* ControlExamples.swift */; };
 		7CEAE2CFE6F3459CF12AA3B8 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 266C27EB7D3242022FA646B1 /* SceneDelegate.swift */; };
 		8DA6AE05BF1F647DC25C8043 /* ExampleViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 209A8FE1218B1F3B9AC4C27E /* ExampleViewController.swift */; };
+		B0DC9359A000D2E8A6EC7624 /* ComponentExamples.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4C7CB4CD18E5FBD6D6ABF7BC /* ComponentExamples.swift */; };
 		B97C2431575FC1826B0D8F68 /* ExampleTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4EE462A6DA85E94E76074806 /* ExampleTheme.swift */; };
 		BB50C3AFE3CFDD56E1F010C4 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = F4FEA4A6AC67074774361233 /* Assets.xcassets */; };
+		BF232A4012BFEA34259F4E63 /* MediaExamples.swift in Sources */ = {isa = PBXBuildFile; fileRef = 07FEC3C9A733053C2F21C779 /* MediaExamples.swift */; };
+		C781F75D6E7EE6D151DD89ED /* FeedbackExamples.swift in Sources */ = {isa = PBXBuildFile; fileRef = A36C432E6E9D1CEE43FD6C1C /* FeedbackExamples.swift */; };
 		F65AC6D91C57253EE3C4A89B /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 93FB8A0B3A17095ACACC4000 /* AppDelegate.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		07FEC3C9A733053C2F21C779 /* MediaExamples.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediaExamples.swift; sourceTree = "<group>"; };
 		0C01ADD96E8B682AB888384E /* LumiKit */ = {isa = PBXFileReference; lastKnownFileType = folder; name = LumiKit; path = ..; sourceTree = SOURCE_ROOT; };
 		209A8FE1218B1F3B9AC4C27E /* ExampleViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExampleViewController.swift; sourceTree = "<group>"; };
 		266C27EB7D3242022FA646B1 /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
 		2B9C75CF348A9670C0B7CEE4 /* LumiKitExample.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = LumiKitExample.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		3E0F5BA6A2392ED7B59E6CAD /* OverlayExamples.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverlayExamples.swift; sourceTree = "<group>"; };
+		42FBB04A148E7139E1FF0995 /* DetailViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetailViewController.swift; sourceTree = "<group>"; };
+		4C7CB4CD18E5FBD6D6ABF7BC /* ComponentExamples.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ComponentExamples.swift; sourceTree = "<group>"; };
 		4EE462A6DA85E94E76074806 /* ExampleTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExampleTheme.swift; sourceTree = "<group>"; };
-		8892E508D4C9EEC35C2203DC /* DetailViewControllers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetailViewControllers.swift; sourceTree = "<group>"; };
+		60BB8EFB6C137EBC751F20AC /* DesignSystemExamples.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DesignSystemExamples.swift; sourceTree = "<group>"; };
 		93FB8A0B3A17095ACACC4000 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
+		A36C432E6E9D1CEE43FD6C1C /* FeedbackExamples.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FeedbackExamples.swift; sourceTree = "<group>"; };
+		BDB4E383EA3A05318909A092 /* ControlExamples.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ControlExamples.swift; sourceTree = "<group>"; };
 		F4FEA4A6AC67074774361233 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -77,9 +89,15 @@
 			isa = PBXGroup;
 			children = (
 				93FB8A0B3A17095ACACC4000 /* AppDelegate.swift */,
-				8892E508D4C9EEC35C2203DC /* DetailViewControllers.swift */,
+				4C7CB4CD18E5FBD6D6ABF7BC /* ComponentExamples.swift */,
+				BDB4E383EA3A05318909A092 /* ControlExamples.swift */,
+				60BB8EFB6C137EBC751F20AC /* DesignSystemExamples.swift */,
+				42FBB04A148E7139E1FF0995 /* DetailViewController.swift */,
 				4EE462A6DA85E94E76074806 /* ExampleTheme.swift */,
 				209A8FE1218B1F3B9AC4C27E /* ExampleViewController.swift */,
+				A36C432E6E9D1CEE43FD6C1C /* FeedbackExamples.swift */,
+				07FEC3C9A733053C2F21C779 /* MediaExamples.swift */,
+				3E0F5BA6A2392ED7B59E6CAD /* OverlayExamples.swift */,
 				266C27EB7D3242022FA646B1 /* SceneDelegate.swift */,
 			);
 			path = Sources;
@@ -160,9 +178,15 @@
 			buildActionMask = 2147483647;
 			files = (
 				F65AC6D91C57253EE3C4A89B /* AppDelegate.swift in Sources */,
-				6FCFDA026B557679B16628AC /* DetailViewControllers.swift in Sources */,
+				B0DC9359A000D2E8A6EC7624 /* ComponentExamples.swift in Sources */,
+				6B0AEE6A79436BDB59D8BC52 /* ControlExamples.swift in Sources */,
+				38C672D29A5229EBE665C848 /* DesignSystemExamples.swift in Sources */,
+				105EFE9D5ADB91AEC2FDE413 /* DetailViewController.swift in Sources */,
 				B97C2431575FC1826B0D8F68 /* ExampleTheme.swift in Sources */,
 				8DA6AE05BF1F647DC25C8043 /* ExampleViewController.swift in Sources */,
+				C781F75D6E7EE6D151DD89ED /* FeedbackExamples.swift in Sources */,
+				BF232A4012BFEA34259F4E63 /* MediaExamples.swift in Sources */,
+				6866F8211967DA823D406767 /* OverlayExamples.swift in Sources */,
 				7CEAE2CFE6F3459CF12AA3B8 /* SceneDelegate.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
