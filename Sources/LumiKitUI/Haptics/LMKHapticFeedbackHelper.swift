@@ -24,11 +24,11 @@ import UIKit
 /// LMKHapticFeedbackHelper.success()
 /// ```
 public enum LMKHapticFeedbackHelper {
-    private static let impactLight = UIImpactFeedbackGenerator(style: .light)
-    private static let impactMedium = UIImpactFeedbackGenerator(style: .medium)
-    private static let impactHeavy = UIImpactFeedbackGenerator(style: .heavy)
-    private static let notificationGenerator = UINotificationFeedbackGenerator()
-    private static let selectionGenerator = UISelectionFeedbackGenerator()
+    private static let impactLight = { UIImpactFeedbackGenerator(style: .light) }()
+    private static let impactMedium = { UIImpactFeedbackGenerator(style: .medium) }()
+    private static let impactHeavy = { UIImpactFeedbackGenerator(style: .heavy) }()
+    private static let notificationGenerator = { UINotificationFeedbackGenerator() }()
+    private static let selectionGenerator = { UISelectionFeedbackGenerator() }()
 
     // MARK: - Feedback
 

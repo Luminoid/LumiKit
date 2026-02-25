@@ -15,36 +15,54 @@ final class ButtonsDetailViewController: DetailViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
 
-        addSectionHeader("LMKButtonFactory")
-        stack.addArrangedSubview(LMKButtonFactory.primary(title: "Primary Action", target: self, action: #selector(tapped)))
-        stack.addArrangedSubview(LMKButtonFactory.secondary(title: "Secondary Action", target: self, action: #selector(tapped)))
-        stack.addArrangedSubview(LMKButtonFactory.destructive(title: "Delete", target: self, action: #selector(tapped)))
-        stack.addArrangedSubview(LMKButtonFactory.warning(title: "Warning", target: self, action: #selector(tapped)))
+        addSectionHeader("Filled")
+
+        let primaryBtn = LMKButtonFactory.primary(title: "Primary", target: self, action: #selector(showSuccessToast))
+        stack.addArrangedSubview(primaryBtn)
+
+        let secondaryBtn = LMKButtonFactory.secondary(title: "Secondary", target: self, action: #selector(showSuccessToast))
+        stack.addArrangedSubview(secondaryBtn)
+
+        let destructiveBtn = LMKButtonFactory.destructive(title: "Destructive", target: self, action: #selector(showSuccessToast))
+        stack.addArrangedSubview(destructiveBtn)
+
+        let warningBtn = LMKButtonFactory.warning(title: "Warning", target: self, action: #selector(showSuccessToast))
+        stack.addArrangedSubview(warningBtn)
+
+        let successBtn = LMKButtonFactory.success(title: "Success", target: self, action: #selector(showSuccessToast))
+        stack.addArrangedSubview(successBtn)
+
+        let infoBtn = LMKButtonFactory.info(title: "Info", target: self, action: #selector(showSuccessToast))
+        stack.addArrangedSubview(infoBtn)
 
         addDivider()
-        addSectionHeader("LMKButton")
-        let button = LMKButton()
-        button.setTitle("Tap me (closure-based)", for: .normal)
-        button.setTitleColor(LMKColor.primary, for: .normal)
-        button.tapHandler = { [weak self] in
-            guard let self else { return }
-            LMKToast.showSuccess(message: "LMKButton tapped!", on: self)
-        }
-        stack.addArrangedSubview(button)
+        addSectionHeader("Outlined")
 
-        let animatedButton = LMKButton()
-        animatedButton.setTitle("With press animation", for: .normal)
-        animatedButton.setTitleColor(LMKColor.secondary, for: .normal)
-        animatedButton.pressAnimationEnabled = true
-        animatedButton.tapHandler = { [weak self] in
-            guard let self else { return }
-            LMKToast.showInfo(message: "Press animation enabled!", on: self)
-        }
-        stack.addArrangedSubview(animatedButton)
+        let primaryOutlined = LMKButtonFactory.primaryOutlined(title: "Primary", target: self, action: #selector(showInfoToast))
+        stack.addArrangedSubview(primaryOutlined)
+
+        let secondaryOutlined = LMKButtonFactory.secondaryOutlined(title: "Secondary", target: self, action: #selector(showInfoToast))
+        stack.addArrangedSubview(secondaryOutlined)
+
+        let destructiveOutlined = LMKButtonFactory.destructiveOutlined(title: "Destructive", target: self, action: #selector(showInfoToast))
+        stack.addArrangedSubview(destructiveOutlined)
+
+        addDivider()
+        addSectionHeader("Typed Handler")
+        let typed = LMKButtonFactory.primary(title: "Typed Handler", target: self, action: #selector(showTypedToast))
+        stack.addArrangedSubview(typed)
     }
 
-    @objc private func tapped() {
+    @objc private func showSuccessToast() {
         LMKToast.showSuccess(message: "Button tapped!", on: self)
+    }
+
+    @objc private func showInfoToast() {
+        LMKToast.showInfo(message: "Outlined button tapped!", on: self)
+    }
+
+    @objc private func showTypedToast() {
+        LMKToast.showSuccess(message: "Typed handler tapped!", on: self)
     }
 }
 

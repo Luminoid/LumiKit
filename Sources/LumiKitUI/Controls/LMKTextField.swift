@@ -154,7 +154,10 @@ open class LMKTextField: UIView {
         isAccessibilityElement = false
         accessibilityElements = [textField, helperLabel]
 
-        traitChangeRegistration = registerForTraitChanges([UITraitUserInterfaceStyle.self], action: #selector(refreshDynamicColors))
+        traitChangeRegistration = registerForTraitChanges(
+            [UITraitUserInterfaceStyle.self, UITraitAccessibilityContrast.self],
+            action: #selector(refreshDynamicColors)
+        )
     }
 
     @objc private func refreshDynamicColors() {

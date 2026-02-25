@@ -25,13 +25,39 @@ public enum LMKDateFormatterHelper {
         dateFormatProvider = dateFormat
     }
 
+    /// Cached date-only formatter, invalidated when format changes.
+    private nonisolated(unsafe) static var cachedDateFormatter: DateFormatter?
+    /// Cached date+time formatter, invalidated when format changes.
+    private nonisolated(unsafe) static var cachedDateTimeFormatter: DateFormatter?
+    /// Format string that produced the cached formatters.
+    private nonisolated(unsafe) static var cachedFormat: String?
+
     /// Get a date formatter with the configured date format and system locale.
     public static func dateFormatter(includeTime: Bool = false) -> DateFormatter {
         let format = dateFormatProvider()
-        let formatter = DateFormatter()
-        formatter.locale = Locale.current
-        formatter.dateFormat = includeTime ? format + " HH:mm" : format
-        return formatter
+
+        // Invalidate cache when format changes
+        if format != cachedFormat {
+            cachedDateFormatter = nil
+            cachedDateTimeFormatter = nil
+            cachedFormat = format
+        }
+
+        if includeTime {
+            if let cached = cachedDateTimeFormatter { return cached }
+            let formatter = DateFormatter()
+            formatter.locale = Locale.current
+            formatter.dateFormat = format + " HH:mm"
+            cachedDateTimeFormatter = formatter
+            return formatter
+        } else {
+            if let cached = cachedDateFormatter { return cached }
+            let formatter = DateFormatter()
+            formatter.locale = Locale.current
+            formatter.dateFormat = format
+            cachedDateFormatter = formatter
+            return formatter
+        }
     }
 
     /// Format a date using the configured date format and system locale.
@@ -39,15 +65,20 @@ public enum LMKDateFormatterHelper {
         dateFormatter(includeTime: includeTime).string(from: date)
     }
 
-    /// Get a number formatter with system locale.
-    public static func numberFormatter() -> NumberFormatter {
+    /// Cached number formatter.
+    private static let cachedNumberFormatter: NumberFormatter = {
         let formatter = NumberFormatter()
         formatter.locale = Locale.current
         return formatter
+    }()
+
+    /// Get a number formatter with system locale.
+    public static func numberFormatter() -> NumberFormatter {
+        cachedNumberFormatter
     }
 
     /// Format a number using system locale.
     public static func formatNumber(_ number: NSNumber) -> String {
-        numberFormatter().string(from: number) ?? "\(number)"
+        cachedNumberFormatter.string(from: number) ?? "\(number)"
     }
 }

@@ -8,25 +8,6 @@
 import SnapKit
 import UIKit
 
-/// Shared configuration for the photo browser.
-public enum LMKPhotoBrowserConfig {
-    /// Inter-page gap between photos. The spacing is included within each cell
-    /// (cell width = screen width + this value) rather than as layout-level
-    /// `minimumLineSpacing`, because `UICollectionViewFlowLayout` doesn't add
-    /// spacing after the last cell — causing an accumulated offset bug on the
-    /// final page.
-    public static var interPageSpacing: CGFloat { LMKSpacing.large }
-    /// Button size for Mac Catalyst controls.
-    public static let macButtonSize: CGFloat = 48
-    /// Maximum zoom scale for photo preview.
-    public static let maximumZoomScale: CGFloat = 3.0
-    /// Minimum zoom scale for photo preview.
-    public static let minimumZoomScale: CGFloat = 1.0
-    /// Minimum vertical velocity (pt/s) to trigger dismiss.
-    public static let dismissVelocityThreshold: CGFloat = 700
-}
-
-
 // MARK: - LMKPhotoBrowserCell
 
 public final class LMKPhotoBrowserCell: UICollectionViewCell {
@@ -227,24 +208,18 @@ public final class LMKPhotoBrowserCell: UICollectionViewCell {
         widthConstraint?.update(offset: fittedSize.width)
         heightConstraint?.update(offset: fittedSize.height)
 
-        // Force layout update
+        // Force layout then recalculate content size
         setNeedsLayout()
         layoutIfNeeded()
-
-        // Update scroll view content size after layout
-        DispatchQueue.main.async { [weak self] in
-            self?.updateScrollViewContentSize()
-        }
+        updateScrollViewContentSize()
     }
 
     public func resetZoom() {
         scrollView.setZoomScale(Self.minimumZoomScale, animated: false)
         scrollView.transform = .identity
-        // Reset content offset after a brief delay to ensure layout is complete
-        DispatchQueue.main.async { [weak self] in
-            self?.scrollView.contentOffset = .zero
-            self?.centerImageView()
-        }
+        scrollView.contentOffset = .zero
+        setNeedsLayout()
+        layoutIfNeeded()
     }
 
     public var isZoomed: Bool {

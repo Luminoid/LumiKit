@@ -264,24 +264,23 @@ public final class LMKSharePreviewViewController: UIViewController {
     // MARK: - Helpers
 
     private func performSaveImage() {
-        UIImageWriteToSavedPhotosAlbum(image, self, #selector(imageSaveCompleted(_:didFinishSavingWithError:contextInfo:)), nil)
-    }
-
-    @objc private func imageSaveCompleted(
-        _ image: UIImage,
-        didFinishSavingWithError error: Error?,
-        contextInfo: UnsafeRawPointer?
-    ) {
-        if let error {
-            LMKLogger.error("Failed to save image to photos", error: error, category: .general)
-            LMKToast.showError(message: Self.strings.saveError, on: self)
-        } else {
-            LMKLogger.info("Image saved to photos", category: .general)
-            LMKToast.showSuccessOnWindow(message: Self.strings.saveSuccess)
-            delegate?.sharePreviewDidSave(self)
-            dismiss(animated: true) { [weak self] in
+        PHPhotoLibrary.shared().performChanges {
+            PHAssetChangeRequest.creationRequestForAsset(from: self.image)
+        } completionHandler: { [weak self] success, error in
+            Task { @MainActor in
                 guard let self else { return }
-                delegate?.sharePreviewDidDismiss(self)
+                if let error {
+                    LMKLogger.error("Failed to save image to photos", error: error, category: .general)
+                    LMKToast.showError(message: Self.strings.saveError, on: self)
+                } else if success {
+                    LMKLogger.info("Image saved to photos", category: .general)
+                    LMKToast.showSuccessOnWindow(message: Self.strings.saveSuccess)
+                    self.delegate?.sharePreviewDidSave(self)
+                    self.dismiss(animated: true) { [weak self] in
+                        guard let self else { return }
+                        self.delegate?.sharePreviewDidDismiss(self)
+                    }
+                }
             }
         }
     }

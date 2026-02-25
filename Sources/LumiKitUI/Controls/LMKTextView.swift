@@ -8,12 +8,12 @@
 import SnapKit
 import UIKit
 
-/// Multi-line text view with built-in placeholder support.
+/// Multi-line text view with built-in placeholder, validation states, and border styling.
 ///
 /// ```swift
 /// let textView = LMKTextView()
 /// textView.placeholder = "Add notes..."
-/// textView.text = ""
+/// textView.validationState = .error("Too short")
 /// ```
 open class LMKTextView: UIView {
     // MARK: - Properties
@@ -21,6 +21,7 @@ open class LMKTextView: UIView {
     /// The underlying text view. Exposed for direct configuration.
     public let textView = UITextView()
     private let placeholderLabel = UILabel()
+    private let helperLabel = UILabel()
 
     /// Delegate forwarding.
     public weak var delegate: (any UITextViewDelegate)?
@@ -42,8 +43,21 @@ open class LMKTextView: UIView {
         }
     }
 
+    /// Helper text shown below the text view in normal state.
+    public var helperText: String? {
+        didSet { updateHelperText() }
+    }
+
+    /// Current validation state.
+    public var validationState: LMKTextFieldState = .normal {
+        didSet { updateValidationAppearance() }
+    }
+
     /// Maximum number of characters. `nil` means unlimited.
     public var maxCharacterCount: Int?
+
+    /// Called when text changes via user input.
+    public var textChangedHandler: ((String?) -> Void)?
 
     // MARK: - Initialization
 
@@ -64,11 +78,13 @@ open class LMKTextView: UIView {
         textView.textColor = LMKColor.textPrimary
         textView.backgroundColor = LMKColor.backgroundSecondary
         textView.layer.cornerRadius = LMKCornerRadius.small
+        textView.layer.borderWidth = 1
+        textView.layer.borderColor = LMKColor.divider.cgColor
         textView.lmk_applyFormContentPadding()
         textView.delegate = self
         addSubview(textView)
         textView.snp.makeConstraints { make in
-            make.edges.equalToSuperview()
+            make.top.leading.trailing.equalToSuperview()
         }
 
         placeholderLabel.font = LMKTypography.body
@@ -85,16 +101,55 @@ open class LMKTextView: UIView {
             )
         }
 
+        helperLabel.font = LMKTypography.small
+        helperLabel.textColor = LMKColor.textTertiary
+        helperLabel.numberOfLines = 0
+        addSubview(helperLabel)
+        helperLabel.snp.makeConstraints { make in
+            make.leading.trailing.equalToSuperview().inset(LMKSpacing.xs)
+            make.top.equalTo(textView.snp.bottom).offset(LMKSpacing.xs)
+            make.bottom.equalToSuperview()
+        }
+
         isAccessibilityElement = false
 
-        _ = registerForTraitChanges([UITraitUserInterfaceStyle.self]) { (self: LMKTextView, _: UITraitCollection) in
-            self.textView.backgroundColor = LMKColor.backgroundSecondary
-            self.placeholderLabel.textColor = LMKColor.textTertiary
+        _ = registerForTraitChanges(
+            [UITraitUserInterfaceStyle.self, UITraitAccessibilityContrast.self]
+        ) { (self: LMKTextView, _: UITraitCollection) in
+            self.updateValidationAppearance()
         }
     }
 
+    // MARK: - UI Updates
+
     private func updatePlaceholderVisibility() {
         placeholderLabel.isHidden = !(textView.text?.isEmpty ?? true)
+    }
+
+    private func updateHelperText() {
+        switch validationState {
+        case .normal, .success:
+            helperLabel.text = helperText
+            helperLabel.textColor = LMKColor.textTertiary
+        case .error(let message):
+            helperLabel.text = message
+            helperLabel.textColor = LMKColor.error
+        }
+    }
+
+    private func updateValidationAppearance() {
+        switch validationState {
+        case .normal:
+            textView.layer.borderColor = LMKColor.divider.cgColor
+            updateHelperText()
+        case .error(let message):
+            textView.layer.borderColor = LMKColor.error.cgColor
+            helperLabel.text = message
+            helperLabel.textColor = LMKColor.error
+        case .success:
+            textView.layer.borderColor = LMKColor.success.cgColor
+            updateHelperText()
+        }
     }
 
     // MARK: - First Responder
@@ -113,6 +168,7 @@ open class LMKTextView: UIView {
 extension LMKTextView: UITextViewDelegate {
     public func textViewDidChange(_ textView: UITextView) {
         updatePlaceholderVisibility()
+        textChangedHandler?(textView.text)
         delegate?.textViewDidChange?(textView)
     }
 

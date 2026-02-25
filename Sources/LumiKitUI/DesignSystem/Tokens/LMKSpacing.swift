@@ -34,18 +34,32 @@ public enum LMKSpacing {
     /// Screen margins, large gaps — default 24pt.
     public static var xxl: CGFloat { config.xxl }
 
+    // MARK: - iPad Breakpoints
+
+    /// iPad mini / iPad 9th gen (longest side 1024pt, shortest 768pt).
+    private static let iPadCompactBreakpoint: CGFloat = 768
+    /// iPad Air 11" / iPad Pro 11" (longest side 1194pt, shortest 834pt).
+    private static let iPadRegularBreakpoint: CGFloat = 834
+    /// iPad Pro 12.9" / iPad Pro 13" (longest side 1366pt, shortest 1024pt).
+    private static let iPadLargeBreakpoint: CGFloat = 1024
+
     /// Content horizontal padding for headers, list content, cards.
     /// Scales based on device size (iPhone -> iPad -> Mac Catalyst).
     /// All per-device values are theme-configurable via `LMKSpacingTheme`;
     /// iPhone falls through to `config.large` from the theme.
+    ///
+    /// iPad breakpoints (by longest screen side):
+    /// - Compact (≤768pt): iPad mini, iPad 9th gen
+    /// - Regular (≤1024pt): iPad Air, iPad Pro 11"
+    /// - Large (>1024pt): iPad Pro 12.9"/13"
     public static var cardPadding: CGFloat {
         #if targetEnvironment(macCatalyst)
             return config.cardPaddingMac
         #elseif os(iOS)
             if UIDevice.current.userInterfaceIdiom == .pad {
                 let screenSize = longestScreenSide
-                if screenSize <= 768 { return config.cardPaddingIPadCompact }
-                else if screenSize <= 1024 { return config.cardPaddingIPadRegular }
+                if screenSize <= iPadCompactBreakpoint { return config.cardPaddingIPadCompact }
+                else if screenSize <= iPadLargeBreakpoint { return config.cardPaddingIPadRegular }
                 else { return config.cardPaddingIPadLarge }
             }
             return config.large
@@ -57,14 +71,19 @@ public enum LMKSpacing {
     /// Cell vertical padding (larger on bigger screens).
     /// All per-device values are theme-configurable via `LMKSpacingTheme`;
     /// iPhone falls through to `config.small` from the theme.
+    ///
+    /// iPad breakpoints (by longest screen side):
+    /// - Compact (≤768pt): iPad mini, iPad 9th gen
+    /// - Regular (≤834pt): iPad Air 11", iPad Pro 11"
+    /// - Large (>834pt): iPad Pro 12.9"/13"
     public static var cellPaddingVertical: CGFloat {
         #if targetEnvironment(macCatalyst)
             return config.cellPaddingVerticalMac
         #elseif os(iOS)
             if UIDevice.current.userInterfaceIdiom == .pad {
                 let screenSize = longestScreenSide
-                if screenSize <= 768 { return config.cellPaddingVerticalIPadCompact }
-                else if screenSize <= 834 { return config.cellPaddingVerticalIPadRegular }
+                if screenSize <= iPadCompactBreakpoint { return config.cellPaddingVerticalIPadCompact }
+                else if screenSize <= iPadRegularBreakpoint { return config.cellPaddingVerticalIPadRegular }
                 else { return config.cellPaddingVerticalIPadLarge }
             }
             return config.small

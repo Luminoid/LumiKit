@@ -512,6 +512,17 @@ LumiKitCore has no default isolation and is safe to use from any concurrency con
 
 ## TODO
 
+### Tests
+- [ ] Fix 2 failing tests: `LMKCardPageControllerTests` — content container `frame.minY` and `clipsToBounds` assertions need `layoutIfNeeded()` before assertion
+- [ ] Add tests for `LMKPhotoBrowserViewController` (800 lines, 0 tests — gesture handling, dismiss animation)
+- [ ] Add tests for `LMKPhotoBrowserCell` (530 lines, 0 tests — zoom, pan, scroll interactions)
+- [ ] Add tests for `LMKPhotoCropViewController` (960 lines, 0 tests — crop rect, zoom, orientation)
+- [ ] Add tests for `LMKLottieRefreshControl` (205 lines, 0 tests — Lottie dependency)
+- [ ] Expand `LMKPhotoEXIFServiceTests` (4 tests — only covers `extractDate(from: UIImage)`, not `PHPickerResult` or `extractLocation`)
+- [ ] Expand `LMKCropAspectRatioTests` (5 tests — only covers the enum, not crop logic)
+- [ ] Expand `LMKAnimationHelperTests` (5 tests — only durations/`shouldAnimate`, no animation behavior)
+
+### Infrastructure
 - [ ] Create CONTRIBUTING.md with contribution guidelines
 - [ ] Set up GitHub Actions CI (test on push/PR — iOS Simulator + Mac Catalyst)
 - [ ] Add SECURITY.md

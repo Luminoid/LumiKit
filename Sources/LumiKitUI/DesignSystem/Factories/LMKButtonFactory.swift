@@ -7,106 +7,71 @@
 
 import UIKit
 
-/// Factory methods for creating styled `UIButton` instances.
+/// Factory methods for creating styled `LMKButton` instances with target-action pattern.
 public enum LMKButtonFactory {
-    public static func primary(title: String, target: Any?, action: Selector) -> UIButton {
-        makeButton(title: title, backgroundColor: LMKColor.primary, target: target, action: action)
+    // MARK: - Filled Buttons
+
+    public static func primary(title: String, target: Any?, action: Selector) -> LMKButton {
+        makeButton(title: title, color: LMKColor.primary, target: target, action: action)
     }
 
-    public static func secondary(title: String, target: Any?, action: Selector) -> UIButton {
-        makeButton(title: title, backgroundColor: LMKColor.secondary, target: target, action: action)
+    public static func secondary(title: String, target: Any?, action: Selector) -> LMKButton {
+        makeButton(title: title, color: LMKColor.secondary, target: target, action: action)
     }
 
-    public static func destructive(title: String, target: Any?, action: Selector) -> UIButton {
-        makeButton(title: title, backgroundColor: LMKColor.error, target: target, action: action)
+    public static func destructive(title: String, target: Any?, action: Selector) -> LMKButton {
+        makeButton(title: title, color: LMKColor.error, target: target, action: action)
     }
 
-    public static func warning(title: String, target: Any?, action: Selector) -> UIButton {
-        makeButton(title: title, backgroundColor: LMKColor.warning, target: target, action: action)
+    public static func warning(title: String, target: Any?, action: Selector) -> LMKButton {
+        makeButton(title: title, color: LMKColor.warning, target: target, action: action)
     }
 
-    public static func outline(title: String, color: UIColor = LMKColor.primary, target: Any?, action: Selector) -> UIButton {
-        var config = UIButton.Configuration.tinted()
-        config.title = title
-        config.baseBackgroundColor = color
-        config.baseForegroundColor = color
-        config.cornerStyle = .fixed
-        config.background.cornerRadius = LMKCornerRadius.small
-        config.contentInsets = NSDirectionalEdgeInsets(
-            top: LMKSpacing.buttonPaddingVertical,
-            leading: LMKSpacing.buttonPaddingHorizontal,
-            bottom: LMKSpacing.buttonPaddingVertical,
-            trailing: LMKSpacing.buttonPaddingHorizontal,
-        )
-        config.titleTextAttributesTransformer = UIConfigurationTextAttributesTransformer { incoming in
-            var outgoing = incoming
-            outgoing.font = LMKTypography.bodyMedium
-            return outgoing
-        }
-
-        let button = UIButton(configuration: config)
-        button.addTarget(target, action: action, for: .touchUpInside)
-        button.addTarget(nil, action: #selector(UIButton.lmk_animatePress), for: .touchDown)
-        return button
+    public static func success(title: String, target: Any?, action: Selector) -> LMKButton {
+        makeButton(title: title, color: LMKColor.success, target: target, action: action)
     }
 
-    public static func text(title: String, color: UIColor = LMKColor.primary, target: Any?, action: Selector) -> UIButton {
-        var config = UIButton.Configuration.plain()
-        config.title = title
-        config.baseForegroundColor = color
-        config.contentInsets = NSDirectionalEdgeInsets(
-            top: LMKSpacing.buttonPaddingVertical,
-            leading: LMKSpacing.buttonPaddingHorizontal,
-            bottom: LMKSpacing.buttonPaddingVertical,
-            trailing: LMKSpacing.buttonPaddingHorizontal,
-        )
-        config.titleTextAttributesTransformer = UIConfigurationTextAttributesTransformer { incoming in
-            var outgoing = incoming
-            outgoing.font = LMKTypography.bodyMedium
-            return outgoing
-        }
+    public static func info(title: String, target: Any?, action: Selector) -> LMKButton {
+        makeButton(title: title, color: LMKColor.info, target: target, action: action)
+    }
 
-        let button = UIButton(configuration: config)
+    // MARK: - Outlined Buttons
+
+    public static func primaryOutlined(title: String, target: Any?, action: Selector) -> LMKButton {
+        makeOutlinedButton(title: title, color: LMKColor.primary, target: target, action: action)
+    }
+
+    public static func secondaryOutlined(title: String, target: Any?, action: Selector) -> LMKButton {
+        makeOutlinedButton(title: title, color: LMKColor.secondary, target: target, action: action)
+    }
+
+    public static func destructiveOutlined(title: String, target: Any?, action: Selector) -> LMKButton {
+        makeOutlinedButton(title: title, color: LMKColor.error, target: target, action: action)
+    }
+
+    public static func warningOutlined(title: String, target: Any?, action: Selector) -> LMKButton {
+        makeOutlinedButton(title: title, color: LMKColor.warning, target: target, action: action)
+    }
+
+    public static func successOutlined(title: String, target: Any?, action: Selector) -> LMKButton {
+        makeOutlinedButton(title: title, color: LMKColor.success, target: target, action: action)
+    }
+
+    public static func infoOutlined(title: String, target: Any?, action: Selector) -> LMKButton {
+        makeOutlinedButton(title: title, color: LMKColor.info, target: target, action: action)
+    }
+
+    // MARK: - Private Helpers
+
+    private static func makeButton(title: String, color: UIColor, target: Any?, action: Selector) -> LMKButton {
+        let button = LMKButton(title: title, style: .filled(color))
         button.addTarget(target, action: action, for: .touchUpInside)
         return button
     }
 
-    public static func success(title: String, target: Any?, action: Selector) -> UIButton {
-        makeButton(title: title, backgroundColor: LMKColor.success, target: target, action: action)
-    }
-
-    public static func info(title: String, target: Any?, action: Selector) -> UIButton {
-        makeButton(title: title, backgroundColor: LMKColor.info, target: target, action: action)
-    }
-
-    private static func makeButton(
-        title: String,
-        backgroundColor: UIColor,
-        foregroundColor: UIColor = LMKColor.white,
-        target: Any?,
-        action: Selector,
-    ) -> UIButton {
-        var config = UIButton.Configuration.filled()
-        config.title = title
-        config.baseBackgroundColor = backgroundColor
-        config.baseForegroundColor = foregroundColor
-        config.cornerStyle = .fixed
-        config.background.cornerRadius = LMKCornerRadius.small
-        config.contentInsets = NSDirectionalEdgeInsets(
-            top: LMKSpacing.buttonPaddingVertical,
-            leading: LMKSpacing.buttonPaddingHorizontal,
-            bottom: LMKSpacing.buttonPaddingVertical,
-            trailing: LMKSpacing.buttonPaddingHorizontal,
-        )
-        config.titleTextAttributesTransformer = UIConfigurationTextAttributesTransformer { incoming in
-            var outgoing = incoming
-            outgoing.font = LMKTypography.bodyMedium
-            return outgoing
-        }
-
-        let button = UIButton(configuration: config)
+    private static func makeOutlinedButton(title: String, color: UIColor, target: Any?, action: Selector) -> LMKButton {
+        let button = LMKButton(title: title, style: .outlined(color))
         button.addTarget(target, action: action, for: .touchUpInside)
-        button.addTarget(nil, action: #selector(UIButton.lmk_animatePress), for: .touchDown)
         return button
     }
 }

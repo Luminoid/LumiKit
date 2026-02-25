@@ -116,7 +116,7 @@ final class ExampleViewController: UIViewController, UITableViewDataSource, UITa
             case .emptyState: "Full screen, card, and inline styles"
             case .gradient: "Linear gradients with configurable directions"
             case .loadingState: "Inline, overlay, and skeleton loading"
-            case .buttons: "Primary, secondary, destructive, warning"
+            case .buttons: "Filled, outlined, factory, and plain styles"
             case .segmentedControl: "Multi-option selection with handlers"
             case .textField: "Validation states, icons, helper text"
             case .textView: "Multi-line input with character limit"

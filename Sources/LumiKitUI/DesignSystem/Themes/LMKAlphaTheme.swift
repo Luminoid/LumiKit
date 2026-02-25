@@ -36,8 +36,8 @@ public nonisolated struct LMKAlphaTheme: Sendable {
     public init(
         overlay: CGFloat = 0.5,
         dimmingOverlay: CGFloat = 0.4,
-        disabled: CGFloat = 0.5,
-        semiTransparent: CGFloat = 0.5,
+        disabled: CGFloat = 0.38,
+        semiTransparent: CGFloat = 0.3,
         overlayStrong: CGFloat = 0.7,
         overlayLight: CGFloat = 0.1,
         overlayDark: CGFloat = 0.2,

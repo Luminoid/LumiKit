@@ -15,23 +15,19 @@ final class ToastDetailViewController: DetailViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
 
-        let types: [(String, UIColor, Selector)] = [
-            ("Show Success Toast", LMKColor.success, #selector(showSuccess)),
-            ("Show Error Toast", LMKColor.error, #selector(showError)),
-            ("Show Warning Toast", LMKColor.warning, #selector(showWarning)),
-            ("Show Info Toast", LMKColor.info, #selector(showInfo)),
-        ]
-
         addSectionHeader("Tap to show")
-        for (title, color, action) in types {
-            let button = LMKButton()
-            button.setTitle(title, for: .normal)
-            button.setTitleColor(color, for: .normal)
-            button.titleLabel?.font = LMKTypography.bodyMedium
-            button.addTarget(self, action: action, for: .touchUpInside)
-            button.snp.makeConstraints { $0.height.equalTo(LMKLayout.minimumTouchTarget) }
-            stack.addArrangedSubview(button)
-        }
+
+        let successButton = LMKButtonFactory.successOutlined(title: "Show Success Toast", target: self, action: #selector(showSuccess))
+        stack.addArrangedSubview(successButton)
+
+        let errorButton = LMKButtonFactory.destructiveOutlined(title: "Show Error Toast", target: self, action: #selector(showError))
+        stack.addArrangedSubview(errorButton)
+
+        let warningButton = LMKButtonFactory.warningOutlined(title: "Show Warning Toast", target: self, action: #selector(showWarning))
+        stack.addArrangedSubview(warningButton)
+
+        let infoButton = LMKButtonFactory.infoOutlined(title: "Show Info Toast", target: self, action: #selector(showInfo))
+        stack.addArrangedSubview(infoButton)
     }
 
     @objc private func showSuccess() { LMKToast.showSuccess(message: "Item saved successfully!", on: self) }
@@ -129,13 +125,21 @@ final class AlertsDetailViewController: DetailViewController {
     }
 
     private func makeErrorButton(title: String, color: UIColor, action: @escaping () -> Void) -> LMKButton {
-        let button = LMKButton()
-        button.setTitle(title, for: .normal)
-        button.setTitleColor(color, for: .normal)
-        button.titleLabel?.font = LMKTypography.bodyMedium
-        button.snp.makeConstraints { $0.height.equalTo(LMKLayout.minimumTouchTarget) }
+        let factoryMethod: (String, Any?, Selector) -> LMKButton
+        switch color {
+        case LMKColor.info: factoryMethod = LMKButtonFactory.infoOutlined
+        case LMKColor.warning: factoryMethod = LMKButtonFactory.warningOutlined
+        case LMKColor.error: factoryMethod = LMKButtonFactory.destructiveOutlined
+        default: factoryMethod = LMKButtonFactory.primaryOutlined
+        }
+
+        let button = factoryMethod(title, self, #selector(handleErrorButton))
         button.tapHandler = action
         return button
+    }
+
+    @objc private func handleErrorButton() {
+        // Handled by tapHandler
     }
 }
 
@@ -210,62 +214,63 @@ final class HapticsDetailViewController: DetailViewController {
         addSectionHeader("Notification Feedback")
         stack.addArrangedSubview(LMKLabelFactory.caption(text: "Triggered for task outcomes — success, warning, or error. The Taptic Engine is prepared when this screen appears for lower latency."))
 
-        let notifications: [(String, UIColor, @MainActor @Sendable () -> Void)] = [
-            ("Success", LMKColor.success, { LMKHapticFeedbackHelper.success() }),
-            ("Warning", LMKColor.warning, { LMKHapticFeedbackHelper.warning() }),
-            ("Error", LMKColor.error, { LMKHapticFeedbackHelper.error() }),
-        ]
         let notifRow = UIStackView(lmk_axis: .horizontal, spacing: LMKSpacing.small)
         notifRow.distribution = .fillEqually
-        for (title, color, action) in notifications {
-            let button = LMKButton()
-            button.setTitle(title, for: .normal)
-            button.setTitleColor(color, for: .normal)
-            button.titleLabel?.font = LMKTypography.bodyMedium
-            button.snp.makeConstraints { $0.height.equalTo(LMKLayout.minimumTouchTarget) }
-            let tapAction = action
-            button.tapHandler = tapAction
-            notifRow.addArrangedSubview(button)
-        }
+
+        let successNotif = LMKButtonFactory.successOutlined(title: "Success", target: self, action: #selector(hapticSuccess))
+        notifRow.addArrangedSubview(successNotif)
+
+        let warningNotif = LMKButtonFactory.warningOutlined(title: "Warning", target: self, action: #selector(hapticWarning))
+        notifRow.addArrangedSubview(warningNotif)
+
+        let errorNotif = LMKButtonFactory.destructiveOutlined(title: "Error", target: self, action: #selector(hapticError))
+        notifRow.addArrangedSubview(errorNotif)
+
         stack.addArrangedSubview(notifRow)
 
         addDivider()
         addSectionHeader("Selection Feedback")
         stack.addArrangedSubview(LMKLabelFactory.caption(text: "Subtle tick for picker changes and control selection."))
-        let selectionButton = LMKButton()
-        selectionButton.setTitle("Trigger Selection", for: .normal)
-        selectionButton.setTitleColor(LMKColor.primary, for: .normal)
-        selectionButton.titleLabel?.font = LMKTypography.bodyMedium
-        selectionButton.snp.makeConstraints { $0.height.equalTo(LMKLayout.minimumTouchTarget) }
-        selectionButton.tapHandler = { LMKHapticFeedbackHelper.selection() }
+        let selectionButton = LMKButtonFactory.primaryOutlined(title: "Trigger Selection", target: self, action: #selector(hapticSelection))
         stack.addArrangedSubview(selectionButton)
 
         addDivider()
         addSectionHeader("Impact Feedback")
         stack.addArrangedSubview(LMKLabelFactory.caption(text: "Physical impact feel — light, medium, or heavy intensity."))
 
-        let impacts: [(String, UIImpactFeedbackGenerator.FeedbackStyle, @MainActor @Sendable () -> Void)] = [
-            ("Light", .light, { LMKHapticFeedbackHelper.light() }),
-            ("Medium", .medium, { LMKHapticFeedbackHelper.medium() }),
-            ("Heavy", .heavy, { LMKHapticFeedbackHelper.heavy() }),
-        ]
         let impactRow = UIStackView(lmk_axis: .horizontal, spacing: LMKSpacing.small)
         impactRow.distribution = .fillEqually
-        for (title, style, action) in impacts {
-            let button = LMKButton()
-            button.setTitle(title, for: .normal)
-            button.setTitleColor(LMKColor.secondary, for: .normal)
-            button.titleLabel?.font = LMKTypography.bodyMedium
-            button.snp.makeConstraints { $0.height.equalTo(LMKLayout.minimumTouchTarget) }
-            let capturedStyle = style
-            let tapAction = action
-            button.tapHandler = {
-                LMKHapticFeedbackHelper.prepareImpact(capturedStyle)
-                tapAction()
-            }
-            impactRow.addArrangedSubview(button)
-        }
+
+        let lightImpact = LMKButtonFactory.secondaryOutlined(title: "Light", target: self, action: #selector(hapticLight))
+        impactRow.addArrangedSubview(lightImpact)
+
+        let mediumImpact = LMKButtonFactory.secondaryOutlined(title: "Medium", target: self, action: #selector(hapticMedium))
+        impactRow.addArrangedSubview(mediumImpact)
+
+        let heavyImpact = LMKButtonFactory.secondaryOutlined(title: "Heavy", target: self, action: #selector(hapticHeavy))
+        impactRow.addArrangedSubview(heavyImpact)
+
         stack.addArrangedSubview(impactRow)
+    }
+
+    @objc private func hapticSuccess() { LMKHapticFeedbackHelper.success() }
+    @objc private func hapticWarning() { LMKHapticFeedbackHelper.warning() }
+    @objc private func hapticError() { LMKHapticFeedbackHelper.error() }
+    @objc private func hapticSelection() { LMKHapticFeedbackHelper.selection() }
+
+    @objc private func hapticLight() {
+        LMKHapticFeedbackHelper.prepareImpact(.light)
+        LMKHapticFeedbackHelper.light()
+    }
+
+    @objc private func hapticMedium() {
+        LMKHapticFeedbackHelper.prepareImpact(.medium)
+        LMKHapticFeedbackHelper.medium()
+    }
+
+    @objc private func hapticHeavy() {
+        LMKHapticFeedbackHelper.prepareImpact(.heavy)
+        LMKHapticFeedbackHelper.heavy()
     }
 
     override func viewDidAppear(_ animated: Bool) {

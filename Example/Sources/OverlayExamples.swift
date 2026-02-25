@@ -274,63 +274,55 @@ final class DatePickerDetailViewController: DetailViewController {
 // MARK: - User Tip
 
 final class UserTipDetailViewController: DetailViewController {
+    private var targetChip: LMKChipView?
+
     override func viewDidLoad() {
         super.viewDidLoad()
 
         addSectionHeader("Center Style")
-        let centerButton = LMKButton()
-        centerButton.setTitle("Show Centered Tip", for: .normal)
-        centerButton.setTitleColor(LMKColor.primary, for: .normal)
-        centerButton.titleLabel?.font = LMKTypography.bodyMedium
-        centerButton.snp.makeConstraints { $0.height.equalTo(LMKLayout.minimumTouchTarget) }
-        centerButton.tapHandler = { [weak self] in
-            guard let self else { return }
-            LMKUserTip.show(
-                title: "Did you know?",
-                message: "You can long-press any item to see more options. Try it out!",
-                icon: UIImage(systemName: "lightbulb"),
-                style: .center,
-                on: self
-            )
-        }
+        let centerButton = LMKButtonFactory.primaryOutlined(title: "Show Centered Tip", target: self, action: #selector(showCenteredTip))
         stack.addArrangedSubview(centerButton)
 
         addDivider()
         addSectionHeader("Pointed Style")
 
-        let targetChip = LMKChipView(text: "Target View", style: .filled)
-        stack.addArrangedSubview(targetChip)
+        let chip = LMKChipView(text: "Target View", style: .filled)
+        targetChip = chip
+        stack.addArrangedSubview(chip)
 
-        let pointedButton = LMKButton()
-        pointedButton.setTitle("Show Pointed Tip", for: .normal)
-        pointedButton.setTitleColor(LMKColor.secondary, for: .normal)
-        pointedButton.titleLabel?.font = LMKTypography.bodyMedium
-        pointedButton.snp.makeConstraints { $0.height.equalTo(LMKLayout.minimumTouchTarget) }
-        pointedButton.tapHandler = { [weak self] in
-            guard let self else { return }
-            LMKUserTip.show(
-                message: "This tip points at the target view above",
-                style: .pointed(sourceView: targetChip, arrowDirection: .automatic),
-                on: self
-            )
-        }
+        let pointedButton = LMKButtonFactory.secondaryOutlined(title: "Show Pointed Tip", target: self, action: #selector(showPointedTip))
         stack.addArrangedSubview(pointedButton)
 
         addDivider()
         addSectionHeader("Message Only")
-        let simpleButton = LMKButton()
-        simpleButton.setTitle("Show Simple Tip", for: .normal)
-        simpleButton.setTitleColor(LMKColor.info, for: .normal)
-        simpleButton.titleLabel?.font = LMKTypography.bodyMedium
-        simpleButton.snp.makeConstraints { $0.height.equalTo(LMKLayout.minimumTouchTarget) }
-        simpleButton.tapHandler = { [weak self] in
-            guard let self else { return }
-            LMKUserTip.show(
-                message: "Swipe down to refresh the list. New items will appear at the top.",
-                on: self
-            )
-        }
+        let simpleButton = LMKButtonFactory.infoOutlined(title: "Show Simple Tip", target: self, action: #selector(showSimpleTip))
         stack.addArrangedSubview(simpleButton)
+    }
+
+    @objc private func showCenteredTip() {
+        LMKUserTip.show(
+            title: "Did you know?",
+            message: "You can long-press any item to see more options. Try it out!",
+            icon: UIImage(systemName: "lightbulb"),
+            style: .center,
+            on: self
+        )
+    }
+
+    @objc private func showPointedTip() {
+        guard let targetChip else { return }
+        LMKUserTip.show(
+            message: "This tip points at the target view above",
+            style: .pointed(sourceView: targetChip, arrowDirection: .automatic),
+            on: self
+        )
+    }
+
+    @objc private func showSimpleTip() {
+        LMKUserTip.show(
+            message: "Swipe down to refresh the list. New items will appear at the top.",
+            on: self
+        )
     }
 }
 
@@ -453,23 +445,14 @@ private final class MultiPageExampleCardPage: LMKCardPageController {
         let label = LMKLabelFactory.body(text: "Tap a button to push a new content page with slide animation. The back button auto-appears for navigation.")
         stack.addArrangedSubview(label)
 
-        let pages = [
-            ("Settings", "gearshape", LMKColor.primary),
-            ("Profile", "person.circle", LMKColor.secondary),
-            ("About", "info.circle", LMKColor.info),
-        ]
+        let settingsButton = LMKButtonFactory.primaryOutlined(title: "Push Settings Page", target: self, action: #selector(pushSettings))
+        stack.addArrangedSubview(settingsButton)
 
-        for (name, icon, color) in pages {
-            let button = LMKButton()
-            button.setTitle("Push \(name) Page", for: .normal)
-            button.setTitleColor(color, for: .normal)
-            button.titleLabel?.font = LMKTypography.bodyMedium
-            button.snp.makeConstraints { $0.height.equalTo(LMKLayout.minimumTouchTarget) }
-            button.tapHandler = { [weak self] in
-                self?.pushPage(title: name, icon: icon)
-            }
-            stack.addArrangedSubview(button)
-        }
+        let profileButton = LMKButtonFactory.secondaryOutlined(title: "Push Profile Page", target: self, action: #selector(pushProfile))
+        stack.addArrangedSubview(profileButton)
+
+        let aboutButton = LMKButtonFactory.infoOutlined(title: "Push About Page", target: self, action: #selector(pushAbout))
+        stack.addArrangedSubview(aboutButton)
 
         contentContainerView.addSubview(stack)
         stack.snp.makeConstraints {
@@ -483,6 +466,18 @@ private final class MultiPageExampleCardPage: LMKCardPageController {
 
     override func trailingButtonTapped() {
         LMKToast.showSuccess(message: "Copied!", on: self)
+    }
+
+    @objc private func pushSettings() {
+        pushPage(title: "Settings", icon: "gearshape")
+    }
+
+    @objc private func pushProfile() {
+        pushPage(title: "Profile", icon: "person.circle")
+    }
+
+    @objc private func pushAbout() {
+        pushPage(title: "About", icon: "info.circle")
     }
 
     private func pushPage(title: String, icon: String) {
@@ -499,13 +494,7 @@ private final class MultiPageExampleCardPage: LMKCardPageController {
         label.textAlignment = .center
         contentStack.addArrangedSubview(label)
 
-        let nestedButton = LMKButton()
-        nestedButton.setTitle("Push Another Level", for: .normal)
-        nestedButton.setTitleColor(LMKColor.secondary, for: .normal)
-        nestedButton.titleLabel?.font = LMKTypography.bodyMedium
-        nestedButton.tapHandler = { [weak self] in
-            self?.pushNestedPage()
-        }
+        let nestedButton = LMKButtonFactory.secondaryOutlined(title: "Push Another Level", target: self, action: #selector(pushNestedPage))
         contentStack.addArrangedSubview(nestedButton)
 
         let wrapper = UIView()
@@ -518,7 +507,7 @@ private final class MultiPageExampleCardPage: LMKCardPageController {
         pushContentView(wrapper, title: title)
     }
 
-    private func pushNestedPage() {
+    @objc private func pushNestedPage() {
         let label = LMKLabelFactory.body(text: "Nested page — multiple levels deep. Each back tap pops one level.")
         label.textAlignment = .center
 
@@ -651,22 +640,11 @@ private final class PanelCardPageExample: LMKCardPageController {
         let label = LMKLabelFactory.body(text: "Card page inside a card panel. Navigate between pages, and dismiss with the close button.")
         stack.addArrangedSubview(label)
 
-        let pages = [
-            ("Settings", "gearshape", LMKColor.primary),
-            ("Profile", "person.circle", LMKColor.secondary),
-        ]
+        let settingsPanelButton = LMKButtonFactory.primaryOutlined(title: "Push Settings", target: self, action: #selector(pushSettingsDetail))
+        stack.addArrangedSubview(settingsPanelButton)
 
-        for (name, icon, color) in pages {
-            let button = LMKButton()
-            button.setTitle("Push \(name)", for: .normal)
-            button.setTitleColor(color, for: .normal)
-            button.titleLabel?.font = LMKTypography.bodyMedium
-            button.snp.makeConstraints { $0.height.equalTo(LMKLayout.minimumTouchTarget) }
-            button.tapHandler = { [weak self] in
-                self?.pushDetailPage(title: name, icon: icon)
-            }
-            stack.addArrangedSubview(button)
-        }
+        let profilePanelButton = LMKButtonFactory.secondaryOutlined(title: "Push Profile", target: self, action: #selector(pushProfileDetail))
+        stack.addArrangedSubview(profilePanelButton)
 
         contentContainerView.addSubview(stack)
         stack.snp.makeConstraints {
@@ -680,6 +658,14 @@ private final class PanelCardPageExample: LMKCardPageController {
 
     override func trailingButtonTapped() {
         panel?.dismissPanel()
+    }
+
+    @objc private func pushSettingsDetail() {
+        pushDetailPage(title: "Settings", icon: "gearshape")
+    }
+
+    @objc private func pushProfileDetail() {
+        pushDetailPage(title: "Profile", icon: "person.circle")
     }
 
     private func pushDetailPage(title: String, icon: String) {
@@ -721,31 +707,13 @@ final class FloatingButtonDetailViewController: DetailViewController {
 
         addDivider()
         addSectionHeader("Badge")
-        let badgeButton = LMKButton()
-        badgeButton.setTitle("Show Badge (count: 5)", for: .normal)
-        badgeButton.setTitleColor(LMKColor.error, for: .normal)
-        badgeButton.titleLabel?.font = LMKTypography.bodyMedium
-        badgeButton.snp.makeConstraints { $0.height.equalTo(LMKLayout.minimumTouchTarget) }
-        badgeButton.tapHandler = {
-            LMKFloatingButton.current?.showBadge(count: 5)
-        }
+        let badgeButton = LMKButtonFactory.destructiveOutlined(title: "Show Badge (count: 5)", target: self, action: #selector(showBadgeCount))
         stack.addArrangedSubview(badgeButton)
 
-        let dotButton = LMKButton()
-        dotButton.setTitle("Show Dot Badge", for: .normal)
-        dotButton.setTitleColor(LMKColor.warning, for: .normal)
-        dotButton.titleLabel?.font = LMKTypography.bodyMedium
-        dotButton.snp.makeConstraints { $0.height.equalTo(LMKLayout.minimumTouchTarget) }
-        dotButton.tapHandler = {
-            LMKFloatingButton.current?.showBadge()
-        }
+        let dotButton = LMKButtonFactory.warningOutlined(title: "Show Dot Badge", target: self, action: #selector(showDotBadge))
         stack.addArrangedSubview(dotButton)
 
-        let hideBadgeButton = LMKButton()
-        hideBadgeButton.setTitle("Hide Badge", for: .normal)
-        hideBadgeButton.setTitleColor(LMKColor.textSecondary, for: .normal)
-        hideBadgeButton.titleLabel?.font = LMKTypography.bodyMedium
-        hideBadgeButton.snp.makeConstraints { $0.height.equalTo(LMKLayout.minimumTouchTarget) }
+        let hideBadgeButton = LMKButton(title: "Hide Badge", style: .outlined(LMKColor.textSecondary))
         hideBadgeButton.tapHandler = {
             LMKFloatingButton.current?.hideBadge()
         }
@@ -767,6 +735,14 @@ final class FloatingButtonDetailViewController: DetailViewController {
             guard let self else { return }
             LMKToast.showInfo(message: "Floating button tapped!", on: self)
         }
+    }
+
+    @objc private func showBadgeCount() {
+        LMKFloatingButton.current?.showBadge(count: 5)
+    }
+
+    @objc private func showDotBadge() {
+        LMKFloatingButton.current?.showBadge()
     }
 
     @objc private func dismissFloating() {

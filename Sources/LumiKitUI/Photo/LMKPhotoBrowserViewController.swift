@@ -86,6 +86,8 @@ public final class LMKPhotoBrowserViewController: UIViewController {
     private let counterLabel = UILabel()
     private var currentIndex: Int = 0
     private var isOverlayHidden: Bool = false
+    /// Whether the initial scroll to `initialIndex` has been performed.
+    private var hasScrolledToInitialIndex: Bool = false
 
     private static let counterLabelAlpha: CGFloat = 0.9
     /// Minimum alpha when vertical pan reaches dismiss threshold (transparency effect)
@@ -322,24 +324,12 @@ public final class LMKPhotoBrowserViewController: UIViewController {
                 make.center.equalToSuperview()
             }
 
-            let dismissButton = UIButton(type: .system)
-            dismissButton.setImage(UIImage(systemName: "xmark"), for: .normal)
-            dismissButton.tintColor = LMKColor.white
-            dismissButton.backgroundColor = LMKColor.photoBrowserBackground.withAlphaComponent(LMKAlpha.overlay)
-            dismissButton.layer.cornerRadius = LMKCornerRadius.xl
-            dismissButton.addTarget(self, action: #selector(dismissTapped), for: .touchUpInside)
+            let dismissButton = LMKPhotoBrowserConfig.makeOverlayButton(systemName: "xmark", target: self, action: #selector(dismissTapped))
             view.addSubview(dismissButton)
-
-            #if targetEnvironment(macCatalyst)
-                let buttonSize: CGFloat = 48
-            #else
-                let buttonSize: CGFloat = LMKLayout.minimumTouchTarget
-            #endif
-
             dismissButton.snp.makeConstraints { make in
                 make.top.equalTo(view.safeAreaLayoutGuide).offset(LMKSpacing.large)
                 make.trailing.equalToSuperview().offset(-LMKSpacing.large)
-                make.width.height.equalTo(buttonSize)
+                make.width.height.equalTo(LMKPhotoBrowserConfig.overlayButtonSize)
             }
             return
         }
@@ -365,26 +355,15 @@ public final class LMKPhotoBrowserViewController: UIViewController {
         collectionView.addGestureRecognizer(singleTap)
 
         // Dismiss button (add after collectionView so it's on top)
-        let dismissButton = UIButton(type: .system)
-        dismissButton.setImage(UIImage(systemName: "xmark"), for: .normal)
-        dismissButton.tintColor = LMKColor.white
-        dismissButton.backgroundColor = LMKColor.photoBrowserBackground.withAlphaComponent(LMKAlpha.overlay)
-        dismissButton.layer.cornerRadius = LMKCornerRadius.xl
-        dismissButton.addTarget(self, action: #selector(dismissTapped), for: .touchUpInside)
+        let dismissButton = LMKPhotoBrowserConfig.makeOverlayButton(systemName: "xmark", target: self, action: #selector(dismissTapped))
         view.addSubview(dismissButton)
         view.bringSubviewToFront(dismissButton)
         self.dismissButton = dismissButton
 
-        #if targetEnvironment(macCatalyst)
-            let buttonSize: CGFloat = 48
-        #else
-            let buttonSize: CGFloat = LMKLayout.minimumTouchTarget
-        #endif
-
         dismissButton.snp.makeConstraints { make in
             make.top.equalTo(view.safeAreaLayoutGuide).offset(LMKSpacing.large)
             make.trailing.equalToSuperview().offset(-LMKSpacing.large)
-            make.width.height.equalTo(buttonSize)
+            make.width.height.equalTo(LMKPhotoBrowserConfig.overlayButtonSize)
         }
 
         #if targetEnvironment(macCatalyst)
@@ -394,12 +373,7 @@ public final class LMKPhotoBrowserViewController: UIViewController {
         #endif
 
         // Action button (add after collectionView so it's on top)
-        let actionButton = UIButton(type: .system)
-        actionButton.setImage(UIImage(systemName: "ellipsis"), for: .normal)
-        actionButton.tintColor = LMKColor.white
-        actionButton.backgroundColor = LMKColor.photoBrowserBackground.withAlphaComponent(LMKAlpha.overlay)
-        actionButton.layer.cornerRadius = LMKCornerRadius.xl
-        actionButton.addTarget(self, action: #selector(actionButtonTapped), for: .touchUpInside)
+        let actionButton = LMKPhotoBrowserConfig.makeOverlayButton(systemName: "ellipsis", target: self, action: #selector(actionButtonTapped))
         view.addSubview(actionButton)
         view.bringSubviewToFront(actionButton)
         self.actionButton = actionButton
@@ -407,7 +381,7 @@ public final class LMKPhotoBrowserViewController: UIViewController {
         actionButton.snp.makeConstraints { make in
             make.top.equalTo(view.safeAreaLayoutGuide).offset(LMKSpacing.large)
             make.leading.equalToSuperview().offset(LMKSpacing.large)
-            make.width.height.equalTo(buttonSize)
+            make.width.height.equalTo(LMKPhotoBrowserConfig.overlayButtonSize)
         }
 
         #if targetEnvironment(macCatalyst)
@@ -492,8 +466,9 @@ public final class LMKPhotoBrowserViewController: UIViewController {
             }
         }
 
-        // Scroll to current photo (only if not already scrolled)
-        if currentIndex == initialIndex, collectionView.contentOffset.x == 0 {
+        // Scroll to initial photo on first layout
+        if !hasScrolledToInitialIndex {
+            hasScrolledToInitialIndex = true
             scrollToPhoto(at: currentIndex, animated: false)
         }
     }

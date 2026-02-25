@@ -140,43 +140,54 @@ final class BannerDetailViewController: DetailViewController {
         super.viewDidLoad()
 
         addSectionHeader("Tap to show")
-        let types: [(String, LMKBannerType, UIColor)] = [
-            ("Show Info Banner", .info, LMKColor.info),
-            ("Show Warning Banner", .warning, LMKColor.warning),
-            ("Show Error Banner", .error, LMKColor.error),
-            ("Show Success Banner", .success, LMKColor.success),
-        ]
 
-        for (title, type, color) in types {
-            let button = LMKButton()
-            button.setTitle(title, for: .normal)
-            button.setTitleColor(color, for: .normal)
-            button.titleLabel?.font = LMKTypography.bodyMedium
-            button.snp.makeConstraints { $0.height.equalTo(LMKLayout.minimumTouchTarget) }
-            button.tapHandler = { [weak self] in
-                guard let self else { return }
-                let banner = LMKBannerView(type: type, message: "This is a \(type) banner message.")
-                banner.actionTitle = "Action"
-                banner.show(on: self)
-            }
-            stack.addArrangedSubview(button)
-        }
+        let infoButton = LMKButtonFactory.infoOutlined(title: "Show Info Banner", target: self, action: #selector(showInfoBanner))
+        stack.addArrangedSubview(infoButton)
+
+        let warningButton = LMKButtonFactory.warningOutlined(title: "Show Warning Banner", target: self, action: #selector(showWarningBanner))
+        stack.addArrangedSubview(warningButton)
+
+        let errorButton = LMKButtonFactory.destructiveOutlined(title: "Show Error Banner", target: self, action: #selector(showErrorBanner))
+        stack.addArrangedSubview(errorButton)
+
+        let successButton = LMKButtonFactory.successOutlined(title: "Show Success Banner", target: self, action: #selector(showSuccessBanner))
+        stack.addArrangedSubview(successButton)
 
         addDivider()
         addSectionHeader("Non-dismissible")
-        let button = LMKButton()
-        button.setTitle("Show Persistent Banner", for: .normal)
-        button.setTitleColor(LMKColor.primary, for: .normal)
-        button.titleLabel?.font = LMKTypography.bodyMedium
-        button.snp.makeConstraints { $0.height.equalTo(LMKLayout.minimumTouchTarget) }
-        button.tapHandler = { [weak self] in
-            guard let self else { return }
-            let banner = LMKBannerView(type: .warning, message: "No internet connection")
-            banner.showsDismissButton = false
-            banner.actionTitle = "Retry"
-            banner.show(on: self)
-        }
-        stack.addArrangedSubview(button)
+        let persistentButton = LMKButtonFactory.primaryOutlined(title: "Show Persistent Banner", target: self, action: #selector(showPersistentBanner))
+        stack.addArrangedSubview(persistentButton)
+    }
+
+    @objc private func showInfoBanner() {
+        let banner = LMKBannerView(type: .info, message: "This is a info banner message.")
+        banner.actionTitle = "Action"
+        banner.show(on: self)
+    }
+
+    @objc private func showWarningBanner() {
+        let banner = LMKBannerView(type: .warning, message: "This is a warning banner message.")
+        banner.actionTitle = "Action"
+        banner.show(on: self)
+    }
+
+    @objc private func showErrorBanner() {
+        let banner = LMKBannerView(type: .error, message: "This is a error banner message.")
+        banner.actionTitle = "Action"
+        banner.show(on: self)
+    }
+
+    @objc private func showSuccessBanner() {
+        let banner = LMKBannerView(type: .success, message: "This is a success banner message.")
+        banner.actionTitle = "Action"
+        banner.show(on: self)
+    }
+
+    @objc private func showPersistentBanner() {
+        let banner = LMKBannerView(type: .warning, message: "No internet connection")
+        banner.showsDismissButton = false
+        banner.actionTitle = "Retry"
+        banner.show(on: self)
     }
 }
 

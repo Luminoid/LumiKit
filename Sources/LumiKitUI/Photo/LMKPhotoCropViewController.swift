@@ -92,17 +92,17 @@ public final class LMKPhotoCropViewController: UIViewController {
 
     // MARK: - Constants
 
-    private static let handleSize: CGFloat = 22
-    private static let minCropSize: CGFloat = 100
-    private static let maxZoomScale: CGFloat = 3.0
-    private static let minZoomScale: CGFloat = 1.0
+    private static let handleSize: CGFloat = LMKLayout.iconSmall + 2
+    private static let minCropSize: CGFloat = LMKLayout.cellHeightMin
+    private static let maxZoomScale: CGFloat = LMKPhotoBrowserConfig.maximumZoomScale
+    private static let minZoomScale: CGFloat = LMKPhotoBrowserConfig.minimumZoomScale
     private static let borderWidth: CGFloat = 2.0
     private static var aspectControlHeight: CGFloat { segmentedControlHeight + LMKSpacing.xl * 2 }
     private static var handleHitSize: CGFloat { handleSize + LMKSpacing.medium }
-    private static let segmentedControlHeight: CGFloat = 32
+    private static let segmentedControlHeight: CGFloat = LMKLayout.searchBarHeight
     private static let gridLineWidth: CGFloat = 0.5
-    private static let gridLineAlpha: CGFloat = 0.6
-    private static let gridLineCount: Int = 2 // Rule of thirds
+    private static var gridLineAlpha: CGFloat { CGFloat(LMKAlpha.overlay) }
+    private static let gridLineCount: Int = 2
 
     // MARK: - Public Properties
 
@@ -114,8 +114,8 @@ public final class LMKPhotoCropViewController: UIViewController {
 
     // MARK: - Private Properties
 
-    private let cancelButton = UIButton(type: .system)
-    private let doneButton = UIButton(type: .system)
+    private var cancelButton: UIButton!
+    private var doneButton: UIButton!
     private let imageView = UIImageView()
     private let overlayView = UIView()
     private let cropFrameView = UIView()
@@ -201,6 +201,12 @@ public final class LMKPhotoCropViewController: UIViewController {
         setupUI()
         setupHandleViews()
         setupCachedLayers()
+        setupMacOptimizations()
+    }
+
+    override public func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        LMKHapticFeedbackHelper.prepare()
     }
 
     override public func viewDidLayoutSubviews() {
@@ -214,38 +220,24 @@ public final class LMKPhotoCropViewController: UIViewController {
         view.backgroundColor = LMKColor.photoBrowserBackground
 
         // Cancel button
-        cancelButton.setImage(UIImage(systemName: "xmark"), for: .normal)
-        cancelButton.tintColor = LMKColor.white
-        cancelButton.backgroundColor = LMKColor.photoBrowserBackground.withAlphaComponent(LMKAlpha.overlay)
-        cancelButton.layer.cornerRadius = LMKCornerRadius.xl
-        cancelButton.addTarget(self, action: #selector(cancelTapped), for: .touchUpInside)
-        view.addSubview(cancelButton)
-
-        #if targetEnvironment(macCatalyst)
-            let buttonSize: CGFloat = 48
-        #else
-            let buttonSize: CGFloat = LMKLayout.minimumTouchTarget
-        #endif
-
-        cancelButton.snp.makeConstraints { make in
+        let cancel = LMKPhotoBrowserConfig.makeOverlayButton(systemName: "xmark", target: self, action: #selector(cancelTapped))
+        view.addSubview(cancel)
+        cancel.snp.makeConstraints { make in
             make.top.equalTo(view.safeAreaLayoutGuide).offset(LMKSpacing.large)
             make.leading.equalToSuperview().offset(LMKSpacing.large)
-            make.width.height.equalTo(buttonSize)
+            make.width.height.equalTo(LMKPhotoBrowserConfig.overlayButtonSize)
         }
+        cancelButton = cancel
 
         // Done button
-        doneButton.setImage(UIImage(systemName: "checkmark"), for: .normal)
-        doneButton.tintColor = LMKColor.white
-        doneButton.backgroundColor = LMKColor.photoBrowserBackground.withAlphaComponent(LMKAlpha.overlay)
-        doneButton.layer.cornerRadius = LMKCornerRadius.xl
-        doneButton.addTarget(self, action: #selector(doneTapped), for: .touchUpInside)
-        view.addSubview(doneButton)
-
-        doneButton.snp.makeConstraints { make in
+        let done = LMKPhotoBrowserConfig.makeOverlayButton(systemName: "checkmark", target: self, action: #selector(doneTapped))
+        view.addSubview(done)
+        done.snp.makeConstraints { make in
             make.top.equalTo(view.safeAreaLayoutGuide).offset(LMKSpacing.large)
             make.trailing.equalToSuperview().offset(-LMKSpacing.large)
-            make.width.height.equalTo(buttonSize)
+            make.width.height.equalTo(LMKPhotoBrowserConfig.overlayButtonSize)
         }
+        doneButton = done
 
         // Aspect ratio control
         setupAspectRatioControl()
@@ -346,6 +338,38 @@ public final class LMKPhotoCropViewController: UIViewController {
         gridLayer.lineWidth = Self.gridLineWidth
         cropFrameView.layer.addSublayer(gridLayer)
     }
+
+    private func setupMacOptimizations() {
+        #if targetEnvironment(macCatalyst)
+            becomeFirstResponder()
+        #endif
+    }
+
+    // MARK: - Keyboard Navigation
+
+    #if targetEnvironment(macCatalyst)
+        override public var canBecomeFirstResponder: Bool { true }
+
+        override public func pressesBegan(_ presses: Set<UIPress>, with event: UIPressesEvent?) {
+            var handled = false
+            for press in presses {
+                guard let key = press.key else { continue }
+                switch key.keyCode {
+                case .keyboardEscape:
+                    cancelTapped()
+                    handled = true
+                case .keyboardReturnOrEnter:
+                    doneTapped()
+                    handled = true
+                default:
+                    break
+                }
+            }
+            if !handled {
+                super.pressesBegan(presses, with: event)
+            }
+        }
+    #endif
 
     // MARK: - Layout
 
@@ -520,6 +544,7 @@ public final class LMKPhotoCropViewController: UIViewController {
     // MARK: - Aspect Ratio
 
     @objc private func aspectRatioChanged() {
+        LMKHapticFeedbackHelper.selection()
         currentAspectRatio = Self.aspectRatios[aspectRatioControl.selectedSegmentIndex]
 
         if let ratio = currentAspectRatio.ratio {
@@ -567,6 +592,7 @@ public final class LMKPhotoCropViewController: UIViewController {
         case .began:
             initialCropFrame = cropFrame
             isMoving = true
+            LMKHapticFeedbackHelper.light()
         case .changed:
             // Disable implicit Core Animation animations for snappy gesture tracking
             CATransaction.begin()
@@ -599,6 +625,7 @@ public final class LMKPhotoCropViewController: UIViewController {
                 initialCropFrame = cropFrame
                 initialTouchPoint = location
                 isResizing = true
+                LMKHapticFeedbackHelper.light()
             }
         case .changed:
             guard let handle = resizeHandle, isResizing else { return }
@@ -637,6 +664,7 @@ public final class LMKPhotoCropViewController: UIViewController {
         switch gesture.state {
         case .began:
             initialZoomScale = currentZoomScale
+            LMKHapticFeedbackHelper.light()
         case .changed:
             CATransaction.begin()
             CATransaction.setDisableActions(true)
@@ -883,6 +911,7 @@ public final class LMKPhotoCropViewController: UIViewController {
     }
 
     @objc private func doneTapped() {
+        LMKHapticFeedbackHelper.success()
         guard cropFrame.width > 0, cropFrame.height > 0,
               let croppedImage = cropImage() else {
             LMKLogger.warning("Crop failed — delivering original image. cropFrame=\(cropFrame)", category: .ui)
