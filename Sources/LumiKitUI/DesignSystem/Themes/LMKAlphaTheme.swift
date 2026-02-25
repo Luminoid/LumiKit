@@ -14,13 +14,13 @@ import UIKit
 /// LMKThemeManager.shared.apply(alpha: .init(disabled: 0.4))
 /// ```
 public nonisolated struct LMKAlphaTheme: Sendable {
-    /// Semi-transparent overlay.
+    /// Semi-transparent overlay for dimming content behind modals or popovers.
     public var overlay: CGFloat
     /// Dimming overlay for modal bottom sheets.
     public var dimmingOverlay: CGFloat
-    /// Disabled state alpha.
+    /// Disabled state alpha for non-interactive controls (buttons, toggles).
     public var disabled: CGFloat
-    /// Semi-transparent background.
+    /// Semi-transparent background for subtle overlays (highlight effects, hover states).
     public var semiTransparent: CGFloat
     /// Strong overlay for dark backgrounds (e.g. photo overlay buttons).
     public var overlayStrong: CGFloat
@@ -44,14 +44,14 @@ public nonisolated struct LMKAlphaTheme: Sendable {
         overlayMedium: CGFloat = 0.15,
         overlayOpaque: CGFloat = 0.8
     ) {
-        self.overlay = overlay
-        self.dimmingOverlay = dimmingOverlay
-        self.disabled = disabled
-        self.semiTransparent = semiTransparent
-        self.overlayStrong = overlayStrong
-        self.overlayLight = overlayLight
-        self.overlayDark = overlayDark
-        self.overlayMedium = overlayMedium
-        self.overlayOpaque = overlayOpaque
+        self.overlay = min(max(overlay, 0), 1)
+        self.dimmingOverlay = min(max(dimmingOverlay, 0), 1)
+        self.disabled = min(max(disabled, 0), 1)
+        self.semiTransparent = min(max(semiTransparent, 0), 1)
+        self.overlayStrong = min(max(overlayStrong, 0), 1)
+        self.overlayLight = min(max(overlayLight, 0), 1)
+        self.overlayDark = min(max(overlayDark, 0), 1)
+        self.overlayMedium = min(max(overlayMedium, 0), 1)
+        self.overlayOpaque = min(max(overlayOpaque, 0), 1)
     }
 }

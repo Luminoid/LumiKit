@@ -133,8 +133,8 @@ public final class LMKChipView: UIView {
         switch style {
         case .filled:
             backgroundColor = chipColor
-            titleLabel.textColor = chipColor.lmk_contrastingTextColor
-            iconImageView.tintColor = chipColor.lmk_contrastingTextColor
+            titleLabel.textColor = LMKColor.white
+            iconImageView.tintColor = LMKColor.white
             layer.borderWidth = 0
         case .outlined:
             backgroundColor = .clear

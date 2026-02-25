@@ -86,8 +86,20 @@ public nonisolated struct LMKDefaultTheme: LMKTheme {
     public var backgroundTertiary: UIColor { .tertiarySystemBackground }
     public var divider: UIColor { .separator }
     public var imageBorder: UIColor { .separator }
-    public var graySoft: UIColor { UIColor(white: 0.75, alpha: 1) }
-    public var grayMuted: UIColor { UIColor(white: 0.85, alpha: 1) }
+    public var graySoft: UIColor {
+        UIColor { traitCollection in
+            traitCollection.userInterfaceStyle == .dark
+                ? UIColor(white: 0.35, alpha: 1)
+                : UIColor(white: 0.75, alpha: 1)
+        }
+    }
+    public var grayMuted: UIColor {
+        UIColor { traitCollection in
+            traitCollection.userInterfaceStyle == .dark
+                ? UIColor(white: 0.25, alpha: 1)
+                : UIColor(white: 0.85, alpha: 1)
+        }
+    }
     public var white: UIColor { UIColor(white: 0.98, alpha: 1) }
     public var black: UIColor { UIColor(white: 0.1, alpha: 1) }
     public var photoBrowserBackground: UIColor { UIColor(white: 0.1, alpha: 1) }
@@ -190,6 +202,21 @@ public final class LMKThemeManager {
     /// Apply badge configuration.
     public func apply(badge: LMKBadgeTheme) {
         self.badge = badge
+    }
+
+    // MARK: - Reset
+
+    /// Reset all configurations to defaults.
+    public func reset() {
+        current = LMKDefaultTheme()
+        typography = .init()
+        spacing = .init()
+        cornerRadius = .init()
+        shadow = .init()
+        alpha = .init()
+        layout = .init()
+        animation = .init()
+        badge = .init()
     }
 
     // MARK: - Configure (All-in-One)

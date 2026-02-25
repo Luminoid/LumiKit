@@ -35,6 +35,26 @@ public enum LMKLabelFactory {
         createLabel(text: text, font: LMKTypography.small, color: color ?? LMKColor.textTertiary, type: .small)
     }
 
+    /// Create a body-medium label.
+    public static func bodyMedium(text: String, color: UIColor? = nil) -> UILabel {
+        createLabel(text: text, font: LMKTypography.bodyMedium, color: color ?? LMKColor.textPrimary, type: .body)
+    }
+
+    /// Create a bold body label.
+    public static func bodyBold(text: String, color: UIColor? = nil) -> UILabel {
+        createLabel(text: text, font: LMKTypography.bodyBold, color: color ?? LMKColor.textPrimary, type: .body)
+    }
+
+    /// Create a subbody-medium label.
+    public static func subbodyMedium(text: String, color: UIColor? = nil) -> UILabel {
+        createLabel(text: text, font: LMKTypography.subbodyMedium, color: color ?? LMKColor.textSecondary, type: .body)
+    }
+
+    /// Create an extra small label.
+    public static func extraSmall(text: String, color: UIColor? = nil) -> UILabel {
+        createLabel(text: text, font: LMKTypography.extraSmall, color: color ?? LMKColor.textTertiary, type: .small)
+    }
+
     /// Create a scientific name label (italic, info color, body line height).
     public static func scientificName(text: String) -> UILabel {
         createLabel(text: text, font: LMKTypography.italicBody, color: LMKColor.info, type: .body)
@@ -51,6 +71,7 @@ public enum LMKLabelFactory {
         let label = UILabel()
         label.attributedText = attributedString(text: text, font: font, color: color, type: type)
         label.numberOfLines = 0
+        label.adjustsFontForContentSizeCategory = true
         return label
     }
 

@@ -12,6 +12,8 @@ extension UITableViewCell {
     private static let lmk_darkModeOverlayAlpha = LMKAlpha.overlayDark
     private static let lmk_lightModeOverlayAlpha = LMKAlpha.overlayLight
     private static let lmk_animationDuration = LMKAnimationHelper.Duration.uiShort
+    /// Unique tag for the highlight overlay view, used instead of a stored property
+    /// since extensions on UITableViewCell cannot add stored properties.
     private static let lmk_overlayTag = 9999
     private static let lmk_containerDetectionSubviewsThreshold = 2
 

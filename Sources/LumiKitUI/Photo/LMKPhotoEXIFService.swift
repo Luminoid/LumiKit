@@ -7,7 +7,6 @@
 
 import CoreLocation
 import ImageIO
-import Photos
 @preconcurrency import PhotosUI
 import UIKit
 
@@ -28,6 +27,7 @@ public nonisolated enum LMKPhotoEXIFService {
     private static let exifDateFormatter: DateFormatter = {
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy:MM:dd HH:mm:ss"
+        formatter.locale = Locale(identifier: "en_US_POSIX")
         return formatter
     }()
 
@@ -37,7 +37,7 @@ public nonisolated enum LMKPhotoEXIFService {
     ///
     /// Checks `DateTimeOriginal` (EXIF) and `DateTime` (TIFF) fields.
     /// For photos from `PHPickerViewController`, prefer the async `extractDate(from:)` variant
-    /// which uses `PHAsset.creationDate` for more reliable results.
+    /// which uses `loadDataRepresentation` to preserve EXIF metadata.
     ///
     /// - Parameters:
     ///   - image: Source image.
@@ -71,34 +71,41 @@ public nonisolated enum LMKPhotoEXIFService {
 
     /// Extract date from a `PHPickerResult`.
     ///
-    /// Tries `PHAsset.creationDate` first (more reliable), falls back to EXIF extraction.
+    /// Uses `loadDataRepresentation` to get raw image bytes with EXIF metadata intact,
+    /// then extracts `DateTimeOriginal` or `DateTime` from the metadata.
     /// - Parameter result: Picker result from `PHPickerViewController`.
     /// - Returns: The extracted date, or `nil`.
     public static func extractDate(from result: PHPickerResult) async -> Date? {
         await withCheckedContinuation { continuation in
-            result.itemProvider.loadObject(ofClass: UIImage.self) { object, _ in
-                if let image = object as? UIImage {
-                    if let identifier = result.assetIdentifier {
-                        let date = extractDateFromPHAsset(identifier: identifier)
-                        continuation.resume(returning: date)
-                    } else {
-                        let date = extractDate(from: image)
-                        continuation.resume(returning: date)
-                    }
-                } else {
+            result.itemProvider.loadDataRepresentation(forTypeIdentifier: "public.image") { data, _ in
+                guard let data,
+                      let source = CGImageSourceCreateWithData(data as CFData, nil),
+                      let metadata = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [String: Any] else {
                     continuation.resume(returning: nil)
+                    return
                 }
+
+                let formatter = exifDateFormatter
+
+                // Try EXIF DateTimeOriginal
+                if let exif = metadata[kCGImagePropertyExifDictionary as String] as? [String: Any],
+                   let dateTimeOriginal = exif[kCGImagePropertyExifDateTimeOriginal as String] as? String,
+                   let date = formatter.date(from: dateTimeOriginal) {
+                    continuation.resume(returning: date)
+                    return
+                }
+
+                // Try TIFF DateTime
+                if let tiff = metadata[kCGImagePropertyTIFFDictionary as String] as? [String: Any],
+                   let dateTime = tiff[kCGImagePropertyTIFFDateTime as String] as? String,
+                   let date = formatter.date(from: dateTime) {
+                    continuation.resume(returning: date)
+                    return
+                }
+
+                continuation.resume(returning: nil)
             }
         }
-    }
-
-    /// Extract date from a PHAsset by its local identifier.
-    private static func extractDateFromPHAsset(identifier: String) -> Date? {
-        let fetchResult = PHAsset.fetchAssets(withLocalIdentifiers: [identifier], options: nil)
-        if let asset = fetchResult.firstObject {
-            return asset.creationDate
-        }
-        return nil
     }
 
     // MARK: - GPS Location Extraction
@@ -142,20 +149,11 @@ public nonisolated enum LMKPhotoEXIFService {
 
     /// Extract GPS coordinates from a `PHPickerResult`.
     ///
-    /// Tries `PHAsset.location` first (more reliable), falls back to EXIF GPS extraction.
+    /// Uses `loadDataRepresentation` to get raw image bytes and extracts GPS data from EXIF metadata.
     /// - Parameter result: Picker result from `PHPickerViewController`.
     /// - Returns: Valid coordinates, or `nil`.
     public static func extractLocation(from result: PHPickerResult) async -> CLLocationCoordinate2D? {
-        // Try PHAsset.location first (more reliable)
-        if let identifier = result.assetIdentifier {
-            let fetchResult = PHAsset.fetchAssets(withLocalIdentifiers: [identifier], options: nil)
-            if let asset = fetchResult.firstObject, let location = asset.location {
-                return location.coordinate
-            }
-        }
-
-        // Fallback: extract from image EXIF data
-        return await withCheckedContinuation { continuation in
+        await withCheckedContinuation { continuation in
             result.itemProvider.loadDataRepresentation(forTypeIdentifier: "public.image") { data, _ in
                 guard let data,
                       let source = CGImageSourceCreateWithData(data as CFData, nil),

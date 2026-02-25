@@ -58,7 +58,6 @@ public enum LMKAnimationHelper {
         public static let easeInOut = UIView.AnimationOptions.curveEaseInOut
         public static let easeOut = UIView.AnimationOptions.curveEaseOut
         public static let easeIn = UIView.AnimationOptions.curveEaseIn
-        public static let spring = UIView.AnimationOptions.curveEaseInOut
     }
 
     // MARK: - Button Press Animation
@@ -128,10 +127,18 @@ public enum LMKAnimationHelper {
     private static let successOvershootScale: CGFloat = 1.2
     private static let successSpringDamping: CGFloat = 0.6
 
+    /// Tag used to identify the success checkmark overlay, enabling removal of
+    /// any existing checkmark before adding a new one (guards against double-invocation).
+    private static let successCheckmarkTag = 8888
+
     public static func animateSuccessFeedback(on view: UIView, completion: (() -> Void)? = nil) {
         let reduceMotion = !shouldAnimate
 
+        // Remove any existing success checkmark before adding a new one
+        view.subviews.filter { $0.tag == successCheckmarkTag }.forEach { $0.removeFromSuperview() }
+
         let checkmarkView = UIImageView(image: UIImage(systemName: "checkmark.circle.fill"))
+        checkmarkView.tag = successCheckmarkTag
         checkmarkView.tintColor = LMKColor.success
         checkmarkView.frame = CGRect(x: 0, y: 0, width: successCheckmarkSize, height: successCheckmarkSize)
         checkmarkView.center = CGPoint(x: view.bounds.midX, y: view.bounds.midY)

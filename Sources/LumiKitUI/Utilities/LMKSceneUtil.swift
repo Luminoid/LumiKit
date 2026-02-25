@@ -12,6 +12,7 @@ public enum LMKSceneUtil {
     /// Get the key window from the active foreground scene.
     public static func getKeyWindow() -> UIWindow? {
         UIApplication.shared.connectedScenes
+            .filter { $0.activationState == .foregroundActive }
             .compactMap { ($0 as? UIWindowScene)?.keyWindow }
             .first
     }

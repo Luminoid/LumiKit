@@ -36,7 +36,7 @@ struct LMKCardFactoryTests {
     func cardShadowMatchesCellCard() {
         let card = LMKCardFactory.cardView()
         let expected = LMKShadow.cellCard()
-        #expect(card.layer.shadowColor == expected.color)
+        #expect(card.layer.shadowColor == expected.color.cgColor)
         #expect(card.layer.shadowOffset == expected.offset)
         #expect(card.layer.shadowRadius == expected.radius)
         #expect(card.layer.shadowOpacity == expected.opacity)

@@ -18,7 +18,7 @@ struct LMKBadgeThemeTests {
         let config = LMKBadgeTheme()
         #expect(config.minWidth == 18)
         #expect(config.height == 18)
-        #expect(config.horizontalPadding == 5)
+        #expect(config.horizontalPadding == 6)
         #expect(config.borderWidth == 1.5)
     }
 

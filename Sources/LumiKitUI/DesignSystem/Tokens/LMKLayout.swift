@@ -23,13 +23,15 @@ public enum LMKLayout {
     public static var minimumTouchTarget: CGFloat { config.minimumTouchTarget }
     /// Medium icon size — default 24pt.
     public static var iconMedium: CGFloat { config.iconMedium }
+    /// Large icon size — default 28pt.
+    public static var iconLarge: CGFloat { config.iconLarge }
     /// Small icon size — default 20pt.
     public static var iconSmall: CGFloat { config.iconSmall }
     /// Extra small icon size (chevrons, compact indicators) — default 16pt.
     public static var iconExtraSmall: CGFloat { config.iconExtraSmall }
     /// Pull-to-refresh threshold; compact preview height — default 80pt.
     public static var pullThreshold: CGFloat { config.pullThreshold }
-    /// Minimum cell height; name limit — default 100pt.
+    /// Minimum cell height — default 100pt.
     public static var cellHeightMin: CGFloat { config.cellHeightMin }
     /// Search bar container height — default 36pt.
     public static var searchBarHeight: CGFloat { config.searchBarHeight }

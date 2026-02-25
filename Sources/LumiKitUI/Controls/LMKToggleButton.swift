@@ -29,15 +29,18 @@ public nonisolated(unsafe) var lmkToggleButtonStrings = LMKToggleButtonStrings()
 
 /// Toggle button with on/off state and per-state title/image.
 open class LMKToggleButton: LMKButton {
-    public enum Status {
+    public enum ToggleState {
         case on
         case off
     }
 
+    /// Called when the toggle state changes. Receives the new state.
+    public var stateChangedHandler: ((ToggleState) -> Void)?
+
     /// When `true`, tapping automatically flips the status.
     public var flipStatusOnTap: Bool = true
 
-    public var status: Status = .off {
+    public var status: ToggleState = .off {
         didSet { updateStyle() }
     }
 
@@ -84,6 +87,7 @@ open class LMKToggleButton: LMKButton {
                 LMKHapticFeedbackHelper.selection()
             }
         }
+        stateChangedHandler?(status)
         super.didTap()
     }
 }

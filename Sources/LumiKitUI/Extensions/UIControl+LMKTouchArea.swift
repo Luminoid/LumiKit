@@ -28,7 +28,13 @@ public extension UIControl {
     }
 
     /// Check if point is inside the expanded touch area.
-    /// Call from your `point(inside:with:)` override if you use `lmk_touchAreaEdgeInsets`.
+    ///
+    /// Wire this up in your `UIControl` subclass:
+    /// ```swift
+    /// override func point(inside point: CGPoint, with event: UIEvent?) -> Bool {
+    ///     lmk_pointInside(point, with: event)
+    /// }
+    /// ```
     func lmk_pointInside(_ point: CGPoint, with event: UIEvent?) -> Bool {
         if lmk_touchAreaEdgeInsets == .zero || !isEnabled || isHidden {
             return bounds.contains(point)

@@ -43,9 +43,11 @@ public extension UIColor {
     }
 
     /// Hex string representation (uppercase, without #).
+    /// Returns `"RRGGBB"` for opaque colors and `"RRGGBBAA"` when alpha < 1.
     ///
     /// ```swift
-    /// UIColor.red.lmk_hexString  // "FF0000"
+    /// UIColor.red.lmk_hexString                         // "FF0000"
+    /// UIColor.red.withAlphaComponent(0.5).lmk_hexString  // "FF000080"
     /// ```
     var lmk_hexString: String {
         var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
@@ -53,7 +55,11 @@ public extension UIColor {
         let ri = Int(round(min(max(r, 0), 1) * 255))
         let gi = Int(round(min(max(g, 0), 1) * 255))
         let bi = Int(round(min(max(b, 0), 1) * 255))
-        return String(format: "%02X%02X%02X", ri, gi, bi)
+        let ai = Int(round(min(max(a, 0), 1) * 255))
+        if ai == 255 {
+            return String(format: "%02X%02X%02X", ri, gi, bi)
+        }
+        return String(format: "%02X%02X%02X%02X", ri, gi, bi, ai)
     }
 
     /// Whether this color is perceptually light (luminance > 0.5).

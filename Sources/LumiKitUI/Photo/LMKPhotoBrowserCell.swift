@@ -15,7 +15,15 @@ public enum LMKPhotoBrowserConfig {
     /// `minimumLineSpacing`, because `UICollectionViewFlowLayout` doesn't add
     /// spacing after the last cell — causing an accumulated offset bug on the
     /// final page.
-    public static let interPageSpacing: CGFloat = 16
+    public static var interPageSpacing: CGFloat { LMKSpacing.large }
+    /// Button size for Mac Catalyst controls.
+    public static let macButtonSize: CGFloat = 48
+    /// Maximum zoom scale for photo preview.
+    public static let maximumZoomScale: CGFloat = 3.0
+    /// Minimum zoom scale for photo preview.
+    public static let minimumZoomScale: CGFloat = 1.0
+    /// Minimum vertical velocity (pt/s) to trigger dismiss.
+    public static let dismissVelocityThreshold: CGFloat = 700
 }
 
 

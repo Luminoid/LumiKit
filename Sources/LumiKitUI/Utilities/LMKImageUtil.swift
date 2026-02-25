@@ -22,7 +22,11 @@ public nonisolated enum LMKImageUtil {
     private static let ciContext = CIContext()
 
     /// Convert a `CVPixelBuffer` to JPEG `Data`.
-    public static func jpegData(withPixelBuffer pixelBuffer: CVPixelBuffer, attachments: CFDictionary?) -> Data? {
+    /// - Parameters:
+    ///   - pixelBuffer: The pixel buffer to convert.
+    ///   - attachments: Optional metadata attachments.
+    ///   - compressionQuality: JPEG compression quality (0.0--1.0). Default 0.9.
+    public static func jpegData(withPixelBuffer pixelBuffer: CVPixelBuffer, attachments: CFDictionary?, compressionQuality: CGFloat = 0.9) -> Data? {
         let renderedCIImage = CIImage(cvImageBuffer: pixelBuffer)
         guard let renderedCGImage = ciContext.createCGImage(renderedCIImage, from: renderedCIImage.extent) else {
             return nil
@@ -33,7 +37,9 @@ public nonisolated enum LMKImageUtil {
         guard let cgImageDestination = CGImageDestinationCreateWithData(data, UTType.jpeg.identifier as CFString, 1, nil) else {
             return nil
         }
-        CGImageDestinationAddImage(cgImageDestination, renderedCGImage, attachments)
+        var imageProperties: [String: Any] = (attachments as? [String: Any]) ?? [:]
+        imageProperties[kCGImageDestinationLossyCompressionQuality as String] = compressionQuality
+        CGImageDestinationAddImage(cgImageDestination, renderedCGImage, imageProperties as CFDictionary)
         if CGImageDestinationFinalize(cgImageDestination) {
             return data as Data
         }

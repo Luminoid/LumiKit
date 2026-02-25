@@ -49,8 +49,14 @@ public enum LMKDeviceHelper {
     public static var isMacCatalyst: Bool { deviceType == .macCatalyst }
 
     /// Screen size category based on screen bounds.
+    ///
+    /// iPhone breakpoints:
+    /// - `compact`: ≤667pt (SE, mini — 4.7" class)
+    /// - `regular`: ≤844pt (standard — 6.1" class)
+    /// - `large`: >844pt (Plus/Max — 6.7" class)
     public static var screenSize: LMKScreenSize {
-        let screenBounds = LMKSceneUtil.getKeyWindow()?.windowScene?.screen.bounds ?? LMKSceneUtil.getKeyWindow()?.screen.bounds ?? .zero
+        let window = LMKSceneUtil.getKeyWindow()
+        let screenBounds = window?.windowScene?.screen.bounds ?? window?.screen.bounds ?? .zero
         let longestSide = max(screenBounds.width, screenBounds.height)
         switch deviceType {
         case .iPad, .macCatalyst:

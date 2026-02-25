@@ -28,10 +28,10 @@ struct LMKTextViewTests {
         #expect(tv.placeholder == "Notes")
     }
 
-    @Test("Default max character count is 0 (unlimited)")
+    @Test("Default max character count is nil (unlimited)")
     func defaultMaxCount() {
         let tv = LMKTextView()
-        #expect(tv.maxCharacterCount == 0)
+        #expect(tv.maxCharacterCount == nil)
     }
 
     @Test("Default styling uses design tokens")

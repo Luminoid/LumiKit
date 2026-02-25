@@ -8,14 +8,14 @@
 import UIKit
 
 public extension UIView {
-    /// Apply a shadow from an `LMKShadow` token tuple.
+    /// Apply a shadow from an `LMKShadowStyle`.
     ///
     /// ```swift
     /// cardView.lmk_applyShadow(LMKShadow.card())
     /// headerView.lmk_applyShadow(LMKShadow.small())
     /// ```
-    func lmk_applyShadow(_ shadow: (color: CGColor, offset: CGSize, radius: CGFloat, opacity: Float)) {
-        layer.shadowColor = shadow.color
+    func lmk_applyShadow(_ shadow: LMKShadowStyle) {
+        layer.shadowColor = shadow.color.cgColor
         layer.shadowOffset = shadow.offset
         layer.shadowRadius = shadow.radius
         layer.shadowOpacity = shadow.opacity

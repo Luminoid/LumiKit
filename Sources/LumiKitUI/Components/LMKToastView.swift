@@ -110,7 +110,7 @@ public final class LMKToastView: UIView {
         containerView.addSubview(messageLabel)
         messageLabel.snp.makeConstraints { make in
             make.leading.equalTo(iconView.snp.trailing).offset(LMKSpacing.small)
-            make.trailing.equalToSuperview().offset(-LMKSpacing.medium)
+            make.trailing.equalToSuperview().offset(-LMKSpacing.large)
             make.top.bottom.equalToSuperview().inset(LMKSpacing.medium)
         }
 

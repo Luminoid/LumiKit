@@ -232,7 +232,10 @@ public final class LMKSharePreviewViewController: UIViewController {
             image,
             from: self,
             sourceView: shareButton
-        )
+        ) { [weak self] activityType in
+            guard let self else { return }
+            self.delegate?.sharePreview(self, didShareWith: activityType)
+        }
     }
 
     @objc private func saveImageTapped() {

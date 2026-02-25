@@ -25,7 +25,7 @@ open class LMKSegmentedControl: UISegmentedControl {
         fatalError("init(coder:) has not been implemented")
     }
 
-    private func initialize() {
+    open func initialize() {
         addTarget(self, action: #selector(valueChanged), for: .valueChanged)
     }
 

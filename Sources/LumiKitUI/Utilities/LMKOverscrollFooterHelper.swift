@@ -33,6 +33,12 @@ public final class LMKOverscrollFooterHelper {
     /// Current overscroll amount in points (0 when not overscrolling).
     public private(set) var overscrollAmount: CGFloat = 0
 
+    /// Normalized overscroll progress (0.0 when not overscrolling, 1.0 when fully revealed).
+    public var overscrollProgress: CGFloat {
+        guard footerHeight > 0 else { return 0 }
+        return min(overscrollAmount / footerHeight, 1)
+    }
+
     // MARK: - Initialization
 
     /// Attaches the footer view to the scroll view.

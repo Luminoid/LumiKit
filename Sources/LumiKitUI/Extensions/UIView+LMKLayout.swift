@@ -14,9 +14,21 @@ public extension UIView {
         safeAreaLayoutGuide.snp
     }
 
-    /// Pin edges to superview.
-    func lmk_setEdgesEqualToSuperView() {
+    /// Pin edges to superview. Must be called after `addSubview`.
+    func lmk_setEdgesEqualToSuperview() {
+        guard superview != nil else { return }
         snp.makeConstraints { make in make.edges.equalToSuperview() }
+    }
+
+    /// Center in superview. Must be called after `addSubview`.
+    func lmk_centerInSuperview() {
+        guard superview != nil else { return }
+        snp.makeConstraints { make in make.center.equalToSuperview() }
+    }
+
+    @available(*, deprecated, renamed: "lmk_setEdgesEqualToSuperview")
+    func lmk_setEdgesEqualToSuperView() {
+        lmk_setEdgesEqualToSuperview()
     }
 
     /// Set fixed Auto Layout size.

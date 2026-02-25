@@ -36,15 +36,17 @@ public enum LMKSpacing {
 
     /// Content horizontal padding for headers, list content, cards.
     /// Scales based on device size (iPhone -> iPad -> Mac Catalyst).
-    /// iPad and Mac Catalyst values are intentionally hardcoded per screen size;
+    /// All per-device values are theme-configurable via `LMKSpacingTheme`;
     /// iPhone falls through to `config.large` from the theme.
     public static var cardPadding: CGFloat {
         #if targetEnvironment(macCatalyst)
-            return 48
+            return config.cardPaddingMac
         #elseif os(iOS)
             if UIDevice.current.userInterfaceIdiom == .pad {
                 let screenSize = longestScreenSide
-                if screenSize <= 768 { return 24 } else if screenSize <= 820 { return 28 } else if screenSize <= 834 { return 32 } else if screenSize <= 1024 { return 36 } else { return 40 }
+                if screenSize <= 768 { return config.cardPaddingIPadCompact }
+                else if screenSize <= 1024 { return config.cardPaddingIPadRegular }
+                else { return config.cardPaddingIPadLarge }
             }
             return config.large
         #else
@@ -53,17 +55,17 @@ public enum LMKSpacing {
     }
 
     /// Cell vertical padding (larger on bigger screens).
-    /// iPad and Mac Catalyst values are intentionally hardcoded per screen size;
+    /// All per-device values are theme-configurable via `LMKSpacingTheme`;
     /// iPhone falls through to `config.small` from the theme.
     public static var cellPaddingVertical: CGFloat {
         #if targetEnvironment(macCatalyst)
-            return 16
+            return config.cellPaddingVerticalMac
         #elseif os(iOS)
             if UIDevice.current.userInterfaceIdiom == .pad {
                 let screenSize = longestScreenSide
-                if screenSize <= 768 { return 12 }
-                if screenSize <= 834 { return 14 }
-                return 16
+                if screenSize <= 768 { return config.cellPaddingVerticalIPadCompact }
+                else if screenSize <= 834 { return config.cellPaddingVerticalIPadRegular }
+                else { return config.cellPaddingVerticalIPadLarge }
             }
             return config.small
         #else
@@ -74,7 +76,7 @@ public enum LMKSpacing {
     /// Longest side of the current screen, resolved via the key window scene.
     private static var longestScreenSide: CGFloat {
         let bounds = LMKSceneUtil.getKeyWindow()?.windowScene?.screen.bounds
-            ?? CGRect(x: 0, y: 0, width: 1024, height: 1366)
+            ?? UIScreen.main.bounds
         return max(bounds.width, bounds.height)
     }
 
@@ -84,4 +86,8 @@ public enum LMKSpacing {
     public static var iconSpacing: CGFloat { config.iconSpacing }
     /// Icon to text — default 8pt.
     public static var iconToText: CGFloat { config.iconToText }
+    /// Text view vertical content inset — default 8pt.
+    public static var textViewPaddingVertical: CGFloat { config.textViewPaddingVertical }
+    /// Text view horizontal content inset — default 12pt.
+    public static var textViewPaddingHorizontal: CGFloat { config.textViewPaddingHorizontal }
 }

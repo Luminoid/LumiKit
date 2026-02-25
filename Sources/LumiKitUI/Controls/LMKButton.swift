@@ -9,10 +9,10 @@ import UIKit
 
 /// Base button with closure-based tap handling.
 open class LMKButton: UIButton {
-    /// Simple tap handler (no typed reference).
+    /// Simple tap handler (no reference to button). Use for fire-and-forget actions.
     public var tapHandler: (() -> Void)?
 
-    /// Typed tap handler (receives the button instance).
+    /// Typed tap handler that receives the button instance. Use when you need a reference to the tapped button.
     public var didTapHandler: ((LMKButton) -> Void)?
 
     /// When `true`, plays press animation + haptic on touch down.
@@ -40,8 +40,9 @@ open class LMKButton: UIButton {
     }
 
     @objc private func handleTouchDown() {
-        guard pressAnimationEnabled, LMKAnimationHelper.shouldAnimate else { return }
+        guard pressAnimationEnabled else { return }
         LMKHapticFeedbackHelper.medium()
+        guard LMKAnimationHelper.shouldAnimate else { return }
         LMKAnimationHelper.animateButtonPressDown(self)
     }
 

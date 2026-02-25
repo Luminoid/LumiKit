@@ -20,14 +20,40 @@ struct UIViewLMKLayoutTests {
         let _ = view.lmk_safeAreaSnp
     }
 
-    @Test("lmk_setEdgesEqualToSuperView adds constraints")
-    func edgesEqualToSuperView() {
+    @Test("lmk_setEdgesEqualToSuperview adds constraints")
+    func edgesEqualToSuperview() {
         let parent = UIView(frame: CGRect(x: 0, y: 0, width: 200, height: 200))
         let child = UIView()
         parent.addSubview(child)
-        child.lmk_setEdgesEqualToSuperView()
+        child.lmk_setEdgesEqualToSuperview()
         parent.layoutIfNeeded()
         #expect(child.frame == parent.bounds)
+    }
+
+    @Test("lmk_setEdgesEqualToSuperview is no-op without superview")
+    func edgesEqualToSuperviewNoSuperview() {
+        let child = UIView()
+        // Should not crash when called without a superview
+        child.lmk_setEdgesEqualToSuperview()
+    }
+
+    @Test("lmk_centerInSuperview centers child in parent")
+    func centerInSuperview() {
+        let parent = UIView(frame: CGRect(x: 0, y: 0, width: 200, height: 200))
+        let child = UIView()
+        parent.addSubview(child)
+        child.lmk_setAutoLayoutSize(width: 50, height: 50)
+        child.lmk_centerInSuperview()
+        parent.layoutIfNeeded()
+        #expect(child.center.x == parent.bounds.midX)
+        #expect(child.center.y == parent.bounds.midY)
+    }
+
+    @Test("lmk_centerInSuperview is no-op without superview")
+    func centerInSuperviewNoSuperview() {
+        let child = UIView()
+        // Should not crash when called without a superview
+        child.lmk_centerInSuperview()
     }
 
     @Test("lmk_setAutoLayoutSize sets fixed width and height")

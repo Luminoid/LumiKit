@@ -36,6 +36,27 @@ public nonisolated struct LMKSpacingTheme: Sendable {
     public var iconSpacing: CGFloat
     /// Icon to text.
     public var iconToText: CGFloat
+    /// Card padding for Mac Catalyst.
+    public var cardPaddingMac: CGFloat
+    /// Card padding for small iPads (≤768pt longest side).
+    public var cardPaddingIPadCompact: CGFloat
+    /// Card padding for regular iPads (≤1024pt longest side).
+    public var cardPaddingIPadRegular: CGFloat
+    /// Card padding for large iPads (>1024pt longest side).
+    public var cardPaddingIPadLarge: CGFloat
+    /// Cell vertical padding for Mac Catalyst.
+    public var cellPaddingVerticalMac: CGFloat
+    /// Cell vertical padding for small iPads (≤768pt longest side).
+    public var cellPaddingVerticalIPadCompact: CGFloat
+    /// Cell vertical padding for regular iPads (≤834pt longest side).
+    public var cellPaddingVerticalIPadRegular: CGFloat
+    /// Cell vertical padding for large iPads (>834pt longest side).
+    public var cellPaddingVerticalIPadLarge: CGFloat
+    /// Text view vertical content inset.
+    public var textViewPaddingVertical: CGFloat
+    /// Text view horizontal content inset (slightly larger than vertical
+    /// because line height makes vertical spacing appear larger).
+    public var textViewPaddingHorizontal: CGFloat
 
     public init(
         xxs: CGFloat = 2,
@@ -48,7 +69,17 @@ public nonisolated struct LMKSpacingTheme: Sendable {
         buttonPaddingVertical: CGFloat = 12,
         buttonPaddingHorizontal: CGFloat = 16,
         iconSpacing: CGFloat = 6,
-        iconToText: CGFloat = 8
+        iconToText: CGFloat = 8,
+        cardPaddingMac: CGFloat = 48,
+        cardPaddingIPadCompact: CGFloat = 24,
+        cardPaddingIPadRegular: CGFloat = 32,
+        cardPaddingIPadLarge: CGFloat = 40,
+        cellPaddingVerticalMac: CGFloat = 16,
+        cellPaddingVerticalIPadCompact: CGFloat = 12,
+        cellPaddingVerticalIPadRegular: CGFloat = 14,
+        cellPaddingVerticalIPadLarge: CGFloat = 16,
+        textViewPaddingVertical: CGFloat = 8,
+        textViewPaddingHorizontal: CGFloat = 10
     ) {
         self.xxs = xxs
         self.xs = xs
@@ -61,5 +92,15 @@ public nonisolated struct LMKSpacingTheme: Sendable {
         self.buttonPaddingHorizontal = buttonPaddingHorizontal
         self.iconSpacing = iconSpacing
         self.iconToText = iconToText
+        self.cardPaddingMac = cardPaddingMac
+        self.cardPaddingIPadCompact = cardPaddingIPadCompact
+        self.cardPaddingIPadRegular = cardPaddingIPadRegular
+        self.cardPaddingIPadLarge = cardPaddingIPadLarge
+        self.cellPaddingVerticalMac = cellPaddingVerticalMac
+        self.cellPaddingVerticalIPadCompact = cellPaddingVerticalIPadCompact
+        self.cellPaddingVerticalIPadRegular = cellPaddingVerticalIPadRegular
+        self.cellPaddingVerticalIPadLarge = cellPaddingVerticalIPadLarge
+        self.textViewPaddingVertical = textViewPaddingVertical
+        self.textViewPaddingHorizontal = textViewPaddingHorizontal
     }
 }

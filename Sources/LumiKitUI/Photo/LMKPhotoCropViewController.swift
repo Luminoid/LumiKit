@@ -898,6 +898,18 @@ public final class LMKPhotoCropViewController: UIViewController {
     private func cropImage() -> UIImage? {
         let imageViewFrame = imageView.frame
 
+        // Normalize image orientation — CGImage.cropping(to:) operates in raw pixel
+        // coordinates which may not match the orientation-corrected UIImage.size.
+        let normalizedImage: UIImage
+        if image.imageOrientation != .up, let cgImage = image.cgImage {
+            UIGraphicsBeginImageContextWithOptions(image.size, false, image.scale)
+            image.draw(in: CGRect(origin: .zero, size: image.size))
+            normalizedImage = UIGraphicsGetImageFromCurrentImageContext() ?? image
+            UIGraphicsEndImageContext()
+        } else {
+            normalizedImage = image
+        }
+
         // Convert crop frame from view coordinates to image view coordinates
         let cropInImageView = CGRect(
             x: cropFrame.origin.x - imageViewFrame.origin.x,
@@ -907,7 +919,7 @@ public final class LMKPhotoCropViewController: UIViewController {
         )
 
         // Scale from image view to actual image pixel coordinates
-        let scale = image.size.width / imageViewFrame.width
+        let scale = normalizedImage.size.width / imageViewFrame.width
         let imageCropRect = CGRect(
             x: cropInImageView.origin.x * scale,
             y: cropInImageView.origin.y * scale,
@@ -917,13 +929,13 @@ public final class LMKPhotoCropViewController: UIViewController {
 
         // Clamp to image bounds, snapping to whole pixels to prevent
         // anti-aliasing artifacts (1px white line) at fractional boundaries
-        let clampedRect = imageCropRect.intersection(CGRect(origin: .zero, size: image.size)).integral
+        let clampedRect = imageCropRect.intersection(CGRect(origin: .zero, size: normalizedImage.size)).integral
         guard !clampedRect.isEmpty, clampedRect.width > 0, clampedRect.height > 0,
-              let cgImage = image.cgImage?.cropping(to: clampedRect) else {
+              let cgImage = normalizedImage.cgImage?.cropping(to: clampedRect) else {
             return nil
         }
 
-        return UIImage(cgImage: cgImage, scale: image.scale, orientation: image.imageOrientation)
+        return UIImage(cgImage: cgImage, scale: normalizedImage.scale, orientation: .up)
     }
 }
 

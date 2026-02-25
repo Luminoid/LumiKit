@@ -18,13 +18,15 @@ public nonisolated struct LMKLayoutTheme: Sendable {
     public var minimumTouchTarget: CGFloat
     /// Medium icon size.
     public var iconMedium: CGFloat
+    /// Large icon size.
+    public var iconLarge: CGFloat
     /// Small icon size.
     public var iconSmall: CGFloat
     /// Extra small icon size (chevrons, compact indicators).
     public var iconExtraSmall: CGFloat
     /// Pull-to-refresh threshold; compact preview height.
     public var pullThreshold: CGFloat
-    /// Minimum cell height; name limit.
+    /// Minimum cell height.
     public var cellHeightMin: CGFloat
     /// Search bar container height.
     public var searchBarHeight: CGFloat
@@ -36,6 +38,7 @@ public nonisolated struct LMKLayoutTheme: Sendable {
     public init(
         minimumTouchTarget: CGFloat = 44,
         iconMedium: CGFloat = 24,
+        iconLarge: CGFloat = 28,
         iconSmall: CGFloat = 20,
         iconExtraSmall: CGFloat = 16,
         pullThreshold: CGFloat = 80,
@@ -46,6 +49,7 @@ public nonisolated struct LMKLayoutTheme: Sendable {
     ) {
         self.minimumTouchTarget = minimumTouchTarget
         self.iconMedium = iconMedium
+        self.iconLarge = iconLarge
         self.iconSmall = iconSmall
         self.iconExtraSmall = iconExtraSmall
         self.pullThreshold = pullThreshold

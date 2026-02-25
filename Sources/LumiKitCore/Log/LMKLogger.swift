@@ -25,6 +25,10 @@ public enum LMKLogger {
 
     /// The logging subsystem identifier. Defaults to the main bundle identifier.
     /// Call `configure(subsystem:)` to override.
+    ///
+    /// - Important: Must only be written from the main thread during app launch
+    ///   (e.g., in `application(_:didFinishLaunchingWithOptions:)`), before any
+    ///   concurrent logging occurs. This is safe because app launch is single-threaded.
     private nonisolated(unsafe) static var subsystem = Bundle.main.bundleIdentifier ?? "com.lumikit"
 
     /// Configure the logger subsystem. Call once at app launch.
@@ -37,6 +41,9 @@ public enum LMKLogger {
     // MARK: - Log Store
 
     /// Optional in-memory log store. Populated when enabled via `enableLogStore()`.
+    ///
+    /// - Important: Must only be written from the main thread during app launch.
+    ///   Read access is thread-safe via `LMKLogStore`'s internal lock.
     public private(set) nonisolated(unsafe) static var logStore: LMKLogStore?
 
     /// Enable in-memory log capture with a bounded ring buffer.

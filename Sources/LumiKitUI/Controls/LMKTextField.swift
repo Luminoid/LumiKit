@@ -36,6 +36,7 @@ open class LMKTextField: UIView {
     private let leadingIconView = UIImageView()
     private let helperLabel = UILabel()
     private var leadingIconConstraint: Constraint?
+    private var traitChangeRegistration: (any UITraitChangeRegistration)?
 
     /// Delegate forwarding.
     public weak var delegate: (any UITextFieldDelegate)? {
@@ -76,6 +77,12 @@ open class LMKTextField: UIView {
     public var validationState: LMKTextFieldState = .normal {
         didSet { updateValidationAppearance() }
     }
+
+    /// Called when text changes via user input.
+    public var textChangedHandler: ((String?) -> Void)?
+
+    /// Maximum number of characters. `nil` means unlimited.
+    public var maxCharacterCount: Int?
 
     // MARK: - Initialization
 
@@ -142,14 +149,20 @@ open class LMKTextField: UIView {
             make.bottom.equalToSuperview()
         }
 
+        textField.addTarget(self, action: #selector(textFieldDidChange), for: .editingChanged)
+
         isAccessibilityElement = false
         accessibilityElements = [textField, helperLabel]
 
-        _ = registerForTraitChanges([UITraitUserInterfaceStyle.self], action: #selector(refreshDynamicColors))
+        traitChangeRegistration = registerForTraitChanges([UITraitUserInterfaceStyle.self], action: #selector(refreshDynamicColors))
     }
 
     @objc private func refreshDynamicColors() {
         updateValidationAppearance()
+    }
+
+    @objc private func textFieldDidChange() {
+        textChangedHandler?(textField.text)
     }
 
     private func updateLeadingConstraint() {

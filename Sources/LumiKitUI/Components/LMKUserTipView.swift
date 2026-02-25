@@ -396,7 +396,7 @@ public final class LMKUserTipView: UIView {
 
         arrowLayer.path = path.cgPath
         arrowLayer.fillColor = LMKColor.backgroundSecondary.cgColor
-        arrowLayer.shadowColor = LMKShadow.card().color
+        arrowLayer.shadowColor = LMKShadow.card().color.cgColor
         arrowLayer.shadowOffset = LMKShadow.card().offset
         arrowLayer.shadowRadius = LMKShadow.card().radius
         arrowLayer.shadowOpacity = LMKShadow.card().opacity

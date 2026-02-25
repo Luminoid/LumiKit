@@ -7,7 +7,7 @@
 
 import UIKit
 
-private let lmk_formContentPadding: CGFloat = LMKSpacing.xs
+private var lmk_formContentPadding: CGFloat { LMKSpacing.xs }
 
 public extension UITextField {
     /// Applies standard content leading and trailing padding for form text fields.
@@ -27,13 +27,15 @@ public extension UITextField {
 }
 
 public extension UITextView {
-    /// Applies content inset matching single-line form text fields.
+    /// Applies content inset for multi-line text views.
+    /// Horizontal padding is slightly larger than vertical because
+    /// line height makes vertical spacing appear larger than it is.
     func lmk_applyFormContentPadding() {
         textContainerInset = UIEdgeInsets(
-            top: lmk_formContentPadding,
-            left: lmk_formContentPadding,
-            bottom: lmk_formContentPadding,
-            right: lmk_formContentPadding,
+            top: LMKSpacing.textViewPaddingVertical,
+            left: LMKSpacing.textViewPaddingHorizontal,
+            bottom: LMKSpacing.textViewPaddingVertical,
+            right: LMKSpacing.textViewPaddingHorizontal,
         )
     }
 }

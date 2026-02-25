@@ -9,6 +9,10 @@ import UIKit
 
 /// Centralized haptic feedback helper.
 ///
+/// On Mac Catalyst, haptic feedback is a no-op (Taptic Engine is not available).
+/// No audible or visual alternative is provided — callers should handle
+/// Mac-specific feedback if needed.
+///
 /// Call `prepare` methods when a haptic interaction is anticipated (e.g. when a view appears
 /// or a gesture begins) to reduce latency. The Taptic Engine stays prepared for ~1–2 seconds.
 ///

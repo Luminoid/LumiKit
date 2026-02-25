@@ -28,11 +28,14 @@ public enum LMKShareService {
     ///   - viewController: Presenting view controller.
     ///   - sourceView: Optional source view for iPad popover positioning.
     ///   - sourceBarButtonItem: Optional bar button item for popover anchor.
+    ///   - completion: Optional callback invoked after sharing completes with the chosen activity type
+    ///     (`nil` if the user cancelled).
     public static func shareImage(
         _ image: UIImage,
         from viewController: UIViewController,
         sourceView: UIView? = nil,
-        sourceBarButtonItem: UIBarButtonItem? = nil
+        sourceBarButtonItem: UIBarButtonItem? = nil,
+        completion: ((UIActivity.ActivityType?) -> Void)? = nil
     ) {
         let activityVC = UIActivityViewController(activityItems: [image], applicationActivities: nil)
         configurePopover(activityVC, viewController: viewController, sourceView: sourceView, sourceBarButtonItem: sourceBarButtonItem)
@@ -42,6 +45,9 @@ public enum LMKShareService {
                 LMKLogger.error("Error sharing image", error: error, category: .general)
             } else if completed {
                 LMKLogger.info("Image shared successfully via \(activityType?.rawValue ?? "unknown")", category: .general)
+            }
+            if completed {
+                completion?(activityType)
             }
         }
 

@@ -10,15 +10,22 @@ import UIKit
 public extension UIView {
     /// Apply border with color and width, optionally setting corner radius.
     ///
+    /// - Parameters:
+    ///   - color: Border color.
+    ///   - width: Border width (default 1pt).
+    ///   - cornerRadius: Optional corner radius. When provided, also sets `masksToBounds`.
+    ///   - clipsToBounds: Whether to clip to bounds when `cornerRadius` is provided (default `true`).
+    ///     Set to `false` when you need both a border with corner radius and a shadow.
+    ///
     /// ```swift
     /// view.lmk_applyBorder(color: LMKColor.divider, width: 1, cornerRadius: LMKCornerRadius.small)
     /// ```
-    func lmk_applyBorder(color: UIColor, width: CGFloat = 1, cornerRadius: CGFloat? = nil) {
+    func lmk_applyBorder(color: UIColor, width: CGFloat = 1, cornerRadius: CGFloat? = nil, clipsToBounds: Bool = true) {
         layer.borderColor = color.cgColor
         layer.borderWidth = width
         if let cornerRadius {
             layer.cornerRadius = cornerRadius
-            layer.masksToBounds = true
+            layer.masksToBounds = clipsToBounds
         }
     }
 

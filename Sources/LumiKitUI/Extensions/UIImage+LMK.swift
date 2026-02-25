@@ -33,7 +33,9 @@ public extension UIImage {
     /// let icon = image.lmk_resized(to: CGSize(width: 32, height: 32))
     /// ```
     func lmk_resized(to targetSize: CGSize) -> UIImage {
-        let renderer = UIGraphicsImageRenderer(size: targetSize)
+        let format = UIGraphicsImageRendererFormat()
+        format.scale = self.scale
+        let renderer = UIGraphicsImageRenderer(size: targetSize, format: format)
         return renderer.image { _ in
             draw(in: CGRect(origin: .zero, size: targetSize))
         }
@@ -58,7 +60,9 @@ public extension UIImage {
     /// let rounded = photo.lmk_rounded(cornerRadius: 12)
     /// ```
     func lmk_rounded(cornerRadius: CGFloat) -> UIImage {
-        let renderer = UIGraphicsImageRenderer(size: size)
+        let format = UIGraphicsImageRendererFormat()
+        format.scale = self.scale
+        let renderer = UIGraphicsImageRenderer(size: size, format: format)
         return renderer.image { _ in
             let rect = CGRect(origin: .zero, size: size)
             UIBezierPath(roundedRect: rect, cornerRadius: cornerRadius).addClip()

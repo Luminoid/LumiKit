@@ -42,8 +42,8 @@ open class LMKTextView: UIView {
         }
     }
 
-    /// Maximum number of characters. 0 means unlimited.
-    public var maxCharacterCount: Int = 0
+    /// Maximum number of characters. `nil` means unlimited.
+    public var maxCharacterCount: Int?
 
     // MARK: - Initialization
 
@@ -86,6 +86,11 @@ open class LMKTextView: UIView {
         }
 
         isAccessibilityElement = false
+
+        _ = registerForTraitChanges([UITraitUserInterfaceStyle.self]) { (self: LMKTextView, _: UITraitCollection) in
+            self.textView.backgroundColor = LMKColor.backgroundSecondary
+            self.placeholderLabel.textColor = LMKColor.textTertiary
+        }
     }
 
     private func updatePlaceholderVisibility() {
@@ -132,7 +137,7 @@ extension LMKTextView: UITextViewDelegate {
         shouldChangeTextIn range: NSRange,
         replacementText text: String
     ) -> Bool {
-        if maxCharacterCount > 0 {
+        if let maxCharacterCount {
             let currentText = (textView.text ?? "") as NSString
             let newLength = currentText.length + (text as NSString).length - range.length
             if newLength > maxCharacterCount {

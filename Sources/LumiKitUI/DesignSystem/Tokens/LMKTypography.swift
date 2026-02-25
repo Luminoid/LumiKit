@@ -6,6 +6,7 @@
 //  Proxies to `LMKThemeManager.shared.typography` for customization.
 //
 
+import LumiKitCore
 import UIKit
 
 /// Typography tokens for the Lumi design system.
@@ -42,17 +43,34 @@ public enum LMKTypography {
                 .family: family,
                 .traits: traits,
             ])
-            return UIFont(descriptor: descriptor, size: size)
+            let font = UIFont(descriptor: descriptor, size: size)
+            #if DEBUG
+            let actualFamily = font.familyName
+            if actualFamily != family {
+                LMKLogger.debug("Font family '\(family)' not found, using '\(actualFamily)'", category: .ui)
+            }
+            #endif
+            return font
         }
         return .systemFont(ofSize: size, weight: weight)
     }
 
-    private static func makeItalicFont(size: CGFloat) -> UIFont {
+    private static func makeItalicFont(size: CGFloat, weight: UIFont.Weight = .regular) -> UIFont {
         if let family = config.fontFamily {
-            let descriptor = UIFontDescriptor(fontAttributes: [.family: family])
+            let descriptor = UIFontDescriptor(fontAttributes: [
+                .family: family,
+                .traits: [UIFontDescriptor.TraitKey.weight: weight],
+            ])
             if let italicDescriptor = descriptor.withSymbolicTraits(.traitItalic) {
                 return UIFont(descriptor: italicDescriptor, size: size)
             }
+        }
+        if weight == .regular {
+            return .italicSystemFont(ofSize: size)
+        }
+        let systemFont = UIFont.systemFont(ofSize: size, weight: weight)
+        if let italicDescriptor = systemFont.fontDescriptor.withSymbolicTraits([.traitItalic]) {
+            return UIFont(descriptor: italicDescriptor, size: size)
         }
         return .italicSystemFont(ofSize: size)
     }
@@ -193,7 +211,7 @@ public enum LMKTypography {
 }
 
 /// Typography type for determining line height and letter spacing.
-public nonisolated enum LMKTypographyType {
+public nonisolated enum LMKTypographyType: Sendable {
     case heading
     case body
     case caption

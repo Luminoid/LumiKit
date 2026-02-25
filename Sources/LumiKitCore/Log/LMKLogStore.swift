@@ -94,6 +94,12 @@ public final class LMKLogStore: Sendable {
 
     // MARK: - Formatting
 
+    private static let displayFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "HH:mm:ss.SSS"
+        return formatter
+    }()
+
     /// Format all entries as a single string for display.
     ///
     /// Each line: `[HH:mm:ss.SSS] [LEVEL] [Category] message`
@@ -101,8 +107,7 @@ public final class LMKLogStore: Sendable {
         let entries = self.entries
         guard !entries.isEmpty else { return "(no logs captured)" }
 
-        let formatter = DateFormatter()
-        formatter.dateFormat = "HH:mm:ss.SSS"
+        let formatter = Self.displayFormatter
 
         return entries.map { entry in
             let time = formatter.string(from: entry.timestamp)
