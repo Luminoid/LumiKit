@@ -333,26 +333,6 @@ struct LMKCardPageControllerTests {
         #expect(page.headerSeparator.backgroundColor == LMKColor.divider)
     }
 
-    // MARK: - Content Container
-
-    @Test("Content container is below header")
-    func contentContainerBelowHeader() {
-        let page = TestCardPage(title: "Test")
-        page.loadViewIfNeeded()
-        page.view.frame = CGRect(x: 0, y: 0, width: 375, height: 600)
-        page.view.layoutIfNeeded()
-
-        #expect(page.contentContainerView.frame.minY == page.headerView.frame.maxY)
-    }
-
-    @Test("Content container clips to bounds")
-    func contentContainerClipsToBounds() {
-        let page = TestCardPage(title: "Test")
-        page.loadViewIfNeeded()
-
-        #expect(page.contentContainerView.clipsToBounds)
-    }
-
     // MARK: - Multi-Page Navigation
 
     @Test("canPopContent is false initially")

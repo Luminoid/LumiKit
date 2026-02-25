@@ -232,7 +232,7 @@ final class QRCodeDetailViewController: DetailViewController {
 
         addSectionHeader("Generator")
         textField.placeholder = "Enter text or URL..."
-        textField.text = "https://github.com/user/LumiKit"
+        textField.text = "https://github.com/Luminoid/LumiKit"
         textField.borderStyle = .roundedRect
         textField.font = LMKTypography.body
         textField.clearButtonMode = .whileEditing

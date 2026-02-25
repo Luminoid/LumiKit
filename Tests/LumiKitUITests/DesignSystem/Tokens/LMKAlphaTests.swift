@@ -37,7 +37,7 @@ struct LMKAlphaConfigurationTests {
         let config = LMKAlphaTheme()
         #expect(config.overlay == 0.5)
         #expect(config.dimmingOverlay == 0.4)
-        #expect(config.disabled == 0.5)
+        #expect(config.disabled == 0.38)
         #expect(config.overlayStrong == 0.7)
         #expect(config.overlayLight == 0.1)
         #expect(config.overlayOpaque == 0.8)

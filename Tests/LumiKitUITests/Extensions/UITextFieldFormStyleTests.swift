@@ -56,10 +56,9 @@ struct UITextViewFormStyleTests {
         let textView = UITextView()
         textView.lmk_applyFormContentPadding()
 
-        let expectedPadding = LMKSpacing.xs
-        #expect(textView.textContainerInset.top == expectedPadding)
-        #expect(textView.textContainerInset.left == expectedPadding)
-        #expect(textView.textContainerInset.bottom == expectedPadding)
-        #expect(textView.textContainerInset.right == expectedPadding)
+        #expect(textView.textContainerInset.top == LMKSpacing.textViewPaddingVertical)
+        #expect(textView.textContainerInset.left == LMKSpacing.textViewPaddingHorizontal)
+        #expect(textView.textContainerInset.bottom == LMKSpacing.textViewPaddingVertical)
+        #expect(textView.textContainerInset.right == LMKSpacing.textViewPaddingHorizontal)
     }
 }

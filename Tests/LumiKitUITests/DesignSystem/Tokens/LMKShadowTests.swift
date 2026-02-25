@@ -28,7 +28,10 @@ struct LMKShadowConfigurationTests {
         let original = LMKThemeManager.shared.shadow
         defer { LMKThemeManager.shared.apply(shadow: original) }
 
-        LMKThemeManager.shared.apply(shadow: .init(cellCardRadius: 10, cardRadius: 14))
+        LMKThemeManager.shared.apply(shadow: .init(
+            cellCard: .init(radius: 10),
+            card: .init(radius: 14)
+        ))
         let cellCard = LMKShadow.cellCard()
         let card = LMKShadow.card()
         #expect(cellCard.radius == 10)

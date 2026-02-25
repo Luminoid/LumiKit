@@ -67,5 +67,10 @@ let package = Package(
             dependencies: ["LumiKitUI"],
             path: "Tests/LumiKitUITests",
         ),
+        .testTarget(
+            name: "LumiKitLottieTests",
+            dependencies: ["LumiKitLottie"],
+            path: "Tests/LumiKitLottieTests",
+        ),
     ],
 )
