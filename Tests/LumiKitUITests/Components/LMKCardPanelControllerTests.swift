@@ -3,7 +3,7 @@
 //  LumiKit
 //
 //  Tests for LMKCardPanelController: card view setup, embedded navigation,
-//  passthrough touches, layout configuration, and dismissal.
+//  overlay window, layout configuration, and dismissal.
 //
 
 import SnapKit
@@ -79,7 +79,7 @@ struct LMKCardPanelControllerTests {
         #expect(panel.embeddedNavigationController.view.layer.cornerRadius == LMKCornerRadius.large)
     }
 
-    // MARK: - Passthrough View
+    // MARK: - View & Touch Handling
 
     @Test("View background is clear")
     func viewBackgroundClear() {
@@ -89,8 +89,8 @@ struct LMKCardPanelControllerTests {
         #expect(panel.view.backgroundColor == .clear)
     }
 
-    @Test("Hit test returns nil for touches outside card")
-    func passthroughOutsideCard() {
+    @Test("Hit test returns the view itself for touches outside card — no passthrough")
+    func touchesOutsideCardAreConsumed() {
         let panel = LMKCardPanelController(rootViewController: UIViewController())
         panel.loadViewIfNeeded()
         panel.view.frame = CGRect(x: 0, y: 0, width: 375, height: 812)
@@ -98,11 +98,11 @@ struct LMKCardPanelControllerTests {
 
         // Touch at the very edge of the view (outside the centered card)
         let result = panel.view.hitTest(CGPoint(x: 0, y: 0), with: nil)
-        #expect(result == nil)
+        #expect(result === panel.view)
     }
 
     @Test("Hit test returns subview for touches on card after animate-in")
-    func passthroughOnCard() {
+    func touchesOnCardHitSubview() {
         let panel = LMKCardPanelController(rootViewController: UIViewController())
         panel.loadViewIfNeeded()
         panel.view.frame = CGRect(x: 0, y: 0, width: 375, height: 812)
@@ -116,6 +116,20 @@ struct LMKCardPanelControllerTests {
         let cardCenter = panel.cardView.center
         let result = panel.view.hitTest(cardCenter, with: nil)
         #expect(result != nil)
+    }
+
+    // MARK: - Configuration
+
+    @Test("dismissesOnBackgroundTap defaults to true")
+    func dismissesOnBackgroundTapDefault() {
+        let panel = LMKCardPanelController(rootViewController: UIViewController())
+        #expect(panel.dismissesOnBackgroundTap)
+    }
+
+    @Test("Subclass can disable background tap dismissal")
+    func customDismissesOnBackgroundTap() {
+        let panel = NoDismissCardPanel(rootViewController: UIViewController())
+        #expect(!panel.dismissesOnBackgroundTap)
     }
 
     // MARK: - Card starts hidden
@@ -206,4 +220,8 @@ struct LMKCardPanelControllerTests {
 
 private final class WideCardPanel: LMKCardPanelController {
     override var cardMaxWidth: CGFloat { 600 }
+}
+
+private final class NoDismissCardPanel: LMKCardPanelController {
+    override var dismissesOnBackgroundTap: Bool { false }
 }

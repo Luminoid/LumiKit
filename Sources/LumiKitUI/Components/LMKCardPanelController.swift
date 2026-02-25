@@ -3,8 +3,8 @@
 //  LumiKit
 //
 //  Centered floating card panel that hosts content in an embedded
-//  navigation controller. Touches outside the card pass through
-//  to views underneath.
+//  navigation controller. Presented in its own overlay window,
+//  fully independent of the underlying view controller hierarchy.
 //
 //  Works standalone or together with LMKCardPageController — embed
 //  a card page as the root view controller for a combined
@@ -14,12 +14,12 @@
 import SnapKit
 import UIKit
 
-/// Centered floating card panel with passthrough touches, shadow, and
-/// slide-in/out animation.
+/// Centered floating card panel with shadow and slide-in/out animation.
 ///
 /// Hosts an embedded `UINavigationController` with a hidden system nav bar
-/// inside a rounded card. Designed for overlays that appear above all other
-/// content without blocking interaction outside the card.
+/// inside a rounded card. Presented in a separate overlay `UIWindow` so that
+/// navigation and interaction are fully independent of the underlying
+/// view controller hierarchy.
 ///
 /// Works together with `LMKCardPageController` or any `UIViewController`:
 /// ```swift
@@ -31,7 +31,7 @@ import UIKit
 /// // With any UIViewController
 /// let vc = MyViewController()
 /// let panel = LMKCardPanelController(rootViewController: vc)
-/// panel.present(from: parentVC)
+/// LMKCardPanelController.show(panel, in: window)
 /// ```
 open class LMKCardPanelController: UIViewController {
     // MARK: - Configuration
@@ -44,6 +44,9 @@ open class LMKCardPanelController: UIViewController {
 
     /// Card height as a ratio of the container height. Default: `LMKCardPanelLayout.cardMaxHeightRatio` (0.6).
     open var cardMaxHeightRatio: CGFloat { LMKCardPanelLayout.cardMaxHeightRatio }
+
+    /// Whether tapping outside the card dismisses the panel. Default: `true`.
+    open var dismissesOnBackgroundTap: Bool { true }
 
     // MARK: - Public Properties
 
@@ -58,6 +61,9 @@ open class LMKCardPanelController: UIViewController {
 
     /// The embedded navigation controller hosting the root view controller.
     public private(set) var embeddedNavigationController: UINavigationController
+
+    /// The overlay window hosting this panel. Retained until dismissal.
+    private var overlayWindow: UIWindow?
 
     // MARK: - Initialization
 
@@ -75,14 +81,11 @@ open class LMKCardPanelController: UIViewController {
 
     // MARK: - Lifecycle
 
-    override open func loadView() {
-        view = PassthroughView()
-    }
-
     override open func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = .clear
         setupCard()
+        setupBackgroundTap()
         registerForTraitChanges([UITraitUserInterfaceStyle.self]) { (self: LMKCardPanelController, _: UITraitCollection) in
             self.refreshPanelColors()
         }
@@ -113,6 +116,21 @@ open class LMKCardPanelController: UIViewController {
         cardView.transform = CGAffineTransform(translationX: 0, y: -LMKCardPanelLayout.slideOffset)
     }
 
+    private func setupBackgroundTap() {
+        let tap = UITapGestureRecognizer(target: self, action: #selector(backgroundTapped(_:)))
+        tap.cancelsTouchesInView = false
+        view.addGestureRecognizer(tap)
+    }
+
+    // MARK: - Actions
+
+    @objc private func backgroundTapped(_ gesture: UITapGestureRecognizer) {
+        guard dismissesOnBackgroundTap else { return }
+        let location = gesture.location(in: view)
+        guard !cardView.frame.contains(location) else { return }
+        dismissPanel()
+    }
+
     // MARK: - Animation
 
     /// Animate the card into view with a spring effect.
@@ -127,6 +145,9 @@ open class LMKCardPanelController: UIViewController {
         ) {
             self.cardView.alpha = 1
             self.cardView.transform = .identity
+            if self.dismissesOnBackgroundTap {
+                self.view.backgroundColor = UIColor.black.withAlphaComponent(LMKAlpha.dimmingOverlay)
+            }
         }
     }
 
@@ -135,6 +156,7 @@ open class LMKCardPanelController: UIViewController {
         UIView.animate(withDuration: duration, delay: 0, options: .curveEaseIn) {
             self.cardView.alpha = 0
             self.cardView.transform = CGAffineTransform(translationX: 0, y: -LMKCardPanelLayout.slideOffset)
+            self.view.backgroundColor = .clear
         } completion: { _ in
             completion()
         }
@@ -142,34 +164,36 @@ open class LMKCardPanelController: UIViewController {
 
     // MARK: - Dismissal
 
-    /// Dismiss the panel with an animate-out and remove from the view hierarchy.
+    /// Dismiss the panel with an animate-out and tear down the overlay window.
     /// - Parameter completion: Called after the panel is fully removed.
     public func dismissPanel(completion: (() -> Void)? = nil) {
         animateOut { [weak self] in
             guard let self else { return }
-            self.willMove(toParent: nil)
-            self.view.removeFromSuperview()
-            self.removeFromParent()
+            self.overlayWindow?.isHidden = true
+            self.overlayWindow?.rootViewController = nil
+            self.overlayWindow = nil
             completion?()
         }
     }
 
     // MARK: - Static Convenience
 
-    /// Add the panel to the window so it appears above all presented view controllers.
+    /// Show the panel in a separate overlay window above all other content.
     ///
-    /// Uses child VC containment with the window's root view controller for proper lifecycle.
-    /// The panel animates in on the next run loop after layout resolves.
+    /// The panel is fully independent of the underlying view controller hierarchy —
+    /// navigation and interaction on the underlying window are unaffected.
     /// - Parameters:
     ///   - panel: The card panel controller to show.
-    ///   - window: The window to add the panel to.
+    ///   - window: The window whose scene is used to create the overlay.
     public static func show(_ panel: LMKCardPanelController, in window: UIWindow) {
-        guard let rootVC = window.rootViewController else { return }
-        rootVC.addChild(panel)
-        panel.view.frame = window.bounds
-        panel.view.autoresizingMask = [.flexibleWidth, .flexibleHeight]
-        window.addSubview(panel.view)
-        panel.didMove(toParent: rootVC)
+        guard let windowScene = window.windowScene else { return }
+        let overlay = CardPanelOverlayWindow(windowScene: windowScene)
+        overlay.windowLevel = .normal + 1
+        overlay.backgroundColor = .clear
+        overlay.passthroughEnabled = !panel.dismissesOnBackgroundTap
+        overlay.rootViewController = panel
+        panel.overlayWindow = overlay
+        overlay.makeKeyAndVisible()
 
         // Dispatch to next run loop so initial layout resolves before animating
         DispatchQueue.main.async {
@@ -184,12 +208,20 @@ open class LMKCardPanelController: UIViewController {
     }
 }
 
-// MARK: - PassthroughView
+// MARK: - CardPanelOverlayWindow
 
-/// Passes touches through to views behind it, except for its subviews.
-private final class PassthroughView: UIView {
+/// Overlay window that optionally passes touches outside the card through
+/// to the underlying window.
+private final class CardPanelOverlayWindow: UIWindow {
+    var passthroughEnabled = false
+
     override func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
-        let result = super.hitTest(point, with: event)
-        return result === self ? nil : result
+        guard passthroughEnabled,
+              let panel = rootViewController as? LMKCardPanelController else {
+            return super.hitTest(point, with: event)
+        }
+        let panelPoint = convert(point, to: panel.view)
+        guard panel.cardView.frame.contains(panelPoint) else { return nil }
+        return super.hitTest(point, with: event)
     }
 }

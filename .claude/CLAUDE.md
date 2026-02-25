@@ -3,7 +3,7 @@
 > Shared Swift Package providing design tokens, UI components, and utilities for Lumi apps.
 > **Inherits general Swift/UIKit standards from [workspace CLAUDE.md](../../.claude/CLAUDE.md).** This file contains LumiKit-specific rules only.
 
-- **Review**: [REVIEW.md](../REVIEW.md) — comprehensive code review (2026-02-17), ~140 issues identified
+- **Review**: [REVIEW.md](../REVIEW.md) — comprehensive code review (2026-02-24), 85 issues identified (7 critical, 35 warning, 18 style, 25 enhancement)
 
 ---
 
@@ -40,7 +40,10 @@ LumiKit/
 │   │   │   │                 # LMKEnumSelectionBottomSheet, LMKBottomSheetLayout
 │   │   │   ├── Pickers/      # LMKDatePickerHelper
 │   │   │   └── (root)        # Badge, Banner, Card, Chip, Divider, EmptyState,
-│   │   │                     # Gradient, LoadingState, Progress, SearchBar, Skeleton, Toast
+│   │   │                     # FloatingButton, Gradient, LoadingState, Progress,
+│   │   │                     # SearchBar, Skeleton, Toast, UserTip,
+│   │   │                     # CardPageController, CardPageLayout,
+│   │   │                     # CardPanelController, CardPanelLayout
 │   │   ├── Controls/        # LMKButton, LMKSegmentedControl, LMKToggleButton,
 │   │   │                    # LMKTextField, LMKTextView
 │   │   ├── DesignSystem/
@@ -59,24 +62,26 @@ LumiKit/
 │   │   │                    # LMKPhotoBrowserConfig
 │   │   ├── QRCode/          # LMKQRCodeGenerator
 │   │   ├── Share/           # LMKShareService, LMKSharePreviewViewController
-│   │   └── Utilities/       # LMKDeviceHelper, LMKKeyboardObserver, LMKSceneUtil, LMKImageUtil
+│   │   └── Utilities/       # LMKDeviceHelper, LMKKeyboardObserver, LMKSceneUtil,
+│   │                        # LMKImageUtil, LMKOverscrollFooterHelper
 │   └── LumiKitLottie/       # LMKLottieRefreshControl
 ├── Tests/
-│   ├── LumiKitCoreTests/    # 77 tests, 12 suites — mirrors Sources/LumiKitCore/ subfolders
+│   ├── LumiKitCoreTests/    # 76 tests, 12 suites — mirrors Sources/LumiKitCore/ subfolders
 │   │   ├── Concurrency/     # LMKConcurrencyHelpersTests
 │   │   ├── Data/            # String+LMK, Collection+LMK, NSAttributedString+LMK, FormatHelper
 │   │   ├── Date/            # DateHelper, DateFormatterHelper
 │   │   ├── File/            # FileUtil
 │   │   ├── Log/             # LMKLogStoreTests (ring buffer, thread safety), LMKLoggerTests (log store integration)
 │   │   └── Validation/      # URLValidator
-│   └── LumiKitUITests/      # 243+ tests, 61+ suites — mirrors Sources/LumiKitUI/ subfolders
+│   └── LumiKitUITests/      # 369 tests, 68 suites — mirrors Sources/LumiKitUI/ subfolders
 │       ├── Alerts/          # AlertPresenter, ErrorHandler
 │       ├── Animation/       # AnimationHelper
 │       ├── Components/
 │       │   ├── BottomSheet/  # BottomSheetController, ActionSheet, BottomSheetLayout
 │       │   ├── Pickers/      # DatePickerHelper
 │       │   └── (root)        # Badge, Banner, Card, Chip, Divider, EmptyState,
-│       │                     # Gradient, LoadingState, SearchBar, Skeleton, Toast
+│       │                     # FloatingButton, Gradient, LoadingState, SearchBar,
+│       │                     # Skeleton, Toast, UserTip, CardPage, CardPanel
 │       ├── Controls/        # Button, SegmentedControl, TextField, TextView, ToggleButton
 │       ├── DesignSystem/
 │       │   ├── Tokens/       # Color, Spacing, CornerRadius, Alpha, Typography, Layout, Shadow
@@ -218,6 +223,12 @@ LMKThemeManager.shared.apply(spacing: .init(large: 20))
 | `LMKSearchBar` | `final class` | Search bar with configurable strings |
 | `LMKSkeletonCell` | `final class` | Skeleton loading placeholder cell |
 | `LMKToastView` | `final class` | Auto-dismissing toast notification |
+| `LMKUserTipView` | `final class` | Onboarding tip with centered or pointed (arrow) styles |
+| `LMKFloatingButton` | `final class` | Draggable floating action button with edge snapping and badge |
+| `LMKCardPageController` | `open class` | Base class for card-embedded navigation pages with header, title, multi-page slide |
+| `LMKCardPanelController` | `open class` | Centered floating card panel in its own overlay window with slide animation |
+| `LMKCardPageLayout` | `enum` (static) | Shared layout constants for card pages (header height, symbol sizes) |
+| `LMKCardPanelLayout` | `enum` (static) | Shared layout constants for card panels (max width, insets, height ratio) |
 
 ### Controls (`Controls/`)
 
@@ -275,6 +286,9 @@ LMKThemeManager.shared.apply(spacing: .init(large: 20))
 |---------|---------|
 | `LMKDeviceHelper` | Device type (`.iPhone`, `.iPad`, `.macCatalyst`), screen size classification, notch detection |
 | `LMKKeyboardObserver` | Keyboard show/hide observer with height + animation info |
+| `LMKImageUtil` | SF Symbol creation and `CVPixelBuffer` to JPEG conversion |
+| `LMKSceneUtil` | Key window and connected scene retrieval |
+| `LMKOverscrollFooterHelper` | Positions footer below scroll content, revealed on overscroll |
 
 ---
 
@@ -376,4 +390,4 @@ public final class LMKExampleViewController: UIViewController {
 
 ---
 
-*Optimized for Claude Code • Last updated: 2026-02-22*
+*Optimized for Claude Code • Last updated: 2026-02-24*

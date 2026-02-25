@@ -539,22 +539,42 @@ final class CardPanelDetailViewController: DetailViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
 
-        addSectionHeader("Card Panel")
-        stack.addArrangedSubview(LMKLabelFactory.body(text: "A floating card panel that appears above all content. Touches outside the card pass through to views underneath."))
+        addSectionHeader("Tap to Dismiss")
+        stack.addArrangedSubview(LMKLabelFactory.body(text: "A floating card panel with a light overlay. Tap outside the card or tap dismiss to close."))
         let basicButton = LMKButtonFactory.primary(title: "Show Card Panel", target: self, action: #selector(showBasicPanel))
         stack.addArrangedSubview(basicButton)
+
+        addDivider()
+        addSectionHeader("No Background Dismiss")
+        stack.addArrangedSubview(LMKLabelFactory.caption(text: "Background tap disabled — no overlay. Must dismiss via the button inside the card."))
+        let noDismissButton = LMKButtonFactory.secondary(title: "Show No-Dismiss Panel", target: self, action: #selector(showNoDismissPanel))
+        stack.addArrangedSubview(noDismissButton)
 
         addDivider()
         addSectionHeader("Panel + Card Page")
         stack.addArrangedSubview(LMKLabelFactory.caption(text: "Card panel hosting an LMKCardPageController with multi-page navigation inside."))
         let combinedButton = LMKButtonFactory.secondary(title: "Show Combined", target: self, action: #selector(showCombinedPanel))
         stack.addArrangedSubview(combinedButton)
+
+        addDivider()
+        addSectionHeader("Panel + Card Page (No Dismiss)")
+        stack.addArrangedSubview(LMKLabelFactory.caption(text: "Same combined experience with background tap disabled — must close via the X button."))
+        let combinedNoDismissButton = LMKButtonFactory.secondary(title: "Show Combined (No Dismiss)", target: self, action: #selector(showCombinedNoDismissPanel))
+        stack.addArrangedSubview(combinedNoDismissButton)
     }
 
     @objc private func showBasicPanel() {
         guard let window = view.window else { return }
         let content = BasicPanelContentViewController()
         let panel = LMKCardPanelController(rootViewController: content)
+        content.panel = panel
+        LMKCardPanelController.show(panel, in: window)
+    }
+
+    @objc private func showNoDismissPanel() {
+        guard let window = view.window else { return }
+        let content = BasicPanelContentViewController()
+        let panel = NoDismissCardPanelExample(rootViewController: content)
         content.panel = panel
         LMKCardPanelController.show(panel, in: window)
     }
@@ -566,6 +586,19 @@ final class CardPanelDetailViewController: DetailViewController {
         page.panel = panel
         LMKCardPanelController.show(panel, in: window)
     }
+
+    @objc private func showCombinedNoDismissPanel() {
+        guard let window = view.window else { return }
+        let page = PanelCardPageExample(title: "Panel Page")
+        let panel = NoDismissCardPanelExample(rootViewController: page)
+        page.panel = panel
+        LMKCardPanelController.show(panel, in: window)
+    }
+}
+
+/// Card panel with background tap dismissal disabled.
+private final class NoDismissCardPanelExample: LMKCardPanelController {
+    override var dismissesOnBackgroundTap: Bool { false }
 }
 
 /// Simple content inside a card panel.
@@ -585,7 +618,7 @@ private final class BasicPanelContentViewController: UIViewController {
         imageView.contentMode = .scaleAspectFit
         stack.addArrangedSubview(imageView)
 
-        let label = LMKLabelFactory.body(text: "This is a basic card panel. Tap outside to interact with views behind, or tap dismiss to close.")
+        let label = LMKLabelFactory.body(text: "This is a basic card panel. Tap outside the card or tap dismiss to close.")
         label.textAlignment = .center
         stack.addArrangedSubview(label)
 

@@ -46,7 +46,7 @@ LumiKit is organized into three targets so apps can import only what they need:
 | **LumiKitUI** | LumiKitCore + SnapKit | Design system tokens, theme manager, animation, haptics, alerts, components, controls, photo browser/crop, UIKit extensions |
 | **LumiKitLottie** | LumiKitUI + Lottie | Lottie-powered pull-to-refresh control |
 
-**83 source files** across 3 targets, with **340 tests** (60 Core + 280 UI) across 74 suites.
+**89 source files** across 3 targets, with **445 tests** (76 Core + 369 UI) across 80 suites.
 
 ---
 
@@ -150,7 +150,9 @@ LumiKit/
 │   │   │   ├── LMKBadgeView, LMKBannerView, LMKCardView, LMKChipView,
 │   │   │   ├── LMKDividerView, LMKEmptyStateView, LMKFloatingButton,
 │   │   │   ├── LMKGradientView, LMKLoadingStateView, LMKProgressViewController,
-│   │   │   └── LMKSearchBar, LMKSkeletonCell, LMKToastView, LMKUserTipView
+│   │   │   ├── LMKSearchBar, LMKSkeletonCell, LMKToastView, LMKUserTipView,
+│   │   │   ├── LMKCardPageController, LMKCardPageLayout,
+│   │   │   └── LMKCardPanelController, LMKCardPanelLayout
 │   │   ├── Controls/          # LMKButton, LMKSegmentedControl, LMKToggleButton,
 │   │   │                      # LMKTextField, LMKTextView
 │   │   ├── DesignSystem/
@@ -169,10 +171,10 @@ LumiKit/
 │   │   ├── QRCode/            # LMKQRCodeGenerator
 │   │   ├── Share/             # LMKShareService, LMKSharePreviewViewController
 │   │   └── Utilities/         # LMKDeviceHelper, LMKKeyboardObserver,
-│   │                          # LMKSceneUtil, LMKImageUtil
+│   │                          # LMKSceneUtil, LMKImageUtil, LMKOverscrollFooterHelper
 │   └── LumiKitLottie/         # LMKLottieRefreshControl
 ├── Tests/
-│   ├── LumiKitCoreTests/      # 77 tests, 12 suites
+│   ├── LumiKitCoreTests/      # 76 tests, 12 suites
 │   │   ├── Concurrency/       # LMKConcurrencyHelpers
 │   │   ├── Data/              # String+LMK, Collection+LMK, NSAttributedString+LMK, FormatHelper
 │   │   ├── Date/              # DateHelper, DateFormatterHelper
@@ -180,14 +182,15 @@ LumiKit/
 │   │   ├── Log/               # LMKLogStore (ring buffer, thread safety),
 │   │   │                      # LMKLogger (log store integration)
 │   │   └── Validation/        # URLValidator
-│   └── LumiKitUITests/        # 243+ tests, 61+ suites
+│   └── LumiKitUITests/        # 369 tests, 68 suites
 │       ├── Alerts/            # AlertPresenter, ErrorHandler
 │       ├── Animation/         # AnimationHelper
 │       ├── Components/
 │       │   ├── BottomSheet/   # BottomSheetController, ActionSheet, BottomSheetLayout
 │       │   ├── Pickers/       # DatePickerHelper
 │       │   ├── Badge, Banner, Card, Chip, Divider, EmptyState,
-│       │   └── Gradient, LoadingState, SearchBar, Skeleton, Toast
+│       │   ├── Gradient, LoadingState, SearchBar, Skeleton, Toast,
+│       │   └── FloatingButton, UserTip, CardPage, CardPanel
 │       ├── Controls/          # Button, SegmentedControl, TextField, TextView, ToggleButton
 │       ├── DesignSystem/
 │       │   ├── Tokens/        # Color, Spacing, CornerRadius, Alpha, Typography, Layout, Shadow
@@ -290,6 +293,10 @@ LMKThemeManager.shared.apply(spacing: .init(large: 20))
 | `LMKToastView` | Auto-dismissing toast notification |
 | `LMKUserTipView` | Onboarding tip with centered or pointed (arrow) styles — tap to dismiss |
 | `LMKFloatingButton` | Draggable floating action button with edge snapping and optional badge |
+| `LMKCardPageController` | Base class for card-embedded navigation pages with header, title, and multi-page slide navigation |
+| `LMKCardPanelController` | Centered floating card panel in its own overlay window, with shadow and slide animation |
+| `LMKCardPageLayout` | Shared layout constants for card page controllers (header height, symbol sizes) |
+| `LMKCardPanelLayout` | Shared layout constants for card panel controllers (max width, insets, height ratio) |
 
 ---
 
@@ -367,6 +374,7 @@ LumiKitUI includes device-aware helpers and system observers:
 | `LMKKeyboardObserver` | Keyboard show/hide observer with height and animation duration info |
 | `LMKImageUtil` | SF Symbol creation and `CVPixelBuffer` to JPEG conversion |
 | `LMKSceneUtil` | Key window and connected scene retrieval |
+| `LMKOverscrollFooterHelper` | Positions a footer view below scroll content, revealed only on overscroll |
 
 ---
 

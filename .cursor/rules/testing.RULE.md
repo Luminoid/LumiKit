@@ -10,8 +10,8 @@ alwaysApply: false
 
 ## Test Structure
 
-- **LumiKitCoreTests/**: 56 tests, 9 suites — pure Foundation tests (mirrors Sources/LumiKitCore/ subfolders)
-- **LumiKitUITests/**: 178 tests, 51 suites — UIKit component tests (requires iOS Simulator, mirrors Sources/LumiKitUI/ subfolders)
+- **LumiKitCoreTests/**: 76 tests, 12 suites — pure Foundation tests (mirrors Sources/LumiKitCore/ subfolders)
+- **LumiKitUITests/**: 369 tests, 68 suites — UIKit component tests (requires iOS Simulator, mirrors Sources/LumiKitUI/ subfolders)
 - **LumiKitLottie**: No test target — manual verification only
 
 ## Framework: Swift Testing

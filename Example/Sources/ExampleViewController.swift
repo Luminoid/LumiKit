@@ -129,7 +129,7 @@ final class ExampleViewController: UIViewController, UITableViewDataSource, UITa
             case .datePicker: "Single date, range, and date with notes"
             case .userTip: "Centered and pointed onboarding tips"
             case .cardPage: "Card page with multi-page navigation"
-            case .cardPanel: "Floating card panel with passthrough"
+            case .cardPanel: "Floating card panel in overlay window"
             case .floatingButton: "Draggable floating action button"
             case .photoBrowser: "Full-screen photo viewer with zoom"
             case .photoCrop: "Crop with aspect ratios and zoom"
