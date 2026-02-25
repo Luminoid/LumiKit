@@ -45,37 +45,37 @@ public enum LMKShadow {
 
     public static func cellCard() -> LMKShadowStyle {
         LMKShadowStyle(
-            color: shadowColor(lightAlpha: config.cellCardLightAlpha, darkAlpha: config.cellCardDarkAlpha),
-            offset: config.cellCardOffset,
-            radius: config.cellCardRadius,
-            opacity: config.cellCardOpacity
+            color: shadowColor(lightAlpha: config.cellCard.lightAlpha, darkAlpha: config.cellCard.darkAlpha),
+            offset: config.cellCard.offset,
+            radius: config.cellCard.radius,
+            opacity: config.cellCard.opacity
         )
     }
 
     public static func card() -> LMKShadowStyle {
         LMKShadowStyle(
-            color: shadowColor(lightAlpha: config.cardLightAlpha, darkAlpha: config.cardDarkAlpha),
-            offset: config.cardOffset,
-            radius: config.cardRadius,
-            opacity: config.cardOpacity
+            color: shadowColor(lightAlpha: config.card.lightAlpha, darkAlpha: config.card.darkAlpha),
+            offset: config.card.offset,
+            radius: config.card.radius,
+            opacity: config.card.opacity
         )
     }
 
     public static func button() -> LMKShadowStyle {
         LMKShadowStyle(
-            color: shadowColor(lightAlpha: config.buttonLightAlpha, darkAlpha: config.buttonDarkAlpha),
-            offset: config.buttonOffset,
-            radius: config.buttonRadius,
-            opacity: config.buttonOpacity
+            color: shadowColor(lightAlpha: config.button.lightAlpha, darkAlpha: config.button.darkAlpha),
+            offset: config.button.offset,
+            radius: config.button.radius,
+            opacity: config.button.opacity
         )
     }
 
     public static func small() -> LMKShadowStyle {
         LMKShadowStyle(
-            color: shadowColor(lightAlpha: config.smallLightAlpha, darkAlpha: config.smallDarkAlpha),
-            offset: config.smallOffset,
-            radius: config.smallRadius,
-            opacity: config.smallOpacity
+            color: shadowColor(lightAlpha: config.small.lightAlpha, darkAlpha: config.small.darkAlpha),
+            offset: config.small.offset,
+            radius: config.small.radius,
+            opacity: config.small.opacity
         )
     }
 }

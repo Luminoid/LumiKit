@@ -3,8 +3,6 @@
 > Shared Swift Package providing design tokens, UI components, and utilities for Lumi apps.
 > **Inherits general Swift/UIKit standards from [workspace CLAUDE.md](../../.claude/CLAUDE.md).** This file contains LumiKit-specific rules only.
 
-- **Review**: [REVIEW.md](../REVIEW.md) — comprehensive code review (2026-02-24), 85 issues identified (7 critical, 35 warning, 18 style, 25 enhancement)
-
 ---
 
 ## Package Overview
@@ -249,7 +247,7 @@ LMKThemeManager.shared.apply(spacing: .init(large: 20))
 | `UIView+LMKShadow` | `lmk_applyShadow(_:)`, `lmk_removeShadow()` |
 | `UIView+LMKBorder` | `lmk_applyBorder(...)`, `lmk_removeBorder()`, `lmk_applyCornerRadius(_:)`, `lmk_makeCircular()` |
 | `UIView+LMKFade` | `lmk_fadeIn(...)`, `lmk_fadeOut(...)` |
-| `UIView+LMKLayout` | `lmk_safeAreaSnp`, `lmk_setEdgesEqualToSuperView()`, `lmk_setAutoLayoutSize(width:height:)` |
+| `UIView+LMKLayout` | `lmk_safeAreaSnp`, `lmk_setEdgesEqualToSuperview()`, `lmk_centerInSuperview()`, `lmk_setAutoLayoutSize(width:height:)` |
 | `UIStackView+LMK` | `init(lmk_axis:...)`, `lmk_addArrangedSubviews(_:)`, `lmk_removeAllArrangedSubviews()` |
 
 ### Share (`Share/`)

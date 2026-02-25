@@ -26,11 +26,6 @@ public extension UIView {
         snp.makeConstraints { make in make.center.equalToSuperview() }
     }
 
-    @available(*, deprecated, renamed: "lmk_setEdgesEqualToSuperview")
-    func lmk_setEdgesEqualToSuperView() {
-        lmk_setEdgesEqualToSuperview()
-    }
-
     /// Set fixed Auto Layout size.
     func lmk_setAutoLayoutSize(width: CGFloat, height: CGFloat) {
         snp.makeConstraints { make in

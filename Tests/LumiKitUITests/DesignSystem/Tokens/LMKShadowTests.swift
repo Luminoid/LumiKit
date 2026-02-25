@@ -16,10 +16,10 @@ struct LMKShadowConfigurationTests {
     @Test("Default shadow matches original values")
     func defaultShadow() {
         let config = LMKShadowTheme()
-        #expect(config.cellCardRadius == 6)
-        #expect(config.cardRadius == 8)
-        #expect(config.buttonRadius == 4)
-        #expect(config.smallRadius == 2)
+        #expect(config.cellCard.radius == 6)
+        #expect(config.card.radius == 8)
+        #expect(config.button.radius == 4)
+        #expect(config.small.radius == 2)
         #expect(config.iconOverlayOpacity == 0.8)
     }
 

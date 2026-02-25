@@ -7,15 +7,49 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-02-25
+
 ### Added
-- **LMKLogStore** — Thread-safe in-memory ring buffer for log entries with FIFO eviction, formatted output, and `OSAllocatedUnfairLock` concurrency
+
+#### Components
+- **LMKUserTipView** — Onboarding tip component with centered or pointed (arrow) styles, tap to dismiss
+- **LMKFloatingButton** — Draggable floating action button with edge snapping and optional badge
+- **LMKCardPageController** — Base class for card-embedded navigation pages with header, title, and multi-page slide navigation
+- **LMKCardPanelController** — Centered floating card panel in its own overlay window with shadow and slide animation
+- **LMKCardPageLayout** — Shared layout constants for card page controllers
+- **LMKCardPanelLayout** — Shared layout constants for card panel controllers
+- **LMKBottomSheetController** — Base class for bottom sheet presentation with shared dimming, container, animation, and dismiss
+- **LMKEnumSelectionBottomSheet** — Bottom sheet for selecting from an enum's cases
+- **LMKDatePickerHelper** — Date picker presentation via `LMKActionSheet` (single date, date range, date with text field)
+
+#### Core Utilities
+- **LMKLogStore** — Thread-safe in-memory ring buffer for log entries with FIFO eviction and `OSAllocatedUnfairLock` concurrency
 - **LMKLogLevel** — Log level enum (`debug`, `info`, `warning`, `error`)
 - **LMKLogEntry** — Sendable log entry struct with timestamp, level, category, and message
+- **LMKOverscrollFooterHelper** — Positions footer below scroll content, revealed on overscroll
+
+#### Photo
+- **LMKPhotoBrowserConfig** — Namespaced constants for photo browser (replaces bare module-level constants)
 
 ### Changed
-- **LMKLogger** — Added opt-in in-memory log store via `enableLogStore(maxEntries:)` / `disableLogStore()`; each log call now appends to the store when enabled
+- **LMKLogger** — Added opt-in in-memory log store via `enableLogStore(maxEntries:)` / `disableLogStore()`, moved from `Data/` to new `Log/` subfolder
 - **LMKLogger.LogCategory** — Added public `name` property for log store category tracking
-- Moved `LMKLogger` from `Data/` to new `Log/` subfolder alongside `LMKLogStore`
+- **LMKActionSheet** — Added support for multi-level page structure navigation
+- **LMKProgressViewController** — Enhanced with determinate/indeterminate modes and progress bar
+- **DesignSystem** — Restructured into `Tokens/`, `Themes/`, and `Factories/` subfolders
+- **Components** — Extracted bottom sheet base class, organized into `BottomSheet/` and `Pickers/` subfolders
+- **LMKShadowTheme** — Shadow configuration now uses nested `LMKShadowConfig` structs instead of flat properties for cleaner API
+- Various API improvements and bug fixes across components
+
+### Removed
+- **lmk_setEdgesEqualToSuperView()** — Removed deprecated method (renamed to `lmk_setEdgesEqualToSuperview()` in 0.1.0)
+- **LMKShadowTheme flat properties** — Removed backward compatible flat properties (`cellCardRadius`, `cardOffset`, etc.); use nested config structs instead (`cellCard.radius`, `card.offset`)
+
+### Fixed
+- **LMKCardPanelController** — Fixed gesture handling
+- **LMKUserTipView** — Optimized arrow layer rendering
+- **LMKEmptyStateView** — Updated layout for better content alignment
+- **LMKPhotoCropViewController** — Fixed background color handling
 
 ## [0.1.0] - 2026-02-18
 

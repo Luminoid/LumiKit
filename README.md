@@ -46,7 +46,7 @@ LumiKit is organized into three targets so apps can import only what they need:
 | **LumiKitUI** | LumiKitCore + SnapKit | Design system tokens, theme manager, animation, haptics, alerts, components, controls, photo browser/crop, UIKit extensions |
 | **LumiKitLottie** | LumiKitUI + Lottie | Lottie-powered pull-to-refresh control |
 
-**89 source files** across 3 targets, with **558 tests** across 3 test targets:
+**90 source files** across 3 targets, with **558 tests** across 3 test targets:
 - **LumiKitCoreTests**: 76 tests (12 suites)
 - **LumiKitUITests**: 475 tests (81 suites)
 - **LumiKitLottieTests**: 7 tests (1 suite)
@@ -328,7 +328,7 @@ All UIKit extensions use the `lmk_` prefix to avoid naming conflicts.
 | `UIView+LMKShadow` | `lmk_applyShadow(_:)`, `lmk_removeShadow()` |
 | `UIView+LMKBorder` | `lmk_applyBorder(...)`, `lmk_removeBorder()`, `lmk_applyCornerRadius(_:)`, `lmk_makeCircular()` |
 | `UIView+LMKFade` | `lmk_fadeIn(...)`, `lmk_fadeOut(...)` |
-| `UIView+LMKLayout` | `lmk_safeAreaSnp`, `lmk_setEdgesEqualToSuperView()`, `lmk_setAutoLayoutSize(width:height:)` |
+| `UIView+LMKLayout` | `lmk_safeAreaSnp`, `lmk_setEdgesEqualToSuperview()`, `lmk_centerInSuperview()`, `lmk_setAutoLayoutSize(width:height:)` |
 | `UIStackView+LMK` | `init(lmk_axis:...)`, `lmk_addArrangedSubviews(_:)`, `lmk_removeAllArrangedSubviews()` |
 | `UIButton+LMKAnimation` | Tap animation helpers |
 | `UIControl+LMKTouchArea` | Expanded touch area support |
@@ -516,16 +516,6 @@ LumiKitCore has no default isolation and is safe to use from any concurrency con
 ---
 
 ## TODO
-
-### Tests
-- [x] ~~Fix 2 failing tests: `LMKCardPageControllerTests`~~ — Deleted broken tests (tested private implementation details in wrong coordinate space)
-- [x] ~~Add tests for `LMKPhotoBrowserViewController`~~ — Now 10 tests (initialization, data source, delegates, lifecycle, strings configuration)
-- [x] ~~Add tests for `LMKPhotoBrowserCell`~~ — Now 10 tests (configuration, reset, reuse, layout, different image sizes)
-- [x] ~~Add tests for `LMKPhotoCropViewController`~~ — Now 10 tests (initialization, delegate, different image sizes, lifecycle)
-- [x] ~~Add tests for `LMKLottieRefreshControl`~~ — Now 7 tests (initialization, refresh state, scroll view/table view integration, multiple cycles)
-- [x] ~~Expand `LMKPhotoEXIFServiceTests`~~ — Now 11 tests (EXIF date extraction, GPS coordinates for all hemispheres, malformed data handling)
-- [x] ~~Expand `LMKCropAspectRatioTests`~~ — Now 12 tests (all ratio values, landscape/portrait validation)
-- [x] ~~Expand `LMKAnimationHelperTests`~~ — Now 16 tests (all durations, button press, success/error feedback, fade, list update)
 
 ### Infrastructure
 - [ ] Create CONTRIBUTING.md with contribution guidelines
