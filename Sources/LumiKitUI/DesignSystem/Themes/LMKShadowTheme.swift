@@ -67,6 +67,10 @@ public nonisolated struct LMKShadowTheme: Sendable {
     public var button: LMKShadowConfig
     /// Subtle shadow for small elements (chips, badges).
     public var small: LMKShadowConfig
+    /// Medium shadow for floating elements (toasts, popovers).
+    public var medium: LMKShadowConfig
+    /// Large shadow for elevated overlays (modals, dialogs).
+    public var large: LMKShadowConfig
 
     public init(
         iconOverlayOpacity: Float = 0.8,
@@ -85,6 +89,14 @@ public nonisolated struct LMKShadowTheme: Sendable {
         small: LMKShadowConfig = .init(
             offset: CGSize(width: 0, height: 1), radius: 2, opacity: 1.0,
             lightAlpha: 0.1, darkAlpha: 0.3
+        ),
+        medium: LMKShadowConfig = .init(
+            offset: CGSize(width: 0, height: 4), radius: 12, opacity: 1.0,
+            lightAlpha: 0.1, darkAlpha: 0.3
+        ),
+        large: LMKShadowConfig = .init(
+            offset: CGSize(width: 0, height: 8), radius: 24, opacity: 1.0,
+            lightAlpha: 0.12, darkAlpha: 0.4
         )
     ) {
         self.iconOverlayOpacity = iconOverlayOpacity
@@ -92,5 +104,7 @@ public nonisolated struct LMKShadowTheme: Sendable {
         self.card = card
         self.button = button
         self.small = small
+        self.medium = medium
+        self.large = large
     }
 }

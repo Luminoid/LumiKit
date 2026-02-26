@@ -34,18 +34,15 @@ public enum LMKToastType {
     }
 }
 
-/// Toast notification view with icon, message, and accent bar.
+/// Floating toast notification with neutral elevated card style, icon, and message.
 public final class LMKToastView: UIView {
     public static let defaultDuration: TimeInterval = 3.0
 
     private static let showInitialYOffset: CGFloat = -200
     private static let dismissYOffset: CGFloat = -200
-    private static let accentBarWidth: CGFloat = LMKSpacing.xs
-
     private let messageLabel = UILabel()
     private let iconView = UIImageView()
     private let containerView = UIView()
-    private let accentView = UIView()
     private var dismissTimer: Timer?
 
     private let type: LMKToastType
@@ -69,11 +66,10 @@ public final class LMKToastView: UIView {
     }
 
     private func refreshDynamicColors() {
-        containerView.backgroundColor = LMKColor.backgroundSecondary
-        containerView.lmk_applyShadow(LMKShadow.card())
+        containerView.backgroundColor = LMKColor.backgroundPrimary
+        lmk_applyShadow(LMKShadow.button())
         iconView.tintColor = type.color
         messageLabel.textColor = LMKColor.textPrimary
-        accentView.backgroundColor = type.color
     }
 
     private func setupUI() {
@@ -85,9 +81,11 @@ public final class LMKToastView: UIView {
         accessibilityLabel = message
         accessibilityTraits = .staticText
 
-        containerView.backgroundColor = LMKColor.backgroundSecondary
-        containerView.layer.cornerRadius = LMKCornerRadius.medium
-        containerView.lmk_applyShadow(LMKShadow.card())
+        containerView.backgroundColor = LMKColor.backgroundPrimary
+        containerView.layer.cornerRadius = LMKCornerRadius.large
+
+        layer.cornerRadius = LMKCornerRadius.large
+        lmk_applyShadow(LMKShadow.button())
 
         addSubview(containerView)
         containerView.snp.makeConstraints { make in make.edges.equalToSuperview() }
@@ -112,13 +110,6 @@ public final class LMKToastView: UIView {
             make.leading.equalTo(iconView.snp.trailing).offset(LMKSpacing.small)
             make.trailing.equalToSuperview().offset(-LMKSpacing.large)
             make.top.bottom.equalToSuperview().inset(LMKSpacing.medium)
-        }
-
-        accentView.backgroundColor = type.color
-        containerView.addSubview(accentView)
-        accentView.snp.makeConstraints { make in
-            make.leading.top.bottom.equalToSuperview()
-            make.width.equalTo(Self.accentBarWidth)
         }
     }
 

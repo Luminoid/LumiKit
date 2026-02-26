@@ -78,4 +78,22 @@ public enum LMKShadow {
             opacity: config.small.opacity
         )
     }
+
+    public static func medium() -> LMKShadowStyle {
+        LMKShadowStyle(
+            color: shadowColor(lightAlpha: config.medium.lightAlpha, darkAlpha: config.medium.darkAlpha),
+            offset: config.medium.offset,
+            radius: config.medium.radius,
+            opacity: config.medium.opacity
+        )
+    }
+
+    public static func large() -> LMKShadowStyle {
+        LMKShadowStyle(
+            color: shadowColor(lightAlpha: config.large.lightAlpha, darkAlpha: config.large.darkAlpha),
+            offset: config.large.offset,
+            radius: config.large.radius,
+            opacity: config.large.opacity
+        )
+    }
 }
