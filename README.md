@@ -49,7 +49,7 @@ LumiKit is organized into four targets so apps can import only what they need:
 | **LumiKitLottie** | LumiKitUI + Lottie | Lottie-powered pull-to-refresh control |
 
 **89 source files** across 4 targets, with **566 tests** across 4 test targets:
-- **LumiKitCoreTests**: 76 tests (11 suites)
+- **LumiKitCoreTests**: 76 tests (12 suites)
 - **LumiKitNetworkTests**: 8 tests (1 suite)
 - **LumiKitUITests**: 475 tests (81 suites)
 - **LumiKitLottieTests**: 7 tests (1 suite)
@@ -72,7 +72,7 @@ Add LumiKit to your project via Swift Package Manager:
 dependencies: [
     .package(path: "../LumiKit")  // Local package
     // or
-    .package(url: "https://github.com/Luminoid/LumiKit.git", from: "0.1.0")
+    .package(url: "https://github.com/Luminoid/LumiKit.git", from: "0.2.0")
 ]
 ```
 
