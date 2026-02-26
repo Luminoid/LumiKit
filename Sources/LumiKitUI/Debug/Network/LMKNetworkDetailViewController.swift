@@ -9,6 +9,7 @@
 #if DEBUG
 
     import LumiKitCore
+    import LumiKitNetwork
     import SnapKit
     import UIKit
 

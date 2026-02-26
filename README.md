@@ -39,16 +39,18 @@ Shared Swift Package providing **design tokens**, **UI components**, and **utili
 
 ## Overview
 
-LumiKit is organized into three targets so apps can import only what they need:
+LumiKit is organized into four targets so apps can import only what they need:
 
 | Target | Dependencies | Purpose |
 |--------|-------------|---------|
-| **LumiKitCore** | Foundation only | Logger, date helpers, URL validation, format helpers, file utilities, concurrency helpers, network debugging (DEBUG), collection/string extensions |
-| **LumiKitUI** | LumiKitCore + SnapKit | Design system tokens, theme manager, animation, haptics, alerts, components, controls, photo browser/crop, network debug UI (DEBUG), UIKit extensions |
+| **LumiKitCore** | Foundation only | Logger, date helpers, URL validation, format helpers, file utilities, concurrency helpers, collection/string extensions |
+| **LumiKitNetwork** | LumiKitCore | Network debugging with URLProtocol interception (DEBUG only, Swift 6 concurrency compatible) |
+| **LumiKitUI** | LumiKitCore + LumiKitNetwork + SnapKit | Design system tokens, theme manager, animation, haptics, alerts, components, controls, photo browser/crop, network debug UI (DEBUG), UIKit extensions |
 | **LumiKitLottie** | LumiKitUI + Lottie | Lottie-powered pull-to-refresh control |
 
-**95 source files** across 3 targets, with **566 tests** across 3 test targets:
-- **LumiKitCoreTests**: 84 tests (14 suites)
+**89 source files** across 4 targets, with **566 tests** across 4 test targets:
+- **LumiKitCoreTests**: 76 tests (11 suites)
+- **LumiKitNetworkTests**: 8 tests (1 suite)
 - **LumiKitUITests**: 475 tests (81 suites)
 - **LumiKitLottieTests**: 7 tests (1 suite)
 
@@ -80,12 +82,15 @@ Then add the targets you need:
 .target(
     name: "MyApp",
     dependencies: [
-        "LumiKitCore",   // Foundation utilities only
-        "LumiKitUI",     // Full design system + components
-        "LumiKitLottie", // Optional: Lottie pull-to-refresh
+        "LumiKitCore",    // Foundation utilities only
+        "LumiKitNetwork", // Optional: Network debugging (DEBUG only)
+        "LumiKitUI",      // Full design system + components (includes Network)
+        "LumiKitLottie",  // Optional: Lottie pull-to-refresh
     ]
 )
 ```
+
+**Note**: `LumiKitUI` automatically includes `LumiKitNetwork`, so you only need to import `LumiKitNetwork` explicitly if using it without UI components.
 
 ---
 
@@ -140,13 +145,15 @@ LumiKit/
 │   │   ├── Data/              # LMKFormatHelper, Collection+LMK,
 │   │   │                      # NSAttributedString+LMK, String+LMK
 │   │   ├── Date/              # LMKDateHelper, LMKDateFormatterHelper
-│   │   ├── Debug/             # [DEBUG only]
-│   │   │   └── Network/       # LMKNetworkLogger, LMKNetworkRequestStore,
-│   │   │                      # LMKNetworkRequestRecord, URLSessionConfiguration+LMKDebug
 │   │   ├── File/              # LMKFileUtil
 │   │   ├── Log/               # LMKLogger, LMKLogStore (ring buffer),
 │   │   │                      # LMKLogLevel, LMKLogEntry
 │   │   └── Validation/        # LMKURLValidator
+│   ├── LumiKitNetwork/        # [DEBUG only, isolated concurrency workarounds]
+│   │   ├── LMKNetworkLogger.swift            # URLProtocol-based interception
+│   │   ├── LMKNetworkRequestStore.swift       # Thread-safe ring buffer
+│   │   ├── LMKNetworkRequestRecord.swift      # Request/response data
+│   │   └── URLSessionConfiguration+LMKDebug.swift  # .withNetworkLogging()
 │   ├── LumiKitUI/
 │   │   ├── Alerts/            # LMKAlertPresenter, LMKErrorHandler
 │   │   ├── Animation/         # LMKAnimationHelper, LMKAnimationTheme
@@ -183,16 +190,16 @@ LumiKit/
 │   │                          # LMKSceneUtil, LMKImageUtil, LMKOverscrollFooterHelper
 │   └── LumiKitLottie/         # LMKLottieRefreshControl
 ├── Tests/
-│   ├── LumiKitCoreTests/      # 84 tests, 14 suites
+│   ├── LumiKitCoreTests/      # 76 tests, 11 suites
 │   │   ├── Concurrency/       # LMKConcurrencyHelpers
 │   │   ├── Data/              # String+LMK, Collection+LMK, NSAttributedString+LMK, FormatHelper
 │   │   ├── Date/              # DateHelper, DateFormatterHelper
-│   │   ├── Debug/
-│   │   │   └── Network/       # LMKNetworkRequestStore (FIFO, thread safety)
 │   │   ├── File/              # FileUtil
 │   │   ├── Log/               # LMKLogStore (ring buffer, thread safety),
 │   │   │                      # LMKLogger (log store integration)
 │   │   └── Validation/        # URLValidator
+│   ├── LumiKitNetworkTests/   # 8 tests, 1 suite
+│   │   └── LMKNetworkRequestStoreTests.swift  # FIFO, thread safety
 │   ├── LumiKitUITests/        # 475 tests, 81 suites
 │   │   ├── Alerts/            # AlertPresenter, ErrorHandler
 │   │   ├── Animation/         # AnimationHelper
@@ -439,15 +446,17 @@ All presentation methods auto-log via `LMKLogger`. Use `LMKAlertPresenter` for g
 
 Network debugging infrastructure for capturing and inspecting HTTP/HTTPS requests during development. **Zero footprint in release builds** — all code is wrapped in `#if DEBUG`.
 
+**Isolated in `LumiKitNetwork` target** to keep Swift 6 concurrency workarounds separate from core functionality.
+
 ### Network Debugging
 
-| Component | Purpose |
-|-----------|---------|
-| `LMKNetworkLogger` | URLProtocol-based request/response interception with LMKLogger-style API |
-| `LMKNetworkRequestStore` | Thread-safe ring buffer for captured requests (FIFO eviction with `OSAllocatedUnfairLock`) |
-| `LMKNetworkRequestRecord` | Sendable struct with HTTP request/response details and formatted display properties |
-| `LMKNetworkHistoryViewController` | List view for captured requests with auto-refresh and newest-first ordering |
-| `LMKNetworkDetailViewController` | Detail view with formatted headers and bodies (50k char truncation for large payloads) |
+| Component | Target | Purpose |
+|-----------|--------|---------|
+| `LMKNetworkLogger` | LumiKitNetwork | URLProtocol-based request/response interception with LMKLogger-style API |
+| `LMKNetworkRequestStore` | LumiKitNetwork | Thread-safe ring buffer for captured requests (FIFO eviction with `OSAllocatedUnfairLock`) |
+| `LMKNetworkRequestRecord` | LumiKitNetwork | Sendable struct with HTTP request/response details and formatted display properties |
+| `LMKNetworkHistoryViewController` | LumiKitUI | List view for captured requests with auto-refresh and newest-first ordering |
+| `LMKNetworkDetailViewController` | LumiKitUI | Detail view with formatted headers and bodies (50k char truncation for large payloads) |
 
 ### Usage
 
@@ -468,19 +477,21 @@ let vc = LMKNetworkHistoryViewController()
 navigationController.pushViewController(vc, animated: true)
 ```
 
-### Swift 6 Concurrency Limitation
+### Swift 6 Concurrency Support
 
-Network debugging uses `#if !SWIFT_PACKAGE` conditional compilation due to Swift 6 strict concurrency. URLProtocol subclasses cannot conform to URLSessionDelegate (Sendable requirement conflicts with non-NSObject inheritance).
+Network debugging works correctly in Swift 6 strict concurrency mode, including Swift Package Manager builds. The implementation uses specific patterns to avoid deadlocks and timeouts.
 
-**How it works:**
-- **Disabled** when building LumiKit as a standalone Swift package (clean builds in CI/standalone)
-- **Enabled** when imported by Xcode projects with `SWIFT_APPROACHABLE_CONCURRENCY = YES` build setting
+**Implementation details:**
+- **Isolated** in separate `LumiKitNetwork` target to keep debug tooling separate from `LumiKitCore`
+- **Enabled** automatically in DEBUG builds via `LMK_ENABLE_NETWORK_LOGGING` flag (defined in Package.swift)
+- Uses `@preconcurrency @objc` and `@unchecked Sendable` on URLProtocol subclass
+- Conforms to `URLSessionDataDelegate` (not base `URLSessionDelegate`) to ensure delegate callbacks are invoked
+- Uses serial `OperationQueue` for delegate callbacks (not `nil`) to prevent Swift 6 concurrency deadlocks
+- Internal URLSession uses `ephemeral` configuration with `protocolClasses = []` to prevent re-interception loops
 
-**Apps using network debugging must:**
-1. Set `SWIFT_APPROACHABLE_CONCURRENCY = YES` in Xcode build settings
-2. Import LumiKit as a local package or via SPM
-
-See [FIXES.md](../FIXES.md) § "Swift 6 URLProtocol + URLSessionDelegate Conflict" for technical details and attempted alternatives.
+**Apps using network debugging:**
+- Import `LumiKitNetwork` explicitly, or just import `LumiKitUI` (which includes it)
+- No additional configuration required - network logging works in both Xcode projects and Swift Package Manager builds
 
 ---
 

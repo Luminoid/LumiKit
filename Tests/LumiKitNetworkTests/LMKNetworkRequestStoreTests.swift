@@ -8,7 +8,7 @@
 #if DEBUG
 
     import Foundation
-    import LumiKitCore
+    import LumiKitNetwork
     import Testing
 
     @Suite("LMKNetworkRequestStore")

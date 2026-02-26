@@ -41,24 +41,23 @@
 
         /// Enable network request logging by registering the URLProtocol.
         ///
-        /// - Important: Currently disabled in SPM builds due to Swift 6 concurrency limitations.
-        ///   Apps should copy the network debugging files locally or use Xcode with
-        ///   `SWIFT_APPROACHABLE_CONCURRENCY = YES` build setting.
+        /// - Important: Enabled in DEBUG builds via LMK_ENABLE_NETWORK_LOGGING flag.
+        ///   If network logging is not working, ensure the flag is defined in Package.swift.
         public static func enable() {
             guard isConfigured else {
                 print("[LMKNetworkLogger] Warning: Call configure() before enable()")
                 return
             }
-            #if !SWIFT_PACKAGE
+            #if LMK_ENABLE_NETWORK_LOGGING
             URLProtocol.registerClass(LMKNetworkRequestLoggerProtocol.self)
             #else
-            print("[LMKNetworkLogger] Warning: Network logging disabled in this build (Swift 6 concurrency limitation)")
+            print("[LMKNetworkLogger] Warning: Network logging disabled (LMK_ENABLE_NETWORK_LOGGING not defined)")
             #endif
         }
 
         /// Disable network request logging by unregistering the URLProtocol.
         public static func disable() {
-            #if !SWIFT_PACKAGE
+            #if LMK_ENABLE_NETWORK_LOGGING
             URLProtocol.unregisterClass(LMKNetworkRequestLoggerProtocol.self)
             #endif
         }
@@ -98,23 +97,30 @@
     /// Internal URLProtocol that intercepts all URLSession requests.
     /// Not exposed publicly — use `LMKNetworkLogger` API instead.
     ///
-    /// - Important: Swift 6 strict concurrency currently prevents URLProtocol subclasses
-    ///   from conforming to URLSessionDelegate (Sendable requirement conflicts with
-    ///   non-NSObject inheritance). This implementation is disabled in SPM builds.
-    ///   Apps importing LumiKit should use `SWIFT_APPROACHABLE_CONCURRENCY = YES` in
-    ///   Xcode build settings to enable network logging functionality.
+    /// - Important: Enabled in DEBUG builds via LMK_ENABLE_NETWORK_LOGGING flag.
+    ///   The @preconcurrency attribute suppresses Swift 6 strict concurrency warnings
+    ///   for URLProtocol subclass usage.
     ///
     /// - Note: URLProtocol instances are used in a single-threaded context by
     ///   URLSession's internal queue, so these properties don't need concurrency
     ///   annotations. Regular instance variables are safe here.
-    #if !SWIFT_PACKAGE // Disabled in SPM builds due to Swift 6 concurrency; enabled in Xcode projects
+    #if LMK_ENABLE_NETWORK_LOGGING
     @preconcurrency @objc
-    final class LMKNetworkRequestLoggerProtocol: URLProtocol, URLSessionDelegate {
+    final class LMKNetworkRequestLoggerProtocol: URLProtocol, URLSessionDataDelegate, @unchecked Sendable {
         private var session: URLSession?
         private var dataTask: URLSessionDataTask?
         private var startTime: Date?
         private var requestID: UUID?
         private var responseData = Data()
+
+        /// Serial queue for URLSession delegate callbacks to avoid Swift 6 strict concurrency deadlocks.
+        /// Using delegateQueue: nil causes URLSession to create a private queue that can deadlock.
+        private static let delegateQueue: OperationQueue = {
+            let queue = OperationQueue()
+            queue.maxConcurrentOperationCount = 1 // Serial queue
+            queue.name = "com.lumikit.network.logger.delegate"
+            return queue
+        }()
 
         override required init(request: URLRequest, cachedResponse: CachedURLResponse?, client: (any URLProtocolClient)?) {
             super.init(request: request, cachedResponse: cachedResponse, client: client)
@@ -124,7 +130,9 @@
 
         override class func canInit(with request: URLRequest) -> Bool {
             // Avoid infinite loops — only intercept once
-            guard property(forKey: "LMKNetworkRequestLogger", in: request) == nil else { return false }
+            guard property(forKey: "LMKNetworkRequestLogger", in: request) == nil else {
+                return false
+            }
             return true
         }
 
@@ -152,9 +160,10 @@
                 )
             }
 
-            // Perform the actual request
-            let config = URLSessionConfiguration.default
-            session = URLSession(configuration: config, delegate: self, delegateQueue: nil)
+            // Perform the actual request with a clean configuration (no URLProtocol interception)
+            let config = URLSessionConfiguration.ephemeral
+            config.protocolClasses = [] // Critical: prevent re-interception by URLProtocol
+            session = URLSession(configuration: config, delegate: self, delegateQueue: Self.delegateQueue)
             dataTask = session?.dataTask(with: mutableRequest as URLRequest)
             dataTask?.resume()
         }
@@ -204,6 +213,6 @@
             completionHandler(.allow)
         }
     }
-    #endif // !SWIFT_PACKAGE
+    #endif // LMK_ENABLE_NETWORK_LOGGING
 
 #endif // DEBUG

@@ -14,18 +14,15 @@
         /// Add LMKNetworkLogger to protocolClasses for request interception.
         /// Call this on any custom URLSessionConfiguration to enable network history capture.
         ///
-        /// - Important: Currently disabled in SPM builds due to Swift 6 concurrency limitations.
-        ///   Returns `self` unchanged. Apps should copy network debugging files locally or use
-        ///   Xcode with `SWIFT_APPROACHABLE_CONCURRENCY = YES` build setting.
+        /// The URLProtocol uses URLSessionDataDelegate with a serial OperationQueue and
+        /// ephemeral configuration to avoid Swift 6 strict concurrency issues.
         @discardableResult
         public func withNetworkLogging() -> URLSessionConfiguration {
-            #if !SWIFT_PACKAGE
             if let existingClasses = protocolClasses {
                 protocolClasses = [LMKNetworkRequestLoggerProtocol.self] + existingClasses
             } else {
                 protocolClasses = [LMKNetworkRequestLoggerProtocol.self]
             }
-            #endif
             return self
         }
     }

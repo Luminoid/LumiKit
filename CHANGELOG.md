@@ -32,39 +32,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **LMKPhotoBrowserConfig** — Namespaced constants for photo browser (replaces bare module-level constants)
 
 #### Debug Tools (DEBUG builds only)
-- **LMKNetworkLogger** — Network debugging system with URLProtocol-based request/response interception, thread-safe ring buffer storage, and LMKLogger-style static API (`configure()`, `enable()`, `records`, `clearRecords()`)
+- **LMKNetworkLogger** — Network debugging system with URLProtocol-based request/response interception in separate `LumiKitNetwork` target
+  - Thread-safe ring buffer storage with LMKLogger-style static API (`configure()`, `enable()`, `records`, `clearRecords()`)
+  - URLSessionDataDelegate with serial OperationQueue and ephemeral configuration for Swift 6 strict concurrency compatibility
+  - Works correctly in Swift Package Manager builds
 - **LMKNetworkRequestStore** — Thread-safe ring buffer for network request records with FIFO eviction using `OSAllocatedUnfairLock`
 - **LMKNetworkRequestRecord** — Sendable struct capturing HTTP request/response details with formatted display properties and JSON pretty-printing
 - **URLSessionConfiguration.withNetworkLogging()** — Extension method for injecting network logging into custom URLSession configurations
 - **LMKNetworkHistoryViewController** — List view for captured network requests with auto-refresh and newest-first ordering
 - **LMKNetworkDetailViewController** — Detail view with formatted request/response headers and bodies (50k character truncation for large payloads)
-- **LMKNetworkRequestStoreTests** — 8 tests covering basic functionality, ring buffer FIFO eviction, and thread safety (concurrent additions/reads/updates)
-
-#### Technical Notes
-
-**Swift 6 Concurrency Workaround**: Network debugging uses `#if !SWIFT_PACKAGE` conditional compilation due to Swift 6 strict concurrency limitations. URLProtocol subclasses cannot conform to URLSessionDelegate (Sendable requirement conflicts with non-NSObject inheritance). The implementation is:
-- **Disabled** when building LumiKit as a standalone Swift package (clean builds in CI)
-- **Enabled** when imported by Xcode projects with `SWIFT_APPROACHABLE_CONCURRENCY = YES` build setting
-
-Apps using network debugging must set `SWIFT_APPROACHABLE_CONCURRENCY = YES` in Xcode build settings. See [FIXES.md](../FIXES.md) for detailed technical analysis and attempted alternatives.
 
 ### Changed
-- **LMKLogger** — Added opt-in in-memory log store via `enableLogStore(maxEntries:)` / `disableLogStore()`, moved from `Data/` to new `Log/` subfolder
+
+- **LMKLogger** — Added opt-in in-memory log store via `enableLogStore(maxEntries:)` / `disableLogStore()`
 - **LMKLogger.LogCategory** — Added public `name` property for log store category tracking
 - **LMKActionSheet** — Added support for multi-level page structure navigation
 - **LMKProgressViewController** — Enhanced with determinate/indeterminate modes and progress bar
 - **DesignSystem** — Restructured into `Tokens/`, `Themes/`, and `Factories/` subfolders
 - **Components** — Extracted bottom sheet base class, organized into `BottomSheet/` and `Pickers/` subfolders
 - **LMKShadowTheme** — Shadow configuration now uses nested `LMKShadowConfig` structs instead of flat properties for cleaner API
-- **Test suite** — Expanded from 284 to 566 tests (84 Core + 475 UI + 7 Lottie)
-- **Source files** — Increased from 79 to 95 files (16 new files including 6 debug infrastructure)
-- Various API improvements and bug fixes across components
+- **Test suite** — Expanded from 284 to 566 tests (76 Core + 8 Network + 475 UI + 7 Lottie)
+- **Source files** — Increased from 79 to 89 files
 
 ### Removed
+
 - **lmk_setEdgesEqualToSuperView()** — Removed deprecated method (renamed to `lmk_setEdgesEqualToSuperview()` in 0.1.0)
 - **LMKShadowTheme flat properties** — Removed backward compatible flat properties (`cellCardRadius`, `cardOffset`, etc.); use nested config structs instead (`cellCard.radius`, `card.offset`)
 
 ### Fixed
+
 - **LMKCardPanelController** — Fixed gesture handling
 - **LMKUserTipView** — Optimized arrow layer rendering
 - **LMKEmptyStateView** — Updated layout for better content alignment
