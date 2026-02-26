@@ -124,7 +124,6 @@ public final class LMKUserTipView: UIView {
         button.setTitleColor(LMKColor.primary, for: .normal)
         button.titleLabel?.font = LMKTypography.captionMedium
         button.addTarget(self, action: #selector(dismissTapped), for: .touchUpInside)
-        button.contentHorizontalAlignment = .trailing
         return button
     }()
 
@@ -247,10 +246,15 @@ public final class LMKUserTipView: UIView {
             (subview as? LMKUserTipView)?.dismiss()
         }
 
-        // Show dismiss button only for center style
+        // Configure style-specific layout
         switch style {
         case .center:
             dismissButton.isHidden = false
+            dismissButton.contentHorizontalAlignment = .center
+            if iconImage == nil {
+                titleLabel.textAlignment = .center
+                messageLabel.textAlignment = .center
+            }
         case .pointed:
             dismissButton.isHidden = true
         }
