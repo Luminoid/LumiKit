@@ -24,7 +24,7 @@ let package = Package(
         .target(
             name: "LumiKitCore",
             dependencies: [],
-            path: "Sources/LumiKitCore",
+            path: "Sources/LumiKitCore"
         ),
 
         // MARK: - UI (UIKit + SnapKit)

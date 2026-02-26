@@ -31,6 +31,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 #### Photo
 - **LMKPhotoBrowserConfig** — Namespaced constants for photo browser (replaces bare module-level constants)
 
+#### Debug Tools (DEBUG builds only)
+- **LMKNetworkLogger** — Network debugging system with URLProtocol-based request/response interception, thread-safe ring buffer storage, and LMKLogger-style static API (`configure()`, `enable()`, `records`, `clearRecords()`)
+- **LMKNetworkRequestStore** — Thread-safe ring buffer for network request records with FIFO eviction using `OSAllocatedUnfairLock`
+- **LMKNetworkRequestRecord** — Sendable struct capturing HTTP request/response details with formatted display properties and JSON pretty-printing
+- **URLSessionConfiguration.withNetworkLogging()** — Extension method for injecting network logging into custom URLSession configurations
+- **LMKNetworkHistoryViewController** — List view for captured network requests with auto-refresh and newest-first ordering
+- **LMKNetworkDetailViewController** — Detail view with formatted request/response headers and bodies (50k character truncation for large payloads)
+- **LMKNetworkRequestStoreTests** — 8 tests covering basic functionality, ring buffer FIFO eviction, and thread safety (concurrent additions/reads/updates)
+
+#### Technical Notes
+
+**Swift 6 Concurrency Workaround**: Network debugging uses `#if !SWIFT_PACKAGE` conditional compilation due to Swift 6 strict concurrency limitations. URLProtocol subclasses cannot conform to URLSessionDelegate (Sendable requirement conflicts with non-NSObject inheritance). The implementation is:
+- **Disabled** when building LumiKit as a standalone Swift package (clean builds in CI)
+- **Enabled** when imported by Xcode projects with `SWIFT_APPROACHABLE_CONCURRENCY = YES` build setting
+
+Apps using network debugging must set `SWIFT_APPROACHABLE_CONCURRENCY = YES` in Xcode build settings. See [FIXES.md](../FIXES.md) for detailed technical analysis and attempted alternatives.
+
 ### Changed
 - **LMKLogger** — Added opt-in in-memory log store via `enableLogStore(maxEntries:)` / `disableLogStore()`, moved from `Data/` to new `Log/` subfolder
 - **LMKLogger.LogCategory** — Added public `name` property for log store category tracking
@@ -39,6 +56,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **DesignSystem** — Restructured into `Tokens/`, `Themes/`, and `Factories/` subfolders
 - **Components** — Extracted bottom sheet base class, organized into `BottomSheet/` and `Pickers/` subfolders
 - **LMKShadowTheme** — Shadow configuration now uses nested `LMKShadowConfig` structs instead of flat properties for cleaner API
+- **Test suite** — Expanded from 284 to 566 tests (84 Core + 475 UI + 7 Lottie)
+- **Source files** — Increased from 79 to 95 files (16 new files including 6 debug infrastructure)
 - Various API improvements and bug fixes across components
 
 ### Removed
