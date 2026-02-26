@@ -38,7 +38,7 @@ final class ExampleViewController: UIViewController, UITableViewDataSource, UITa
             case .components: [.cards, .badges, .chips, .banners, .emptyState, .gradient, .loadingState]
             case .controls: [.buttons, .segmentedControl, .textField, .textView, .searchToggle]
             case .feedback: [.toast, .alerts, .progress, .haptics]
-            case .overlays: [.actionSheet, .datePicker, .userTip, .cardPage, .cardPanel, .floatingButton]
+            case .overlays: [.actionSheet, .datePicker, .tipView, .cardPage, .cardPanel, .floatingButton]
             case .media: [.photoBrowser, .photoCrop, .qrCode]
             }
         }
@@ -65,7 +65,7 @@ final class ExampleViewController: UIViewController, UITableViewDataSource, UITa
         case haptics
         case actionSheet
         case datePicker
-        case userTip
+        case tipView
         case cardPage
         case cardPanel
         case floatingButton
@@ -95,7 +95,7 @@ final class ExampleViewController: UIViewController, UITableViewDataSource, UITa
             case .haptics: "Haptics"
             case .actionSheet: "Action Sheet"
             case .datePicker: "Date Picker"
-            case .userTip: "User Tip"
+            case .tipView: "Tip View"
             case .cardPage: "Card Page"
             case .cardPanel: "Card Panel"
             case .floatingButton: "Floating Button"
@@ -127,7 +127,7 @@ final class ExampleViewController: UIViewController, UITableViewDataSource, UITa
             case .haptics: "Success, warning, error, impact feedback"
             case .actionSheet: "Action sheets with icons and sub-pages"
             case .datePicker: "Single date, range, and date with notes"
-            case .userTip: "Centered and pointed onboarding tips"
+            case .tipView: "Centered and pointed onboarding tips"
             case .cardPage: "Card page with multi-page navigation"
             case .cardPanel: "Floating card panel in overlay window"
             case .floatingButton: "Draggable floating action button"
@@ -159,7 +159,7 @@ final class ExampleViewController: UIViewController, UITableViewDataSource, UITa
             case .haptics: "iphone.radiowaves.left.and.right"
             case .actionSheet: "list.bullet"
             case .datePicker: "calendar"
-            case .userTip: "lightbulb"
+            case .tipView: "lightbulb"
             case .cardPage: "square.stack"
             case .cardPanel: "rectangle.inset.filled"
             case .floatingButton: "circle.circle"
@@ -191,7 +191,7 @@ final class ExampleViewController: UIViewController, UITableViewDataSource, UITa
             case .haptics: HapticsDetailViewController()
             case .actionSheet: ActionSheetDetailViewController()
             case .datePicker: DatePickerDetailViewController()
-            case .userTip: UserTipDetailViewController()
+            case .tipView: TipViewDetailViewController()
             case .cardPage: CardPageDetailViewController()
             case .cardPanel: CardPanelDetailViewController()
             case .floatingButton: FloatingButtonDetailViewController()

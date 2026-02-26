@@ -1,16 +1,16 @@
 //
-//  LMKUserTipView.swift
+//  LMKTipView.swift
 //  LumiKit
 //
-//  User tip component for onboarding and feature discovery.
+//  Tip component for onboarding and feature discovery.
 //  Supports centered and pointed (arrow) presentation styles.
 //
 
 import SnapKit
 import UIKit
 
-/// Arrow direction for pointed user tips.
-public enum LMKUserTipArrowDirection {
+/// Arrow direction for pointed tips.
+public enum LMKTipArrowDirection {
     /// Bubble appears below the source view; arrow points up toward it.
     case up
     /// Bubble appears above the source view; arrow points down toward it.
@@ -19,16 +19,16 @@ public enum LMKUserTipArrowDirection {
     case automatic
 }
 
-/// Presentation style for user tips.
-public enum LMKUserTipStyle {
+/// Presentation style for tips.
+public enum LMKTipStyle {
     /// Centered card with dimming overlay.
     case center
     /// Arrow pointing at a source view.
-    case pointed(sourceView: UIView, arrowDirection: LMKUserTipArrowDirection)
+    case pointed(sourceView: UIView, arrowDirection: LMKTipArrowDirection)
 }
 
-/// Layout constants for user tips.
-public enum LMKUserTipLayout {
+/// Layout constants for tips.
+public enum LMKTipLayout {
     public static let arrowWidth: CGFloat = 16
     public static let arrowHeight: CGFloat = 8
     public static let arrowTipRadius: CGFloat = 2
@@ -38,7 +38,7 @@ public enum LMKUserTipLayout {
     public static let iconBackgroundSize: CGFloat = 36
 }
 
-/// User tip view for onboarding hints and feature discovery.
+/// Tip view for onboarding hints and feature discovery.
 ///
 /// Two presentation styles:
 /// - **Center**: A card displayed in the screen center with a dimming overlay and "Got it" button.
@@ -48,14 +48,14 @@ public enum LMKUserTipLayout {
 ///
 /// ```swift
 /// // Centered tip
-/// LMKUserTip.show(title: "Welcome", message: "Tap the + button to add a plant", on: self)
+/// LMKTip.show(title: "Welcome", message: "Tap the + button to add a plant", on: self)
 ///
 /// // Pointed at a button
-/// LMKUserTip.show(message: "Tap here to add a photo",
+/// LMKTip.show(message: "Tap here to add a photo",
 ///                 style: .pointed(sourceView: addButton, arrowDirection: .automatic),
 ///                 on: self)
 /// ```
-public final class LMKUserTipView: UIView {
+public final class LMKTipView: UIView {
     // MARK: - Configurable Strings
 
     public nonisolated struct Strings: Sendable {
@@ -85,13 +85,13 @@ public final class LMKUserTipView: UIView {
     private let dimmingView = UIView()
     private let bubbleView = UIView()
     private let arrowLayer = CAShapeLayer()
-    private var resolvedDirection: LMKUserTipArrowDirection?
-    private var pendingArrowParams: (direction: LMKUserTipArrowDirection, sourceFrame: CGRect)?
+    private var resolvedDirection: LMKTipArrowDirection?
+    private var pendingArrowParams: (direction: LMKTipArrowDirection, sourceFrame: CGRect)?
 
     private lazy var iconBackgroundView: UIView = {
         let view = UIView()
         view.backgroundColor = LMKColor.primary.withAlphaComponent(LMKAlpha.overlayLight)
-        view.layer.cornerRadius = LMKUserTipLayout.iconBackgroundSize / 2
+        view.layer.cornerRadius = LMKTipLayout.iconBackgroundSize / 2
         return view
     }()
 
@@ -135,7 +135,7 @@ public final class LMKUserTipView: UIView {
         self.iconImage = icon
         super.init(frame: .zero)
         setupUI()
-        registerForTraitChanges([UITraitUserInterfaceStyle.self]) { (self: LMKUserTipView, _: UITraitCollection) in
+        registerForTraitChanges([UITraitUserInterfaceStyle.self]) { (self: LMKTipView, _: UITraitCollection) in
             self.refreshDynamicColors()
         }
     }
@@ -190,7 +190,7 @@ public final class LMKUserTipView: UIView {
                 make.width.height.equalTo(LMKLayout.iconSmall)
             }
             iconBackgroundView.snp.makeConstraints { make in
-                make.width.height.equalTo(LMKUserTipLayout.iconBackgroundSize)
+                make.width.height.equalTo(LMKTipLayout.iconBackgroundSize)
             }
 
             iconRow.addArrangedSubview(iconBackgroundView)
@@ -237,13 +237,13 @@ public final class LMKUserTipView: UIView {
 
     // MARK: - Show
 
-    /// Show the user tip on a view controller.
-    public func show(style: LMKUserTipStyle, on viewController: UIViewController) {
+    /// Show the tip on a view controller.
+    public func show(style: LMKTipStyle, on viewController: UIViewController) {
         guard let hostView = viewController.view else { return }
 
         // Remove existing tips
-        for subview in hostView.subviews where subview is LMKUserTipView {
-            (subview as? LMKUserTipView)?.dismiss()
+        for subview in hostView.subviews where subview is LMKTipView {
+            (subview as? LMKTipView)?.dismiss()
         }
 
         // Configure style-specific layout
@@ -284,7 +284,7 @@ public final class LMKUserTipView: UIView {
         UIAccessibility.post(notification: .announcement, argument: messageText)
     }
 
-    /// Dismiss the user tip.
+    /// Dismiss the tip.
     public func dismiss() {
         let duration = LMKAnimationHelper.shouldAnimate ? LMKAnimationHelper.Duration.actionSheet : 0
         UIView.animate(
@@ -304,31 +304,31 @@ public final class LMKUserTipView: UIView {
     private func layoutCenterStyle() {
         bubbleView.snp.makeConstraints { make in
             make.center.equalToSuperview()
-            make.width.lessThanOrEqualTo(LMKUserTipLayout.maxWidth)
-            make.leading.greaterThanOrEqualToSuperview().offset(LMKUserTipLayout.minMargin)
-            make.trailing.lessThanOrEqualToSuperview().offset(-LMKUserTipLayout.minMargin)
+            make.width.lessThanOrEqualTo(LMKTipLayout.maxWidth)
+            make.leading.greaterThanOrEqualToSuperview().offset(LMKTipLayout.minMargin)
+            make.trailing.lessThanOrEqualToSuperview().offset(-LMKTipLayout.minMargin)
         }
     }
 
-    private func layoutPointedStyle(sourceView: UIView, requestedDirection: LMKUserTipArrowDirection, hostView: UIView) {
+    private func layoutPointedStyle(sourceView: UIView, requestedDirection: LMKTipArrowDirection, hostView: UIView) {
         let sourceFrame = sourceView.convert(sourceView.bounds, to: hostView)
         let direction = resolveDirection(requestedDirection, sourceFrame: sourceFrame, hostView: hostView)
         resolvedDirection = direction
 
         bubbleView.snp.makeConstraints { make in
-            make.width.lessThanOrEqualTo(LMKUserTipLayout.maxWidth)
-            make.leading.greaterThanOrEqualToSuperview().offset(LMKUserTipLayout.minMargin)
-            make.trailing.lessThanOrEqualToSuperview().offset(-LMKUserTipLayout.minMargin)
+            make.width.lessThanOrEqualTo(LMKTipLayout.maxWidth)
+            make.leading.greaterThanOrEqualToSuperview().offset(LMKTipLayout.minMargin)
+            make.trailing.lessThanOrEqualToSuperview().offset(-LMKTipLayout.minMargin)
             make.centerX.equalTo(sourceFrame.midX).priority(.high)
 
             switch direction {
             case .up:
                 make.top.equalToSuperview().offset(
-                    sourceFrame.maxY + LMKUserTipLayout.arrowHeight + LMKUserTipLayout.sourceSpacing
+                    sourceFrame.maxY + LMKTipLayout.arrowHeight + LMKTipLayout.sourceSpacing
                 )
             case .down:
                 make.bottom.equalToSuperview().offset(
-                    -(hostView.bounds.height - sourceFrame.minY + LMKUserTipLayout.arrowHeight + LMKUserTipLayout.sourceSpacing)
+                    -(hostView.bounds.height - sourceFrame.minY + LMKTipLayout.arrowHeight + LMKTipLayout.sourceSpacing)
                 )
             case .automatic:
                 break
@@ -339,25 +339,25 @@ public final class LMKUserTipView: UIView {
         pendingArrowParams = (direction: direction, sourceFrame: sourceFrame)
     }
 
-    private func resolveDirection(_ direction: LMKUserTipArrowDirection, sourceFrame: CGRect, hostView: UIView) -> LMKUserTipArrowDirection {
+    private func resolveDirection(_ direction: LMKTipArrowDirection, sourceFrame: CGRect, hostView: UIView) -> LMKTipArrowDirection {
         guard direction == .automatic else { return direction }
 
         let spaceAbove = sourceFrame.minY - hostView.safeAreaInsets.top
         let estimatedBubbleHeight: CGFloat = 80
-        let needed = estimatedBubbleHeight + LMKUserTipLayout.arrowHeight + LMKUserTipLayout.sourceSpacing
+        let needed = estimatedBubbleHeight + LMKTipLayout.arrowHeight + LMKTipLayout.sourceSpacing
 
         return spaceAbove >= needed ? .down : .up
     }
 
     // MARK: - Arrow
 
-    private func drawArrow(direction: LMKUserTipArrowDirection, sourceFrame: CGRect) {
+    private func drawArrow(direction: LMKTipArrowDirection, sourceFrame: CGRect) {
         // Convert sourceFrame from self's coordinate space to bubbleView's coordinate space
         let sourceInBubble = convert(sourceFrame, to: bubbleView)
         let bubbleBounds = bubbleView.bounds
-        let arrowW = LMKUserTipLayout.arrowWidth
-        let arrowH = LMKUserTipLayout.arrowHeight
-        let r = LMKUserTipLayout.arrowTipRadius
+        let arrowW = LMKTipLayout.arrowWidth
+        let arrowH = LMKTipLayout.arrowHeight
+        let r = LMKTipLayout.arrowTipRadius
 
         // Arrow X in bubbleView's coordinate space, centered on source
         let arrowCenterX = sourceInBubble.midX
@@ -409,7 +409,7 @@ public final class LMKUserTipView: UIView {
 
     // MARK: - Animation
 
-    private func animateIn(style: LMKUserTipStyle) {
+    private func animateIn(style: LMKTipStyle) {
         let shouldAnimate = LMKAnimationHelper.shouldAnimate
         let duration = shouldAnimate ? LMKAnimationHelper.Duration.modalPresentation : 0
 
@@ -453,18 +453,18 @@ public final class LMKUserTipView: UIView {
 
 // MARK: - Static Convenience
 
-/// Static convenience methods for showing user tips.
-public enum LMKUserTip {
-    /// Show a user tip on a view controller.
+/// Static convenience methods for showing tips.
+public enum LMKTip {
+    /// Show a tip on a view controller.
     public static func show(
         title: String? = nil,
         message: String,
         icon: UIImage? = nil,
-        style: LMKUserTipStyle = .center,
+        style: LMKTipStyle = .center,
         on viewController: UIViewController,
         onDismiss: (() -> Void)? = nil
     ) {
-        let tip = LMKUserTipView(title: title, message: message, icon: icon)
+        let tip = LMKTipView(title: title, message: message, icon: icon)
         tip.onDismiss = onDismiss
         tip.show(style: style, on: viewController)
     }

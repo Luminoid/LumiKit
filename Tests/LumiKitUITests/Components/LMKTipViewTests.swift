@@ -1,8 +1,8 @@
 //
-//  LMKUserTipViewTests.swift
+//  LMKTipViewTests.swift
 //  LumiKitUITests
 //
-//  Tests for user tip component.
+//  Tests for tip component.
 //
 
 import Testing
@@ -10,14 +10,14 @@ import UIKit
 
 @testable import LumiKitUI
 
-@Suite("LMKUserTipView")
+@Suite("LMKTipView")
 @MainActor
-struct LMKUserTipViewTests {
+struct LMKTipViewTests {
     // MARK: - Initialization
 
     @Test("Init with message only uses defaults")
     func initMessageOnly() {
-        let tip = LMKUserTipView(message: "Hello")
+        let tip = LMKTipView(message: "Hello")
 
         #expect(tip.superview == nil)
         #expect(tip.onDismiss == nil)
@@ -26,7 +26,7 @@ struct LMKUserTipViewTests {
     @Test("Init with title, message, and icon")
     func initFull() {
         let icon = UIImage(systemName: "star")
-        let tip = LMKUserTipView(title: "Tip", message: "Message", icon: icon)
+        let tip = LMKTipView(title: "Tip", message: "Message", icon: icon)
 
         #expect(tip.superview == nil)
     }
@@ -35,20 +35,20 @@ struct LMKUserTipViewTests {
 
     @Test("Layout constants have expected values")
     func layoutConstants() {
-        #expect(LMKUserTipLayout.arrowWidth == 16)
-        #expect(LMKUserTipLayout.arrowHeight == 8)
-        #expect(LMKUserTipLayout.arrowTipRadius == 2)
-        #expect(LMKUserTipLayout.maxWidth == 300)
-        #expect(LMKUserTipLayout.minMargin == 16)
-        #expect(LMKUserTipLayout.sourceSpacing == 4)
-        #expect(LMKUserTipLayout.iconBackgroundSize == 36)
+        #expect(LMKTipLayout.arrowWidth == 16)
+        #expect(LMKTipLayout.arrowHeight == 8)
+        #expect(LMKTipLayout.arrowTipRadius == 2)
+        #expect(LMKTipLayout.maxWidth == 300)
+        #expect(LMKTipLayout.minMargin == 16)
+        #expect(LMKTipLayout.sourceSpacing == 4)
+        #expect(LMKTipLayout.iconBackgroundSize == 36)
     }
 
     // MARK: - Configurable Strings
 
     @Test("Default strings have expected values")
     func defaultStrings() {
-        let strings = LMKUserTipView.Strings()
+        let strings = LMKTipView.Strings()
 
         #expect(strings.dismissAccessibilityHint == "Tap anywhere to dismiss")
         #expect(strings.dismissButtonTitle == "Got it")
@@ -58,7 +58,7 @@ struct LMKUserTipViewTests {
 
     @Test("Bubble view has correct corner radius")
     func bubbleCornerRadius() {
-        let tip = LMKUserTipView(message: "Test")
+        let tip = LMKTipView(message: "Test")
 
         // The bubble view is the second subview (after dimming)
         let bubble = tip.subviews.first { $0 !== tip.subviews.first }
@@ -67,7 +67,7 @@ struct LMKUserTipViewTests {
 
     @Test("Bubble view has correct background color")
     func bubbleBackground() {
-        let tip = LMKUserTipView(message: "Test")
+        let tip = LMKTipView(message: "Test")
 
         let bubble = tip.subviews.first { $0 !== tip.subviews.first }
         #expect(bubble?.backgroundColor == LMKColor.backgroundSecondary)
@@ -77,11 +77,11 @@ struct LMKUserTipViewTests {
 
     @Test("Dismiss button is hidden by default before show")
     func dismissButtonHiddenByDefault() {
-        let tip = LMKUserTipView(message: "Test")
+        let tip = LMKTipView(message: "Test")
 
         let bubble = tip.subviews.first { $0 !== tip.subviews.first }
         let buttons = findAllSubviews(in: bubble, ofType: UIButton.self)
-        let dismissBtn = buttons.first { $0.title(for: .normal) == LMKUserTipView.strings.dismissButtonTitle }
+        let dismissBtn = buttons.first { $0.title(for: .normal) == LMKTipView.strings.dismissButtonTitle }
         #expect(dismissBtn?.isHidden == true)
     }
 
@@ -99,7 +99,7 @@ struct LMKUserTipViewTests {
 
     @Test("Dimming view is first subview")
     func dimmingViewExists() {
-        let tip = LMKUserTipView(message: "Test")
+        let tip = LMKTipView(message: "Test")
 
         let dimming = tip.subviews.first
         #expect(dimming != nil)
@@ -108,7 +108,7 @@ struct LMKUserTipViewTests {
 
     @Test("Dimming view has tap gesture recognizer")
     func dimmingHasTapGesture() {
-        let tip = LMKUserTipView(message: "Test")
+        let tip = LMKTipView(message: "Test")
 
         let dimming = tip.subviews.first
         let tapGestures = dimming?.gestureRecognizers?.filter { $0 is UITapGestureRecognizer }
@@ -119,7 +119,7 @@ struct LMKUserTipViewTests {
 
     @Test("Bubble accessibility label contains message")
     func accessibilityLabel() {
-        let tip = LMKUserTipView(title: "Title", message: "Message")
+        let tip = LMKTipView(title: "Title", message: "Message")
 
         let bubble = tip.subviews.first { $0 !== tip.subviews.first }
         #expect(bubble?.accessibilityLabel == "Title. Message")
@@ -127,7 +127,7 @@ struct LMKUserTipViewTests {
 
     @Test("Bubble accessibility label is message when no title")
     func accessibilityLabelNoTitle() {
-        let tip = LMKUserTipView(message: "Just a message")
+        let tip = LMKTipView(message: "Just a message")
 
         let bubble = tip.subviews.first { $0 !== tip.subviews.first }
         #expect(bubble?.accessibilityLabel == "Just a message")
@@ -135,7 +135,7 @@ struct LMKUserTipViewTests {
 
     @Test("Dimming view is accessible as button")
     func dimmingAccessibility() {
-        let tip = LMKUserTipView(message: "Test")
+        let tip = LMKTipView(message: "Test")
 
         let dimming = tip.subviews.first
         #expect(dimming?.isAccessibilityElement == true)
@@ -147,7 +147,7 @@ struct LMKUserTipViewTests {
     @Test("Dismiss callback can be set")
     func dismissCallback() {
         var dismissed = false
-        let tip = LMKUserTipView(message: "Test")
+        let tip = LMKTipView(message: "Test")
         tip.onDismiss = { dismissed = true }
 
         // Verify callback is set by invoking it directly
@@ -159,12 +159,12 @@ struct LMKUserTipViewTests {
 
     @Test("Icon with background circle is created when icon provided")
     func iconBackground() {
-        let tip = LMKUserTipView(title: "Tip", message: "Msg", icon: UIImage(systemName: "star"))
+        let tip = LMKTipView(title: "Tip", message: "Msg", icon: UIImage(systemName: "star"))
 
         // Find the circular icon background (36pt round view)
         let bubble = tip.subviews.first { $0 !== tip.subviews.first }
         let iconBg = findSubview(in: bubble) { view in
-            view.layer.cornerRadius == LMKUserTipLayout.iconBackgroundSize / 2
+            view.layer.cornerRadius == LMKTipLayout.iconBackgroundSize / 2
         }
         #expect(iconBg != nil)
     }

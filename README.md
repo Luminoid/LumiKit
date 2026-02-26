@@ -130,7 +130,7 @@ xcodegen generate
 open LumiKitExample.xcodeproj
 ```
 
-The example includes 18 interactive pages: Typography, Colors, Cards, Badges, Chips, Empty State, Buttons, Toast, Controls, Gradient, Loading State, Banner, Action Sheet, QR Code, Photo Browser, Photo Crop, User Tip, and Floating Button.
+The example includes 18 interactive pages: Typography, Colors, Cards, Badges, Chips, Empty State, Buttons, Toast, Controls, Gradient, Loading State, Banner, Action Sheet, QR Code, Photo Browser, Photo Crop, Tip View, and Floating Button.
 
 ---
 
@@ -164,7 +164,7 @@ LumiKit/
 │   │   │   ├── LMKBadgeView, LMKBannerView, LMKCardView, LMKChipView,
 │   │   │   ├── LMKDividerView, LMKEmptyStateView, LMKFloatingButton,
 │   │   │   ├── LMKGradientView, LMKLoadingStateView, LMKProgressViewController,
-│   │   │   ├── LMKSearchBar, LMKSkeletonCell, LMKToastView, LMKUserTipView,
+│   │   │   ├── LMKSearchBar, LMKSkeletonCell, LMKToastView, LMKTipView,
 │   │   │   ├── LMKCardPageController, LMKCardPageLayout,
 │   │   │   └── LMKCardPanelController, LMKCardPanelLayout
 │   │   ├── Controls/          # LMKButton, LMKSegmentedControl, LMKToggleButton,
@@ -208,7 +208,7 @@ LumiKit/
 │   │   │   ├── Pickers/       # DatePickerHelper
 │   │   │   ├── Badge, Banner, Card, Chip, Divider, EmptyState,
 │   │   │   ├── Gradient, LoadingState, SearchBar, Skeleton, Toast,
-│   │   │   └── FloatingButton, UserTip, CardPage, CardPanel
+│   │   │   └── FloatingButton, TipView, CardPage, CardPanel
 │   │   ├── Controls/          # Button, SegmentedControl, TextField, TextView, ToggleButton
 │   │   ├── DesignSystem/
 │   │   │   ├── Tokens/        # Color, Spacing, CornerRadius, Alpha, Typography, Layout, Shadow
@@ -311,7 +311,7 @@ LMKThemeManager.shared.apply(spacing: .init(large: 20))
 | `LMKSkeletonCell` | Skeleton loading placeholder cell |
 | `LMKDatePickerHelper` | Date picker presentation via `LMKActionSheet` — single date, date range, date with text field |
 | `LMKToastView` | Auto-dismissing toast notification |
-| `LMKUserTipView` | Onboarding tip with centered or pointed (arrow) styles — tap to dismiss |
+| `LMKTipView` | Onboarding tip with centered or pointed (arrow) styles — tap to dismiss |
 | `LMKFloatingButton` | Draggable floating action button with edge snapping and optional badge |
 | `LMKCardPageController` | Base class for card-embedded navigation pages with header, title, and multi-page slide navigation |
 | `LMKCardPanelController` | Centered floating card panel in its own overlay window, with shadow and slide animation |

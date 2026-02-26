@@ -39,7 +39,7 @@ LumiKit/
 │   │   │   ├── Pickers/      # LMKDatePickerHelper
 │   │   │   └── (root)        # Badge, Banner, Card, Chip, Divider, EmptyState,
 │   │   │                     # FloatingButton, Gradient, LoadingState, Progress,
-│   │   │                     # SearchBar, Skeleton, Toast, UserTip,
+│   │   │                     # SearchBar, Skeleton, Toast, TipView,
 │   │   │                     # CardPageController, CardPageLayout,
 │   │   │                     # CardPanelController, CardPanelLayout
 │   │   ├── Controls/        # LMKButton, LMKSegmentedControl, LMKToggleButton,
@@ -79,7 +79,7 @@ LumiKit/
 │       │   ├── Pickers/      # DatePickerHelper
 │       │   └── (root)        # Badge, Banner, Card, Chip, Divider, EmptyState,
 │       │                     # FloatingButton, Gradient, LoadingState, SearchBar,
-│       │                     # Skeleton, Toast, UserTip, CardPage, CardPanel
+│       │                     # Skeleton, Toast, TipView, CardPage, CardPanel
 │       ├── Controls/        # Button, SegmentedControl, TextField, TextView, ToggleButton
 │       ├── DesignSystem/
 │       │   ├── Tokens/       # Color, Spacing, CornerRadius, Alpha, Typography, Layout, Shadow
@@ -221,7 +221,7 @@ LMKThemeManager.shared.apply(spacing: .init(large: 20))
 | `LMKSearchBar` | `final class` | Search bar with configurable strings |
 | `LMKSkeletonCell` | `final class` | Skeleton loading placeholder cell |
 | `LMKToastView` | `final class` | Auto-dismissing toast notification |
-| `LMKUserTipView` | `final class` | Onboarding tip with centered or pointed (arrow) styles |
+| `LMKTipView` | `final class` | Onboarding tip with centered or pointed (arrow) styles |
 | `LMKFloatingButton` | `final class` | Draggable floating action button with edge snapping and badge |
 | `LMKCardPageController` | `open class` | Base class for card-embedded navigation pages with header, title, multi-page slide |
 | `LMKCardPanelController` | `open class` | Centered floating card panel in its own overlay window with slide animation |

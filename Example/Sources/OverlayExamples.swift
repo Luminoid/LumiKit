@@ -271,9 +271,9 @@ final class DatePickerDetailViewController: DetailViewController {
     }
 }
 
-// MARK: - User Tip
+// MARK: - Tip View
 
-final class UserTipDetailViewController: DetailViewController {
+final class TipViewDetailViewController: DetailViewController {
     private var targetChip: LMKChipView?
 
     override func viewDidLoad() {
@@ -300,7 +300,7 @@ final class UserTipDetailViewController: DetailViewController {
     }
 
     @objc private func showCenteredTip() {
-        LMKUserTip.show(
+        LMKTip.show(
             title: "Did you know?",
             message: "You can long-press any item to see more options. Try it out!",
             icon: UIImage(systemName: "lightbulb"),
@@ -311,7 +311,7 @@ final class UserTipDetailViewController: DetailViewController {
 
     @objc private func showPointedTip() {
         guard let targetChip else { return }
-        LMKUserTip.show(
+        LMKTip.show(
             message: "This tip points at the target view above",
             style: .pointed(sourceView: targetChip, arrowDirection: .automatic),
             on: self
@@ -319,7 +319,7 @@ final class UserTipDetailViewController: DetailViewController {
     }
 
     @objc private func showSimpleTip() {
-        LMKUserTip.show(
+        LMKTip.show(
             message: "Swipe down to refresh the list. New items will appear at the top.",
             on: self
         )

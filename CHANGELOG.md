@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 #### Components
-- **LMKUserTipView** — Onboarding tip component with centered or pointed (arrow) styles, tap to dismiss
+- **LMKTipView** — Onboarding tip component with centered or pointed (arrow) styles, tap to dismiss
 - **LMKFloatingButton** — Draggable floating action button with edge snapping and optional badge
 - **LMKCardPageController** — Base class for card-embedded navigation pages with header, title, and multi-page slide navigation
 - **LMKCardPanelController** — Centered floating card panel in its own overlay window with shadow and slide animation
@@ -62,7 +62,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - **LMKCardPanelController** — Fixed gesture handling
-- **LMKUserTipView** — Optimized arrow layer rendering
+- **LMKTipView** — Optimized arrow layer rendering
 - **LMKEmptyStateView** — Updated layout for better content alignment
 - **LMKPhotoCropViewController** — Fixed background color handling
 
