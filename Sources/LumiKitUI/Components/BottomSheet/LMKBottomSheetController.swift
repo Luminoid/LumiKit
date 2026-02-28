@@ -17,6 +17,7 @@ import UIKit
 /// - Drag indicator
 /// - Cancel button at bottom
 /// - Slide-in / slide-out animation
+/// - Drag-to-dismiss on the container
 /// - Dynamic color refresh on trait changes
 ///
 /// Subclasses override `setupSheetContent()` to build their content
@@ -30,6 +31,10 @@ open class LMKBottomSheetController: UIViewController {
     public var containerBottomConstraint: Constraint?
 
     private let cancelTitle: String
+    private static let dismissVelocityThreshold: CGFloat = 500
+    private static let dismissDistanceRatio: CGFloat = 0.3
+    /// Stored drag velocity for momentum-based dismiss animation.
+    private var pendingDismissVelocity: CGFloat = 0
 
     // MARK: - Lazy Views
 
@@ -116,6 +121,9 @@ open class LMKBottomSheetController: UIViewController {
             containerBottomConstraint = make.bottom.equalToSuperview().offset(maxHeight).constraint
         }
 
+        let panGesture = UIPanGestureRecognizer(target: self, action: #selector(handlePanGesture(_:)))
+        containerView.addGestureRecognizer(panGesture)
+
         containerView.addSubview(dragIndicator)
         dragIndicator.snp.makeConstraints { make in
             make.top.equalToSuperview().offset(LMKSpacing.small)
@@ -154,28 +162,50 @@ open class LMKBottomSheetController: UIViewController {
     /// Animate the sheet into view.
     public func animateIn() {
         containerBottomConstraint?.update(offset: 0)
-        let duration = LMKAnimationHelper.shouldAnimate ? LMKAnimationHelper.Duration.modalPresentation : 0
-        UIView.animate(withDuration: duration, delay: 0, options: .curveEaseOut) {
-            self.view.layoutIfNeeded()
-            self.dimmingView.alpha = 1
-        }
+        animateSheet(
+            duration: LMKAnimationHelper.Duration.modalPresentation,
+            curve: LMKAnimationHelper.Curve.easeOut,
+            animations: {
+                self.view.layoutIfNeeded()
+                self.dimmingView.alpha = 1
+            }
+        )
     }
 
     /// Animate the sheet out of view, then call the completion handler.
-    public func animateOut(completion: @escaping () -> Void) {
-        containerBottomConstraint?.update(offset: containerView.frame.height)
-        let duration = LMKAnimationHelper.shouldAnimate ? LMKAnimationHelper.Duration.actionSheet : 0
-        UIView.animate(withDuration: duration, delay: 0, options: .curveEaseIn) {
-            self.view.layoutIfNeeded()
-            self.dimmingView.alpha = 0
-        } completion: { _ in completion() }
+    /// - Parameter velocity: Optional downward velocity (points/sec) from a drag gesture for momentum-based duration.
+    public func animateOut(velocity: CGFloat = 0, completion: @escaping () -> Void) {
+        let containerHeight = containerView.frame.height
+        let currentOffset = containerView.frame.minY - (view.bounds.height - containerHeight)
+        let remainingDistance = max(containerHeight - currentOffset, 1)
+
+        let baseDuration = LMKAnimationHelper.Duration.actionSheet
+        let duration: TimeInterval
+        if velocity > 0 {
+            duration = min(max(Double(remainingDistance / velocity), 0.1), baseDuration)
+        } else {
+            duration = baseDuration * (remainingDistance / max(containerHeight, 1))
+        }
+
+        containerBottomConstraint?.update(offset: containerHeight)
+        animateSheet(
+            duration: duration,
+            curve: LMKAnimationHelper.Curve.easeIn,
+            animations: {
+                self.view.layoutIfNeeded()
+                self.dimmingView.alpha = 0
+            },
+            completion: completion
+        )
     }
 
     // MARK: - Dismissal
 
     /// Animate out and remove from parent. Call this to dismiss the sheet.
     public func dismissSheet() {
-        animateOut { [weak self] in
+        let velocity = pendingDismissVelocity
+        pendingDismissVelocity = 0
+        animateOut(velocity: velocity) { [weak self] in
             guard let self else { return }
             self.willMove(toParent: nil)
             self.view.removeFromSuperview()
@@ -188,6 +218,43 @@ open class LMKBottomSheetController: UIViewController {
     @objc private func cancelTapped() { onDismissTapped() }
     @objc private func dimmingViewTapped() { onDismissTapped() }
 
+    @objc private func handlePanGesture(_ gesture: UIPanGestureRecognizer) {
+        let translation = gesture.translation(in: view)
+        let velocity = gesture.velocity(in: view)
+        let containerHeight = containerView.frame.height
+
+        switch gesture.state {
+        case .changed:
+            let offset = max(translation.y, 0)
+            containerBottomConstraint?.update(offset: offset)
+            let progress = offset / containerHeight
+            dimmingView.alpha = 1 - progress
+
+        case .ended, .cancelled:
+            let offset = max(translation.y, 0)
+            let shouldDismiss = velocity.y > Self.dismissVelocityThreshold
+                || offset > containerHeight * Self.dismissDistanceRatio
+
+            if shouldDismiss {
+                pendingDismissVelocity = velocity.y
+                onDismissTapped()
+            } else {
+                containerBottomConstraint?.update(offset: 0)
+                animateSheet(
+                    duration: LMKAnimationHelper.Duration.uiShort,
+                    curve: LMKAnimationHelper.Curve.easeOut,
+                    animations: {
+                        self.view.layoutIfNeeded()
+                        self.dimmingView.alpha = 1
+                    }
+                )
+            }
+
+        default:
+            break
+        }
+    }
+
     // MARK: - Helpers
 
     /// Compute the maximum container height based on screen size.
@@ -196,6 +263,19 @@ open class LMKBottomSheetController: UIViewController {
             ?? LMKSceneUtil.getKeyWindow()?.screen.bounds.height
             ?? view.bounds.height
         return screenHeight * LMKBottomSheetLayout.maxScreenHeightRatio
+    }
+
+    /// Unified animation wrapper that respects Reduce Motion.
+    private func animateSheet(
+        duration: TimeInterval,
+        curve: UIView.AnimationOptions,
+        animations: @escaping () -> Void,
+        completion: (() -> Void)? = nil
+    ) {
+        let effectiveDuration = LMKAnimationHelper.shouldAnimate ? duration : 0
+        UIView.animate(withDuration: effectiveDuration, delay: 0, options: curve, animations: animations) { _ in
+            completion?()
+        }
     }
 
     private func refreshBaseColors() {

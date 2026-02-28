@@ -295,7 +295,7 @@ LMKThemeManager.shared.apply(spacing: .init(large: 20))
 
 | Component | Purpose |
 |-----------|---------|
-| `LMKBottomSheetController` | Base class for bottom sheet presentation with shared dimming, container, animation, and dismiss |
+| `LMKBottomSheetController` | Base class for bottom sheet presentation with shared dimming, container, velocity-aware drag-to-dismiss, and unified animation |
 | `LMKActionSheet` | Custom bottom-sheet action sheet with design-token styling and optional custom content |
 | `LMKBadgeView` | Notification count, status dot, or custom text badge |
 | `LMKBannerView` | Persistent notification bar with optional action and dismiss |
