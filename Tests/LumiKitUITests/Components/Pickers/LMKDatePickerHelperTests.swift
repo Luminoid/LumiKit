@@ -19,12 +19,17 @@ import UIKit
 struct LMKDatePickerHelperTests {
     // MARK: - Setup
 
-    private func makeHostVC() -> (UIViewController, UIWindow) {
+    /// Returns a VC hosted in a visible window. The window is associated with
+    /// the VC so it stays alive for the duration of the test without requiring
+    /// the caller to hold a separate reference.
+    private func makeHostVC() -> UIViewController {
         let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 375, height: 812))
         let vc = UIViewController()
         window.rootViewController = vc
         window.makeKeyAndVisible()
-        return (vc, window)
+        // Keep the window alive by associating it with the VC.
+        objc_setAssociatedObject(vc, "testWindow", window, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
+        return vc
     }
 
     private func findDatePicker(in view: UIView) -> UIDatePicker? {
@@ -64,7 +69,7 @@ struct LMKDatePickerHelperTests {
 
     @Test("presentDatePickerAlert adds action sheet as child")
     func presentDatePickerAlert_addsChild() {
-        let (hostVC, _window) = makeHostVC()
+        let hostVC = makeHostVC()
         LMKDatePickerHelper.presentDatePickerAlert(
             on: hostVC,
             title: "Test",
@@ -76,7 +81,7 @@ struct LMKDatePickerHelperTests {
 
     @Test("presentDatePickerAlert contains UIDatePicker")
     func presentDatePickerAlert_containsDatePicker() {
-        let (hostVC, _window) = makeHostVC()
+        let hostVC = makeHostVC()
         LMKDatePickerHelper.presentDatePickerAlert(
             on: hostVC,
             title: "Test",
@@ -90,7 +95,7 @@ struct LMKDatePickerHelperTests {
 
     @Test("presentDatePickerAlert applies default date")
     func presentDatePickerAlert_defaultDate() {
-        let (hostVC, _window) = makeHostVC()
+        let hostVC = makeHostVC()
         let expectedDate = LMKDateHelper.calendar.date(byAdding: .day, value: -3, to: Date()) ?? Date()
 
         LMKDatePickerHelper.presentDatePickerAlert(
@@ -108,7 +113,7 @@ struct LMKDatePickerHelperTests {
 
     @Test("presentDatePickerAlert sets maximum date to today by default")
     func presentDatePickerAlert_maximumDate() {
-        let (hostVC, _window) = makeHostVC()
+        let hostVC = makeHostVC()
         LMKDatePickerHelper.presentDatePickerAlert(
             on: hostVC,
             title: "Test",
@@ -127,7 +132,7 @@ struct LMKDatePickerHelperTests {
 
     @Test("presentDatePicker respects minimum and maximum date")
     func presentDatePicker_dateConstraints() {
-        let (hostVC, _window) = makeHostVC()
+        let hostVC = makeHostVC()
         let minDate = LMKDateHelper.calendar.date(byAdding: .month, value: -1, to: LMKDateHelper.today)!
         let maxDate = LMKDateHelper.today
 
@@ -149,7 +154,7 @@ struct LMKDatePickerHelperTests {
 
     @Test("presentFutureDatePicker sets minimum date to today")
     func presentFutureDatePicker_minimumDate() {
-        let (hostVC, _window) = makeHostVC()
+        let hostVC = makeHostVC()
         LMKDatePickerHelper.presentFutureDatePicker(
             on: hostVC,
             title: "Test",
@@ -166,7 +171,7 @@ struct LMKDatePickerHelperTests {
 
     @Test("presentFutureDatePicker with excludeToday sets minimum to tomorrow")
     func presentFutureDatePicker_excludeToday() {
-        let (hostVC, _window) = makeHostVC()
+        let hostVC = makeHostVC()
         let tomorrow = LMKDateHelper.calendar.date(byAdding: .day, value: 1, to: LMKDateHelper.today)!
 
         LMKDatePickerHelper.presentFutureDatePicker(
@@ -186,7 +191,7 @@ struct LMKDatePickerHelperTests {
 
     @Test("presentPastDatePicker sets maximum date to today with no minimum")
     func presentPastDatePicker_dateConstraints() {
-        let (hostVC, _window) = makeHostVC()
+        let hostVC = makeHostVC()
         LMKDatePickerHelper.presentPastDatePicker(
             on: hostVC,
             title: "Test",
@@ -204,7 +209,7 @@ struct LMKDatePickerHelperTests {
 
     @Test("presentDateRangePicker contains two date pickers")
     func presentDateRangePicker_twoPickers() {
-        let (hostVC, _window) = makeHostVC()
+        let hostVC = makeHostVC()
         LMKDatePickerHelper.presentDateRangePicker(
             on: hostVC,
             title: "Test",
@@ -219,7 +224,7 @@ struct LMKDatePickerHelperTests {
 
     @Test("presentDateRangePicker uses compact style")
     func presentDateRangePicker_compactStyle() {
-        let (hostVC, _window) = makeHostVC()
+        let hostVC = makeHostVC()
         LMKDatePickerHelper.presentDateRangePicker(
             on: hostVC,
             title: "Test",
@@ -237,7 +242,7 @@ struct LMKDatePickerHelperTests {
 
     @Test("presentDatePickerWithTextField contains text field and date picker")
     func presentDatePickerWithTextField_containsBoth() {
-        let (hostVC, _window) = makeHostVC()
+        let hostVC = makeHostVC()
         LMKDatePickerHelper.presentDatePickerWithTextField(
             on: hostVC,
             title: "Test",
@@ -256,7 +261,7 @@ struct LMKDatePickerHelperTests {
         defer { LMKDatePickerHelper.strings = original }
         LMKDatePickerHelper.strings = .init(textFieldPlaceholder: "Test placeholder")
 
-        let (hostVC, _window) = makeHostVC()
+        let hostVC = makeHostVC()
         LMKDatePickerHelper.presentDatePickerWithTextField(
             on: hostVC,
             title: "Test",
@@ -270,7 +275,7 @@ struct LMKDatePickerHelperTests {
 
     @Test("presentDatePickerWithTextField respects custom placeholder override")
     func presentDatePickerWithTextField_customPlaceholder() {
-        let (hostVC, _window) = makeHostVC()
+        let hostVC = makeHostVC()
         LMKDatePickerHelper.presentDatePickerWithTextField(
             on: hostVC,
             title: "Test",
@@ -285,7 +290,7 @@ struct LMKDatePickerHelperTests {
 
     @Test("presentDatePickerWithTextField sets maximum date to today")
     func presentDatePickerWithTextField_maximumDate() {
-        let (hostVC, _window) = makeHostVC()
+        let hostVC = makeHostVC()
         LMKDatePickerHelper.presentDatePickerWithTextField(
             on: hostVC,
             title: "Test",
@@ -302,7 +307,7 @@ struct LMKDatePickerHelperTests {
 
     @Test("presentDatePickerAlert clamps defaultDate after maximumDate")
     func presentDatePickerAlert_clampsOutOfBounds() {
-        let (hostVC, _window) = makeHostVC()
+        let hostVC = makeHostVC()
         let futureDate = LMKDateHelper.calendar.date(byAdding: .year, value: 1, to: LMKDateHelper.today)!
 
         LMKDatePickerHelper.presentDatePickerAlert(
@@ -322,7 +327,7 @@ struct LMKDatePickerHelperTests {
 
     @Test("presentDatePicker swaps min > max and clamps defaultDate")
     func presentDatePicker_swapsMinMax() {
-        let (hostVC, _window) = makeHostVC()
+        let hostVC = makeHostVC()
         let pastDate = LMKDateHelper.calendar.date(byAdding: .month, value: -2, to: LMKDateHelper.today)!
         let furtherPast = LMKDateHelper.calendar.date(byAdding: .month, value: -3, to: LMKDateHelper.today)!
 
@@ -348,7 +353,7 @@ struct LMKDatePickerHelperTests {
 
     @Test("presentFutureDatePicker clamps past defaultDate to minimum")
     func presentFutureDatePicker_clampsPastDate() {
-        let (hostVC, _window) = makeHostVC()
+        let hostVC = makeHostVC()
         let pastDate = LMKDateHelper.calendar.date(byAdding: .month, value: -1, to: LMKDateHelper.today)!
 
         LMKDatePickerHelper.presentFutureDatePicker(
@@ -367,7 +372,7 @@ struct LMKDatePickerHelperTests {
 
     @Test("presentDatePickerWithTextField clamps future defaultDate to today")
     func presentDatePickerWithTextField_clampsFutureDate() {
-        let (hostVC, _window) = makeHostVC()
+        let hostVC = makeHostVC()
         let futureDate = LMKDateHelper.calendar.date(byAdding: .month, value: 3, to: LMKDateHelper.today)!
 
         LMKDatePickerHelper.presentDatePickerWithTextField(

@@ -930,7 +930,7 @@ public final class LMKPhotoCropViewController: UIViewController {
         // Normalize image orientation — CGImage.cropping(to:) operates in raw pixel
         // coordinates which may not match the orientation-corrected UIImage.size.
         let normalizedImage: UIImage
-        if image.imageOrientation != .up, let cgImage = image.cgImage {
+        if image.imageOrientation != .up, image.cgImage != nil {
             UIGraphicsBeginImageContextWithOptions(image.size, false, image.scale)
             image.draw(in: CGRect(origin: .zero, size: image.size))
             normalizedImage = UIGraphicsGetImageFromCurrentImageContext() ?? image

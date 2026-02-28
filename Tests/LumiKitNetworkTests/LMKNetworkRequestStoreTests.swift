@@ -48,8 +48,8 @@
         @Test("Clear removes all records")
         func clearRecords() {
             let store = LMKNetworkRequestStore(maxRecords: 10)
-            store.addRequest(URL(string: "https://example.com")!, method: "GET", headers: [:], body: nil)
-            store.addRequest(URL(string: "https://example.com")!, method: "POST", headers: [:], body: nil)
+            _ = store.addRequest(URL(string: "https://example.com")!, method: "GET", headers: [:], body: nil)
+            _ = store.addRequest(URL(string: "https://example.com")!, method: "POST", headers: [:], body: nil)
 
             #expect(store.count == 2)
 
