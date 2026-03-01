@@ -311,7 +311,7 @@ LMKThemeManager.shared.apply(spacing: .init(large: 20))
 | `LMKSkeletonCell` | Skeleton loading placeholder cell |
 | `LMKDatePickerHelper` | Date picker presentation via `LMKActionSheet` — single date, date range, date with text field |
 | `LMKToastView` | Auto-dismissing toast notification |
-| `LMKTipView` | Onboarding tip with centered or pointed (arrow) styles — tap to dismiss |
+| `LMKTipView` | Onboarding tip with centered or pointed (arrow) styles — tap to dismiss. Pointed style supports `sourceOffset` for fine-tuning position |
 | `LMKFloatingButton` | Draggable floating action button with edge snapping and optional badge |
 | `LMKCardPageController` | Base class for card-embedded navigation pages with header, title, and multi-page slide navigation |
 | `LMKCardPanelController` | Centered floating card panel in its own overlay window, with shadow and slide animation |

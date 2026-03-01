@@ -23,8 +23,8 @@ public enum LMKTipArrowDirection {
 public enum LMKTipStyle {
     /// Centered card with dimming overlay.
     case center
-    /// Arrow pointing at a source view.
-    case pointed(sourceView: UIView, arrowDirection: LMKTipArrowDirection)
+    /// Arrow pointing at a source view. Optional offset shifts the anchor point.
+    case pointed(sourceView: UIView, arrowDirection: LMKTipArrowDirection, sourceOffset: CGPoint = .zero)
 }
 
 /// Layout constants for tips.
@@ -265,8 +265,8 @@ public final class LMKTipView: UIView {
         switch style {
         case .center:
             layoutCenterStyle()
-        case let .pointed(sourceView, arrowDirection):
-            layoutPointedStyle(sourceView: sourceView, requestedDirection: arrowDirection, hostView: hostView)
+        case let .pointed(sourceView, arrowDirection, sourceOffset):
+            layoutPointedStyle(sourceView: sourceView, requestedDirection: arrowDirection, sourceOffset: sourceOffset, hostView: hostView)
         }
 
         // Force layout so bubble has its final frame before drawing arrow
@@ -310,8 +310,8 @@ public final class LMKTipView: UIView {
         }
     }
 
-    private func layoutPointedStyle(sourceView: UIView, requestedDirection: LMKTipArrowDirection, hostView: UIView) {
-        let sourceFrame = sourceView.convert(sourceView.bounds, to: hostView)
+    private func layoutPointedStyle(sourceView: UIView, requestedDirection: LMKTipArrowDirection, sourceOffset: CGPoint, hostView: UIView) {
+        let sourceFrame = sourceView.convert(sourceView.bounds, to: hostView).offsetBy(dx: sourceOffset.x, dy: sourceOffset.y)
         let direction = resolveDirection(requestedDirection, sourceFrame: sourceFrame, hostView: hostView)
         resolvedDirection = direction
 
