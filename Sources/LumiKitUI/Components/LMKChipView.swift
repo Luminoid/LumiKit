@@ -18,23 +18,51 @@ public enum LMKChipStyle {
 
 /// Small tag/chip for categories, filters, or labels.
 ///
+/// Supports three interaction modes:
+/// - **Display-only**: No handlers set — acts as a static label.
+/// - **Tappable**: Set `tapHandler` for single-tap actions.
+/// - **Dismissible**: Set `dismissHandler` to show an xmark button.
+///
+/// Toggle selection is supported via `isChipSelected`, which swaps between
+/// filled and outlined appearance regardless of the initial style.
+///
 /// ```swift
+/// // Simple tag
 /// let chip = LMKChipView(text: "Indoor", style: .filled)
-/// chip.chipColor = LMKColor.primary
-/// chip.tapHandler = { print("tapped") }
+///
+/// // Dismissible filter chip
+/// let filter = LMKChipView(text: "Watering", style: .outlined)
+/// filter.dismissHandler = { print("removed") }
+///
+/// // Toggle chip
+/// let toggle = LMKChipView(text: "Active", style: .filled)
+/// toggle.tapHandler = { toggle.isChipSelected.toggle() }
 /// ```
 public final class LMKChipView: UIView {
     // MARK: - Properties
 
     private let titleLabel = UILabel()
     private let iconImageView = UIImageView()
+    private let dismissButton = UIButton(type: .system)
     private let contentStack: UIStackView
 
-    /// Tap handler for the chip. When nil, the chip acts as a display-only label.
+    /// Tap handler for the chip. When nil (and no `dismissHandler`), the chip acts as a display-only label.
     public var tapHandler: (() -> Void)? {
+        didSet { updateAccessibilityTraits() }
+    }
+
+    /// Dismiss handler. When set, shows an xmark button on the trailing edge.
+    /// Called when the user taps the xmark.
+    public var dismissHandler: (() -> Void)? {
         didSet {
-            accessibilityTraits = tapHandler != nil ? .button : .staticText
+            dismissButton.isHidden = dismissHandler == nil
+            updateAccessibilityTraits()
         }
+    }
+
+    /// Toggle selection state. Swaps between filled and outlined appearance.
+    public var isChipSelected: Bool = false {
+        didSet { updateAppearance() }
     }
 
     /// Chip tint color (background for filled, border for outlined).
@@ -78,11 +106,20 @@ public final class LMKChipView: UIView {
         titleLabel.font = LMKTypography.captionMedium
         titleLabel.textAlignment = .center
 
+        let dismissConfig = UIImage.SymbolConfiguration(pointSize: 10, weight: .bold)
+        dismissButton.setImage(UIImage(systemName: "xmark", withConfiguration: dismissConfig), for: .normal)
+        dismissButton.isHidden = true
+        dismissButton.addTarget(self, action: #selector(didDismiss), for: .touchUpInside)
+        dismissButton.snp.makeConstraints { make in
+            make.width.height.equalTo(LMKSpacing.xl)
+        }
+
         contentStack.axis = .horizontal
         contentStack.spacing = LMKSpacing.xs
         contentStack.alignment = .center
         contentStack.addArrangedSubview(iconImageView)
         contentStack.addArrangedSubview(titleLabel)
+        contentStack.addArrangedSubview(dismissButton)
 
         addSubview(contentStack)
         contentStack.snp.makeConstraints { make in
@@ -127,21 +164,48 @@ public final class LMKChipView: UIView {
         tapHandler()
     }
 
+    @objc private func didDismiss() {
+        LMKHapticFeedbackHelper.light()
+        dismissHandler?()
+    }
+
+    // MARK: - Helpers
+
+    private func updateAccessibilityTraits() {
+        if tapHandler != nil || dismissHandler != nil {
+            accessibilityTraits = .button
+        } else {
+            accessibilityTraits = .staticText
+        }
+    }
+
     // MARK: - Appearance
 
     private func updateAppearance() {
-        switch style {
+        let effectiveStyle = resolvedStyle
+        switch effectiveStyle {
         case .filled:
             backgroundColor = chipColor
             titleLabel.textColor = LMKColor.white
             iconImageView.tintColor = LMKColor.white
+            dismissButton.tintColor = LMKColor.white
             layer.borderWidth = 0
         case .outlined:
             backgroundColor = .clear
             titleLabel.textColor = chipColor
             iconImageView.tintColor = chipColor
+            dismissButton.tintColor = chipColor
             layer.borderWidth = LMKThemeManager.shared.badge.borderWidth
             layer.borderColor = chipColor.cgColor
+        }
+    }
+
+    /// When `isChipSelected` is set, swap the visual style.
+    private var resolvedStyle: LMKChipStyle {
+        guard isChipSelected else { return style }
+        return switch style {
+        case .filled: LMKChipStyle.outlined
+        case .outlined: LMKChipStyle.filled
         }
     }
 }

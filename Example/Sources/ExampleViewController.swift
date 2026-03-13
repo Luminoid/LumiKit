@@ -34,7 +34,7 @@ final class ExampleViewController: UIViewController, UITableViewDataSource, UITa
 
         var rows: [Row] {
             switch self {
-            case .designSystem: [.typography, .colors]
+            case .designSystem: [.typography, .colors, .markdown]
             case .components: [.cards, .badges, .chips, .banners, .emptyState, .gradient, .loadingState]
             case .controls: [.buttons, .segmentedControl, .textField, .textView, .searchToggle]
             case .feedback: [.toast, .alerts, .progress, .haptics]
@@ -47,6 +47,7 @@ final class ExampleViewController: UIViewController, UITableViewDataSource, UITa
     private enum Row {
         case typography
         case colors
+        case markdown
         case cards
         case badges
         case chips
@@ -77,6 +78,7 @@ final class ExampleViewController: UIViewController, UITableViewDataSource, UITa
             switch self {
             case .typography: "Typography"
             case .colors: "Colors"
+            case .markdown: "Markdown"
             case .cards: "Cards"
             case .badges: "Badges"
             case .chips: "Chips"
@@ -109,9 +111,10 @@ final class ExampleViewController: UIViewController, UITableViewDataSource, UITa
             switch self {
             case .typography: "Headings, body, caption, scientific name"
             case .colors: "Primary, semantic, text, and background colors"
+            case .markdown: "Render markdown as attributed strings"
             case .cards: "Card view and card factory"
             case .badges: "Count, text, and dot badges"
-            case .chips: "Filled and outlined chip styles"
+            case .chips: "Filled, outlined, dismissible, and toggle"
             case .banners: "Persistent info, warning, and error banners"
             case .emptyState: "Full screen, card, and inline styles"
             case .gradient: "Linear gradients with configurable directions"
@@ -141,6 +144,7 @@ final class ExampleViewController: UIViewController, UITableViewDataSource, UITa
             switch self {
             case .typography: "textformat"
             case .colors: "paintpalette"
+            case .markdown: "text.badge.checkmark"
             case .cards: "rectangle.on.rectangle"
             case .badges: "app.badge"
             case .chips: "tag"
@@ -173,6 +177,7 @@ final class ExampleViewController: UIViewController, UITableViewDataSource, UITa
             switch self {
             case .typography: TypographyDetailViewController()
             case .colors: ColorsDetailViewController()
+            case .markdown: MarkdownDetailViewController()
             case .cards: CardsDetailViewController()
             case .badges: BadgesDetailViewController()
             case .chips: ChipsDetailViewController()

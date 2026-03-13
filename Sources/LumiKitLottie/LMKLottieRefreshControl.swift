@@ -32,6 +32,18 @@ public final class LMKLottieRefreshControl: UIRefreshControl {
     private static let dismissDuration: TimeInterval = LMKAnimationHelper.Duration.listUpdate
     private static let minimumSpinDuration: TimeInterval = 0.8
 
+    // MARK: - Configuration
+
+    /// Name of the Lottie animation JSON file in the app's main bundle.
+    /// Defaults to `"refresh_spinner"`.
+    public var animationName: String = "refresh_spinner" {
+        didSet {
+            if animationName != oldValue {
+                animationView.animation = loadAnimation()
+            }
+        }
+    }
+
     // MARK: - State
 
     private var isDismissing = false
@@ -186,7 +198,7 @@ public final class LMKLottieRefreshControl: UIRefreshControl {
     // MARK: - Private
 
     private func loadAnimation() -> LottieAnimation? {
-        LottieAnimation.named("refresh_spinner", bundle: .main, subdirectory: nil, animationCache: nil)
+        LottieAnimation.named(animationName, bundle: .main, subdirectory: nil, animationCache: nil)
     }
 
     private func hideDefaultSubviews() {

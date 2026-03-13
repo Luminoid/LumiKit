@@ -48,7 +48,7 @@ public enum LMKTipLayout {
 ///
 /// ```swift
 /// // Centered tip
-/// LMKTip.show(title: "Welcome", message: "Tap the + button to add a plant", on: self)
+/// LMKTip.show(title: "Welcome", message: "Tap the + button to add an item", on: self)
 ///
 /// // Pointed at a button
 /// LMKTip.show(message: "Tap here to add a photo",

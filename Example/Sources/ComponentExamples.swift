@@ -130,6 +130,29 @@ final class ChipsDetailViewController: DetailViewController {
         iconRow.addArrangedSubview(LMKChipView(text: "Heart", icon: UIImage(systemName: "heart"), style: .outlined))
         iconRow.addArrangedSubview(UIView())
         stack.addArrangedSubview(iconRow)
+
+        addDivider()
+        addSectionHeader("Dismissible")
+        let dismissRow = UIStackView(lmk_axis: .horizontal, spacing: LMKSpacing.small)
+        for text in ["Active", "Indoor", "Watering"] {
+            let chip = LMKChipView(text: text, style: .outlined)
+            chip.chipColor = LMKColor.secondary
+            chip.dismissHandler = { [weak chip] in chip?.removeFromSuperview() }
+            dismissRow.addArrangedSubview(chip)
+        }
+        dismissRow.addArrangedSubview(UIView())
+        stack.addArrangedSubview(dismissRow)
+
+        addDivider()
+        addSectionHeader("Toggle Selection")
+        let toggleRow = UIStackView(lmk_axis: .horizontal, spacing: LMKSpacing.small)
+        for text in ["All", "Photos", "Notes"] {
+            let chip = LMKChipView(text: text, style: .outlined)
+            chip.tapHandler = { chip.isChipSelected.toggle() }
+            toggleRow.addArrangedSubview(chip)
+        }
+        toggleRow.addArrangedSubview(UIView())
+        stack.addArrangedSubview(toggleRow)
     }
 }
 

@@ -31,9 +31,71 @@ struct LMKChipViewTests {
     func accessibilityLabel() {
         let chip = LMKChipView(text: "Indoor")
         #expect(chip.accessibilityLabel == "Indoor")
-        // Default trait is .staticText; becomes .button when tapHandler is set
         #expect(chip.accessibilityTraits == .staticText)
         chip.tapHandler = {}
         #expect(chip.accessibilityTraits == .button)
+    }
+
+    // MARK: - Dismiss
+
+    @Test("Dismiss handler shows xmark and sets button trait")
+    func dismissHandler() {
+        let chip = LMKChipView(text: "Filter", style: .outlined)
+        #expect(chip.accessibilityTraits == .staticText)
+
+        chip.dismissHandler = {}
+        #expect(chip.accessibilityTraits == .button)
+    }
+
+    @Test("Clearing dismiss handler removes button trait")
+    func clearDismissHandler() {
+        let chip = LMKChipView(text: "Filter", style: .outlined)
+        chip.dismissHandler = {}
+        #expect(chip.accessibilityTraits == .button)
+
+        chip.dismissHandler = nil
+        #expect(chip.accessibilityTraits == .staticText)
+    }
+
+    // MARK: - Selection
+
+    @Test("Selection toggles filled chip to outlined appearance")
+    func selectionTogglesFilled() {
+        let chip = LMKChipView(text: "Active", style: .filled)
+        let filledBackground = chip.backgroundColor
+
+        chip.isChipSelected = true
+        #expect(chip.backgroundColor == .clear)
+        #expect(chip.layer.borderWidth > 0)
+
+        chip.isChipSelected = false
+        #expect(chip.backgroundColor == filledBackground)
+    }
+
+    @Test("Selection toggles outlined chip to filled appearance")
+    func selectionTogglesOutlined() {
+        let chip = LMKChipView(text: "Active", style: .outlined)
+        #expect(chip.backgroundColor == .clear)
+
+        chip.isChipSelected = true
+        #expect(chip.backgroundColor != .clear)
+        #expect(chip.backgroundColor != nil)
+        #expect(chip.layer.borderWidth == 0)
+    }
+
+    // MARK: - Combined
+
+    @Test("Tap handler and dismiss handler both set button trait")
+    func bothHandlers() {
+        let chip = LMKChipView(text: "Both")
+        chip.tapHandler = {}
+        chip.dismissHandler = {}
+        #expect(chip.accessibilityTraits == .button)
+
+        chip.tapHandler = nil
+        #expect(chip.accessibilityTraits == .button)
+
+        chip.dismissHandler = nil
+        #expect(chip.accessibilityTraits == .staticText)
     }
 }
