@@ -65,6 +65,11 @@
             navigationController?.popViewController(animated: true)
         }
 
+        override public func trailingButtonTapped() {
+            UIPasteboard.general.string = textView.text
+            LMKToast.showSuccess(message: "Copied", on: self)
+        }
+
         // MARK: - Formatting
 
         private func formatRecord() -> String {
