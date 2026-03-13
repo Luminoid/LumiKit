@@ -19,6 +19,48 @@ public nonisolated enum LMKImageUtil {
         return image
     }
 
+    // MARK: - Composite Image
+
+    /// Create a composite image with an optional background fill and a centered SF Symbol.
+    /// - Parameters:
+    ///   - name: SF Symbol name.
+    ///   - size: Output image canvas size in points.
+    ///   - symbolPointSize: Point size for the SF Symbol.
+    ///   - tintColor: Color applied to the symbol.
+    ///   - backgroundColor: Optional fill color for the background. Defaults to `nil` (transparent).
+    /// - Returns: Rendered `UIImage`, or `nil` if the symbol name is invalid.
+    @MainActor
+    public static func makeSymbolImage(
+        _ name: String,
+        size: CGSize,
+        symbolPointSize: CGFloat,
+        tintColor: UIColor,
+        backgroundColor: UIColor? = nil
+    ) -> UIImage? {
+        guard let symbolImage = UIImage(
+            systemName: name,
+            withConfiguration: UIImage.SymbolConfiguration(pointSize: symbolPointSize)
+        )?.withTintColor(tintColor, renderingMode: .alwaysOriginal) else {
+            return nil
+        }
+
+        let renderer = UIGraphicsImageRenderer(size: size)
+        return renderer.image { _ in
+            if let backgroundColor {
+                backgroundColor.setFill()
+                UIBezierPath(rect: CGRect(origin: .zero, size: size)).fill()
+            }
+            let symbolSize = symbolImage.size
+            let origin = CGPoint(
+                x: (size.width - symbolSize.width) / 2,
+                y: (size.height - symbolSize.height) / 2
+            )
+            symbolImage.draw(at: origin)
+        }
+    }
+
+    // MARK: - Pixel Buffer
+
     private static let ciContext = CIContext()
 
     /// Convert a `CVPixelBuffer` to JPEG `Data`.

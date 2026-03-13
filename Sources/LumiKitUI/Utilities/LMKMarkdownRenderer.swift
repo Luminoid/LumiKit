@@ -63,4 +63,33 @@ public enum LMKMarkdownRenderer {
 
         return mutable
     }
+
+    // MARK: - Inline Text View
+
+    /// Create a pre-configured `UITextView` for inline markdown display.
+    ///
+    /// The returned view is read-only, non-scrolling, and transparent — designed
+    /// to be embedded in a stack view or used inline within a layout.
+    /// Links are styled with ``LMKColor/primary``.
+    ///
+    /// - Parameters:
+    ///   - markdown: Markdown string to render.
+    ///   - font: Base font for the text. Defaults to ``LMKTypography/body``.
+    ///   - color: Base text color. Defaults to ``LMKColor/textPrimary``.
+    /// - Returns: A configured `UITextView` with rendered markdown content.
+    public static func makeInlineTextView(
+        markdown: String,
+        font: UIFont = LMKTypography.body,
+        color: UIColor = LMKColor.textPrimary
+    ) -> UITextView {
+        let textView = UITextView()
+        textView.isEditable = false
+        textView.isScrollEnabled = false
+        textView.backgroundColor = .clear
+        textView.textContainerInset = .zero
+        textView.textContainer.lineFragmentPadding = 0
+        textView.linkTextAttributes = [.foregroundColor: LMKColor.primary]
+        textView.attributedText = render(markdown, font: font, color: color)
+        return textView
+    }
 }

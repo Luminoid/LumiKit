@@ -41,7 +41,8 @@ LumiKit/
 │   │   │                     # FloatingButton, Gradient, LoadingState, Progress,
 │   │   │                     # SearchBar, Skeleton, Toast, TipView,
 │   │   │                     # CardPageController, CardPageLayout,
-│   │   │                     # CardPanelController, CardPanelLayout
+│   │   │                     # CardPanelController, CardPanelLayout,
+│   │   │                     # ScrollStackViewController
 │   │   ├── Controls/        # LMKButton, LMKSegmentedControl, LMKToggleButton,
 │   │   │                    # LMKTextField, LMKTextView
 │   │   ├── DesignSystem/
@@ -61,7 +62,7 @@ LumiKit/
 │   │   ├── QRCode/          # LMKQRCodeGenerator
 │   │   ├── Share/           # LMKShareService, LMKSharePreviewViewController
 │   │   └── Utilities/       # LMKDeviceHelper, LMKKeyboardObserver, LMKSceneUtil,
-│   │                        # LMKImageUtil, LMKOverscrollFooterHelper
+│   │                        # LMKImageUtil, LMKMarkdownRenderer, LMKOverscrollFooterHelper
 │   └── LumiKitLottie/       # LMKLottieRefreshControl
 ├── Tests/
 │   ├── LumiKitCoreTests/    # 76 tests, 12 suites — mirrors Sources/LumiKitCore/ subfolders
@@ -71,7 +72,7 @@ LumiKit/
 │   │   ├── File/            # FileUtil
 │   │   ├── Log/             # LMKLogStoreTests (ring buffer, thread safety), LMKLoggerTests (log store integration)
 │   │   └── Validation/      # URLValidator
-│   └── LumiKitUITests/      # 369 tests, 68 suites — mirrors Sources/LumiKitUI/ subfolders
+│   └── LumiKitUITests/      # 524 tests, 91 suites — mirrors Sources/LumiKitUI/ subfolders
 │       ├── Alerts/          # AlertPresenter, ErrorHandler
 │       ├── Animation/       # AnimationHelper
 │       ├── Components/
@@ -91,7 +92,8 @@ LumiKit/
 │       ├── Photo/           # CropAspectRatio, PhotoEXIF
 │       ├── QRCode/          # QRCodeGenerator
 │       ├── Share/           # SharePreview, ShareService
-│       └── Utilities/       # DeviceHelper, ImageUtil, KeyboardObserver
+│       └── Utilities/       # DeviceHelper, ImageUtil, KeyboardObserver,
+│                            # MarkdownRenderer
 ```
 
 ---
@@ -174,7 +176,7 @@ DesignSystem/
 │   ├── LMKShadowTheme.swift        # Shadow config
 │   └── LMKBadgeTheme.swift         # Badge sizing config
 └── Factories/
-    ├── LMKButtonFactory.swift      # Factory methods for styled buttons
+    ├── LMKButtonFactory.swift      # Role-based button factory (LMKButtonRole + filled/outlined)
     ├── LMKCardFactory.swift        # Factory methods for card views
     └── LMKLabelFactory.swift       # Factory methods for styled labels
 ```
@@ -227,6 +229,7 @@ LMKThemeManager.shared.apply(spacing: .init(large: 20))
 | `LMKCardPanelController` | `open class` | Centered floating card panel in its own overlay window with slide animation |
 | `LMKCardPageLayout` | `enum` (static) | Shared layout constants for card pages (header height, symbol sizes) |
 | `LMKCardPanelLayout` | `enum` (static) | Shared layout constants for card panels (max width, insets, height ratio) |
+| `LMKScrollStackViewController` | `open class` | Base class for scrollable vertical stack layout — configurable spacing, insets, keyboard dismiss, safe area, bounce. Subclasses override `setupStackContent()` |
 
 ### Controls (`Controls/`)
 
@@ -284,7 +287,8 @@ LMKThemeManager.shared.apply(spacing: .init(large: 20))
 |---------|---------|
 | `LMKDeviceHelper` | Device type (`.iPhone`, `.iPad`, `.macCatalyst`), screen size classification, notch detection |
 | `LMKKeyboardObserver` | Keyboard show/hide observer with height + animation info |
-| `LMKImageUtil` | SF Symbol creation and `CVPixelBuffer` to JPEG conversion |
+| `LMKImageUtil` | SF Symbol creation (`makeSymbolImage` with background), `CVPixelBuffer` to JPEG conversion |
+| `LMKMarkdownRenderer` | Markdown-to-attributed-string rendering and pre-configured inline text views (`makeInlineTextView`) |
 | `LMKSceneUtil` | Key window and connected scene retrieval |
 | `LMKOverscrollFooterHelper` | Positions footer below scroll content, revealed on overscroll |
 

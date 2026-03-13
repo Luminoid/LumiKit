@@ -17,39 +17,39 @@ final class ButtonsDetailViewController: DetailViewController {
 
         addSectionHeader("Filled")
 
-        let primaryBtn = LMKButtonFactory.primary(title: "Primary", target: self, action: #selector(showSuccessToast))
+        let primaryBtn = LMKButtonFactory.filled(role: .primary, title: "Primary", target: self, action: #selector(showSuccessToast))
         stack.addArrangedSubview(primaryBtn)
 
-        let secondaryBtn = LMKButtonFactory.secondary(title: "Secondary", target: self, action: #selector(showSuccessToast))
+        let secondaryBtn = LMKButtonFactory.filled(role: .secondary, title: "Secondary", target: self, action: #selector(showSuccessToast))
         stack.addArrangedSubview(secondaryBtn)
 
-        let destructiveBtn = LMKButtonFactory.destructive(title: "Destructive", target: self, action: #selector(showSuccessToast))
+        let destructiveBtn = LMKButtonFactory.filled(role: .destructive, title: "Destructive", target: self, action: #selector(showSuccessToast))
         stack.addArrangedSubview(destructiveBtn)
 
-        let warningBtn = LMKButtonFactory.warning(title: "Warning", target: self, action: #selector(showSuccessToast))
+        let warningBtn = LMKButtonFactory.filled(role: .warning, title: "Warning", target: self, action: #selector(showSuccessToast))
         stack.addArrangedSubview(warningBtn)
 
-        let successBtn = LMKButtonFactory.success(title: "Success", target: self, action: #selector(showSuccessToast))
+        let successBtn = LMKButtonFactory.filled(role: .success, title: "Success", target: self, action: #selector(showSuccessToast))
         stack.addArrangedSubview(successBtn)
 
-        let infoBtn = LMKButtonFactory.info(title: "Info", target: self, action: #selector(showSuccessToast))
+        let infoBtn = LMKButtonFactory.filled(role: .info, title: "Info", target: self, action: #selector(showSuccessToast))
         stack.addArrangedSubview(infoBtn)
 
         addDivider()
         addSectionHeader("Outlined")
 
-        let primaryOutlined = LMKButtonFactory.primaryOutlined(title: "Primary", target: self, action: #selector(showInfoToast))
+        let primaryOutlined = LMKButtonFactory.outlined(role: .primary, title: "Primary", target: self, action: #selector(showInfoToast))
         stack.addArrangedSubview(primaryOutlined)
 
-        let secondaryOutlined = LMKButtonFactory.secondaryOutlined(title: "Secondary", target: self, action: #selector(showInfoToast))
+        let secondaryOutlined = LMKButtonFactory.outlined(role: .secondary, title: "Secondary", target: self, action: #selector(showInfoToast))
         stack.addArrangedSubview(secondaryOutlined)
 
-        let destructiveOutlined = LMKButtonFactory.destructiveOutlined(title: "Destructive", target: self, action: #selector(showInfoToast))
+        let destructiveOutlined = LMKButtonFactory.outlined(role: .destructive, title: "Destructive", target: self, action: #selector(showInfoToast))
         stack.addArrangedSubview(destructiveOutlined)
 
         addDivider()
         addSectionHeader("Typed Handler")
-        let typed = LMKButtonFactory.primary(title: "Typed Handler", target: self, action: #selector(showTypedToast))
+        let typed = LMKButtonFactory.filled(role: .primary, title: "Typed Handler", target: self, action: #selector(showTypedToast))
         stack.addArrangedSubview(typed)
     }
 

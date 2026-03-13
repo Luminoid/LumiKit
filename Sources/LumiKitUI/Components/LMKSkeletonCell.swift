@@ -121,4 +121,18 @@ public final class LMKSkeletonCell: UITableViewCell {
         gradientLayer.removeAnimation(forKey: "shimmer")
         gradientLayer.removeFromSuperlayer()
     }
+
+    // MARK: - Static Convenience
+
+    /// Start shimmer animation on all visible skeleton cells in a table view.
+    ///
+    /// Call after the table view has laid out its cells to show staggered shimmer
+    /// animations. Non-skeleton cells in the table view are ignored.
+    ///
+    /// - Parameter tableView: The table view whose visible skeleton cells should shimmer.
+    public static func startShimmers(in tableView: UITableView) {
+        for (index, cell) in tableView.visibleCells.enumerated() {
+            (cell as? LMKSkeletonCell)?.startShimmer(staggerIndex: index)
+        }
+    }
 }

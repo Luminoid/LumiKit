@@ -22,7 +22,11 @@ final class PhotoBrowserDetailViewController: DetailViewController, LMKPhotoBrow
         let colors: [UIColor] = [LMKColor.success, LMKColor.primary, LMKColor.warning, LMKColor.info, LMKColor.error]
 
         for (symbol, color) in zip(symbols, colors) {
-            if let image = createSampleImage(symbolName: symbol, color: color) {
+            if let image = LMKImageUtil.makeSymbolImage(
+                symbol, size: CGSize(width: 300, height: 300),
+                symbolPointSize: 80, tintColor: color,
+                backgroundColor: color.withAlphaComponent(0.2)
+            ) {
                 sampleImages.append(image)
             }
         }
@@ -48,7 +52,7 @@ final class PhotoBrowserDetailViewController: DetailViewController, LMKPhotoBrow
         stack.addArrangedSubview(previewRow)
 
         addDivider()
-        let openButton = LMKButtonFactory.primary(title: "Open Photo Browser", target: self, action: #selector(openBrowser))
+        let openButton = LMKButtonFactory.filled(role: .primary, title: "Open Photo Browser", target: self, action: #selector(openBrowser))
         stack.addArrangedSubview(openButton)
 
         addDivider()
@@ -82,26 +86,6 @@ final class PhotoBrowserDetailViewController: DetailViewController, LMKPhotoBrow
         browser.delegate = self
         browser.modalPresentationStyle = .overFullScreen
         present(browser, animated: true)
-    }
-
-    private func createSampleImage(symbolName: String, color: UIColor) -> UIImage? {
-        let size = CGSize(width: 300, height: 300)
-        let renderer = UIGraphicsImageRenderer(size: size)
-        return renderer.image { ctx in
-            color.withAlphaComponent(0.2).setFill()
-            ctx.fill(CGRect(origin: .zero, size: size))
-
-            let config = UIImage.SymbolConfiguration(pointSize: 80, weight: .regular)
-            if let symbol = UIImage(systemName: symbolName, withConfiguration: config) {
-                let symbolSize = symbol.size
-                let origin = CGPoint(
-                    x: (size.width - symbolSize.width) / 2,
-                    y: (size.height - symbolSize.height) / 2
-                )
-                symbol.withTintColor(color, renderingMode: .alwaysOriginal)
-                    .draw(at: origin)
-            }
-        }
     }
 
     // MARK: - LMKPhotoBrowserDataSource
@@ -150,7 +134,7 @@ final class PhotoCropDetailViewController: DetailViewController, LMKPhotoCropDel
             stack.addArrangedSubview(preview)
         }
 
-        let cropButton = LMKButtonFactory.primary(title: "Open Photo Crop", target: self, action: #selector(openCrop))
+        let cropButton = LMKButtonFactory.filled(role: .primary, title: "Open Photo Crop", target: self, action: #selector(openCrop))
         stack.addArrangedSubview(cropButton)
 
         addDivider()
@@ -241,7 +225,7 @@ final class QRCodeDetailViewController: DetailViewController {
         textField.addTarget(self, action: #selector(dismissKeyboard), for: .editingDidEndOnExit)
         stack.addArrangedSubview(textField)
 
-        let generateButton = LMKButtonFactory.primary(title: "Generate QR Code", target: self, action: #selector(generateQR))
+        let generateButton = LMKButtonFactory.filled(role: .primary, title: "Generate QR Code", target: self, action: #selector(generateQR))
         stack.addArrangedSubview(generateButton)
 
         addDivider()

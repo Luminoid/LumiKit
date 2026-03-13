@@ -164,21 +164,21 @@ final class BannerDetailViewController: DetailViewController {
 
         addSectionHeader("Tap to show")
 
-        let infoButton = LMKButtonFactory.infoOutlined(title: "Show Info Banner", target: self, action: #selector(showInfoBanner))
+        let infoButton = LMKButtonFactory.outlined(role: .info, title: "Show Info Banner", target: self, action: #selector(showInfoBanner))
         stack.addArrangedSubview(infoButton)
 
-        let warningButton = LMKButtonFactory.warningOutlined(title: "Show Warning Banner", target: self, action: #selector(showWarningBanner))
+        let warningButton = LMKButtonFactory.outlined(role: .warning, title: "Show Warning Banner", target: self, action: #selector(showWarningBanner))
         stack.addArrangedSubview(warningButton)
 
-        let errorButton = LMKButtonFactory.destructiveOutlined(title: "Show Error Banner", target: self, action: #selector(showErrorBanner))
+        let errorButton = LMKButtonFactory.outlined(role: .destructive, title: "Show Error Banner", target: self, action: #selector(showErrorBanner))
         stack.addArrangedSubview(errorButton)
 
-        let successButton = LMKButtonFactory.successOutlined(title: "Show Success Banner", target: self, action: #selector(showSuccessBanner))
+        let successButton = LMKButtonFactory.outlined(role: .success, title: "Show Success Banner", target: self, action: #selector(showSuccessBanner))
         stack.addArrangedSubview(successButton)
 
         addDivider()
         addSectionHeader("Non-dismissible")
-        let persistentButton = LMKButtonFactory.primaryOutlined(title: "Show Persistent Banner", target: self, action: #selector(showPersistentBanner))
+        let persistentButton = LMKButtonFactory.outlined(role: .primary, title: "Show Persistent Banner", target: self, action: #selector(showPersistentBanner))
         stack.addArrangedSubview(persistentButton)
     }
 
@@ -346,9 +346,7 @@ private final class SkeletonTableView: UIView, UITableViewDataSource {
     }
 
     private func startShimmer() {
-        for (index, cell) in tableView.visibleCells.enumerated() {
-            (cell as? LMKSkeletonCell)?.startShimmer(staggerIndex: index)
-        }
+        LMKSkeletonCell.startShimmers(in: tableView)
     }
 
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {

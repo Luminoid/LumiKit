@@ -62,3 +62,52 @@ struct LMKMarkdownRendererTests {
         #expect(result.string == "bold and italic")
     }
 }
+
+// MARK: - LMKMarkdownRenderer (makeInlineTextView)
+
+@Suite("LMKMarkdownRenderer (makeInlineTextView)")
+@MainActor
+struct LMKMarkdownRendererInlineTextViewTests {
+    @Test("isEditable is false")
+    func isNotEditable() {
+        let tv = LMKMarkdownRenderer.makeInlineTextView(markdown: "Hello")
+        #expect(!tv.isEditable)
+    }
+
+    @Test("isScrollEnabled is false")
+    func isNotScrollable() {
+        let tv = LMKMarkdownRenderer.makeInlineTextView(markdown: "Hello")
+        #expect(!tv.isScrollEnabled)
+    }
+
+    @Test("backgroundColor is clear")
+    func backgroundIsClear() {
+        let tv = LMKMarkdownRenderer.makeInlineTextView(markdown: "Hello")
+        #expect(tv.backgroundColor == .clear)
+    }
+
+    @Test("textContainerInset is zero")
+    func insetIsZero() {
+        let tv = LMKMarkdownRenderer.makeInlineTextView(markdown: "Hello")
+        #expect(tv.textContainerInset == .zero)
+    }
+
+    @Test("lineFragmentPadding is zero")
+    func paddingIsZero() {
+        let tv = LMKMarkdownRenderer.makeInlineTextView(markdown: "Hello")
+        #expect(tv.textContainer.lineFragmentPadding == 0)
+    }
+
+    @Test("link color is LMKColor.primary")
+    func linkColor() {
+        let tv = LMKMarkdownRenderer.makeInlineTextView(markdown: "[link](https://example.com)")
+        #expect(tv.linkTextAttributes[.foregroundColor] as? UIColor == LMKColor.primary)
+    }
+
+    @Test("attributedText is not nil")
+    func hasAttributedText() {
+        let tv = LMKMarkdownRenderer.makeInlineTextView(markdown: "**bold** text")
+        #expect(tv.attributedText != nil)
+        #expect(tv.attributedText.string == "bold text")
+    }
+}

@@ -48,10 +48,10 @@ LumiKit is organized into four targets so apps can import only what they need:
 | **LumiKitUI** | LumiKitCore + LumiKitNetwork + SnapKit | Design system tokens, theme manager, animation, haptics, alerts, components, controls, photo browser/crop, network debug UI (DEBUG), UIKit extensions |
 | **LumiKitLottie** | LumiKitUI + Lottie | Lottie-powered pull-to-refresh control |
 
-**89 source files** across 4 targets, with **566 tests** across 4 test targets:
+**98 source files** across 4 targets, with **615 tests** across 4 test targets:
 - **LumiKitCoreTests**: 76 tests (12 suites)
 - **LumiKitNetworkTests**: 8 tests (1 suite)
-- **LumiKitUITests**: 475 tests (81 suites)
+- **LumiKitUITests**: 524 tests (91 suites)
 - **LumiKitLottieTests**: 7 tests (1 suite)
 
 ---
@@ -166,7 +166,8 @@ LumiKit/
 │   │   │   ├── LMKGradientView, LMKLoadingStateView, LMKProgressViewController,
 │   │   │   ├── LMKSearchBar, LMKSkeletonCell, LMKToastView, LMKTipView,
 │   │   │   ├── LMKCardPageController, LMKCardPageLayout,
-│   │   │   └── LMKCardPanelController, LMKCardPanelLayout
+│   │   │   ├── LMKCardPanelController, LMKCardPanelLayout,
+│   │   │   └── LMKScrollStackViewController
 │   │   ├── Controls/          # LMKButton, LMKSegmentedControl, LMKToggleButton,
 │   │   │                      # LMKTextField, LMKTextView
 │   │   ├── DesignSystem/
@@ -187,7 +188,8 @@ LumiKit/
 │   │   ├── QRCode/            # LMKQRCodeGenerator
 │   │   ├── Share/             # LMKShareService, LMKSharePreviewViewController
 │   │   └── Utilities/         # LMKDeviceHelper, LMKKeyboardObserver,
-│   │                          # LMKSceneUtil, LMKImageUtil, LMKOverscrollFooterHelper
+│   │                          # LMKSceneUtil, LMKImageUtil, LMKMarkdownRenderer,
+│   │                          # LMKOverscrollFooterHelper
 │   └── LumiKitLottie/         # LMKLottieRefreshControl
 ├── Tests/
 │   ├── LumiKitCoreTests/      # 76 tests, 11 suites
@@ -200,7 +202,7 @@ LumiKit/
 │   │   └── Validation/        # URLValidator
 │   ├── LumiKitNetworkTests/   # 8 tests, 1 suite
 │   │   └── LMKNetworkRequestStoreTests.swift  # FIFO, thread safety
-│   ├── LumiKitUITests/        # 475 tests, 81 suites
+│   ├── LumiKitUITests/        # 524 tests, 91 suites
 │   │   ├── Alerts/            # AlertPresenter, ErrorHandler
 │   │   ├── Animation/         # AnimationHelper
 │   │   ├── Components/
@@ -208,7 +210,8 @@ LumiKit/
 │   │   │   ├── Pickers/       # DatePickerHelper
 │   │   │   ├── Badge, Banner, Card, Chip, Divider, EmptyState,
 │   │   │   ├── Gradient, LoadingState, SearchBar, Skeleton, Toast,
-│   │   │   └── FloatingButton, TipView, CardPage, CardPanel
+│   │   │   ├── FloatingButton, TipView, CardPage, CardPanel,
+│   │   │   └── ScrollStackViewController
 │   │   ├── Controls/          # Button, SegmentedControl, TextField, TextView, ToggleButton
 │   │   ├── DesignSystem/
 │   │   │   ├── Tokens/        # Color, Spacing, CornerRadius, Alpha, Typography, Layout, Shadow
@@ -220,7 +223,8 @@ LumiKit/
 │   │   ├── Photo/             # CropAspectRatio, PhotoEXIF
 │   │   ├── QRCode/            # QRCodeGenerator
 │   │   ├── Share/             # SharePreview, ShareService
-│   │   └── Utilities/         # DeviceHelper, ImageUtil, KeyboardObserver
+│   │   └── Utilities/         # DeviceHelper, ImageUtil, KeyboardObserver,
+│   │                          # MarkdownRenderer
 │   └── LumiKitLottieTests/    # 7 tests, 1 suite
 │       └── LMKLottieRefreshControlTests.swift
 ```
@@ -285,7 +289,7 @@ LMKThemeManager.shared.apply(spacing: .init(large: 20))
 
 | Factory | Purpose |
 |---------|---------|
-| `LMKButtonFactory` | Pre-styled buttons (primary, secondary, destructive) |
+| `LMKButtonFactory` | Role-based button factory — `filled(role:)` and `outlined(role:)` with `LMKButtonRole` (primary, secondary, destructive, warning, success, info) |
 | `LMKCardFactory` | Card views with shadow and corner radius |
 | `LMKLabelFactory` | Styled labels (title, subtitle, body, caption) |
 
@@ -317,6 +321,7 @@ LMKThemeManager.shared.apply(spacing: .init(large: 20))
 | `LMKCardPanelController` | Centered floating card panel in its own overlay window, with shadow and slide animation |
 | `LMKCardPageLayout` | Shared layout constants for card page controllers (header height, symbol sizes) |
 | `LMKCardPanelLayout` | Shared layout constants for card panel controllers (max width, insets, height ratio) |
+| `LMKScrollStackViewController` | Base class for scrollable vertical stack layout — configurable spacing, insets, keyboard dismiss, safe area. Subclasses override `setupStackContent()` |
 
 ---
 
@@ -392,7 +397,8 @@ LumiKitUI includes device-aware helpers and system observers:
 |---------|---------|
 | `LMKDeviceHelper` | Device type detection (`.iPhone`, `.iPad`, `.macCatalyst`), screen size classification, notch detection |
 | `LMKKeyboardObserver` | Keyboard show/hide observer with height and animation duration info |
-| `LMKImageUtil` | SF Symbol creation and `CVPixelBuffer` to JPEG conversion |
+| `LMKImageUtil` | SF Symbol creation (`makeSymbolImage` with background), `CVPixelBuffer` to JPEG conversion |
+| `LMKMarkdownRenderer` | Markdown-to-attributed-string rendering and pre-configured inline text views |
 | `LMKSceneUtil` | Key window and connected scene retrieval |
 | `LMKOverscrollFooterHelper` | Positions a footer view below scroll content, revealed only on overscroll |
 

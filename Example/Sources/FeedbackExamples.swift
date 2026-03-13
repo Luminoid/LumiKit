@@ -17,16 +17,16 @@ final class ToastDetailViewController: DetailViewController {
 
         addSectionHeader("Tap to show")
 
-        let successButton = LMKButtonFactory.successOutlined(title: "Show Success Toast", target: self, action: #selector(showSuccess))
+        let successButton = LMKButtonFactory.outlined(role: .success, title: "Show Success Toast", target: self, action: #selector(showSuccess))
         stack.addArrangedSubview(successButton)
 
-        let errorButton = LMKButtonFactory.destructiveOutlined(title: "Show Error Toast", target: self, action: #selector(showError))
+        let errorButton = LMKButtonFactory.outlined(role: .destructive, title: "Show Error Toast", target: self, action: #selector(showError))
         stack.addArrangedSubview(errorButton)
 
-        let warningButton = LMKButtonFactory.warningOutlined(title: "Show Warning Toast", target: self, action: #selector(showWarning))
+        let warningButton = LMKButtonFactory.outlined(role: .warning, title: "Show Warning Toast", target: self, action: #selector(showWarning))
         stack.addArrangedSubview(warningButton)
 
-        let infoButton = LMKButtonFactory.infoOutlined(title: "Show Info Toast", target: self, action: #selector(showInfo))
+        let infoButton = LMKButtonFactory.outlined(role: .info, title: "Show Info Toast", target: self, action: #selector(showInfo))
         stack.addArrangedSubview(infoButton)
     }
 
@@ -45,35 +45,35 @@ final class AlertsDetailViewController: DetailViewController {
         addSectionHeader("LMKAlertPresenter")
         stack.addArrangedSubview(LMKLabelFactory.caption(text: "Standardized alert and confirmation dialogs with configurable strings."))
 
-        let confirmButton = LMKButtonFactory.primary(title: "Show Confirmation", target: self, action: #selector(showConfirmation))
+        let confirmButton = LMKButtonFactory.filled(role: .primary, title: "Show Confirmation", target: self, action: #selector(showConfirmation))
         stack.addArrangedSubview(confirmButton)
 
-        let alertButton = LMKButtonFactory.secondary(title: "Show Alert", target: self, action: #selector(showAlert))
+        let alertButton = LMKButtonFactory.filled(role: .secondary, title: "Show Alert", target: self, action: #selector(showAlert))
         stack.addArrangedSubview(alertButton)
 
         addDivider()
         addSectionHeader("LMKErrorHandler")
         stack.addArrangedSubview(LMKLabelFactory.caption(text: "Severity-based error presentation — info shows a toast, warning shows an alert, error shows a toast (or alert with retry), critical always shows an alert."))
 
-        let infoButton = makeErrorButton(title: "Info (toast)", color: LMKColor.info) { [weak self] in
+        let infoButton = makeErrorButton(title: "Info (toast)", role: .info) { [weak self] in
             guard let self else { return }
             LMKErrorHandler.present(on: self, message: "Informational message.", severity: .info)
         }
         stack.addArrangedSubview(infoButton)
 
-        let warningButton = makeErrorButton(title: "Warning (alert)", color: LMKColor.warning) { [weak self] in
+        let warningButton = makeErrorButton(title: "Warning (alert)", role: .warning) { [weak self] in
             guard let self else { return }
             LMKErrorHandler.present(on: self, message: "Something needs attention.", severity: .warning)
         }
         stack.addArrangedSubview(warningButton)
 
-        let errorToastButton = makeErrorButton(title: "Error (toast, no retry)", color: LMKColor.error) { [weak self] in
+        let errorToastButton = makeErrorButton(title: "Error (toast, no retry)", role: .destructive) { [weak self] in
             guard let self else { return }
             LMKErrorHandler.present(on: self, message: "Transient error — no retry available.", severity: .error)
         }
         stack.addArrangedSubview(errorToastButton)
 
-        let errorRetryButton = makeErrorButton(title: "Error (alert + retry)", color: LMKColor.error) { [weak self] in
+        let errorRetryButton = makeErrorButton(title: "Error (alert + retry)", role: .destructive) { [weak self] in
             guard let self else { return }
             LMKErrorHandler.present(
                 on: self,
@@ -87,7 +87,7 @@ final class AlertsDetailViewController: DetailViewController {
         }
         stack.addArrangedSubview(errorRetryButton)
 
-        let criticalButton = makeErrorButton(title: "Critical (alert + retry)", color: LMKColor.error) { [weak self] in
+        let criticalButton = makeErrorButton(title: "Critical (alert + retry)", role: .destructive) { [weak self] in
             guard let self else { return }
             LMKErrorHandler.present(
                 on: self,
@@ -124,16 +124,8 @@ final class AlertsDetailViewController: DetailViewController {
         )
     }
 
-    private func makeErrorButton(title: String, color: UIColor, action: @escaping () -> Void) -> LMKButton {
-        let factoryMethod: (String, Any?, Selector) -> LMKButton
-        switch color {
-        case LMKColor.info: factoryMethod = LMKButtonFactory.infoOutlined
-        case LMKColor.warning: factoryMethod = LMKButtonFactory.warningOutlined
-        case LMKColor.error: factoryMethod = LMKButtonFactory.destructiveOutlined
-        default: factoryMethod = LMKButtonFactory.primaryOutlined
-        }
-
-        let button = factoryMethod(title, self, #selector(handleErrorButton))
+    private func makeErrorButton(title: String, role: LMKButtonRole, action: @escaping () -> Void) -> LMKButton {
+        let button = LMKButtonFactory.outlined(role: role, title: title, target: self, action: #selector(handleErrorButton))
         button.tapHandler = action
         return button
     }
@@ -151,13 +143,13 @@ final class ProgressDetailViewController: DetailViewController {
 
         addSectionHeader("Determinate")
         stack.addArrangedSubview(LMKLabelFactory.caption(text: "Shows a progress bar with percentage and current task label. Includes cancel button."))
-        let determinateButton = LMKButtonFactory.primary(title: "Show Determinate Progress", target: self, action: #selector(showDeterminate))
+        let determinateButton = LMKButtonFactory.filled(role: .primary, title: "Show Determinate Progress", target: self, action: #selector(showDeterminate))
         stack.addArrangedSubview(determinateButton)
 
         addDivider()
         addSectionHeader("Indeterminate")
         stack.addArrangedSubview(LMKLabelFactory.caption(text: "Shows a spinner without a progress bar. Useful when total work is unknown."))
-        let indeterminateButton = LMKButtonFactory.secondary(title: "Show Indeterminate Progress", target: self, action: #selector(showIndeterminate))
+        let indeterminateButton = LMKButtonFactory.filled(role: .secondary, title: "Show Indeterminate Progress", target: self, action: #selector(showIndeterminate))
         stack.addArrangedSubview(indeterminateButton)
     }
 
@@ -217,13 +209,13 @@ final class HapticsDetailViewController: DetailViewController {
         let notifRow = UIStackView(lmk_axis: .horizontal, spacing: LMKSpacing.small)
         notifRow.distribution = .fillEqually
 
-        let successNotif = LMKButtonFactory.successOutlined(title: "Success", target: self, action: #selector(hapticSuccess))
+        let successNotif = LMKButtonFactory.outlined(role: .success, title: "Success", target: self, action: #selector(hapticSuccess))
         notifRow.addArrangedSubview(successNotif)
 
-        let warningNotif = LMKButtonFactory.warningOutlined(title: "Warning", target: self, action: #selector(hapticWarning))
+        let warningNotif = LMKButtonFactory.outlined(role: .warning, title: "Warning", target: self, action: #selector(hapticWarning))
         notifRow.addArrangedSubview(warningNotif)
 
-        let errorNotif = LMKButtonFactory.destructiveOutlined(title: "Error", target: self, action: #selector(hapticError))
+        let errorNotif = LMKButtonFactory.outlined(role: .destructive, title: "Error", target: self, action: #selector(hapticError))
         notifRow.addArrangedSubview(errorNotif)
 
         stack.addArrangedSubview(notifRow)
@@ -231,7 +223,7 @@ final class HapticsDetailViewController: DetailViewController {
         addDivider()
         addSectionHeader("Selection Feedback")
         stack.addArrangedSubview(LMKLabelFactory.caption(text: "Subtle tick for picker changes and control selection."))
-        let selectionButton = LMKButtonFactory.primaryOutlined(title: "Trigger Selection", target: self, action: #selector(hapticSelection))
+        let selectionButton = LMKButtonFactory.outlined(role: .primary, title: "Trigger Selection", target: self, action: #selector(hapticSelection))
         stack.addArrangedSubview(selectionButton)
 
         addDivider()
@@ -241,13 +233,13 @@ final class HapticsDetailViewController: DetailViewController {
         let impactRow = UIStackView(lmk_axis: .horizontal, spacing: LMKSpacing.small)
         impactRow.distribution = .fillEqually
 
-        let lightImpact = LMKButtonFactory.secondaryOutlined(title: "Light", target: self, action: #selector(hapticLight))
+        let lightImpact = LMKButtonFactory.outlined(role: .secondary, title: "Light", target: self, action: #selector(hapticLight))
         impactRow.addArrangedSubview(lightImpact)
 
-        let mediumImpact = LMKButtonFactory.secondaryOutlined(title: "Medium", target: self, action: #selector(hapticMedium))
+        let mediumImpact = LMKButtonFactory.outlined(role: .secondary, title: "Medium", target: self, action: #selector(hapticMedium))
         impactRow.addArrangedSubview(mediumImpact)
 
-        let heavyImpact = LMKButtonFactory.secondaryOutlined(title: "Heavy", target: self, action: #selector(hapticHeavy))
+        let heavyImpact = LMKButtonFactory.outlined(role: .secondary, title: "Heavy", target: self, action: #selector(hapticHeavy))
         impactRow.addArrangedSubview(heavyImpact)
 
         stack.addArrangedSubview(impactRow)

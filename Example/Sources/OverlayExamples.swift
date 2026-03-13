@@ -16,24 +16,24 @@ final class ActionSheetDetailViewController: DetailViewController {
         super.viewDidLoad()
 
         addSectionHeader("Basic Action Sheet")
-        let basicButton = LMKButtonFactory.primary(title: "Show Action Sheet", target: self, action: #selector(showBasicSheet))
+        let basicButton = LMKButtonFactory.filled(role: .primary, title: "Show Action Sheet", target: self, action: #selector(showBasicSheet))
         stack.addArrangedSubview(basicButton)
 
         addDivider()
         addSectionHeader("With Icons")
-        let iconButton = LMKButtonFactory.secondary(title: "Show Action Sheet with Icons", target: self, action: #selector(showIconSheet))
+        let iconButton = LMKButtonFactory.filled(role: .secondary, title: "Show Action Sheet with Icons", target: self, action: #selector(showIconSheet))
         stack.addArrangedSubview(iconButton)
 
         addDivider()
         addSectionHeader("Sub-Page Navigation")
         stack.addArrangedSubview(LMKLabelFactory.caption(text: "Actions can navigate to sub-pages within the same sheet. Tap back or cancel to return/dismiss."))
-        let subPageButton = LMKButtonFactory.primary(title: "Show with Sub-Pages", target: self, action: #selector(showSubPageSheet))
+        let subPageButton = LMKButtonFactory.filled(role: .primary, title: "Show with Sub-Pages", target: self, action: #selector(showSubPageSheet))
         stack.addArrangedSubview(subPageButton)
 
         addDivider()
         addSectionHeader("Sub-Page with Content View")
         stack.addArrangedSubview(LMKLabelFactory.caption(text: "Sub-pages can embed custom views (e.g. a date picker) with a confirm button."))
-        let contentButton = LMKButtonFactory.secondary(title: "Show with Date Picker", target: self, action: #selector(showContentSubPageSheet))
+        let contentButton = LMKButtonFactory.filled(role: .secondary, title: "Show with Date Picker", target: self, action: #selector(showContentSubPageSheet))
         stack.addArrangedSubview(contentButton)
     }
 
@@ -174,31 +174,31 @@ final class DatePickerDetailViewController: DetailViewController {
 
         addSectionHeader("Single Date")
         stack.addArrangedSubview(LMKLabelFactory.caption(text: "General-purpose date picker with optional min/max bounds."))
-        let singleButton = LMKButtonFactory.primary(title: "Pick a Date", target: self, action: #selector(showSinglePicker))
+        let singleButton = LMKButtonFactory.filled(role: .primary, title: "Pick a Date", target: self, action: #selector(showSinglePicker))
         stack.addArrangedSubview(singleButton)
 
         addDivider()
         addSectionHeader("Future Date")
         stack.addArrangedSubview(LMKLabelFactory.caption(text: "Restricted to future dates — useful for scheduling. Today can be excluded."))
-        let futureButton = LMKButtonFactory.secondary(title: "Pick Future Date", target: self, action: #selector(showFuturePicker))
+        let futureButton = LMKButtonFactory.filled(role: .secondary, title: "Pick Future Date", target: self, action: #selector(showFuturePicker))
         stack.addArrangedSubview(futureButton)
 
         addDivider()
         addSectionHeader("Past Date")
         stack.addArrangedSubview(LMKLabelFactory.caption(text: "Restricted to past dates — useful for logging events."))
-        let pastButton = LMKButtonFactory.secondary(title: "Pick Past Date", target: self, action: #selector(showPastPicker))
+        let pastButton = LMKButtonFactory.filled(role: .secondary, title: "Pick Past Date", target: self, action: #selector(showPastPicker))
         stack.addArrangedSubview(pastButton)
 
         addDivider()
         addSectionHeader("Date Range")
         stack.addArrangedSubview(LMKLabelFactory.caption(text: "Two date pickers for From/To selection with live enforcement — dates auto-swap if inverted."))
-        let rangeButton = LMKButtonFactory.primary(title: "Pick Date Range", target: self, action: #selector(showRangePicker))
+        let rangeButton = LMKButtonFactory.filled(role: .primary, title: "Pick Date Range", target: self, action: #selector(showRangePicker))
         stack.addArrangedSubview(rangeButton)
 
         addDivider()
         addSectionHeader("Date with Notes")
         stack.addArrangedSubview(LMKLabelFactory.caption(text: "Date picker with an embedded text field for adding context."))
-        let notesButton = LMKButtonFactory.secondary(title: "Pick Date with Notes", target: self, action: #selector(showDateWithNotes))
+        let notesButton = LMKButtonFactory.filled(role: .secondary, title: "Pick Date with Notes", target: self, action: #selector(showDateWithNotes))
         stack.addArrangedSubview(notesButton)
     }
 
@@ -280,7 +280,7 @@ final class TipViewDetailViewController: DetailViewController {
         super.viewDidLoad()
 
         addSectionHeader("Center Style")
-        let centerButton = LMKButtonFactory.primaryOutlined(title: "Show Centered Tip", target: self, action: #selector(showCenteredTip))
+        let centerButton = LMKButtonFactory.outlined(role: .primary, title: "Show Centered Tip", target: self, action: #selector(showCenteredTip))
         stack.addArrangedSubview(centerButton)
 
         addDivider()
@@ -290,12 +290,12 @@ final class TipViewDetailViewController: DetailViewController {
         targetChip = chip
         stack.addArrangedSubview(chip)
 
-        let pointedButton = LMKButtonFactory.secondaryOutlined(title: "Show Pointed Tip", target: self, action: #selector(showPointedTip))
+        let pointedButton = LMKButtonFactory.outlined(role: .secondary, title: "Show Pointed Tip", target: self, action: #selector(showPointedTip))
         stack.addArrangedSubview(pointedButton)
 
         addDivider()
         addSectionHeader("Message Only")
-        let simpleButton = LMKButtonFactory.infoOutlined(title: "Show Simple Tip", target: self, action: #selector(showSimpleTip))
+        let simpleButton = LMKButtonFactory.outlined(role: .info, title: "Show Simple Tip", target: self, action: #selector(showSimpleTip))
         stack.addArrangedSubview(simpleButton)
     }
 
@@ -334,25 +334,25 @@ final class CardPageDetailViewController: DetailViewController {
 
         addSectionHeader("Basic Card Page")
         stack.addArrangedSubview(LMKLabelFactory.body(text: "Header with back/trailing buttons, configurable strings, and content container. Designed for use inside a UINavigationController with hidden system nav bar."))
-        let basicButton = LMKButtonFactory.primary(title: "Show Basic Card Page", target: self, action: #selector(showBasic))
+        let basicButton = LMKButtonFactory.filled(role: .primary, title: "Show Basic Card Page", target: self, action: #selector(showBasic))
         stack.addArrangedSubview(basicButton)
 
         addDivider()
         addSectionHeader("Custom Buttons")
         stack.addArrangedSubview(LMKLabelFactory.caption(text: "Custom leading symbol (xmark), hidden trailing button, and header separator."))
-        let customButton = LMKButtonFactory.secondary(title: "Show Custom Buttons", target: self, action: #selector(showCustomButtons))
+        let customButton = LMKButtonFactory.filled(role: .secondary, title: "Show Custom Buttons", target: self, action: #selector(showCustomButtons))
         stack.addArrangedSubview(customButton)
 
         addDivider()
         addSectionHeader("No Buttons")
         stack.addArrangedSubview(LMKLabelFactory.caption(text: "Both buttons hidden — standalone info page with expanded title area."))
-        let noButtonsButton = LMKButtonFactory.secondary(title: "Show No Buttons", target: self, action: #selector(showNoButtons))
+        let noButtonsButton = LMKButtonFactory.filled(role: .secondary, title: "Show No Buttons", target: self, action: #selector(showNoButtons))
         stack.addArrangedSubview(noButtonsButton)
 
         addDivider()
         addSectionHeader("Multi-Page Navigation")
         stack.addArrangedSubview(LMKLabelFactory.caption(text: "Push/pop content views with slide animation. The back button auto-shows when pages are stacked."))
-        let multiPageButton = LMKButtonFactory.primary(title: "Show Multi-Page", target: self, action: #selector(showMultiPage))
+        let multiPageButton = LMKButtonFactory.filled(role: .primary, title: "Show Multi-Page", target: self, action: #selector(showMultiPage))
         stack.addArrangedSubview(multiPageButton)
     }
 
@@ -445,13 +445,13 @@ private final class MultiPageExampleCardPage: LMKCardPageController {
         let label = LMKLabelFactory.body(text: "Tap a button to push a new content page with slide animation. The back button auto-appears for navigation.")
         stack.addArrangedSubview(label)
 
-        let settingsButton = LMKButtonFactory.primaryOutlined(title: "Push Settings Page", target: self, action: #selector(pushSettings))
+        let settingsButton = LMKButtonFactory.outlined(role: .primary, title: "Push Settings Page", target: self, action: #selector(pushSettings))
         stack.addArrangedSubview(settingsButton)
 
-        let profileButton = LMKButtonFactory.secondaryOutlined(title: "Push Profile Page", target: self, action: #selector(pushProfile))
+        let profileButton = LMKButtonFactory.outlined(role: .secondary, title: "Push Profile Page", target: self, action: #selector(pushProfile))
         stack.addArrangedSubview(profileButton)
 
-        let aboutButton = LMKButtonFactory.infoOutlined(title: "Push About Page", target: self, action: #selector(pushAbout))
+        let aboutButton = LMKButtonFactory.outlined(role: .info, title: "Push About Page", target: self, action: #selector(pushAbout))
         stack.addArrangedSubview(aboutButton)
 
         contentContainerView.addSubview(stack)
@@ -494,7 +494,7 @@ private final class MultiPageExampleCardPage: LMKCardPageController {
         label.textAlignment = .center
         contentStack.addArrangedSubview(label)
 
-        let nestedButton = LMKButtonFactory.secondaryOutlined(title: "Push Another Level", target: self, action: #selector(pushNestedPage))
+        let nestedButton = LMKButtonFactory.outlined(role: .secondary, title: "Push Another Level", target: self, action: #selector(pushNestedPage))
         contentStack.addArrangedSubview(nestedButton)
 
         let wrapper = UIView()
@@ -530,25 +530,25 @@ final class CardPanelDetailViewController: DetailViewController {
 
         addSectionHeader("Tap to Dismiss")
         stack.addArrangedSubview(LMKLabelFactory.body(text: "A floating card panel with a light overlay. Tap outside the card or tap dismiss to close."))
-        let basicButton = LMKButtonFactory.primary(title: "Show Card Panel", target: self, action: #selector(showBasicPanel))
+        let basicButton = LMKButtonFactory.filled(role: .primary, title: "Show Card Panel", target: self, action: #selector(showBasicPanel))
         stack.addArrangedSubview(basicButton)
 
         addDivider()
         addSectionHeader("No Background Dismiss")
         stack.addArrangedSubview(LMKLabelFactory.caption(text: "Background tap disabled — no overlay. Must dismiss via the button inside the card."))
-        let noDismissButton = LMKButtonFactory.secondary(title: "Show No-Dismiss Panel", target: self, action: #selector(showNoDismissPanel))
+        let noDismissButton = LMKButtonFactory.filled(role: .secondary, title: "Show No-Dismiss Panel", target: self, action: #selector(showNoDismissPanel))
         stack.addArrangedSubview(noDismissButton)
 
         addDivider()
         addSectionHeader("Panel + Card Page")
         stack.addArrangedSubview(LMKLabelFactory.caption(text: "Card panel hosting an LMKCardPageController with multi-page navigation inside."))
-        let combinedButton = LMKButtonFactory.secondary(title: "Show Combined", target: self, action: #selector(showCombinedPanel))
+        let combinedButton = LMKButtonFactory.filled(role: .secondary, title: "Show Combined", target: self, action: #selector(showCombinedPanel))
         stack.addArrangedSubview(combinedButton)
 
         addDivider()
         addSectionHeader("Panel + Card Page (No Dismiss)")
         stack.addArrangedSubview(LMKLabelFactory.caption(text: "Same combined experience with background tap disabled — must close via the X button."))
-        let combinedNoDismissButton = LMKButtonFactory.secondary(title: "Show Combined (No Dismiss)", target: self, action: #selector(showCombinedNoDismissPanel))
+        let combinedNoDismissButton = LMKButtonFactory.filled(role: .secondary, title: "Show Combined (No Dismiss)", target: self, action: #selector(showCombinedNoDismissPanel))
         stack.addArrangedSubview(combinedNoDismissButton)
     }
 
@@ -611,7 +611,7 @@ private final class BasicPanelContentViewController: UIViewController {
         label.textAlignment = .center
         stack.addArrangedSubview(label)
 
-        let dismissButton = LMKButtonFactory.destructive(title: "Dismiss", target: self, action: #selector(dismissPanel))
+        let dismissButton = LMKButtonFactory.filled(role: .destructive, title: "Dismiss", target: self, action: #selector(dismissPanel))
         stack.addArrangedSubview(dismissButton)
 
         view.addSubview(stack)
@@ -640,10 +640,10 @@ private final class PanelCardPageExample: LMKCardPageController {
         let label = LMKLabelFactory.body(text: "Card page inside a card panel. Navigate between pages, and dismiss with the close button.")
         stack.addArrangedSubview(label)
 
-        let settingsPanelButton = LMKButtonFactory.primaryOutlined(title: "Push Settings", target: self, action: #selector(pushSettingsDetail))
+        let settingsPanelButton = LMKButtonFactory.outlined(role: .primary, title: "Push Settings", target: self, action: #selector(pushSettingsDetail))
         stack.addArrangedSubview(settingsPanelButton)
 
-        let profilePanelButton = LMKButtonFactory.secondaryOutlined(title: "Push Profile", target: self, action: #selector(pushProfileDetail))
+        let profilePanelButton = LMKButtonFactory.outlined(role: .secondary, title: "Push Profile", target: self, action: #selector(pushProfileDetail))
         stack.addArrangedSubview(profilePanelButton)
 
         contentContainerView.addSubview(stack)
@@ -702,15 +702,15 @@ final class FloatingButtonDetailViewController: DetailViewController {
         addSectionHeader("Floating Button")
         stack.addArrangedSubview(LMKLabelFactory.body(text: "A draggable button that stays on top of all content. Drag it to reposition — it snaps to the nearest edge."))
 
-        let showButton = LMKButtonFactory.primary(title: "Show Floating Button", target: self, action: #selector(showFloating))
+        let showButton = LMKButtonFactory.filled(role: .primary, title: "Show Floating Button", target: self, action: #selector(showFloating))
         stack.addArrangedSubview(showButton)
 
         addDivider()
         addSectionHeader("Badge")
-        let badgeButton = LMKButtonFactory.destructiveOutlined(title: "Show Badge (count: 5)", target: self, action: #selector(showBadgeCount))
+        let badgeButton = LMKButtonFactory.outlined(role: .destructive, title: "Show Badge (count: 5)", target: self, action: #selector(showBadgeCount))
         stack.addArrangedSubview(badgeButton)
 
-        let dotButton = LMKButtonFactory.warningOutlined(title: "Show Dot Badge", target: self, action: #selector(showDotBadge))
+        let dotButton = LMKButtonFactory.outlined(role: .warning, title: "Show Dot Badge", target: self, action: #selector(showDotBadge))
         stack.addArrangedSubview(dotButton)
 
         let hideBadgeButton = LMKButton(title: "Hide Badge", style: .outlined(LMKColor.textSecondary))
@@ -721,7 +721,7 @@ final class FloatingButtonDetailViewController: DetailViewController {
 
         addDivider()
         addSectionHeader("Dismiss")
-        let dismissButton = LMKButtonFactory.destructive(title: "Dismiss Floating Button", target: self, action: #selector(dismissFloating))
+        let dismissButton = LMKButtonFactory.filled(role: .destructive, title: "Dismiss Floating Button", target: self, action: #selector(dismissFloating))
         stack.addArrangedSubview(dismissButton)
     }
 

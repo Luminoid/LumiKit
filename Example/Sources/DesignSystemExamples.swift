@@ -225,17 +225,6 @@ final class MarkdownDetailViewController: DetailViewController {
     }
 
     private func addMarkdownTextView(_ markdown: String) {
-        let textView = UITextView()
-        textView.isEditable = false
-        textView.isScrollEnabled = false
-        textView.backgroundColor = .clear
-        textView.textContainerInset = .zero
-        textView.textContainer.lineFragmentPadding = 0
-        textView.attributedText = LMKMarkdownRenderer.render(markdown)
-        textView.linkTextAttributes = [
-            .foregroundColor: LMKColor.primary,
-            .underlineStyle: NSUnderlineStyle.single.rawValue,
-        ]
-        stack.addArrangedSubview(textView)
+        stack.addArrangedSubview(LMKMarkdownRenderer.makeInlineTextView(markdown: markdown))
     }
 }
