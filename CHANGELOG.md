@@ -7,6 +7,53 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-03-13
+
+### Added
+
+#### Components
+- **LMKScrollStackViewController** — Base class for scrollable vertical stack layout with configurable spacing, insets, keyboard dismiss, and safe area handling
+- **LMKNavigationDirection** — Enum for navigation direction semantics (forward/backward)
+- **LMKMarkdownRenderer** — Markdown-to-attributed-string renderer with `makeInlineTextView` helper
+
+#### Controls
+- **LMKButtonFactory role-based API** — `LMKButtonRole` enum with `filled(role:)` / `outlined(role:)` (replaced 12 individual methods)
+
+#### Utilities
+- **LMKImageUtil.makeSymbolImage** — SF Symbol rendering with optional background circle
+- **LMKSkeletonCell.startShimmers(in:)** — Static convenience for triggering shimmer on visible skeleton cells
+
+#### Infrastructure
+- **Git hooks** — Pre-commit hook for SwiftFormat/SwiftLint
+- **Makefile** — Added format/lint targets
+
+### Changed
+
+- **LMKBottomSheetController** — Added drag-to-dismiss gesture support
+- **LMKTipView** — Added position offset support for fine-tuning tip placement
+- **LMKToastView** — Updated visual style
+- **LMKShadow** — Added more shadow style options (toast, floating)
+- **LMKChipView** — Enhanced with additional configuration options
+- **LMKCardPageController** — Improved navigation direction handling
+- **SwiftLint/SwiftFormat** — Updated configuration and enforced across all targets
+- **Test suite** — Expanded from 566 to 615 tests (76 Core + 8 Network + 524 UI + 7 Lottie)
+- **Source files** — Increased from 89 to 100 files (86 test files)
+- **Input validation** — Added validation and clamping across multiple components (LMKTextField, LMKTextView, LMKFloatingButton, LMKGradientView)
+- **Accessibility** — Improved VoiceOver support across components
+
+### Removed
+
+- **LMKTouchExpandedButton** — Removed in favor of standard UIKit hit testing approaches
+
+### Fixed
+
+- **LMKNetworkDetailViewController** — Fixed copy button not working
+- **LMKPhotoCropViewController** — Fixed crop boundary sign calculation
+- **LMKLogStore** — Code quality improvement
+- **LMKNetworkRequestStore** — Code quality improvement
+- **LMKDatePickerHelper** — Fixed date range validation
+- **Example app** — Fixed haptics demo, date picker range, about section
+
 ## [0.2.0] - 2026-02-25
 
 ### Added
@@ -155,5 +202,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - All configurable strings use module-level `nonisolated(unsafe)` vars for localization
 - MIT License
 
+[0.3.0]: https://github.com/Luminoid/LumiKit/compare/0.2.0...0.3.0
 [0.2.0]: https://github.com/Luminoid/LumiKit/compare/0.1.0...0.2.0
 [0.1.0]: https://github.com/Luminoid/LumiKit/releases/tag/0.1.0

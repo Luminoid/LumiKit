@@ -72,7 +72,7 @@ Add LumiKit to your project via Swift Package Manager:
 dependencies: [
     .package(path: "../LumiKit")  // Local package
     // or
-    .package(url: "https://github.com/Luminoid/LumiKit.git", from: "0.2.0")
+    .package(url: "https://github.com/Luminoid/LumiKit.git", from: "0.3.0")
 ]
 ```
 
