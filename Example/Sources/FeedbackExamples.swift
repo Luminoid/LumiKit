@@ -228,21 +228,32 @@ final class HapticsDetailViewController: DetailViewController {
 
         addDivider()
         addSectionHeader("Impact Feedback")
-        stack.addArrangedSubview(LMKLabelFactory.caption(text: "Physical impact feel — light, medium, or heavy intensity."))
+        stack.addArrangedSubview(LMKLabelFactory.caption(text: "Physical impact feel — light, medium, heavy, soft (cushioned), or rigid (sharp)."))
 
-        let impactRow = UIStackView(lmk_axis: .horizontal, spacing: LMKSpacing.small)
-        impactRow.distribution = .fillEqually
+        let impactRow1 = UIStackView(lmk_axis: .horizontal, spacing: LMKSpacing.small)
+        impactRow1.distribution = .fillEqually
 
         let lightImpact = LMKButtonFactory.outlined(role: .secondary, title: "Light", target: self, action: #selector(hapticLight))
-        impactRow.addArrangedSubview(lightImpact)
+        impactRow1.addArrangedSubview(lightImpact)
 
         let mediumImpact = LMKButtonFactory.outlined(role: .secondary, title: "Medium", target: self, action: #selector(hapticMedium))
-        impactRow.addArrangedSubview(mediumImpact)
+        impactRow1.addArrangedSubview(mediumImpact)
 
         let heavyImpact = LMKButtonFactory.outlined(role: .secondary, title: "Heavy", target: self, action: #selector(hapticHeavy))
-        impactRow.addArrangedSubview(heavyImpact)
+        impactRow1.addArrangedSubview(heavyImpact)
 
-        stack.addArrangedSubview(impactRow)
+        stack.addArrangedSubview(impactRow1)
+
+        let impactRow2 = UIStackView(lmk_axis: .horizontal, spacing: LMKSpacing.small)
+        impactRow2.distribution = .fillEqually
+
+        let softImpact = LMKButtonFactory.outlined(role: .secondary, title: "Soft", target: self, action: #selector(hapticSoft))
+        impactRow2.addArrangedSubview(softImpact)
+
+        let rigidImpact = LMKButtonFactory.outlined(role: .secondary, title: "Rigid", target: self, action: #selector(hapticRigid))
+        impactRow2.addArrangedSubview(rigidImpact)
+
+        stack.addArrangedSubview(impactRow2)
     }
 
     @objc private func hapticSuccess() { LMKHapticFeedbackHelper.success() }
@@ -263,6 +274,16 @@ final class HapticsDetailViewController: DetailViewController {
     @objc private func hapticHeavy() {
         LMKHapticFeedbackHelper.prepareImpact(.heavy)
         LMKHapticFeedbackHelper.heavy()
+    }
+
+    @objc private func hapticSoft() {
+        LMKHapticFeedbackHelper.prepareImpact(.soft)
+        LMKHapticFeedbackHelper.soft()
+    }
+
+    @objc private func hapticRigid() {
+        LMKHapticFeedbackHelper.prepareImpact(.rigid)
+        LMKHapticFeedbackHelper.rigid()
     }
 
     override func viewDidAppear(_ animated: Bool) {

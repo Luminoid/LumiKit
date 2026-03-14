@@ -173,7 +173,7 @@ final class DatePickerDetailViewController: DetailViewController {
         super.viewDidLoad()
 
         addSectionHeader("Single Date")
-        stack.addArrangedSubview(LMKLabelFactory.caption(text: "General-purpose date picker with optional min/max bounds."))
+        stack.addArrangedSubview(LMKLabelFactory.caption(text: "General-purpose date picker with no bounds — past and future dates allowed."))
         let singleButton = LMKButtonFactory.filled(role: .primary, title: "Pick a Date", target: self, action: #selector(showSinglePicker))
         stack.addArrangedSubview(singleButton)
 
@@ -207,7 +207,8 @@ final class DatePickerDetailViewController: DetailViewController {
             on: self,
             title: "Select Date",
             message: "Choose any date",
-            defaultDate: Date()
+            defaultDate: Date(),
+            maximumDate: nil
         ) { [weak self] date in
             guard let self else { return }
             let formatter = DateFormatter()
