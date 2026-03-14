@@ -109,7 +109,7 @@ public final class LMKSharePreviewViewController: UIViewController {
         config.imagePadding = LMKSpacing.xs
         config.cornerStyle = .medium
         config.baseBackgroundColor = LMKColor.secondary
-        config.baseForegroundColor = .white
+        config.baseForegroundColor = LMKColor.white
         config.buttonSize = .large
         let button = UIButton(configuration: config)
         button.addTarget(self, action: #selector(shareButtonTapped), for: .touchUpInside)
@@ -123,7 +123,7 @@ public final class LMKSharePreviewViewController: UIViewController {
         config.imagePadding = LMKSpacing.xs
         config.cornerStyle = .medium
         config.baseBackgroundColor = LMKColor.secondary
-        config.baseForegroundColor = .white
+        config.baseForegroundColor = LMKColor.white
         config.buttonSize = .large
         let button = UIButton(configuration: config)
         button.addTarget(self, action: #selector(saveImageTapped), for: .touchUpInside)
@@ -264,8 +264,9 @@ public final class LMKSharePreviewViewController: UIViewController {
     // MARK: - Helpers
 
     private func performSaveImage() {
+        let imageToSave = image
         PHPhotoLibrary.shared().performChanges {
-            PHAssetChangeRequest.creationRequestForAsset(from: self.image)
+            PHAssetChangeRequest.creationRequestForAsset(from: imageToSave)
         } completionHandler: { [weak self] success, error in
             Task { @MainActor in
                 guard let self else { return }
@@ -291,14 +292,5 @@ public final class LMKSharePreviewViewController: UIViewController {
             message: Self.strings.photoPermissionDenied,
             severity: .warning
         )
-    }
-}
-
-// MARK: - Touch Expanded Button
-
-/// Button subclass that respects `lmk_touchAreaEdgeInsets` for hit-testing.
-private final class LMKTouchExpandedButton: UIButton {
-    override func point(inside point: CGPoint, with event: UIEvent?) -> Bool {
-        lmk_pointInside(point, with: event)
     }
 }

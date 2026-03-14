@@ -135,7 +135,7 @@ public final class LMKTipView: UIView {
         self.iconImage = icon
         super.init(frame: .zero)
         setupUI()
-        registerForTraitChanges([UITraitUserInterfaceStyle.self]) { (self: LMKTipView, _: UITraitCollection) in
+        registerForTraitChanges([UITraitUserInterfaceStyle.self]) { (self: Self, _: UITraitCollection) in
             self.refreshDynamicColors()
         }
     }
@@ -242,8 +242,8 @@ public final class LMKTipView: UIView {
         guard let hostView = viewController.view else { return }
 
         // Remove existing tips
-        for subview in hostView.subviews where subview is LMKTipView {
-            (subview as? LMKTipView)?.dismiss()
+        for subview in hostView.subviews where subview is Self {
+            (subview as? Self)?.dismiss()
         }
 
         // Configure style-specific layout
@@ -343,7 +343,7 @@ public final class LMKTipView: UIView {
         guard direction == .automatic else { return direction }
 
         let spaceAbove = sourceFrame.minY - hostView.safeAreaInsets.top
-        let estimatedBubbleHeight: CGFloat = 80
+        let estimatedBubbleHeight: CGFloat = 120
         let needed = estimatedBubbleHeight + LMKTipLayout.arrowHeight + LMKTipLayout.sourceSpacing
 
         return spaceAbove >= needed ? .down : .up

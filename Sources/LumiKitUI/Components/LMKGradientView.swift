@@ -42,8 +42,7 @@ public enum LMKGradientDirection: Sendable {
 /// )
 /// ```
 public final class LMKGradientView: UIView {
-    // swiftlint:disable:next force_cast
-    override public class var layerClass: AnyClass { CAGradientLayer.self }
+    override public static var layerClass: AnyClass { CAGradientLayer.self }
 
     private var gradientLayer: CAGradientLayer {
         // Safe: layerClass override guarantees the type.

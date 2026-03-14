@@ -175,7 +175,8 @@ final class PhotoCropDetailViewController: DetailViewController, LMKPhotoCropDel
         let renderer = UIGraphicsImageRenderer(size: size)
         return renderer.image { ctx in
             let colors = [LMKColor.primary.cgColor, LMKColor.secondary.cgColor]
-            let gradient = CGGradient(colorsSpace: CGColorSpaceCreateDeviceRGB(), colors: colors as CFArray, locations: [0, 1])!
+            guard let gradient = CGGradient(colorsSpace: CGColorSpaceCreateDeviceRGB(), colors: colors as CFArray, locations: [0, 1]) else { return }
+
             ctx.cgContext.drawLinearGradient(gradient, start: .zero, end: CGPoint(x: size.width, y: size.height), options: [])
 
             let config = UIImage.SymbolConfiguration(pointSize: 80, weight: .regular)

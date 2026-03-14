@@ -16,7 +16,7 @@
         public let timestamp: Date
         public let request: LMKRequestData
         public let response: LMKResponseData?
-        public let error: Error?
+        public let errorDescription: String?
         public let duration: TimeInterval?
 
         public struct LMKRequestData: Sendable {
@@ -42,7 +42,7 @@
         }
 
         public var isError: Bool {
-            error != nil || (statusCode != nil && !isSuccess)
+            errorDescription != nil || (statusCode != nil && !isSuccess)
         }
 
         public var displayURL: String {
@@ -56,7 +56,7 @@
         public var displayStatus: String {
             if let code = statusCode {
                 "\(code)"
-            } else if error != nil {
+            } else if errorDescription != nil {
                 "Error"
             } else {
                 "Pending"
@@ -70,15 +70,20 @@
 
         public var requestBodyText: String? {
             guard let data = request.body else { return nil }
-            return formatBodyData(data, contentType: request.headers["Content-Type"])
+            return formatBodyData(data, contentType: headerValue(for: "Content-Type", in: request.headers))
         }
 
         public var responseBodyText: String? {
             guard let data = response?.body else { return nil }
-            return formatBodyData(data, contentType: response?.headers["Content-Type"])
+            guard let headers = response?.headers else { return formatBodyData(data, contentType: nil) }
+            return formatBodyData(data, contentType: headerValue(for: "Content-Type", in: headers))
         }
 
         // MARK: - Helpers
+
+        private func headerValue(for key: String, in headers: [String: String]) -> String? {
+            headers.first(where: { $0.key.caseInsensitiveCompare(key) == .orderedSame })?.value
+        }
 
         private func formatBodyData(_ data: Data, contentType: String?) -> String {
             // Try to pretty-print JSON

@@ -55,7 +55,7 @@ public final class LMKToastView: UIView {
         self.duration = duration
         super.init(frame: .zero)
         setupUI()
-        registerForTraitChanges([UITraitUserInterfaceStyle.self]) { (self: LMKToastView, _: UITraitCollection) in
+        registerForTraitChanges([UITraitUserInterfaceStyle.self]) { (self: Self, _: UITraitCollection) in
             self.refreshDynamicColors()
         }
     }
@@ -127,8 +127,8 @@ public final class LMKToastView: UIView {
     }
 
     private func show(in hostView: UIView, safeAreaGuide: UILayoutGuide, onShowComplete: (() -> Void)?) {
-        for subview in hostView.subviews where subview is LMKToastView {
-            (subview as? LMKToastView)?.dismiss()
+        for subview in hostView.subviews where subview is Self {
+            (subview as? Self)?.dismiss()
         }
 
         hostView.addSubview(self)

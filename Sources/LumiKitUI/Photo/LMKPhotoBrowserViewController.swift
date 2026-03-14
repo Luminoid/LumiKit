@@ -99,6 +99,8 @@ public final class LMKPhotoBrowserViewController: UIViewController {
     // Store button references for Mac optimizations
     private var dismissButton: UIButton?
     private var actionButton: UIButton?
+    /// Tag used to identify the empty state label added during `reloadData()`.
+    private let emptyStateLabelTag = 9_999_001
 
     // MARK: - Initialization
 
@@ -648,6 +650,42 @@ public final class LMKPhotoBrowserViewController: UIViewController {
         collectionView.reloadData()
         updateDateLabel()
         updateCounterLabel()
+
+        if photoCount == 0 {
+            // Hide photo-specific UI
+            collectionView.isHidden = true
+            pageControl.isHidden = true
+            counterLabel.isHidden = true
+            dateLabelContainer.isHidden = true
+            actionButton?.isHidden = true
+
+            // Show empty state label if not already present
+            if view.viewWithTag(emptyStateLabelTag) == nil {
+                let emptyLabel = UILabel()
+                emptyLabel.tag = emptyStateLabelTag
+                emptyLabel.text = strings.emptyText
+                emptyLabel.textColor = LMKColor.white
+                emptyLabel.textAlignment = .center
+                view.addSubview(emptyLabel)
+                emptyLabel.snp.makeConstraints { make in
+                    make.center.equalToSuperview()
+                }
+            }
+        } else {
+            // Remove empty state label if present
+            view.viewWithTag(emptyStateLabelTag)?.removeFromSuperview()
+
+            // Restore photo-specific UI
+            collectionView.isHidden = false
+            pageControl.isHidden = false
+            counterLabel.isHidden = false
+            dateLabelContainer.isHidden = false
+            actionButton?.isHidden = false
+
+            // Clamp current index to valid range
+            let safeIndex = max(0, min(currentIndex, photoCount - 1))
+            updateCurrentIndex(safeIndex)
+        }
     }
 
     /// The index of the currently displayed photo.

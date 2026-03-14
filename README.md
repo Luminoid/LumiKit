@@ -48,7 +48,7 @@ LumiKit is organized into four targets so apps can import only what they need:
 | **LumiKitUI** | LumiKitCore + LumiKitNetwork + SnapKit | Design system tokens, theme manager, animation, haptics, alerts, components, controls, photo browser/crop, network debug UI (DEBUG), UIKit extensions |
 | **LumiKitLottie** | LumiKitUI + Lottie | Lottie-powered pull-to-refresh control |
 
-**98 source files** across 4 targets, with **615 tests** across 4 test targets:
+**101 source files** across 4 targets, with **615 tests** across 4 test targets:
 - **LumiKitCoreTests**: 76 tests (12 suites)
 - **LumiKitNetworkTests**: 8 tests (1 suite)
 - **LumiKitUITests**: 524 tests (91 suites)
@@ -130,7 +130,14 @@ xcodegen generate
 open LumiKitExample.xcodeproj
 ```
 
-The example includes 18 interactive pages: Typography, Colors, Cards, Badges, Chips, Empty State, Buttons, Toast, Controls, Gradient, Loading State, Banner, Action Sheet, QR Code, Photo Browser, Photo Crop, Tip View, and Floating Button.
+The example includes **28 interactive pages** across 6 sections:
+
+- **Design System**: Typography, Colors, Markdown
+- **Components**: Cards, Badges, Chips, Banners, Empty State, Gradient, Loading State
+- **Controls**: Buttons, Segmented Control, Text Field, Text View, Search & Toggle
+- **Feedback**: Toast, Alerts & Errors, Progress, Haptics
+- **Overlays**: Action Sheet, Date Picker, Tip View, Card Page, Card Panel, Floating Button
+- **Media**: Photo Browser, Photo Crop, QR Code
 
 ---
 
@@ -153,7 +160,7 @@ LumiKit/
 │   │   ├── LMKNetworkLogger.swift            # URLProtocol-based interception
 │   │   ├── LMKNetworkRequestStore.swift       # Thread-safe ring buffer
 │   │   ├── LMKNetworkRequestRecord.swift      # Request/response data
-│   │   └── URLSessionConfiguration+LMKDebug.swift  # .withNetworkLogging()
+│   │   └── URLSessionConfiguration+LMKDebug.swift  # .enableNetworkLogging()
 │   ├── LumiKitUI/
 │   │   ├── Alerts/            # LMKAlertPresenter, LMKErrorHandler
 │   │   ├── Animation/         # LMKAnimationHelper, LMKAnimationTheme
@@ -167,15 +174,16 @@ LumiKit/
 │   │   │   ├── LMKSearchBar, LMKSkeletonCell, LMKToastView, LMKTipView,
 │   │   │   ├── LMKCardPageController, LMKCardPageLayout,
 │   │   │   ├── LMKCardPanelController, LMKCardPanelLayout,
+│   │   │   ├── LMKNavigationDirection, LMKOverscrollFooterHelper,
 │   │   │   └── LMKScrollStackViewController
 │   │   ├── Controls/          # LMKButton, LMKSegmentedControl, LMKToggleButton,
-│   │   │                      # LMKTextField, LMKTextView
+│   │   │                      # LMKTextField, LMKTextView, LMKTouchExpandedButton
 │   │   ├── DesignSystem/
 │   │   │   ├── Tokens/        # LMKColor, LMKSpacing, LMKCornerRadius, LMKAlpha,
-│   │   │   │                  # LMKLayout, LMKShadow, LMKTypography
+│   │   │   │                  # LMKLayout, LMKShadow, LMKTypography, LMKBadge
 │   │   │   ├── Themes/        # LMKSpacingTheme, LMKCornerRadiusTheme, LMKAlphaTheme,
 │   │   │   │                  # LMKLayoutTheme, LMKShadowTheme, LMKTypographyTheme,
-│   │   │   │                  # LMKBadgeTheme
+│   │   │   │                  # LMKBadgeTheme, LMKAnimationTheme
 │   │   │   ├── Factories/     # LMKButtonFactory, LMKCardFactory, LMKLabelFactory
 │   │   │   └── LMKTheme.swift # LMKTheme protocol + LMKThemeManager + LMKDefaultTheme
 │   │   ├── Debug/             # [DEBUG only]
@@ -188,11 +196,10 @@ LumiKit/
 │   │   ├── QRCode/            # LMKQRCodeGenerator
 │   │   ├── Share/             # LMKShareService, LMKSharePreviewViewController
 │   │   └── Utilities/         # LMKDeviceHelper, LMKKeyboardObserver,
-│   │                          # LMKSceneUtil, LMKImageUtil, LMKMarkdownRenderer,
-│   │                          # LMKOverscrollFooterHelper
+│   │                          # LMKSceneUtil, LMKImageUtil, LMKMarkdownRenderer
 │   └── LumiKitLottie/         # LMKLottieRefreshControl
 ├── Tests/
-│   ├── LumiKitCoreTests/      # 76 tests, 11 suites
+│   ├── LumiKitCoreTests/      # 76 tests, 12 suites
 │   │   ├── Concurrency/       # LMKConcurrencyHelpers
 │   │   ├── Data/              # String+LMK, Collection+LMK, NSAttributedString+LMK, FormatHelper
 │   │   ├── Date/              # DateHelper, DateFormatterHelper
@@ -322,6 +329,8 @@ LMKThemeManager.shared.apply(spacing: .init(large: 20))
 | `LMKCardPageLayout` | Shared layout constants for card page controllers (header height, symbol sizes) |
 | `LMKCardPanelLayout` | Shared layout constants for card panel controllers (max width, insets, height ratio) |
 | `LMKScrollStackViewController` | Base class for scrollable vertical stack layout — configurable spacing, insets, keyboard dismiss, safe area. Subclasses override `setupStackContent()` |
+| `LMKNavigationDirection` | Shared navigation direction enum (`.forward`, `.backward`, `.none`) used by CardPageController and ActionSheet |
+| `LMKOverscrollFooterHelper` | Positions a footer view below scroll content, revealed only on overscroll |
 
 ---
 
@@ -334,6 +343,7 @@ LMKThemeManager.shared.apply(spacing: .init(large: 20))
 | `LMKTextField` | Text field with validation states, helper text, leading icon |
 | `LMKTextView` | Multi-line text input with placeholder and character limit |
 | `LMKToggleButton` | Toggle button with on/off states |
+| `LMKTouchExpandedButton` | Button with expanded touch area via `lmk_pointInside` |
 
 ---
 
@@ -366,7 +376,7 @@ All UIKit extensions use the `lmk_` prefix to avoid naming conflicts.
 |---------|---------|
 | `LMKAnimationHelper` | Centralized animation timing with Reduce Motion support (`shouldAnimate`), spring damping, and duration presets |
 | `LMKAnimationTheme` | Configurable animation token struct (durations, spring parameters) via `LMKThemeManager` |
-| `LMKHapticFeedbackHelper` | Haptic feedback helpers — light, medium, heavy impact and success/error notification feedback |
+| `LMKHapticFeedbackHelper` | Haptic feedback helpers — light, medium, heavy, soft, rigid impact and success/error notification feedback |
 
 ---
 
@@ -400,7 +410,6 @@ LumiKitUI includes device-aware helpers and system observers:
 | `LMKImageUtil` | SF Symbol creation (`makeSymbolImage` with background), `CVPixelBuffer` to JPEG conversion |
 | `LMKMarkdownRenderer` | Markdown-to-attributed-string rendering and pre-configured inline text views |
 | `LMKSceneUtil` | Key window and connected scene retrieval |
-| `LMKOverscrollFooterHelper` | Positions a footer view below scroll content, revealed only on overscroll |
 
 ---
 
@@ -475,7 +484,7 @@ LMKNetworkLogger.enable()
 
 // 2. Inject into custom URLSession configurations
 #if DEBUG
-let config = URLSessionConfiguration.default.withNetworkLogging()
+let config = URLSessionConfiguration.default.enableNetworkLogging()
 #endif
 
 // 3. Present network history UI from debug menu

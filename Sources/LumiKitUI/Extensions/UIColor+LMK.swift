@@ -64,6 +64,10 @@ public extension UIColor {
 
     /// Whether this color is perceptually light (luminance > 0.5).
     /// Useful for choosing text color on a dynamic background.
+    ///
+    /// - Note: For dynamic/adaptive colors (e.g., `UIColor.systemBackground`), the result
+    ///   depends on the current trait collection at call time. Call from a view context
+    ///   with a resolved trait collection for accurate results.
     var lmk_isLight: Bool {
         var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
         guard getRed(&r, green: &g, blue: &b, alpha: &a) else { return false }

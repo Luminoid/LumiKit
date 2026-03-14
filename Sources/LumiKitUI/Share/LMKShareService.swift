@@ -48,6 +48,8 @@ public enum LMKShareService {
             }
             if completed {
                 completion?(activityType)
+            } else {
+                completion?(nil)
             }
         }
 

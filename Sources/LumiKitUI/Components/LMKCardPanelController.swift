@@ -86,7 +86,7 @@ open class LMKCardPanelController: UIViewController {
         view.backgroundColor = .clear
         setupCard()
         setupBackgroundTap()
-        registerForTraitChanges([UITraitUserInterfaceStyle.self]) { (self: LMKCardPanelController, _: UITraitCollection) in
+        registerForTraitChanges([UITraitUserInterfaceStyle.self]) { (self: Self, _: UITraitCollection) in
             self.refreshPanelColors()
         }
     }
@@ -195,7 +195,8 @@ open class LMKCardPanelController: UIViewController {
         panel.overlayWindow = overlay
         overlay.makeKeyAndVisible()
 
-        // Dispatch to next run loop so initial layout resolves before animating
+        // Run loop deferral: allows initial layout pass to complete before animation begins.
+        // This is intentional — not for MainActor isolation (already guaranteed by defaultIsolation).
         DispatchQueue.main.async {
             panel.animateIn()
         }

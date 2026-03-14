@@ -33,6 +33,7 @@ public extension UIImage {
     /// let icon = image.lmk_resized(to: CGSize(width: 32, height: 32))
     /// ```
     func lmk_resized(to targetSize: CGSize) -> UIImage {
+        guard targetSize.width > 0, targetSize.height > 0 else { return self }
         let format = UIGraphicsImageRendererFormat()
         format.scale = self.scale
         let renderer = UIGraphicsImageRenderer(size: targetSize, format: format)

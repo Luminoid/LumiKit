@@ -22,6 +22,7 @@ open class LMKTextView: UIView {
     public let textView = UITextView()
     private let placeholderLabel = UILabel()
     private let helperLabel = UILabel()
+    private var traitChangeRegistration: (any UITraitChangeRegistration)?
 
     /// Delegate forwarding.
     public weak var delegate: (any UITextViewDelegate)?
@@ -113,9 +114,9 @@ open class LMKTextView: UIView {
 
         isAccessibilityElement = false
 
-        _ = registerForTraitChanges(
+        traitChangeRegistration = registerForTraitChanges(
             [UITraitUserInterfaceStyle.self, UITraitAccessibilityContrast.self]
-        ) { (self: LMKTextView, _: UITraitCollection) in
+        ) { (self: Self, _: UITraitCollection) in
             self.updateValidationAppearance()
         }
     }
@@ -127,14 +128,10 @@ open class LMKTextView: UIView {
     }
 
     private func updateHelperText() {
-        switch validationState {
-        case .normal, .success:
-            helperLabel.text = helperText
-            helperLabel.textColor = LMKColor.textTertiary
-        case .error(let message):
-            helperLabel.text = message
-            helperLabel.textColor = LMKColor.error
-        }
+        if case .error = validationState { return }
+        helperLabel.text = helperText
+        helperLabel.textColor = LMKColor.textTertiary
+        helperLabel.isHidden = helperText == nil
     }
 
     private func updateValidationAppearance() {
@@ -146,6 +143,7 @@ open class LMKTextView: UIView {
             textView.layer.borderColor = LMKColor.error.cgColor
             helperLabel.text = message
             helperLabel.textColor = LMKColor.error
+            helperLabel.isHidden = false
         case .success:
             textView.layer.borderColor = LMKColor.success.cgColor
             updateHelperText()

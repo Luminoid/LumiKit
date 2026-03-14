@@ -103,9 +103,9 @@ struct LMKButtonFactoryOutlinedTests {
         #expect(button.configuration?.title == "Skip")
     }
 
-    @Test("outlined button has clear background")
+    @Test("outlined button has no background color")
     func clearBackground() {
         let button = LMKButtonFactory.outlined(role: .info, title: "Details", target: target, action: action)
-        #expect(button.configuration?.baseBackgroundColor == .clear)
+        #expect(button.configuration?.baseBackgroundColor == nil)
     }
 }

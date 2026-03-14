@@ -47,15 +47,15 @@ public nonisolated struct LMKLayoutTheme: Sendable {
         searchBarIconSize: CGFloat = 18,
         clearButtonSize: CGFloat = 22
     ) {
-        self.minimumTouchTarget = minimumTouchTarget
-        self.iconMedium = iconMedium
-        self.iconLarge = iconLarge
-        self.iconSmall = iconSmall
-        self.iconExtraSmall = iconExtraSmall
-        self.pullThreshold = pullThreshold
-        self.cellHeightMin = cellHeightMin
-        self.searchBarHeight = searchBarHeight
-        self.searchBarIconSize = searchBarIconSize
-        self.clearButtonSize = clearButtonSize
+        self.minimumTouchTarget = max(0, minimumTouchTarget)
+        self.iconMedium = max(0, iconMedium)
+        self.iconLarge = max(0, iconLarge)
+        self.iconSmall = max(0, iconSmall)
+        self.iconExtraSmall = max(0, iconExtraSmall)
+        self.pullThreshold = max(0, pullThreshold)
+        self.cellHeightMin = max(0, cellHeightMin)
+        self.searchBarHeight = max(0, searchBarHeight)
+        self.searchBarIconSize = max(0, searchBarIconSize)
+        self.clearButtonSize = max(0, clearButtonSize)
     }
 }

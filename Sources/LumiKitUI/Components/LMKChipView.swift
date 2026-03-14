@@ -177,6 +177,18 @@ public final class LMKChipView: UIView {
         } else {
             accessibilityTraits = .staticText
         }
+
+        if dismissHandler != nil {
+            accessibilityCustomActions = [
+                UIAccessibilityCustomAction(
+                    name: "Dismiss",
+                    target: self,
+                    selector: #selector(didDismiss)
+                ),
+            ]
+        } else {
+            accessibilityCustomActions = nil
+        }
     }
 
     // MARK: - Appearance

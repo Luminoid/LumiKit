@@ -44,6 +44,9 @@ public enum LMKTypography {
                 .traits: traits,
             ])
             let font = UIFont(descriptor: descriptor, size: size)
+            // Font validation is DEBUG-only. In release, UIFont.init(name:size:) returns nil
+            // for missing fonts, and we silently fall back to the system font via ?? below.
+            // This prevents crashes in production while still catching missing fonts during development.
             #if DEBUG
             let actualFamily = font.familyName
             if actualFamily != family {
@@ -183,15 +186,19 @@ public enum LMKTypography {
     public static var captionLineHeightMultiplier: CGFloat { config.captionLineHeightMultiplier }
     public static var smallLineHeightMultiplier: CGFloat { config.smallLineHeightMultiplier }
 
-    /// Get line height for a font based on its type.
-    public static func lineHeight(for font: UIFont, type: LMKTypographyType) -> CGFloat {
-        let multiplier: CGFloat = switch type {
+    /// Get the line height multiplier for a typography type.
+    public static func lineHeightMultiplier(for type: LMKTypographyType) -> CGFloat {
+        switch type {
         case .heading: headingLineHeightMultiplier
         case .body: bodyLineHeightMultiplier
         case .caption: captionLineHeightMultiplier
         case .small: smallLineHeightMultiplier
         }
-        return font.pointSize * multiplier
+    }
+
+    /// Get line height for a font based on its type.
+    public static func lineHeight(for font: UIFont, type: LMKTypographyType) -> CGFloat {
+        font.pointSize * lineHeightMultiplier(for: type)
     }
 
     // MARK: - Letter Spacing

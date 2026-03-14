@@ -20,17 +20,17 @@ struct LMKGradientViewTests {
     }
 
     @Test("Direction sets start/end points")
-    func directionPoints() {
+    func directionPoints() throws {
         let gradient = LMKGradientView(colors: [.red, .blue], direction: .leftToRight)
-        let gradientLayer = gradient.layer as! CAGradientLayer
+        let gradientLayer = try #require(gradient.layer as? CAGradientLayer)
         #expect(gradientLayer.startPoint == CGPoint(x: 0, y: 0.5))
         #expect(gradientLayer.endPoint == CGPoint(x: 1, y: 0.5))
     }
 
     @Test("Colors are applied to gradient layer")
-    func colorsApplied() {
+    func colorsApplied() throws {
         let gradient = LMKGradientView(colors: [.red, .blue])
-        let gradientLayer = gradient.layer as! CAGradientLayer
+        let gradientLayer = try #require(gradient.layer as? CAGradientLayer)
         #expect(gradientLayer.colors?.count == 2)
     }
 }

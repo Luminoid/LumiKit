@@ -5,6 +5,7 @@
 //  Custom highlight behavior for table view cells.
 //
 
+import ObjectiveC
 import SnapKit
 import UIKit
 
@@ -12,9 +13,6 @@ extension UITableViewCell {
     private static let lmk_darkModeOverlayAlpha = LMKAlpha.overlayDark
     private static let lmk_lightModeOverlayAlpha = LMKAlpha.overlayLight
     private static let lmk_animationDuration = LMKAnimationHelper.Duration.uiShort
-    /// Unique tag for the highlight overlay view, used instead of a stored property
-    /// since extensions on UITableViewCell cannot add stored properties.
-    private static let lmk_overlayTag = 9999
     private static let lmk_containerDetectionSubviewsThreshold = 2
 
     private static var lmk_highlightOverlayColor: UIColor {
@@ -63,21 +61,22 @@ extension UITableViewCell {
     }
 
     private func lmk_addDarkOverlay(to view: UIView, color: UIColor) {
-        var overlay = view.viewWithTag(Self.lmk_overlayTag)
+        var overlay = view.lmk_highlightOverlay
         if overlay == nil {
             let newOverlay = UIView()
-            newOverlay.tag = Self.lmk_overlayTag
             newOverlay.backgroundColor = color
             newOverlay.layer.cornerRadius = view.layer.cornerRadius
             view.addSubview(newOverlay)
             newOverlay.snp.makeConstraints { make in make.edges.equalToSuperview() }
+            view.lmk_highlightOverlay = newOverlay
             overlay = newOverlay
         }
         overlay?.alpha = 1.0
     }
 
     private func lmk_removeDarkOverlay(from view: UIView) {
-        view.viewWithTag(Self.lmk_overlayTag)?.removeFromSuperview()
+        view.lmk_highlightOverlay?.removeFromSuperview()
+        view.lmk_highlightOverlay = nil
     }
 
     private func lmk_findContainerViews(in view: UIView) -> [UIView] {
@@ -108,5 +107,16 @@ public extension UITableView {
     /// Configure a standard `UITableViewCell` with custom highlight.
     func lmk_configureCellHighlight(_ cell: UITableViewCell) {
         cell.lmk_configureCustomHighlight()
+    }
+}
+
+// MARK: - Associated Object for Highlight Overlay
+
+private extension UIView {
+    private static var lmk_highlightOverlayKey: UInt8 = 0
+
+    var lmk_highlightOverlay: UIView? {
+        get { objc_getAssociatedObject(self, &Self.lmk_highlightOverlayKey) as? UIView }
+        set { objc_setAssociatedObject(self, &Self.lmk_highlightOverlayKey, newValue, .OBJC_ASSOCIATION_RETAIN_NONATOMIC) }
     }
 }

@@ -4,11 +4,15 @@ disabled_rules:
   - identifier_name
   - large_tuple
   - trailing_whitespace
+  # trailing_comma: SwiftLint's rule FORBIDS trailing commas, but workspace
+  # mandates them. SwiftFormat enforces the mandate; keep this rule disabled.
   - trailing_comma
 
 opt_in_rules:
   - empty_count
   - implicit_return
+  - force_unwrapping
+  - prefer_self_in_static_references
 
 included:
   - Sources

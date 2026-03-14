@@ -138,12 +138,6 @@ public final class LMKActionSheet: LMKBottomSheetController {
 
     // MARK: - Navigation Types
 
-    private enum NavigationDirection {
-        case forward
-        case backward
-        case none
-    }
-
     private struct PageContentViews {
         let wrapper: UIView
         let actionRows: [ActionRowView]
@@ -356,7 +350,7 @@ public final class LMKActionSheet: LMKBottomSheetController {
         return PageContentViews(wrapper: wrapper, actionRows: actionRows)
     }
 
-    private func renderPage(_ page: Page, animated: Bool, direction: NavigationDirection) {
+    private func renderPage(_ page: Page, animated: Bool, direction: LMKNavigationDirection) {
         let oldPageViews = currentPageViews
         let newPageViews = buildPageContent(for: page)
 

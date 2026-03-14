@@ -73,12 +73,6 @@ open class LMKCardPageController: UIViewController {
 
     // MARK: - Navigation Types
 
-    private enum NavigationDirection {
-        case forward
-        case backward
-        case none
-    }
-
     private struct PageSnapshot {
         let contentView: UIView
         let title: String?
@@ -101,7 +95,7 @@ open class LMKCardPageController: UIViewController {
     }()
 
     public private(set) lazy var leadingButton: UIButton = {
-        let button = TouchExpandedButton(type: .system)
+        let button = LMKTouchExpandedButton(type: .system)
         button.setImage(
             UIImage(systemName: leadingButtonSymbol, withConfiguration: Self.symbolConfig),
             for: .normal
@@ -118,7 +112,7 @@ open class LMKCardPageController: UIViewController {
     }()
 
     public private(set) lazy var trailingButton: UIButton = {
-        let button = TouchExpandedButton(type: .system)
+        let button = LMKTouchExpandedButton(type: .system)
         button.setImage(
             UIImage(systemName: trailingButtonSymbol, withConfiguration: Self.symbolConfig),
             for: .normal
@@ -211,7 +205,7 @@ open class LMKCardPageController: UIViewController {
         setupHeader()
         setupPageContainer()
         setupContent()
-        registerForTraitChanges([UITraitUserInterfaceStyle.self]) { (self: LMKCardPageController, _: UITraitCollection) in
+        registerForTraitChanges([UITraitUserInterfaceStyle.self]) { (self: Self, _: UITraitCollection) in
             self.refreshBaseColors()
             self.refreshCardPageColors()
         }
@@ -355,7 +349,7 @@ open class LMKCardPageController: UIViewController {
 
     // MARK: - Content Transition
 
-    private func transitionContent(to newView: UIView, direction: NavigationDirection, animated: Bool) {
+    private func transitionContent(to newView: UIView, direction: LMKNavigationDirection, animated: Bool) {
         let oldView = pageContainerView.subviews.first
 
         if !animated || direction == .none {
@@ -425,14 +419,5 @@ open class LMKCardPageController: UIViewController {
         trailingButton.tintColor = LMKColor.secondary
         headerSeparator.backgroundColor = LMKColor.divider
         view.backgroundColor = LMKColor.backgroundPrimary
-    }
-}
-
-// MARK: - Touch Expanded Button
-
-/// Button subclass that respects `lmk_touchAreaEdgeInsets` for hit-testing.
-private final class TouchExpandedButton: UIButton {
-    override func point(inside point: CGPoint, with event: UIEvent?) -> Bool {
-        lmk_pointInside(point, with: event)
     }
 }

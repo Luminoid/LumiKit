@@ -61,7 +61,7 @@ public nonisolated protocol LMKTheme: Sendable {
 extension LMKTheme {
     /// Near-black background for full-screen photo browser.
     /// Always dark regardless of light/dark mode.
-    public var photoBrowserBackground: UIColor { UIColor(white: 0.1, alpha: 1) }
+    public nonisolated var photoBrowserBackground: UIColor { UIColor(white: 0.1, alpha: 1) }
 }
 
 // MARK: - Default Theme
@@ -102,7 +102,6 @@ public nonisolated struct LMKDefaultTheme: LMKTheme {
     }
     public var white: UIColor { UIColor(white: 0.98, alpha: 1) }
     public var black: UIColor { UIColor(white: 0.1, alpha: 1) }
-    public var photoBrowserBackground: UIColor { UIColor(white: 0.1, alpha: 1) }
 }
 
 // MARK: - Theme Manager
@@ -123,7 +122,7 @@ public nonisolated struct LMKDefaultTheme: LMKTheme {
 /// LMKThemeManager.shared.apply(MyAppTheme())
 /// LMKThemeManager.shared.apply(typography: .init(fontFamily: "Inter"))
 /// ```
-public final class LMKThemeManager {
+@MainActor public final class LMKThemeManager {
     public static let shared = LMKThemeManager()
 
     // MARK: - Token Categories

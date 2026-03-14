@@ -12,11 +12,10 @@ import UIKit
 @MainActor
 struct LMKQRCodeGeneratorTests {
     @Test("Valid string generates non-nil image")
-    func validStringGeneratesImage() {
-        let image = LMKQRCodeGenerator.generateQRCode(from: "https://example.com")
-        #expect(image != nil)
-        #expect(image!.size.width > 0)
-        #expect(image!.size.height > 0)
+    func validStringGeneratesImage() throws {
+        let image = try #require(LMKQRCodeGenerator.generateQRCode(from: "https://example.com"))
+        #expect(image.size.width > 0)
+        #expect(image.size.height > 0)
     }
 
     @Test("Empty string returns nil")

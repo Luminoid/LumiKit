@@ -12,8 +12,8 @@ import UIKit
 /// Layout constants for the floating button.
 public enum LMKFloatingButtonLayout {
     public static let defaultSize: CGFloat = 56
-    public static let edgeMargin: CGFloat = 16
-    public static let iconSize: CGFloat = 24
+    public static var edgeMargin: CGFloat { LMKSpacing.large }
+    public static var iconSize: CGFloat { LMKLayout.iconMedium }
     public static let badgeOffset: CGFloat = -4
 }
 
@@ -69,7 +69,7 @@ public final class LMKFloatingButton: UIView {
         super.init(frame: CGRect(origin: .zero, size: CGSize(width: size, height: size)))
         self.icon = icon
         setupUI()
-        registerForTraitChanges([UITraitUserInterfaceStyle.self]) { (self: LMKFloatingButton, _: UITraitCollection) in
+        registerForTraitChanges([UITraitUserInterfaceStyle.self]) { (self: Self, _: UITraitCollection) in
             self.refreshDynamicColors()
         }
     }

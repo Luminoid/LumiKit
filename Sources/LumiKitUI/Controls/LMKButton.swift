@@ -80,48 +80,35 @@ open class LMKButton: UIButton {
 
     /// Apply a visual style to the button.
     public func applyStyle(_ style: Style, title: String) {
+        var config: UIButton.Configuration
         switch style {
         case .filled(let color):
-            var config = UIButton.Configuration.filled()
-            config.title = title
+            config = .filled()
             config.baseBackgroundColor = color
             config.baseForegroundColor = LMKColor.white
-            config.cornerStyle = .fixed
-            config.background.cornerRadius = LMKCornerRadius.small
-            config.contentInsets = NSDirectionalEdgeInsets(
-                top: LMKSpacing.buttonPaddingVertical,
-                leading: LMKSpacing.buttonPaddingHorizontal,
-                bottom: LMKSpacing.buttonPaddingVertical,
-                trailing: LMKSpacing.buttonPaddingHorizontal,
-            )
-            config.titleTextAttributesTransformer = UIConfigurationTextAttributesTransformer { incoming in
-                var outgoing = incoming
-                outgoing.font = LMKTypography.bodyMedium
-                return outgoing
-            }
-            configuration = config
-
         case .outlined(let color):
-            var config = UIButton.Configuration.plain()
-            config.title = title
+            config = .plain()
             config.baseForegroundColor = color
-            config.cornerStyle = .fixed
-            config.background.cornerRadius = LMKCornerRadius.small
             config.background.strokeColor = color
             config.background.strokeWidth = 1
-            config.contentInsets = NSDirectionalEdgeInsets(
-                top: LMKSpacing.buttonPaddingVertical,
-                leading: LMKSpacing.buttonPaddingHorizontal,
-                bottom: LMKSpacing.buttonPaddingVertical,
-                trailing: LMKSpacing.buttonPaddingHorizontal,
-            )
-            config.titleTextAttributesTransformer = UIConfigurationTextAttributesTransformer { incoming in
-                var outgoing = incoming
-                outgoing.font = LMKTypography.bodyMedium
-                return outgoing
-            }
-            configuration = config
         }
+
+        config.title = title
+        config.cornerStyle = .fixed
+        config.background.cornerRadius = LMKCornerRadius.small
+        config.contentInsets = NSDirectionalEdgeInsets(
+            top: LMKSpacing.buttonPaddingVertical,
+            leading: LMKSpacing.buttonPaddingHorizontal,
+            bottom: LMKSpacing.buttonPaddingVertical,
+            trailing: LMKSpacing.buttonPaddingHorizontal,
+        )
+        config.titleTextAttributesTransformer = UIConfigurationTextAttributesTransformer { incoming in
+            var outgoing = incoming
+            outgoing.font = LMKTypography.bodyMedium
+            return outgoing
+        }
+
+        configuration = config
         pressAnimationEnabled = true
     }
 }

@@ -33,23 +33,12 @@ public nonisolated enum LMKPhotoEXIFService {
 
     // MARK: - Date Extraction
 
-    /// Extract date from image EXIF data.
+    /// Extract a date from EXIF/TIFF metadata dictionaries.
     ///
-    /// Checks `DateTimeOriginal` (EXIF) and `DateTime` (TIFF) fields.
-    /// For photos from `PHPickerViewController`, prefer the async `extractDate(from:)` variant
-    /// which uses `loadDataRepresentation` to preserve EXIF metadata.
-    ///
-    /// - Parameters:
-    ///   - image: Source image.
-    ///   - imageData: Optional pre-encoded image data (avoids re-encoding).
-    /// - Returns: The extracted date, or `nil` if no EXIF date is present.
-    public static func extractDate(from image: UIImage, imageData: Data? = nil) -> Date? {
-        guard let data = imageData ?? image.pngData() ?? image.jpegData(compressionQuality: 1.0) else { return nil }
-        guard let source = CGImageSourceCreateWithData(data as CFData, nil),
-              let metadata = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [String: Any] else {
-            return nil
-        }
-
+    /// Checks `DateTimeOriginal` (EXIF) first, then falls back to `DateTime` (TIFF).
+    /// - Parameter metadata: The image metadata dictionary from `CGImageSourceCopyPropertiesAtIndex`.
+    /// - Returns: The extracted date, or `nil` if no date field is present.
+    private static func extractDateFromMetadata(_ metadata: [String: Any]) -> Date? {
         let formatter = exifDateFormatter
 
         // Try EXIF DateTimeOriginal
@@ -69,6 +58,26 @@ public nonisolated enum LMKPhotoEXIFService {
         return nil
     }
 
+    /// Extract date from image EXIF data.
+    ///
+    /// Checks `DateTimeOriginal` (EXIF) and `DateTime` (TIFF) fields.
+    /// For photos from `PHPickerViewController`, prefer the async `extractDate(from:)` variant
+    /// which uses `loadDataRepresentation` to preserve EXIF metadata.
+    ///
+    /// - Parameters:
+    ///   - image: Source image.
+    ///   - imageData: Optional pre-encoded image data (avoids re-encoding).
+    /// - Returns: The extracted date, or `nil` if no EXIF date is present.
+    public static func extractDate(from image: UIImage, imageData: Data? = nil) -> Date? {
+        guard let data = imageData ?? image.pngData() ?? image.jpegData(compressionQuality: 1.0) else { return nil }
+        guard let source = CGImageSourceCreateWithData(data as CFData, nil),
+              let metadata = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [String: Any] else {
+            return nil
+        }
+
+        return extractDateFromMetadata(metadata)
+    }
+
     /// Extract date from a `PHPickerResult`.
     ///
     /// Uses `loadDataRepresentation` to get raw image bytes with EXIF metadata intact,
@@ -85,25 +94,7 @@ public nonisolated enum LMKPhotoEXIFService {
                     return
                 }
 
-                let formatter = exifDateFormatter
-
-                // Try EXIF DateTimeOriginal
-                if let exif = metadata[kCGImagePropertyExifDictionary as String] as? [String: Any],
-                   let dateTimeOriginal = exif[kCGImagePropertyExifDateTimeOriginal as String] as? String,
-                   let date = formatter.date(from: dateTimeOriginal) {
-                    continuation.resume(returning: date)
-                    return
-                }
-
-                // Try TIFF DateTime
-                if let tiff = metadata[kCGImagePropertyTIFFDictionary as String] as? [String: Any],
-                   let dateTime = tiff[kCGImagePropertyTIFFDateTime as String] as? String,
-                   let date = formatter.date(from: dateTime) {
-                    continuation.resume(returning: date)
-                    return
-                }
-
-                continuation.resume(returning: nil)
+                continuation.resume(returning: extractDateFromMetadata(metadata))
             }
         }
     }

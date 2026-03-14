@@ -6,7 +6,7 @@
 //  DEBUG builds only — zero footprint in release.
 //
 
-#if DEBUG
+#if DEBUG && LMK_ENABLE_NETWORK_LOGGING
 
     import Foundation
 
@@ -17,7 +17,10 @@
         /// The URLProtocol uses URLSessionDataDelegate with a serial OperationQueue and
         /// ephemeral configuration to avoid Swift 6 strict concurrency issues.
         @discardableResult
-        public func withNetworkLogging() -> URLSessionConfiguration {
+        public func enableNetworkLogging() -> URLSessionConfiguration {
+            guard !(protocolClasses ?? []).contains(where: { $0 == LMKNetworkRequestLoggerProtocol.self }) else {
+                return self
+            }
             if let existingClasses = protocolClasses {
                 protocolClasses = [LMKNetworkRequestLoggerProtocol.self] + existingClasses
             } else {

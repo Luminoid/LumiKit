@@ -10,6 +10,7 @@ import UIKit
 /// Factory methods for creating styled `UILabel` instances.
 public enum LMKLabelFactory {
     /// Create a heading label with proper line height and letter spacing.
+    /// - Parameter level: Heading level (1-4). Values outside this range default to h4.
     public static func heading(text: String, level: Int = 1) -> UILabel {
         let font: UIFont = switch level {
         case 1: LMKTypography.h1
@@ -84,12 +85,7 @@ public enum LMKLabelFactory {
     ) -> NSAttributedString {
         let paragraphStyle = NSMutableParagraphStyle()
 
-        let lineHeightMultiplier: CGFloat = switch type {
-        case .heading: LMKTypography.headingLineHeightMultiplier
-        case .body: LMKTypography.bodyLineHeightMultiplier
-        case .caption: LMKTypography.captionLineHeightMultiplier
-        case .small: LMKTypography.smallLineHeightMultiplier
-        }
+        let lineHeightMultiplier = LMKTypography.lineHeightMultiplier(for: type)
 
         let fontSize = font.pointSize
         let desiredLineHeight = fontSize * lineHeightMultiplier

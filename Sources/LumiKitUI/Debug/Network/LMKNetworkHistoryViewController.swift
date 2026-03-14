@@ -47,20 +47,31 @@
 
         // MARK: - Template Overrides
 
+        override public func viewWillDisappear(_ animated: Bool) {
+            super.viewWillDisappear(animated)
+            refreshTimer?.invalidate()
+            refreshTimer = nil
+        }
+
+        override public func viewWillAppear(_ animated: Bool) {
+            super.viewWillAppear(animated)
+            loadRecords()
+            if refreshTimer == nil {
+                refreshTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
+                    Task { @MainActor in
+                        self?.loadRecords()
+                    }
+                }
+            }
+        }
+
         override public func setupContent() {
             contentContainerView.addSubview(tableView)
             tableView.snp.makeConstraints { make in
                 make.edges.equalToSuperview()
             }
 
-            loadRecords()
-
-            // Auto-refresh to capture new requests
-            refreshTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
-                Task { @MainActor in
-                    self?.loadRecords()
-                }
-            }
+            // Initial load — auto-refresh timer is managed in viewWillAppear/viewWillDisappear
         }
 
         override public func leadingButtonTapped() {
@@ -89,7 +100,9 @@
         }
 
         public func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-            let cell = tableView.dequeueReusableCell(withIdentifier: "Cell", for: indexPath) as! LMKNetworkRequestCell
+            guard let cell = tableView.dequeueReusableCell(withIdentifier: "Cell", for: indexPath) as? LMKNetworkRequestCell else {
+                return UITableViewCell()
+            }
 
             if records.isEmpty {
                 cell.configureEmpty()
@@ -114,6 +127,12 @@
     // MARK: - LMKNetworkRequestCell
 
     private final class LMKNetworkRequestCell: UITableViewCell {
+        private static let timeFormatter: DateFormatter = {
+            let formatter = DateFormatter()
+            formatter.dateFormat = "HH:mm:ss"
+            return formatter
+        }()
+
         private lazy var methodLabel: UILabel = {
             let label = UILabel()
             label.font = UIFont.monospacedSystemFont(ofSize: 11, weight: .bold)
@@ -213,9 +232,7 @@
 
             urlLabel.text = record.displayURL
 
-            let formatter = DateFormatter()
-            formatter.dateFormat = "HH:mm:ss"
-            timeLabel.text = formatter.string(from: record.timestamp)
+            timeLabel.text = Self.timeFormatter.string(from: record.timestamp)
 
             durationLabel.text = record.displayDuration
         }

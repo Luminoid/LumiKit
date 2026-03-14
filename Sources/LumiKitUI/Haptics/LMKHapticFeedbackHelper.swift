@@ -27,6 +27,8 @@ public enum LMKHapticFeedbackHelper {
     private static let impactLight = { UIImpactFeedbackGenerator(style: .light) }()
     private static let impactMedium = { UIImpactFeedbackGenerator(style: .medium) }()
     private static let impactHeavy = { UIImpactFeedbackGenerator(style: .heavy) }()
+    private static let impactSoft = { UIImpactFeedbackGenerator(style: .soft) }()
+    private static let impactRigid = { UIImpactFeedbackGenerator(style: .rigid) }()
     private static let notificationGenerator = { UINotificationFeedbackGenerator() }()
     private static let selectionGenerator = { UISelectionFeedbackGenerator() }()
 
@@ -46,6 +48,10 @@ public enum LMKHapticFeedbackHelper {
     public static func medium() { impactMedium.impactOccurred() }
     /// Heavy impact (important action).
     public static func heavy() { impactHeavy.impactOccurred() }
+    /// Soft impact (gentle, cushioned feel).
+    public static func soft() { impactSoft.impactOccurred() }
+    /// Rigid impact (sharp, precise feel).
+    public static func rigid() { impactRigid.impactOccurred() }
 
     // MARK: - Prepare
 
@@ -64,7 +70,9 @@ public enum LMKHapticFeedbackHelper {
         case .light: impactLight.prepare()
         case .medium: impactMedium.prepare()
         case .heavy: impactHeavy.prepare()
-        default: impactMedium.prepare()
+        case .soft: impactSoft.prepare()
+        case .rigid: impactRigid.prepare()
+        @unknown default: impactMedium.prepare()
         }
     }
 
@@ -73,6 +81,8 @@ public enum LMKHapticFeedbackHelper {
         impactLight.prepare()
         impactMedium.prepare()
         impactHeavy.prepare()
+        impactSoft.prepare()
+        impactRigid.prepare()
         notificationGenerator.prepare()
         selectionGenerator.prepare()
     }

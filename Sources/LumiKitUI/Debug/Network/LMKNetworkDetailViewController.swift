@@ -143,13 +143,13 @@
             }
 
             // Error
-            if let error = record.error {
+            if let errorDescription = record.errorDescription {
                 sections.append("""
 
                 ═══════════════════════════════════════
                 ERROR
                 ═══════════════════════════════════════
-                \(error.localizedDescription)
+                \(errorDescription)
                 """)
             }
 

@@ -23,9 +23,9 @@ public enum LMKAlpha {
     public static var overlay: CGFloat { config.overlay }
     /// Dimming overlay for modal bottom sheets (default 0.4).
     public static var dimmingOverlay: CGFloat { config.dimmingOverlay }
-    /// Disabled state alpha (default 0.5).
+    /// Disabled state alpha (default 0.38).
     public static var disabled: CGFloat { config.disabled }
-    /// Semi-transparent background (default 0.5).
+    /// Semi-transparent background (default 0.3).
     public static var semiTransparent: CGFloat { config.semiTransparent }
     /// Strong overlay for dark backgrounds (e.g. photo overlay buttons) (default 0.7).
     public static var overlayStrong: CGFloat { config.overlayStrong }

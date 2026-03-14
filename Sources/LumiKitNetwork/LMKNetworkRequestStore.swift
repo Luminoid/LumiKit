@@ -27,6 +27,7 @@
         /// Create a request store with a maximum capacity.
         /// - Parameter maxRecords: Maximum number of requests to retain. Oldest are evicted first.
         public init(maxRecords: Int) {
+            precondition(maxRecords > 0, "maxRecords must be positive")
             self.maxRecords = maxRecords
             self.lock = OSAllocatedUnfairLock(initialState: [])
         }
@@ -58,7 +59,7 @@
                     body: body
                 ),
                 response: nil,
-                error: nil,
+                errorDescription: nil,
                 duration: nil
             )
 
@@ -92,14 +93,14 @@
                         headers: headers,
                         body: body
                     ),
-                    error: nil,
+                    errorDescription: nil,
                     duration: duration
                 )
             }
         }
 
         /// Update a request with error data.
-        public func updateError(id: UUID, error: Error, duration: TimeInterval) {
+        public func updateError(id: UUID, error: any Error, duration: TimeInterval) {
             lock.withLock { records in
                 guard let index = records.firstIndex(where: { $0.id == id }) else { return }
                 let existing = records[index]
@@ -108,7 +109,7 @@
                     timestamp: existing.timestamp,
                     request: existing.request,
                     response: existing.response,
-                    error: error,
+                    errorDescription: error.localizedDescription,
                     duration: duration
                 )
             }

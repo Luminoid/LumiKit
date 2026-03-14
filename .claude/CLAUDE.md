@@ -10,7 +10,8 @@
 | Target | Dependencies | Purpose |
 |--------|-------------|---------|
 | **LumiKitCore** | Foundation only | Logger (+ LogStore ring buffer), DateHelper, URLValidator, ConcurrencyHelpers, FormatHelper, FileHelper, String/Collection/NSAttributedString extensions |
-| **LumiKitUI** | LumiKitCore + SnapKit | Design system tokens, theme, animation, haptics, alerts, components, controls, utilities, photo browser/crop/EXIF, share, QR code, extensions |
+| **LumiKitNetwork** | LumiKitCore | Network debugging with URLProtocol interception (DEBUG only, `LMK_ENABLE_NETWORK_LOGGING` flag) |
+| **LumiKitUI** | LumiKitCore + LumiKitNetwork + SnapKit | Design system tokens, theme, animation, haptics, alerts, components, controls, utilities, photo browser/crop/EXIF, share, QR code, network debug UI (DEBUG), extensions |
 | **LumiKitLottie** | LumiKitUI + Lottie | Lottie-powered pull-to-refresh control |
 
 **Swift 6.2** strict concurrency with `defaultIsolation: MainActor` on LumiKitUI and LumiKitLottie targets. Platforms: iOS 18+, Mac Catalyst 18+, macOS 15+.
@@ -30,6 +31,11 @@ LumiKit/
 │   │   ├── File/            # LMKFileUtil
 │   │   ├── Log/             # LMKLogger, LMKLogStore (ring buffer), LMKLogLevel, LMKLogEntry
 │   │   └── Validation/      # LMKURLValidator
+│   ├── LumiKitNetwork/        # [DEBUG only, LMK_ENABLE_NETWORK_LOGGING flag]
+│   │   ├── LMKNetworkLogger.swift            # URLProtocol-based interception
+│   │   ├── LMKNetworkRequestStore.swift       # Thread-safe FIFO store (OSAllocatedUnfairLock)
+│   │   ├── LMKNetworkRequestRecord.swift      # Request/response data model
+│   │   └── URLSessionConfiguration+LMKDebug.swift  # .enableNetworkLogging()
 │   ├── LumiKitUI/
 │   │   ├── Alerts/          # LMKAlertPresenter, LMKErrorHandler
 │   │   ├── Animation/       # LMKAnimationHelper, LMKAnimationTheme
@@ -42,17 +48,20 @@ LumiKit/
 │   │   │                     # SearchBar, Skeleton, Toast, TipView,
 │   │   │                     # CardPageController, CardPageLayout,
 │   │   │                     # CardPanelController, CardPanelLayout,
+│   │   │                     # NavigationDirection, OverscrollFooterHelper,
 │   │   │                     # ScrollStackViewController
 │   │   ├── Controls/        # LMKButton, LMKSegmentedControl, LMKToggleButton,
-│   │   │                    # LMKTextField, LMKTextView
+│   │   │                    # LMKTextField, LMKTextView, LMKTouchExpandedButton
 │   │   ├── DesignSystem/
 │   │   │   ├── Tokens/       # LMKColor, LMKSpacing, LMKCornerRadius, LMKAlpha,
-│   │   │   │                 # LMKLayout, LMKShadow, LMKTypography
+│   │   │   │                 # LMKLayout, LMKShadow, LMKTypography, LMKBadge
 │   │   │   ├── Themes/       # LMKSpacingTheme, LMKCornerRadiusTheme, LMKAlphaTheme,
 │   │   │   │                 # LMKLayoutTheme, LMKShadowTheme, LMKTypographyTheme,
 │   │   │   │                 # LMKBadgeTheme
 │   │   │   ├── Factories/    # LMKButtonFactory, LMKCardFactory, LMKLabelFactory
 │   │   │   └── LMKTheme.swift  # LMKTheme protocol + LMKThemeManager + LMKDefaultTheme
+│   │   ├── Debug/            # [DEBUG only]
+│   │   │   └── Network/     # LMKNetworkHistoryViewController, LMKNetworkDetailViewController
 │   │   ├── Extensions/      # UIKit extensions (lmk_ prefix): UIColor, UIImage, UIView,
 │   │   │                    # UIStackView, UITextField, UIButton, UITableViewCell, etc.
 │   │   ├── Haptics/         # LMKHapticFeedbackHelper
@@ -62,17 +71,19 @@ LumiKit/
 │   │   ├── QRCode/          # LMKQRCodeGenerator
 │   │   ├── Share/           # LMKShareService, LMKSharePreviewViewController
 │   │   └── Utilities/       # LMKDeviceHelper, LMKKeyboardObserver, LMKSceneUtil,
-│   │                        # LMKImageUtil, LMKMarkdownRenderer, LMKOverscrollFooterHelper
+│   │                        # LMKImageUtil, LMKMarkdownRenderer
 │   └── LumiKitLottie/       # LMKLottieRefreshControl
 ├── Tests/
-│   ├── LumiKitCoreTests/    # 76 tests, 12 suites — mirrors Sources/LumiKitCore/ subfolders
+│   ├── LumiKitCoreTests/    # 76 tests, 12 suites — mirrors LumiKitCore/ subfolders
 │   │   ├── Concurrency/     # LMKConcurrencyHelpersTests
 │   │   ├── Data/            # String+LMK, Collection+LMK, NSAttributedString+LMK, FormatHelper
 │   │   ├── Date/            # DateHelper, DateFormatterHelper
 │   │   ├── File/            # FileUtil
 │   │   ├── Log/             # LMKLogStoreTests (ring buffer, thread safety), LMKLoggerTests (log store integration)
 │   │   └── Validation/      # URLValidator
-│   └── LumiKitUITests/      # 524 tests, 91 suites — mirrors Sources/LumiKitUI/ subfolders
+│   ├── LumiKitNetworkTests/  # 8 tests, 1 suite
+│   │   └── LMKNetworkRequestStoreTests.swift  # FIFO, thread safety
+│   └── LumiKitUITests/      # 524 tests, 91 suites — mirrors LumiKitUI/ subfolders
 │       ├── Alerts/          # AlertPresenter, ErrorHandler
 │       ├── Animation/       # AnimationHelper
 │       ├── Components/
@@ -80,7 +91,8 @@ LumiKit/
 │       │   ├── Pickers/      # DatePickerHelper
 │       │   └── (root)        # Badge, Banner, Card, Chip, Divider, EmptyState,
 │       │                     # FloatingButton, Gradient, LoadingState, SearchBar,
-│       │                     # Skeleton, Toast, TipView, CardPage, CardPanel
+│       │                     # Skeleton, Toast, TipView, CardPage, CardPanel,
+│       │                     # ScrollStackViewController
 │       ├── Controls/        # Button, SegmentedControl, TextField, TextView, ToggleButton
 │       ├── DesignSystem/
 │       │   ├── Tokens/       # Color, Spacing, CornerRadius, Alpha, Typography, Layout, Shadow
@@ -166,7 +178,8 @@ DesignSystem/
 │   ├── LMKCornerRadius.swift   # Corner radius proxy
 │   ├── LMKAlpha.swift          # Alpha proxy
 │   ├── LMKLayout.swift         # Layout dimensions proxy
-│   └── LMKShadow.swift         # Shadow proxy
+│   ├── LMKShadow.swift         # Shadow proxy
+│   └── LMKBadge.swift          # Badge proxy -> LMKThemeManager.shared.badge
 ├── Themes/
 │   ├── LMKTypographyTheme.swift    # fontFamily, sizes, weights, line heights
 │   ├── LMKSpacingTheme.swift       # 4pt grid values
@@ -230,6 +243,8 @@ LMKThemeManager.shared.apply(spacing: .init(large: 20))
 | `LMKCardPageLayout` | `enum` (static) | Shared layout constants for card pages (header height, symbol sizes) |
 | `LMKCardPanelLayout` | `enum` (static) | Shared layout constants for card panels (max width, insets, height ratio) |
 | `LMKScrollStackViewController` | `open class` | Base class for scrollable vertical stack layout — configurable spacing, insets, keyboard dismiss, safe area, bounce. Subclasses override `setupStackContent()` |
+| `LMKNavigationDirection` | `enum` | Shared navigation direction (`.forward`, `.backward`, `.none`) used by CardPageController and ActionSheet |
+| `LMKOverscrollFooterHelper` | `final class` | Positions footer below scroll content, revealed on overscroll |
 
 ### Controls (`Controls/`)
 
@@ -240,6 +255,7 @@ LMKThemeManager.shared.apply(spacing: .init(large: 20))
 | `LMKTextField` | `open class` | Text field with validation states, helper text, leading icon |
 | `LMKTextView` | `open class` | Multi-line text input with placeholder, character limit |
 | `LMKToggleButton` | `open class` | Toggle button with on/off states |
+| `LMKTouchExpandedButton` | `final class` | Button with expanded touch area via `lmk_pointInside` |
 
 ### UIKit Extensions (`Extensions/`)
 
@@ -290,7 +306,6 @@ LMKThemeManager.shared.apply(spacing: .init(large: 20))
 | `LMKImageUtil` | SF Symbol creation (`makeSymbolImage` with background), `CVPixelBuffer` to JPEG conversion |
 | `LMKMarkdownRenderer` | Markdown-to-attributed-string rendering and pre-configured inline text views (`makeInlineTextView`) |
 | `LMKSceneUtil` | Key window and connected scene retrieval |
-| `LMKOverscrollFooterHelper` | Positions footer below scroll content, revealed on overscroll |
 
 ---
 
@@ -392,4 +407,4 @@ public final class LMKExampleViewController: UIViewController {
 
 ---
 
-*Optimized for Claude Code • Last updated: 2026-02-24*
+*Optimized for Claude Code • Last updated: 2026-03-13*

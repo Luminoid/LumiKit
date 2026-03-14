@@ -26,13 +26,19 @@ public protocol LMKPhotoCropDelegate: AnyObject {
 public nonisolated struct LMKPhotoCropStrings: Sendable {
     public var title: String
     public var free: String
+    public var cancel: String
+    public var done: String
 
     public init(
         title: String = "Crop",
         free: String = "Free",
+        cancel: String = "Cancel",
+        done: String = "Done",
     ) {
         self.title = title
         self.free = free
+        self.cancel = cancel
+        self.done = done
     }
 }
 
@@ -114,8 +120,8 @@ public final class LMKPhotoCropViewController: UIViewController {
 
     // MARK: - Private Properties
 
-    private var cancelButton: UIButton!
-    private var doneButton: UIButton!
+    private var cancelButton: UIButton?
+    private var doneButton: UIButton?
     private let imageView = UIImageView()
     private let overlayView = UIView()
     private let cropFrameView = UIView()
@@ -227,6 +233,7 @@ public final class LMKPhotoCropViewController: UIViewController {
             make.leading.equalToSuperview().offset(LMKSpacing.large)
             make.width.height.equalTo(LMKPhotoBrowserConfig.overlayButtonSize)
         }
+        cancel.accessibilityLabel = lmkPhotoCropStrings.cancel
         cancelButton = cancel
 
         // Done button
@@ -237,6 +244,7 @@ public final class LMKPhotoCropViewController: UIViewController {
             make.trailing.equalToSuperview().offset(-LMKSpacing.large)
             make.width.height.equalTo(LMKPhotoBrowserConfig.overlayButtonSize)
         }
+        done.accessibilityLabel = lmkPhotoCropStrings.done
         doneButton = done
 
         // Aspect ratio control
@@ -280,8 +288,8 @@ public final class LMKPhotoCropViewController: UIViewController {
         // Ensure proper z-ordering
         view.bringSubviewToFront(aspectRatioControl)
         view.bringSubviewToFront(cropFrameView)
-        view.bringSubviewToFront(cancelButton)
-        view.bringSubviewToFront(doneButton)
+        if let cancelButton { view.bringSubviewToFront(cancelButton) }
+        if let doneButton { view.bringSubviewToFront(doneButton) }
     }
 
     private func setupAspectRatioControl() {
@@ -391,8 +399,8 @@ public final class LMKPhotoCropViewController: UIViewController {
 
         view.bringSubviewToFront(aspectRatioControl)
         view.bringSubviewToFront(cropFrameView)
-        view.bringSubviewToFront(cancelButton)
-        view.bringSubviewToFront(doneButton)
+        if let cancelButton { view.bringSubviewToFront(cancelButton) }
+        if let doneButton { view.bringSubviewToFront(doneButton) }
     }
 
     private func updateImageViewFrame() {
@@ -820,7 +828,7 @@ public final class LMKPhotoCropViewController: UIViewController {
             frame.size.width += limitedDeltaX
             frame.size.height -= limitedDeltaY
         case .bottomLeft:
-            if frame.maxY - deltaY > constraints.maxY { limitedDeltaY = frame.maxY - constraints.maxY }
+            if frame.maxY + deltaY > constraints.maxY { limitedDeltaY = constraints.maxY - frame.maxY }
             if frame.minX + deltaX < constraints.minX { limitedDeltaX = constraints.minX - frame.minX }
             frame.origin.x += limitedDeltaX
             frame.size.width -= limitedDeltaX

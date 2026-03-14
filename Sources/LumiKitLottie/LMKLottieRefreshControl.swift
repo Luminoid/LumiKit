@@ -34,11 +34,20 @@ public final class LMKLottieRefreshControl: UIRefreshControl {
 
     // MARK: - Configuration
 
-    /// Name of the Lottie animation JSON file in the app's main bundle.
+    /// Name of the Lottie animation JSON file.
     /// Defaults to `"refresh_spinner"`.
     public var animationName: String = "refresh_spinner" {
         didSet {
             if animationName != oldValue {
+                animationView.animation = loadAnimation()
+            }
+        }
+    }
+
+    /// Bundle to load the Lottie animation from. Defaults to `.main`.
+    public var animationBundle: Bundle = .main {
+        didSet {
+            if animationBundle != oldValue {
                 animationView.animation = loadAnimation()
             }
         }
@@ -74,7 +83,7 @@ public final class LMKLottieRefreshControl: UIRefreshControl {
     }
 
     private func setup() {
-        if !UIAccessibility.isReduceMotionEnabled {
+        if LMKAnimationHelper.shouldAnimate {
             tintColor = .clear
             hideDefaultSubviews()
         }
@@ -83,12 +92,12 @@ public final class LMKLottieRefreshControl: UIRefreshControl {
 
     override public func didMoveToWindow() {
         super.didMoveToWindow()
-        animationView.isHidden = UIAccessibility.isReduceMotionEnabled
+        animationView.isHidden = !LMKAnimationHelper.shouldAnimate
     }
 
     override public func layoutSubviews() {
         super.layoutSubviews()
-        if !UIAccessibility.isReduceMotionEnabled {
+        if LMKAnimationHelper.shouldAnimate {
             hideDefaultSubviews()
         }
         let size = min(bounds.width, bounds.height, LMKSpacing.xxl * 2)
@@ -109,13 +118,18 @@ public final class LMKLottieRefreshControl: UIRefreshControl {
         let offset = max(0, -(scrollView.contentOffset.y + scrollView.adjustedContentInset.top))
         let pull = min(offset / Self.pullThreshold, 1)
 
-        if pull >= 1 { passedThreshold = true }
+        if pull >= 1, !passedThreshold {
+            passedThreshold = true
+            LMKHapticFeedbackHelper.light()
+        } else if pull >= 1 {
+            passedThreshold = true
+        }
 
         let phase1Progress = (Self.phase1EndFrame / Self.totalFrames) * pull
         animationView.currentProgress = phase1Progress
         animationView.isHidden = pull <= 0
 
-        if UIAccessibility.isReduceMotionEnabled {
+        if !LMKAnimationHelper.shouldAnimate {
             animationView.isHidden = true
         }
     }
@@ -174,15 +188,11 @@ public final class LMKLottieRefreshControl: UIRefreshControl {
         isDismissing = true
         spinStartTime = nil
 
-        let shouldAnimate = !UIAccessibility.isReduceMotionEnabled
-        let duration = shouldAnimate ? Self.dismissDuration : 0
+        let duration = LMKAnimationHelper.shouldAnimate ? Self.dismissDuration : 0
 
-        UIView.animate(
-            withDuration: duration, delay: 0, options: .curveEaseIn,
-        ) { [weak self] in
-            self?.animationView.alpha = 0
-        } completion: { [weak self] _ in
+        LMKAnimationHelper.fadeOut(animationView, duration: duration) { [weak self] in
             guard let self else { return }
+            guard self.isDismissing else { return } // New refresh started during dismiss
             self.stopPhase2()
             self.animationView.alpha = 1
             self.animationView.isHidden = true
@@ -198,7 +208,7 @@ public final class LMKLottieRefreshControl: UIRefreshControl {
     // MARK: - Private
 
     private func loadAnimation() -> LottieAnimation? {
-        LottieAnimation.named(animationName, bundle: .main, subdirectory: nil, animationCache: nil)
+        LottieAnimation.named(animationName, bundle: animationBundle, subdirectory: nil, animationCache: nil)
     }
 
     private func hideDefaultSubviews() {
@@ -206,12 +216,12 @@ public final class LMKLottieRefreshControl: UIRefreshControl {
     }
 
     private func playPhase2() {
-        guard !UIAccessibility.isReduceMotionEnabled else { return }
+        guard LMKAnimationHelper.shouldAnimate else { return }
         animationView.play(fromFrame: Self.phase1EndFrame, toFrame: Self.totalFrames, loopMode: .loop)
     }
 
     private func stopPhase2() {
-        guard !UIAccessibility.isReduceMotionEnabled else { return }
+        guard LMKAnimationHelper.shouldAnimate else { return }
         animationView.stop()
         animationView.currentProgress = 0
     }

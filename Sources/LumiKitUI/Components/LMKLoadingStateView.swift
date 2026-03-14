@@ -28,7 +28,7 @@ public final class LMKLoadingStateView: UIView {
         super.init(frame: frame)
         backgroundColor = overlayStyle ? LMKColor.backgroundPrimary.withAlphaComponent(LMKAlpha.overlayOpaque) : .clear
         setupUI()
-        registerForTraitChanges([UITraitUserInterfaceStyle.self]) { (self: LMKLoadingStateView, _: UITraitCollection) in
+        registerForTraitChanges([UITraitUserInterfaceStyle.self]) { (self: Self, _: UITraitCollection) in
             self.refreshDynamicColors()
         }
     }
@@ -83,6 +83,7 @@ public final class LMKLoadingStateView: UIView {
             messageLabel.text = message
             messageLabel.isHidden = false
             accessibilityLabel = message
+            UIAccessibility.post(notification: .announcement, argument: accessibilityLabel)
         } else {
             messageLabel.isHidden = true
             accessibilityLabel = nil

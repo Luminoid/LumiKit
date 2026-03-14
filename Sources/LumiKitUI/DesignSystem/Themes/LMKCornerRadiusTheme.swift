@@ -27,10 +27,10 @@ public nonisolated struct LMKCornerRadiusTheme: Sendable {
         large: CGFloat = 16,
         xl: CGFloat = 20
     ) {
-        self.xs = xs
-        self.small = small
-        self.medium = medium
-        self.large = large
-        self.xl = xl
+        self.xs = max(0, xs)
+        self.small = max(0, small)
+        self.medium = max(0, medium)
+        self.large = max(0, large)
+        self.xl = max(0, xl)
     }
 }

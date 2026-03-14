@@ -46,8 +46,8 @@ struct UITableViewCellHighlightTests {
 
         cell.lmk_applyCustomHighlight(highlighted: true, animated: false)
 
-        // Container should have an overlay subview with tag 9999
-        let overlay = container.viewWithTag(9999)
+        // Container should have an overlay subview
+        let overlay = container.subviews.first(where: { $0 !== container && $0.backgroundColor != nil && $0.backgroundColor != .clear })
         #expect(overlay != nil)
     }
 
@@ -61,10 +61,12 @@ struct UITableViewCellHighlightTests {
         cell.contentView.addSubview(container)
 
         cell.lmk_applyCustomHighlight(highlighted: true, animated: false)
-        #expect(container.viewWithTag(9999) != nil)
+        let overlay = container.subviews.first(where: { $0.backgroundColor != nil && $0.backgroundColor != .clear })
+        #expect(overlay != nil)
 
         cell.lmk_applyCustomHighlight(highlighted: false, animated: false)
-        #expect(container.viewWithTag(9999) == nil)
+        let overlayAfter = container.subviews.first(where: { $0.backgroundColor != nil && $0.backgroundColor != .clear })
+        #expect(overlayAfter == nil)
     }
 
     @Test("lmk_applyCustomHighlight skips labels and buttons in container detection")

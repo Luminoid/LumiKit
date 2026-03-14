@@ -18,7 +18,7 @@
     /// LMKNetworkLogger.enable()
     ///
     /// // In services:
-    /// let config = URLSessionConfiguration.default.withNetworkLogging()
+    /// let config = URLSessionConfiguration.default.enableNetworkLogging()
     /// ```
     public enum LMKNetworkLogger {
         // MARK: - Configuration
@@ -30,13 +30,13 @@
         private nonisolated(unsafe) static var store: LMKNetworkRequestStore?
 
         /// Whether the logger has been configured.
-        private nonisolated(unsafe) static var isConfigured = false
+        private nonisolated(unsafe) static var _isConfigured = false
 
         /// Configure the network logger. Call once at app launch.
         /// - Parameter maxRecords: Maximum number of requests to retain (default 100).
         public static func configure(maxRecords: Int = 100) {
             Self.store = LMKNetworkRequestStore(maxRecords: maxRecords)
-            Self.isConfigured = true
+            Self._isConfigured = true
         }
 
         /// Enable network request logging by registering the URLProtocol.
@@ -44,7 +44,7 @@
         /// - Important: Enabled in DEBUG builds via LMK_ENABLE_NETWORK_LOGGING flag.
         ///   If network logging is not working, ensure the flag is defined in Package.swift.
         public static func enable() {
-            guard isConfigured else {
+            guard _isConfigured else {
                 print("[LMKNetworkLogger] Warning: Call configure() before enable()")
                 return
             }
@@ -75,8 +75,8 @@
         }
 
         /// Whether network logging is configured.
-        public static var isEnabled: Bool {
-            isConfigured
+        public static var isConfigured: Bool {
+            _isConfigured
         }
 
         /// Clear all captured requests.
@@ -107,6 +107,10 @@
     #if LMK_ENABLE_NETWORK_LOGGING
     @preconcurrency @objc
     final class LMKNetworkRequestLoggerProtocol: URLProtocol, URLSessionDataDelegate, @unchecked Sendable {
+        // swiftlint:disable:next force_unwrapping
+        private static let blankURL = URL(string: "about:blank")!
+        private static let maxBodyCaptureSize = 512 * 1024 // 512 KB
+
         private var session: URLSession?
         private var dataTask: URLSessionDataTask?
         private var startTime: Date?
@@ -128,7 +132,7 @@
 
         // MARK: - URLProtocol Overrides
 
-        override class func canInit(with request: URLRequest) -> Bool {
+        override static func canInit(with request: URLRequest) -> Bool {
             // Avoid infinite loops — only intercept once
             guard property(forKey: "LMKNetworkRequestLogger", in: request) == nil else {
                 return false
@@ -136,7 +140,7 @@
             return true
         }
 
-        override class func canonicalRequest(for request: URLRequest) -> URLRequest {
+        override static func canonicalRequest(for request: URLRequest) -> URLRequest {
             request
         }
 
@@ -148,12 +152,12 @@
                 client?.urlProtocol(self, didFailWithError: NSError(domain: "LMKNetworkRequestLogger", code: -1))
                 return
             }
-            LMKNetworkRequestLoggerProtocol.setProperty(true, forKey: "LMKNetworkRequestLogger", in: mutableRequest)
+            Self.setProperty(true, forKey: "LMKNetworkRequestLogger", in: mutableRequest)
 
             // Capture request details (thread-safe, no @MainActor needed)
             if let store = LMKNetworkLogger.internalStore {
                 requestID = store.addRequest(
-                    request.url ?? URL(string: "about:blank")!,
+                    request.url ?? Self.blankURL,
                     method: request.httpMethod ?? "GET",
                     headers: request.allHTTPHeaderFields ?? [:],
                     body: request.httpBody
@@ -175,7 +179,9 @@
 
         // MARK: - URLSessionDataDelegate
         func urlSession(_ session: URLSession, dataTask: URLSessionDataTask, didReceive data: Data) {
-            responseData.append(data)
+            if responseData.count < Self.maxBodyCaptureSize {
+                responseData.append(data)
+            }
             client?.urlProtocol(self, didLoad: data)
         }
 
@@ -188,13 +194,18 @@
                     store.updateError(id: id, error: error, duration: duration)
                 }
             } else if let response = task.response as? HTTPURLResponse {
-                client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
                 client?.urlProtocolDidFinishLoading(self)
                 if let id = requestID, let store = LMKNetworkLogger.internalStore {
+                    let headers = Dictionary(
+                        uniqueKeysWithValues: response.allHeaderFields.compactMap { key, value in
+                            guard let key = key as? String else { return nil as (String, String)? }
+                            return (key, "\(value)")
+                        }
+                    )
                     store.updateResponse(
                         id: id,
                         statusCode: response.statusCode,
-                        headers: response.allHeaderFields as? [String: String] ?? [:],
+                        headers: headers,
                         body: responseData,
                         duration: duration
                     )
@@ -202,6 +213,8 @@
             } else {
                 client?.urlProtocolDidFinishLoading(self)
             }
+
+            self.session?.finishTasksAndInvalidate()
         }
 
         func urlSession(
@@ -210,6 +223,7 @@
             didReceive response: URLResponse,
             completionHandler: @escaping (URLSession.ResponseDisposition) -> Void
         ) {
+            client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
             completionHandler(.allow)
         }
     }

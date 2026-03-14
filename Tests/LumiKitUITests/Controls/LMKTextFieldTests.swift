@@ -27,7 +27,7 @@ struct LMKTextFieldTests {
         if case .error(let msg) = field.validationState {
             #expect(msg == "Invalid")
         } else {
-            #expect(Bool(false))
+            Issue.record("Expected .error state")
         }
     }
 

@@ -95,7 +95,7 @@ public final class LMKBannerView: UIView {
         self.message = message
         super.init(frame: .zero)
         setupUI()
-        registerForTraitChanges([UITraitUserInterfaceStyle.self]) { (self: LMKBannerView, _: UITraitCollection) in
+        registerForTraitChanges([UITraitUserInterfaceStyle.self]) { (self: Self, _: UITraitCollection) in
             self.refreshDynamicColors()
         }
     }
@@ -198,8 +198,8 @@ public final class LMKBannerView: UIView {
         guard let view = viewController.view else { return }
 
         // Dismiss existing banners with animation
-        for subview in view.subviews where subview is LMKBannerView {
-            (subview as? LMKBannerView)?.dismiss()
+        for subview in view.subviews where subview is Self {
+            (subview as? Self)?.dismiss()
         }
 
         view.addSubview(self)

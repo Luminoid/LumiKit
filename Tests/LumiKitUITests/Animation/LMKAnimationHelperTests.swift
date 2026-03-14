@@ -66,9 +66,9 @@ struct LMKAnimationHelperTests {
 
     @Test("Animation curves are defined")
     func curvesAreDefined() {
-        let _ = LMKAnimationHelper.Curve.easeInOut
-        let _ = LMKAnimationHelper.Curve.easeOut
-        let _ = LMKAnimationHelper.Curve.easeIn
+        _ = LMKAnimationHelper.Curve.easeInOut
+        _ = LMKAnimationHelper.Curve.easeOut
+        _ = LMKAnimationHelper.Curve.easeIn
         // Test passes if no crashes occur
     }
 

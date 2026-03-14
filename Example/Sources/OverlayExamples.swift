@@ -265,7 +265,7 @@ final class DatePickerDetailViewController: DetailViewController {
             guard let self else { return }
             let formatter = DateFormatter()
             formatter.dateStyle = .medium
-            let note = text?.isEmpty == false ? text! : "(no note)"
+            let note = (text?.isEmpty == false) ? (text ?? "(no note)") : "(no note)"
             LMKToast.showSuccess(message: "\(formatter.string(from: date)): \(note)", on: self)
         }
     }

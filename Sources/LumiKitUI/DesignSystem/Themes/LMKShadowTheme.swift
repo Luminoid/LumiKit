@@ -38,10 +38,10 @@ public nonisolated struct LMKShadowConfig: Sendable {
         darkAlpha: CGFloat = 0.3
     ) {
         self.offset = offset
-        self.radius = radius
-        self.opacity = opacity
-        self.lightAlpha = lightAlpha
-        self.darkAlpha = darkAlpha
+        self.radius = max(0, radius)
+        self.opacity = min(max(opacity, 0), 1)
+        self.lightAlpha = min(max(lightAlpha, 0), 1)
+        self.darkAlpha = min(max(darkAlpha, 0), 1)
     }
 }
 

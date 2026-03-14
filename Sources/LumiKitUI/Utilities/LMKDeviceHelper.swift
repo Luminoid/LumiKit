@@ -62,9 +62,13 @@ public enum LMKDeviceHelper {
         case .iPad, .macCatalyst:
             return .extraLarge
         case .iPhone:
-            if longestSide <= 667 { return .compact }
-            else if longestSide <= 844 { return .regular }
-            else { return .large }
+            if longestSide <= 667 {
+                return .compact
+            } else if longestSide <= 844 {
+                return .regular
+            } else {
+                return .large
+            }
         case .other:
             return .regular
         }

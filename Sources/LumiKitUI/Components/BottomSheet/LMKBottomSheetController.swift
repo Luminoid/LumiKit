@@ -90,7 +90,7 @@ open class LMKBottomSheetController: UIViewController {
         super.viewDidLoad()
         setupBaseUI()
         setupSheetContent()
-        registerForTraitChanges([UITraitUserInterfaceStyle.self]) { (self: LMKBottomSheetController, _: UITraitCollection) in
+        registerForTraitChanges([UITraitUserInterfaceStyle.self]) { (self: Self, _: UITraitCollection) in
             self.refreshBaseColors()
             self.refreshSheetColors()
         }

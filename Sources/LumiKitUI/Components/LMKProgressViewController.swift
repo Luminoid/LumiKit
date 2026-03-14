@@ -122,7 +122,7 @@ public final class LMKProgressViewController: UIViewController {
     override public func viewDidLoad() {
         super.viewDidLoad()
         setupUI()
-        registerForTraitChanges([UITraitUserInterfaceStyle.self]) { (self: LMKProgressViewController, _: UITraitCollection) in
+        registerForTraitChanges([UITraitUserInterfaceStyle.self]) { (self: Self, _: UITraitCollection) in
             self.refreshDynamicColors()
         }
     }

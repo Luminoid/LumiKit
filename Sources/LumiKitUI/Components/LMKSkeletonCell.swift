@@ -27,7 +27,7 @@ public final class LMKSkeletonCell: UITableViewCell {
     override public init(style: UITableViewCell.CellStyle, reuseIdentifier: String?) {
         super.init(style: style, reuseIdentifier: reuseIdentifier)
         setupUI()
-        registerForTraitChanges([UITraitUserInterfaceStyle.self]) { (self: LMKSkeletonCell, _: UITraitCollection) in
+        registerForTraitChanges([UITraitUserInterfaceStyle.self]) { (self: Self, _: UITraitCollection) in
             self.refreshDynamicColors()
         }
     }
@@ -61,6 +61,9 @@ public final class LMKSkeletonCell: UITableViewCell {
     private func setupUI() {
         selectionStyle = .none
         backgroundColor = .clear
+        isAccessibilityElement = true
+        accessibilityTraits = .updatesFrequently
+        accessibilityLabel = "Loading"
 
         containerView.backgroundColor = LMKColor.backgroundPrimary
         containerView.layer.cornerRadius = LMKCornerRadius.medium
@@ -132,7 +135,7 @@ public final class LMKSkeletonCell: UITableViewCell {
     /// - Parameter tableView: The table view whose visible skeleton cells should shimmer.
     public static func startShimmers(in tableView: UITableView) {
         for (index, cell) in tableView.visibleCells.enumerated() {
-            (cell as? LMKSkeletonCell)?.startShimmer(staggerIndex: index)
+            (cell as? Self)?.startShimmer(staggerIndex: index)
         }
     }
 }

@@ -10,34 +10,28 @@ import UIKit
 /// Factory for creating card views with standard shadow and corner radius.
 public enum LMKCardFactory {
     /// Create a card view with secondary background, medium corner radius, and cell card shadow.
+    ///
+    /// - Note: `layer.shadowColor` stores a CGColor snapshot. Re-apply shadow via
+    ///   `lmk_applyShadow(_:)` in `traitCollectionDidChange` for dark mode support.
     public static func cardView() -> UIView {
-        let view = UIView()
-        view.backgroundColor = LMKColor.backgroundSecondary
-        view.layer.cornerRadius = LMKCornerRadius.medium
-        view.layer.masksToBounds = false
-
-        let shadow = LMKShadow.cellCard()
-        view.layer.shadowColor = shadow.color.cgColor
-        view.layer.shadowOffset = shadow.offset
-        view.layer.shadowRadius = shadow.radius
-        view.layer.shadowOpacity = shadow.opacity
-
-        return view
+        makeCard(shadow: LMKShadow.cellCard())
     }
 
     /// Create an elevated card view with stronger shadow.
+    ///
+    /// - Note: `layer.shadowColor` stores a CGColor snapshot. Re-apply shadow via
+    ///   `lmk_applyShadow(_:)` in `traitCollectionDidChange` for dark mode support.
     public static func elevatedCardView() -> UIView {
+        makeCard(shadow: LMKShadow.card())
+    }
+
+    // MARK: - Helpers
+
+    private static func makeCard(shadow: LMKShadowStyle) -> UIView {
         let view = UIView()
         view.backgroundColor = LMKColor.backgroundSecondary
         view.layer.cornerRadius = LMKCornerRadius.medium
-        view.layer.masksToBounds = false
-
-        let shadow = LMKShadow.card()
-        view.layer.shadowColor = shadow.color.cgColor
-        view.layer.shadowOffset = shadow.offset
-        view.layer.shadowRadius = shadow.radius
-        view.layer.shadowOpacity = shadow.opacity
-
+        view.lmk_applyShadow(shadow)
         return view
     }
 

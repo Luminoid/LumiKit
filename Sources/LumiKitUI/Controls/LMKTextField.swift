@@ -38,11 +38,8 @@ open class LMKTextField: UIView {
     private var leadingIconConstraint: Constraint?
     private var traitChangeRegistration: (any UITraitChangeRegistration)?
 
-    /// Delegate forwarding.
-    public weak var delegate: (any UITextFieldDelegate)? {
-        get { textField.delegate }
-        set { textField.delegate = newValue }
-    }
+    /// Delegate forwarding. Calls are forwarded after internal handling (e.g., character limit).
+    public weak var delegate: (any UITextFieldDelegate)?
 
     /// Proxied text property.
     public var text: String? {
@@ -116,6 +113,7 @@ open class LMKTextField: UIView {
         textField.font = LMKTypography.body
         textField.textColor = LMKColor.textPrimary
         textField.lmk_applyFormContentPadding()
+        textField.delegate = self
         containerView.addSubview(textField)
 
         // Helper/error label
@@ -214,4 +212,47 @@ open class LMKTextField: UIView {
     override public func resignFirstResponder() -> Bool { textField.resignFirstResponder() }
 
     override public var isFirstResponder: Bool { textField.isFirstResponder }
+}
+
+// MARK: - UITextFieldDelegate
+
+extension LMKTextField: UITextFieldDelegate {
+    public func textField(
+        _ textField: UITextField,
+        shouldChangeCharactersIn range: NSRange,
+        replacementString string: String
+    ) -> Bool {
+        if let maxCharacterCount {
+            let currentText = (textField.text ?? "") as NSString
+            let newLength = currentText.length + (string as NSString).length - range.length
+            if newLength > maxCharacterCount {
+                return false
+            }
+        }
+        return delegate?.textField?(textField, shouldChangeCharactersIn: range, replacementString: string) ?? true
+    }
+
+    public func textFieldShouldBeginEditing(_ textField: UITextField) -> Bool {
+        delegate?.textFieldShouldBeginEditing?(textField) ?? true
+    }
+
+    public func textFieldDidBeginEditing(_ textField: UITextField) {
+        delegate?.textFieldDidBeginEditing?(textField)
+    }
+
+    public func textFieldShouldEndEditing(_ textField: UITextField) -> Bool {
+        delegate?.textFieldShouldEndEditing?(textField) ?? true
+    }
+
+    public func textFieldDidEndEditing(_ textField: UITextField) {
+        delegate?.textFieldDidEndEditing?(textField)
+    }
+
+    public func textFieldShouldClear(_ textField: UITextField) -> Bool {
+        delegate?.textFieldShouldClear?(textField) ?? true
+    }
+
+    public func textFieldShouldReturn(_ textField: UITextField) -> Bool {
+        delegate?.textFieldShouldReturn?(textField) ?? true
+    }
 }

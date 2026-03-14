@@ -17,7 +17,7 @@ struct UIViewLMKLayoutTests {
     func safeAreaSnpAccessor() {
         let view = UIView()
         // Accessing the property should not crash and returns a valid DSL
-        let _ = view.lmk_safeAreaSnp
+        _ = view.lmk_safeAreaSnp
     }
 
     @Test("lmk_setEdgesEqualToSuperview adds constraints")

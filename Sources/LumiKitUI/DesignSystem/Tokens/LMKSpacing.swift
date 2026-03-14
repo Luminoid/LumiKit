@@ -36,6 +36,12 @@ public enum LMKSpacing {
 
     // MARK: - iPad Breakpoints
 
+    // `cardPadding` uses iPadCompact (768) / iPadLarge (1024) — two tiers because
+    // horizontal content padding needs a bigger jump only on the largest iPads.
+    // `cellPaddingVertical` uses iPadCompact (768) / iPadRegular (834) — three tiers
+    // because vertical cell density is more sensitive to screen size differences
+    // between iPad Air 11" and iPad Pro 12.9".
+
     /// iPad mini / iPad 9th gen (longest side 1024pt, shortest 768pt).
     private static let iPadCompactBreakpoint: CGFloat = 768
     /// iPad Air 11" / iPad Pro 11" (longest side 1194pt, shortest 834pt).
@@ -58,9 +64,13 @@ public enum LMKSpacing {
         #elseif os(iOS)
             if UIDevice.current.userInterfaceIdiom == .pad {
                 let screenSize = longestScreenSide
-                if screenSize <= iPadCompactBreakpoint { return config.cardPaddingIPadCompact }
-                else if screenSize <= iPadLargeBreakpoint { return config.cardPaddingIPadRegular }
-                else { return config.cardPaddingIPadLarge }
+                if screenSize <= iPadCompactBreakpoint {
+                    return config.cardPaddingIPadCompact
+                } else if screenSize <= iPadLargeBreakpoint {
+                    return config.cardPaddingIPadRegular
+                } else {
+                    return config.cardPaddingIPadLarge
+                }
             }
             return config.large
         #else
@@ -82,9 +92,13 @@ public enum LMKSpacing {
         #elseif os(iOS)
             if UIDevice.current.userInterfaceIdiom == .pad {
                 let screenSize = longestScreenSide
-                if screenSize <= iPadCompactBreakpoint { return config.cellPaddingVerticalIPadCompact }
-                else if screenSize <= iPadRegularBreakpoint { return config.cellPaddingVerticalIPadRegular }
-                else { return config.cellPaddingVerticalIPadLarge }
+                if screenSize <= iPadCompactBreakpoint {
+                    return config.cellPaddingVerticalIPadCompact
+                } else if screenSize <= iPadRegularBreakpoint {
+                    return config.cellPaddingVerticalIPadRegular
+                } else {
+                    return config.cellPaddingVerticalIPadLarge
+                }
             }
             return config.small
         #else
@@ -95,7 +109,7 @@ public enum LMKSpacing {
     /// Longest side of the current screen, resolved via the key window scene.
     private static var longestScreenSide: CGFloat {
         let bounds = LMKSceneUtil.getKeyWindow()?.windowScene?.screen.bounds
-            ?? UIScreen.main.bounds
+            ?? CGRect(origin: .zero, size: CGSize(width: 390, height: 844))
         return max(bounds.width, bounds.height)
     }
 

@@ -28,10 +28,9 @@ struct LMKFileUtilTests {
     }
 
     @Test("generateTempFileURL returns URL in temporary directory")
-    func tempFileURLInTmpDir() {
-        let url = LMKFileUtil.generateTempFileURL(fileExtension: .jpeg)
-        #expect(url != nil)
-        #expect(url!.path.contains(NSTemporaryDirectory().dropLast()))
+    func tempFileURLInTmpDir() throws {
+        let url = try #require(LMKFileUtil.generateTempFileURL(fileExtension: .jpeg))
+        #expect(url.path.contains(NSTemporaryDirectory().dropLast()))
     }
 
     @Test("generateTempFileURL returns unique URLs")

@@ -54,7 +54,7 @@ public final class LMKEmptyStateView: UIView {
     override public init(frame: CGRect) {
         super.init(frame: frame)
         setupUI()
-        registerForTraitChanges([UITraitUserInterfaceStyle.self]) { (self: LMKEmptyStateView, _: UITraitCollection) in
+        registerForTraitChanges([UITraitUserInterfaceStyle.self]) { (self: Self, _: UITraitCollection) in
             self.refreshDynamicColors()
         }
     }
