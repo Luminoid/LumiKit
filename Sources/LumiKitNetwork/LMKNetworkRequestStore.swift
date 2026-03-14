@@ -44,6 +44,11 @@
             lock.withLock { $0.count }
         }
 
+        /// Whether the store contains no requests.
+        public var isEmpty: Bool {
+            lock.withLock { $0.isEmpty }
+        }
+
         // MARK: - Mutation
 
         /// Add a new request. Evicts the oldest request if at capacity.

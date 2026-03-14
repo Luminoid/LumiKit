@@ -146,7 +146,7 @@ struct LMKDatePickerHelperTests {
         let picker = try findDatePicker(in: #require(sheet?.view))
         #expect(picker != nil)
         #expect(try dayComponents(from: #require(picker?.minimumDate)) == dayComponents(from: minDate))
-        #expect(try dayComponents(from: #require(#require(picker?.maximumDate))) == dayComponents(from: maxDate))
+        #expect(try dayComponents(from: #require(picker?.maximumDate)) == dayComponents(from: maxDate))
     }
 
     // MARK: - presentFutureDatePicker

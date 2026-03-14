@@ -75,6 +75,11 @@ public final class LMKLogStore: Sendable {
         lock.withLock { $0.count }
     }
 
+    /// Whether the store contains no entries.
+    public var isEmpty: Bool {
+        lock.withLock { $0.isEmpty }
+    }
+
     // MARK: - Mutation
 
     /// Append a log entry. Evicts the oldest entry if at capacity.
