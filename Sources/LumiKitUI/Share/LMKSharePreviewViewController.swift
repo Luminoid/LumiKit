@@ -162,7 +162,7 @@ public final class LMKSharePreviewViewController: UIViewController {
         view.backgroundColor = LMKColor.backgroundPrimary
 
         // Close button — 32pt visual size with expanded 44pt touch target
-        let closeButton = LMKTouchExpandedButton(type: .system)
+        let closeButton = UIButton(type: .system)
         let closeConfig = UIImage.SymbolConfiguration(pointSize: 16, weight: .semibold)
         closeButton.setImage(UIImage(systemName: "xmark", withConfiguration: closeConfig), for: .normal)
         closeButton.tintColor = LMKColor.textSecondary

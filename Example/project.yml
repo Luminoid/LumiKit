@@ -24,7 +24,7 @@ targets:
         SWIFT_VERSION: "6.2"
         CODE_SIGN_STYLE: Automatic
         PRODUCT_BUNDLE_IDENTIFIER: com.luminoid.lumikit.example
-        MARKETING_VERSION: "0.1.0"
+        MARKETING_VERSION: "0.3.0"
         CURRENT_PROJECT_VERSION: 1
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         GENERATE_INFOPLIST_FILE: true

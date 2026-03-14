@@ -66,7 +66,7 @@ final class ExampleViewController: UIViewController, UITableViewDataSource, UITa
 
         var detail: String {
             switch self {
-            case .version: "0.2.0"
+            case .version: "0.3.0"
             case .github: "Luminoid/LumiKit"
             case .platform: "iOS 18+ · Mac Catalyst 18+"
             case .swift: "6.2 · Strict Concurrency"

@@ -177,7 +177,7 @@ LumiKit/
 │   │   │   ├── LMKNavigationDirection, LMKOverscrollFooterHelper,
 │   │   │   └── LMKScrollStackViewController
 │   │   ├── Controls/          # LMKButton, LMKSegmentedControl, LMKToggleButton,
-│   │   │                      # LMKTextField, LMKTextView, LMKTouchExpandedButton
+│   │   │                      # LMKTextField, LMKTextView
 │   │   ├── DesignSystem/
 │   │   │   ├── Tokens/        # LMKColor, LMKSpacing, LMKCornerRadius, LMKAlpha,
 │   │   │   │                  # LMKLayout, LMKShadow, LMKTypography, LMKBadge
@@ -343,7 +343,6 @@ LMKThemeManager.shared.apply(spacing: .init(large: 20))
 | `LMKTextField` | Text field with validation states, helper text, leading icon |
 | `LMKTextView` | Multi-line text input with placeholder and character limit |
 | `LMKToggleButton` | Toggle button with on/off states |
-| `LMKTouchExpandedButton` | Button with expanded touch area via `lmk_pointInside` |
 
 ---
 

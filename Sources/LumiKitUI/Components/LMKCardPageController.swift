@@ -95,7 +95,7 @@ open class LMKCardPageController: UIViewController {
     }()
 
     public private(set) lazy var leadingButton: UIButton = {
-        let button = LMKTouchExpandedButton(type: .system)
+        let button = UIButton(type: .system)
         button.setImage(
             UIImage(systemName: leadingButtonSymbol, withConfiguration: Self.symbolConfig),
             for: .normal
@@ -112,7 +112,7 @@ open class LMKCardPageController: UIViewController {
     }()
 
     public private(set) lazy var trailingButton: UIButton = {
-        let button = LMKTouchExpandedButton(type: .system)
+        let button = UIButton(type: .system)
         button.setImage(
             UIImage(systemName: trailingButtonSymbol, withConfiguration: Self.symbolConfig),
             for: .normal
