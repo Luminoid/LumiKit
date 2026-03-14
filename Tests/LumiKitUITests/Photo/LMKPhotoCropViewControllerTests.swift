@@ -5,7 +5,6 @@
 
 import Testing
 import UIKit
-
 @testable import LumiKitUI
 
 @Suite("LMKPhotoCropViewController")
@@ -121,7 +120,7 @@ struct LMKPhotoCropViewControllerTests {
 
 // MARK: - Mock Delegate
 
-private class MockCropDelegate: LMKPhotoCropDelegate {
+private final class MockCropDelegate: LMKPhotoCropDelegate {
     var didCropCalled = false
     var didCancelCalled = false
 

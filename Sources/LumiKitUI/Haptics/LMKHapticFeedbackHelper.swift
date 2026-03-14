@@ -24,44 +24,74 @@ import UIKit
 /// LMKHapticFeedbackHelper.success()
 /// ```
 public enum LMKHapticFeedbackHelper {
-    private static let impactLight = { UIImpactFeedbackGenerator(style: .light) }()
-    private static let impactMedium = { UIImpactFeedbackGenerator(style: .medium) }()
-    private static let impactHeavy = { UIImpactFeedbackGenerator(style: .heavy) }()
-    private static let impactSoft = { UIImpactFeedbackGenerator(style: .soft) }()
-    private static let impactRigid = { UIImpactFeedbackGenerator(style: .rigid) }()
-    private static let notificationGenerator = { UINotificationFeedbackGenerator() }()
-    private static let selectionGenerator = { UISelectionFeedbackGenerator() }()
+    private static let impactLight = UIImpactFeedbackGenerator(style: .light)
+    private static let impactMedium = UIImpactFeedbackGenerator(style: .medium)
+    private static let impactHeavy = UIImpactFeedbackGenerator(style: .heavy)
+    private static let impactSoft = UIImpactFeedbackGenerator(style: .soft)
+    private static let impactRigid = UIImpactFeedbackGenerator(style: .rigid)
+    private static let notificationGenerator = UINotificationFeedbackGenerator()
+    private static let selectionGenerator = UISelectionFeedbackGenerator()
 
     // MARK: - Feedback
 
     /// Success feedback (action completed).
-    public static func success() { notificationGenerator.notificationOccurred(.success) }
+    public static func success() {
+        notificationGenerator.notificationOccurred(.success)
+    }
+
     /// Warning feedback (caution state).
-    public static func warning() { notificationGenerator.notificationOccurred(.warning) }
+    public static func warning() {
+        notificationGenerator.notificationOccurred(.warning)
+    }
+
     /// Error feedback (validation failure).
-    public static func error() { notificationGenerator.notificationOccurred(.error) }
+    public static func error() {
+        notificationGenerator.notificationOccurred(.error)
+    }
+
     /// Selection feedback (item selected, picker changed).
-    public static func selection() { selectionGenerator.selectionChanged() }
+    public static func selection() {
+        selectionGenerator.selectionChanged()
+    }
+
     /// Light impact (subtle interaction).
-    public static func light() { impactLight.impactOccurred() }
+    public static func light() {
+        impactLight.impactOccurred()
+    }
+
     /// Medium impact (button press).
-    public static func medium() { impactMedium.impactOccurred() }
+    public static func medium() {
+        impactMedium.impactOccurred()
+    }
+
     /// Heavy impact (important action).
-    public static func heavy() { impactHeavy.impactOccurred() }
+    public static func heavy() {
+        impactHeavy.impactOccurred()
+    }
+
     /// Soft impact (gentle, cushioned feel).
-    public static func soft() { impactSoft.impactOccurred() }
+    public static func soft() {
+        impactSoft.impactOccurred()
+    }
+
     /// Rigid impact (sharp, precise feel).
-    public static func rigid() { impactRigid.impactOccurred() }
+    public static func rigid() {
+        impactRigid.impactOccurred()
+    }
 
     // MARK: - Prepare
 
     /// Prepare the notification generator (success/warning/error).
     /// Call ~1–2s before the anticipated feedback.
-    public static func prepareNotification() { notificationGenerator.prepare() }
+    public static func prepareNotification() {
+        notificationGenerator.prepare()
+    }
 
     /// Prepare the selection generator.
     /// Call when a scrollable picker or segmented control appears.
-    public static func prepareSelection() { selectionGenerator.prepare() }
+    public static func prepareSelection() {
+        selectionGenerator.prepare()
+    }
 
     /// Prepare a specific impact generator.
     /// Call before an anticipated tap or press interaction.

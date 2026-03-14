@@ -203,7 +203,9 @@ public final class LMKProgressViewController: UIViewController {
 
     // MARK: - Actions
 
-    @objc private func cancelButtonTapped() { onCancel?() }
+    @objc private func cancelButtonTapped() {
+        onCancel?()
+    }
 
     // MARK: - Public API
 

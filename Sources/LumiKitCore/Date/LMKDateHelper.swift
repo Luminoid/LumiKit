@@ -30,7 +30,7 @@ public enum LMKDateHelper {
         NotificationCenter.default.addObserver(
             forName: .NSSystemTimeZoneDidChange,
             object: nil,
-            queue: .main,
+            queue: .main
         ) { _ in
             lock.lock()
             var cal = Calendar.current

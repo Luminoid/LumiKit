@@ -5,7 +5,6 @@
 
 import Foundation
 import Testing
-
 @testable import LumiKitCore
 
 // MARK: - LMKLogStore
@@ -29,7 +28,7 @@ struct LMKLogStoreTests {
     @Test("Count reflects stored entries")
     func count() {
         let store = LMKLogStore(maxEntries: 10)
-        #expect(store.count == 0)
+        #expect(store.isEmpty)
 
         store.append(makeEntry())
         #expect(store.count == 1)
@@ -47,7 +46,7 @@ struct LMKLogStoreTests {
         store.append(makeEntry())
 
         store.clear()
-        #expect(store.count == 0)
+        #expect(store.isEmpty)
         #expect(store.entries.isEmpty)
     }
 

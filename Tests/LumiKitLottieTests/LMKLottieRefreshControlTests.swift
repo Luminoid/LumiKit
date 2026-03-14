@@ -5,7 +5,6 @@
 
 import Testing
 import UIKit
-
 @testable import LumiKitLottie
 
 @Suite("LMKLottieRefreshControl")

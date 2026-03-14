@@ -1,0 +1,42 @@
+#!/bin/bash
+#
+# Pre-commit hook — runs SwiftLint + SwiftFormat on staged .swift files only.
+# Installed via: make setup-hooks
+#
+# To bypass (emergency): git commit --no-verify
+
+set -e
+
+STAGED=$(git diff --cached --name-only --diff-filter=ACM -- '*.swift')
+
+if [ -z "$STAGED" ]; then
+    exit 0
+fi
+
+echo "Pre-commit: checking $(echo "$STAGED" | wc -l | tr -d ' ') staged Swift file(s)..."
+
+# SwiftLint (lint only, no fix)
+if command -v swiftlint &> /dev/null; then
+    echo "$STAGED" | xargs swiftlint lint --strict --quiet
+else
+    echo "warning: swiftlint not found, skipping lint (install: brew install swiftlint)"
+fi
+
+# SwiftFormat (check only, no modify)
+if command -v swiftformat &> /dev/null; then
+    echo "$STAGED" | xargs swiftformat --lint
+else
+    echo "warning: swiftformat not found, skipping format check (install: brew install swiftformat)"
+fi
+
+# Check for personal DEVELOPMENT_TEAM in staged pbxproj files
+STAGED_PBXPROJ=$(git diff --cached --name-only --diff-filter=ACM -- '*.pbxproj')
+if [ -n "$STAGED_PBXPROJ" ]; then
+    if git diff --cached -- $STAGED_PBXPROJ | grep -q '+.*DEVELOPMENT_TEAM = [A-Z0-9]\{10\}'; then
+        echo "error: DEVELOPMENT_TEAM with personal team ID found in staged pbxproj."
+        echo "       Set DEVELOPMENT_TEAM = \"\" or remove it before committing."
+        exit 1
+    fi
+fi
+
+echo "Pre-commit: all checks passed."

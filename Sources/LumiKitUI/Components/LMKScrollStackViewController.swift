@@ -82,7 +82,9 @@ open class LMKScrollStackViewController: UIViewController {
     }
 
     @available(*, unavailable)
-    public required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+    public required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
 
     // MARK: - Lifecycle
 

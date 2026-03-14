@@ -5,7 +5,6 @@
 
 import Testing
 import UIKit
-
 @testable import LumiKitUI
 
 // MARK: - LMKAnimationHelper
@@ -117,7 +116,7 @@ struct LMKAnimationHelperTests {
         LMKAnimationHelper.animateSuccessFeedback(on: view)
 
         // Checkmark should be added as a subview
-        #expect(view.subviews.count > 0)
+        #expect(!view.subviews.isEmpty)
     }
 
     @Test("animateSuccessFeedback removes duplicate checkmarks")

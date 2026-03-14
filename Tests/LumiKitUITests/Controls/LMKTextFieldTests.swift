@@ -5,7 +5,6 @@
 
 import Testing
 import UIKit
-
 @testable import LumiKitUI
 
 // MARK: - LMKTextField
@@ -24,7 +23,7 @@ struct LMKTextFieldTests {
         let field = LMKTextField()
         field.validationState = .error("Invalid")
         // Verify state was set (border color testing is limited in unit tests)
-        if case .error(let msg) = field.validationState {
+        if case let .error(msg) = field.validationState {
             #expect(msg == "Invalid")
         } else {
             Issue.record("Expected .error state")

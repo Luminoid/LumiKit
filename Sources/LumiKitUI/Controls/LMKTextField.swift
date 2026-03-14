@@ -183,7 +183,7 @@ open class LMKTextField: UIView {
             containerView.layer.borderColor = LMKColor.divider.cgColor
             textField.accessibilityValue = nil
             updateHelperText()
-        case .error(let message):
+        case let .error(message):
             containerView.layer.borderColor = LMKColor.error.cgColor
             helperLabel.text = message
             helperLabel.textColor = LMKColor.error
@@ -206,10 +206,14 @@ open class LMKTextField: UIView {
     // MARK: - First Responder
 
     @discardableResult
-    override public func becomeFirstResponder() -> Bool { textField.becomeFirstResponder() }
+    override public func becomeFirstResponder() -> Bool {
+        textField.becomeFirstResponder()
+    }
 
     @discardableResult
-    override public func resignFirstResponder() -> Bool { textField.resignFirstResponder() }
+    override public func resignFirstResponder() -> Bool {
+        textField.resignFirstResponder()
+    }
 
     override public var isFirstResponder: Bool { textField.isFirstResponder }
 }

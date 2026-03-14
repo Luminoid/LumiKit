@@ -139,7 +139,7 @@ open class LMKTextView: UIView {
         case .normal:
             textView.layer.borderColor = LMKColor.divider.cgColor
             updateHelperText()
-        case .error(let message):
+        case let .error(message):
             textView.layer.borderColor = LMKColor.error.cgColor
             helperLabel.text = message
             helperLabel.textColor = LMKColor.error
@@ -153,10 +153,14 @@ open class LMKTextView: UIView {
     // MARK: - First Responder
 
     @discardableResult
-    override public func becomeFirstResponder() -> Bool { textView.becomeFirstResponder() }
+    override public func becomeFirstResponder() -> Bool {
+        textView.becomeFirstResponder()
+    }
 
     @discardableResult
-    override public func resignFirstResponder() -> Bool { textView.resignFirstResponder() }
+    override public func resignFirstResponder() -> Bool {
+        textView.resignFirstResponder()
+    }
 
     override public var isFirstResponder: Bool { textView.isFirstResponder }
 }

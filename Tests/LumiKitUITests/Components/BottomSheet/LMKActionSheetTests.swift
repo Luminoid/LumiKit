@@ -8,7 +8,6 @@
 
 import Testing
 import UIKit
-
 @testable import LumiKitUI
 
 // MARK: - LMKActionSheet
@@ -20,7 +19,7 @@ struct LMKActionSheetTests {
 
     @Test("Action default style has correct properties")
     func actionDefaultStyle() {
-        let action = LMKActionSheet.Action(title: "Edit") { }
+        let action = LMKActionSheet.Action(title: "Edit") {}
         #expect(action.title == "Edit")
         #expect(action.style == .default)
         #expect(action.icon == nil)
@@ -29,7 +28,7 @@ struct LMKActionSheetTests {
 
     @Test("Action destructive style")
     func actionDestructiveStyle() {
-        let action = LMKActionSheet.Action(title: "Delete", style: .destructive) { }
+        let action = LMKActionSheet.Action(title: "Delete", style: .destructive) {}
         #expect(action.title == "Delete")
         #expect(action.style == .destructive)
     }
@@ -37,7 +36,7 @@ struct LMKActionSheetTests {
     @Test("Action with icon preserves image")
     func actionWithIcon() {
         let icon = UIImage(systemName: "trash")
-        let action = LMKActionSheet.Action(title: "Delete", icon: icon) { }
+        let action = LMKActionSheet.Action(title: "Delete", icon: icon) {}
         #expect(action.icon != nil)
     }
 
@@ -48,7 +47,7 @@ struct LMKActionSheetTests {
 
     @Test("Action with subtitle preserves subtitle")
     func actionWithSubtitle() {
-        let action = LMKActionSheet.Action(title: "Test", subtitle: "Detail") { }
+        let action = LMKActionSheet.Action(title: "Test", subtitle: "Detail") {}
         #expect(action.subtitle == "Detail")
     }
 
@@ -64,7 +63,7 @@ struct LMKActionSheetTests {
 
     @Test("Action without page has nil page")
     func actionWithoutPage() {
-        let action = LMKActionSheet.Action(title: "Regular") { }
+        let action = LMKActionSheet.Action(title: "Regular") {}
         #expect(action.page == nil)
     }
 
@@ -87,11 +86,11 @@ struct LMKActionSheetTests {
         let page = LMKActionSheet.Page(
             title: "Title",
             message: "Message",
-            actions: [.init(title: "OK") { }],
+            actions: [.init(title: "OK") {}],
             contentView: contentView,
             contentHeight: 200,
             confirmTitle: "Confirm",
-            onConfirm: { }
+            onConfirm: {}
         )
         #expect(page.title == "Title")
         #expect(page.message == "Message")
@@ -134,7 +133,7 @@ struct LMKActionSheetTests {
     func initWithTitle() {
         let sheet = LMKActionSheet(
             title: "Actions",
-            actions: [.init(title: "OK") { }]
+            actions: [.init(title: "OK") {}]
         )
         sheet.loadViewIfNeeded()
         #expect(sheet.view != nil)
@@ -145,7 +144,7 @@ struct LMKActionSheetTests {
         let sheet = LMKActionSheet(
             title: "Actions",
             message: "Choose an action",
-            actions: [.init(title: "OK") { }]
+            actions: [.init(title: "OK") {}]
         )
         sheet.loadViewIfNeeded()
         #expect(sheet.view != nil)
@@ -158,7 +157,7 @@ struct LMKActionSheetTests {
             title: "Select Date",
             contentView: picker,
             contentHeight: 200,
-            actions: [.init(title: "Confirm") { }]
+            actions: [.init(title: "Confirm") {}]
         )
         sheet.loadViewIfNeeded()
         #expect(sheet.view != nil)
@@ -167,7 +166,7 @@ struct LMKActionSheetTests {
     @Test("Init without title or message")
     func initWithoutTitleOrMessage() {
         let sheet = LMKActionSheet(
-            actions: [.init(title: "Option 1") { }]
+            actions: [.init(title: "Option 1") {}]
         )
         sheet.loadViewIfNeeded()
         #expect(sheet.view != nil)
@@ -184,13 +183,13 @@ struct LMKActionSheetTests {
     func initWithNavigationActions() {
         let subPage = LMKActionSheet.Page(
             title: "Sub",
-            actions: [.init(title: "Item") { }]
+            actions: [.init(title: "Item") {}]
         )
         let sheet = LMKActionSheet(
             title: "Root",
             actions: [
                 .init(title: "Navigate", page: subPage),
-                .init(title: "Regular") { },
+                .init(title: "Regular") {},
             ]
         )
         sheet.loadViewIfNeeded()
@@ -201,7 +200,7 @@ struct LMKActionSheetTests {
 
     @Test("Container view has top corners rounded")
     func containerCornerRadius() {
-        let sheet = LMKActionSheet(title: "Test", actions: [.init(title: "OK") { }])
+        let sheet = LMKActionSheet(title: "Test", actions: [.init(title: "OK") {}])
         sheet.loadViewIfNeeded()
 
         let container = sheet.view.subviews.first { $0.layer.cornerRadius == LMKCornerRadius.large }
@@ -211,7 +210,7 @@ struct LMKActionSheetTests {
 
     @Test("Dimming view covers full area")
     func dimmingViewLayout() {
-        let sheet = LMKActionSheet(title: "Test", actions: [.init(title: "OK") { }])
+        let sheet = LMKActionSheet(title: "Test", actions: [.init(title: "OK") {}])
         sheet.loadViewIfNeeded()
         sheet.view.frame = CGRect(x: 0, y: 0, width: 375, height: 812)
         sheet.view.layoutIfNeeded()
@@ -228,7 +227,7 @@ struct LMKActionSheetTests {
         defer { LMKAlertPresenter.strings = original }
 
         LMKAlertPresenter.strings = .init(cancel: "Cancelar")
-        let sheet = LMKActionSheet(title: "Test", actions: [.init(title: "OK") { }])
+        let sheet = LMKActionSheet(title: "Test", actions: [.init(title: "OK") {}])
         sheet.loadViewIfNeeded()
 
         let cancelButton = findButton(in: sheet.view, withTitle: "Cancelar")
@@ -242,9 +241,9 @@ struct LMKActionSheetTests {
         let sheet = LMKActionSheet(
             title: "Actions",
             actions: [
-                .init(title: "Edit") { },
-                .init(title: "Share") { },
-                .init(title: "Delete", style: .destructive) { },
+                .init(title: "Edit") {},
+                .init(title: "Share") {},
+                .init(title: "Delete", style: .destructive) {},
             ]
         )
         sheet.loadViewIfNeeded()
@@ -266,7 +265,7 @@ struct LMKActionSheetTests {
         LMKActionSheet.present(
             in: parent,
             title: "Test",
-            actions: [.init(title: "OK") { }]
+            actions: [.init(title: "OK") {}]
         )
 
         #expect(parent.children.count == 1)
@@ -286,7 +285,7 @@ struct LMKActionSheetTests {
             title: "Select Date",
             contentView: datePicker,
             contentHeight: 200,
-            actions: [.init(title: "Confirm") { }]
+            actions: [.init(title: "Confirm") {}]
         )
 
         #expect(parent.children.count == 1)
@@ -296,7 +295,7 @@ struct LMKActionSheetTests {
     // MARK: - Action Handler
 
     @Test("Action handler is called")
-    func actionHandlerCalled() async {
+    func actionHandlerCalled() {
         var handlerCalled = false
         let action = LMKActionSheet.Action(title: "Tap Me") {
             handlerCalled = true
@@ -330,7 +329,7 @@ struct LMKActionSheetTests {
     func backButtonHiddenAtRoot() {
         let sheet = LMKActionSheet(
             title: "Root",
-            actions: [.init(title: "OK") { }]
+            actions: [.init(title: "OK") {}]
         )
         sheet.loadViewIfNeeded()
 
@@ -342,8 +341,8 @@ struct LMKActionSheetTests {
     // MARK: - Chevron Indicator
 
     @Test("Navigation action row shows chevron image view")
-    func navigationActionShowsChevron() {
-        let page = LMKActionSheet.Page(title: "Sub", actions: [.init(title: "Item") { }])
+    func navigationActionShowsChevron() throws {
+        let page = LMKActionSheet.Page(title: "Sub", actions: [.init(title: "Item") {}])
         let sheet = LMKActionSheet(
             title: "Root",
             actions: [.init(title: "Navigate", page: page)]
@@ -353,23 +352,23 @@ struct LMKActionSheetTests {
         let actionRow = findFirstActionRow(in: sheet.view)
         #expect(actionRow != nil)
 
-        let chevron = findChevronImageView(in: actionRow!)
+        let chevron = try findChevronImageView(in: #require(actionRow))
         #expect(chevron != nil)
         #expect(chevron?.isHidden == false)
     }
 
     @Test("Regular action row hides chevron")
-    func regularActionHidesChevron() {
+    func regularActionHidesChevron() throws {
         let sheet = LMKActionSheet(
             title: "Root",
-            actions: [.init(title: "Regular") { }]
+            actions: [.init(title: "Regular") {}]
         )
         sheet.loadViewIfNeeded()
 
         let actionRow = findFirstActionRow(in: sheet.view)
         #expect(actionRow != nil)
 
-        let chevron = findChevronImageView(in: actionRow!)
+        let chevron = try findChevronImageView(in: #require(actionRow))
         #expect(chevron != nil)
         #expect(chevron?.isHidden == true)
     }
@@ -383,8 +382,8 @@ struct LMKActionSheetTests {
             title: "Root",
             actions: [
                 .init(title: "Navigate", page: page),
-                .init(title: "Regular") { },
-                .init(title: "Delete", style: .destructive) { },
+                .init(title: "Regular") {},
+                .init(title: "Delete", style: .destructive) {},
             ]
         )
         sheet.loadViewIfNeeded()
@@ -400,7 +399,7 @@ struct LMKActionSheetTests {
     func sheetWithConfirmShowsButton() {
         let sheet = LMKActionSheet(
             title: "Test",
-            actions: [.init(title: "Option") { }],
+            actions: [.init(title: "Option") {}],
             confirmTitle: "Save"
         )
         sheet.loadViewIfNeeded()
@@ -413,7 +412,7 @@ struct LMKActionSheetTests {
     func sheetWithoutConfirmNoButton() {
         let sheet = LMKActionSheet(
             title: "Test",
-            actions: [.init(title: "Option") { }]
+            actions: [.init(title: "Option") {}]
         )
         sheet.loadViewIfNeeded()
 

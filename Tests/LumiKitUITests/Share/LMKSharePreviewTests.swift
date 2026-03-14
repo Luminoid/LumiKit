@@ -5,7 +5,6 @@
 
 import Testing
 import UIKit
-
 @testable import LumiKitUI
 
 @Suite("LMKSharePreviewViewController")
@@ -66,6 +65,6 @@ struct LMKSharePreviewTests {
         let vc = LMKSharePreviewViewController(image: image)
         vc.loadViewIfNeeded()
 
-        #expect(vc.view.subviews.count > 0)
+        #expect(!vc.view.subviews.isEmpty)
     }
 }

@@ -5,7 +5,6 @@
 
 import Testing
 import UIKit
-
 @testable import LumiKitUI
 
 @Suite("LMKPhotoBrowserViewController")
@@ -134,7 +133,7 @@ struct LMKPhotoBrowserViewControllerTests {
 
 // MARK: - Mock Data Source
 
-private class MockPhotoBrowserDataSource: LMKPhotoBrowserDataSource {
+private final class MockPhotoBrowserDataSource: LMKPhotoBrowserDataSource {
     let photoCount: Int
 
     init(photoCount: Int) {
@@ -163,7 +162,7 @@ private class MockPhotoBrowserDataSource: LMKPhotoBrowserDataSource {
 
 // MARK: - Mock Delegate
 
-private class MockPhotoBrowserDelegate: LMKPhotoBrowserDelegate {
+private final class MockPhotoBrowserDelegate: LMKPhotoBrowserDelegate {
     var didRequestActionCalled = false
     var didDismissCalled = false
     var lastActionIndex: Int?

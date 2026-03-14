@@ -16,9 +16,9 @@
         // MARK: - Basic Functionality
 
         @Test("Add request and retrieve")
-        func addAndRetrieve() {
+        func addAndRetrieve() throws {
             let store = LMKNetworkRequestStore(maxRecords: 10)
-            let url = URL(string: "https://example.com")!
+            let url = try #require(URL(string: "https://example.com"))
 
             let id = store.addRequest(url, method: "GET", headers: [:], body: nil)
 
@@ -29,11 +29,11 @@
         }
 
         @Test("Multiple requests are newest-first")
-        func multipleRequestsNewestFirst() {
+        func multipleRequestsNewestFirst() throws {
             let store = LMKNetworkRequestStore(maxRecords: 10)
-            let url1 = URL(string: "https://example.com/1")!
-            let url2 = URL(string: "https://example.com/2")!
-            let url3 = URL(string: "https://example.com/3")!
+            let url1 = try #require(URL(string: "https://example.com/1"))
+            let url2 = try #require(URL(string: "https://example.com/2"))
+            let url3 = try #require(URL(string: "https://example.com/3"))
 
             let id1 = store.addRequest(url1, method: "GET", headers: [:], body: nil)
             let id2 = store.addRequest(url2, method: "POST", headers: [:], body: nil)
@@ -46,29 +46,29 @@
         }
 
         @Test("Clear removes all records")
-        func clearRecords() {
+        func clearRecords() throws {
             let store = LMKNetworkRequestStore(maxRecords: 10)
-            _ = store.addRequest(URL(string: "https://example.com")!, method: "GET", headers: [:], body: nil)
-            _ = store.addRequest(URL(string: "https://example.com")!, method: "POST", headers: [:], body: nil)
+            _ = try store.addRequest(#require(URL(string: "https://example.com")), method: "GET", headers: [:], body: nil)
+            _ = try store.addRequest(#require(URL(string: "https://example.com")), method: "POST", headers: [:], body: nil)
 
             #expect(store.count == 2)
 
             store.clear()
 
-            #expect(store.count == 0)
+            #expect(store.isEmpty)
             #expect(store.records.isEmpty)
         }
 
         // MARK: - Ring Buffer (FIFO Eviction)
 
         @Test("Ring buffer evicts oldest when exceeding maxRecords")
-        func ringBufferEviction() {
+        func ringBufferEviction() throws {
             let store = LMKNetworkRequestStore(maxRecords: 5)
 
             // Add 7 requests (exceeds maxRecords by 2)
             var ids: [UUID] = []
-            for i in 1...7 {
-                let url = URL(string: "https://example.com/\(i)")!
+            for i in 1 ... 7 {
+                let url = try #require(URL(string: "https://example.com/\(i)"))
                 let id = store.addRequest(url, method: "GET", headers: [:], body: nil)
                 ids.append(id)
             }
@@ -91,13 +91,13 @@
         }
 
         @Test("Ring buffer with large overage")
-        func ringBufferLargeOverage() {
+        func ringBufferLargeOverage() throws {
             let store = LMKNetworkRequestStore(maxRecords: 10)
 
             // Add 50 requests
             var ids: [UUID] = []
-            for i in 1...50 {
-                let url = URL(string: "https://example.com/\(i)")!
+            for i in 1 ... 50 {
+                let url = try #require(URL(string: "https://example.com/\(i)"))
                 let id = store.addRequest(url, method: "GET", headers: [:], body: nil)
                 ids.append(id)
             }
@@ -107,11 +107,11 @@
 
             let recordIds = Set(store.records.map(\.id))
             // First 40 evicted
-            for i in 0..<40 {
+            for i in 0 ..< 40 {
                 #expect(!recordIds.contains(ids[i]))
             }
             // Last 10 retained
-            for i in 40..<50 {
+            for i in 40 ..< 50 {
                 #expect(recordIds.contains(ids[i]))
             }
         }
@@ -119,15 +119,15 @@
         // MARK: - Thread Safety
 
         @Test("Concurrent additions are thread-safe")
-        func concurrentAdditions() async {
+        func concurrentAdditions() async throws {
             let store = LMKNetworkRequestStore(maxRecords: 500)
-            let url = URL(string: "https://example.com")!
+            let url = try #require(URL(string: "https://example.com"))
 
             // 10 concurrent tasks each adding 20 requests
             await withTaskGroup(of: Void.self) { group in
-                for threadId in 0..<10 {
+                for threadId in 0 ..< 10 {
                     group.addTask {
-                        for i in 0..<20 {
+                        for i in 0 ..< 20 {
                             _ = store.addRequest(
                                 url.appendingPathComponent("\(threadId)/\(i)"),
                                 method: "GET",
@@ -144,14 +144,14 @@
         }
 
         @Test("Concurrent read and write")
-        func concurrentReadWrite() async {
+        func concurrentReadWrite() async throws {
             let store = LMKNetworkRequestStore(maxRecords: 100)
-            let url = URL(string: "https://example.com")!
+            let url = try #require(URL(string: "https://example.com"))
 
             await withTaskGroup(of: Void.self) { group in
                 // Writer task
                 group.addTask {
-                    for i in 0..<50 {
+                    for i in 0 ..< 50 {
                         _ = store.addRequest(
                             url.appendingPathComponent("\(i)"),
                             method: "GET",
@@ -162,9 +162,9 @@
                 }
 
                 // Reader tasks
-                for _ in 0..<5 {
+                for _ in 0 ..< 5 {
                     group.addTask {
-                        for _ in 0..<20 {
+                        for _ in 0 ..< 20 {
                             _ = store.records // read concurrently
                             _ = store.count
                         }
@@ -177,13 +177,13 @@
         }
 
         @Test("Concurrent updates are thread-safe")
-        func concurrentUpdates() async {
+        func concurrentUpdates() async throws {
             let store = LMKNetworkRequestStore(maxRecords: 100)
-            let url = URL(string: "https://example.com")!
+            let url = try #require(URL(string: "https://example.com"))
 
             // Pre-populate with 10 requests
             var ids: [UUID] = []
-            for i in 0..<10 {
+            for i in 0 ..< 10 {
                 let id = store.addRequest(
                     url.appendingPathComponent("\(i)"),
                     method: "GET",

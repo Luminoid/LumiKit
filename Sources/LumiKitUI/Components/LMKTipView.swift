@@ -219,7 +219,7 @@ public final class LMKTipView: UIView {
         // Accessibility
         isAccessibilityElement = false
         bubbleView.isAccessibilityElement = true
-        bubbleView.accessibilityLabel = [titleText, messageText].compactMap { $0 }.joined(separator: ". ")
+        bubbleView.accessibilityLabel = [titleText, messageText].compactMap(\.self).joined(separator: ". ")
         bubbleView.accessibilityHint = Self.strings.dismissAccessibilityHint
     }
 

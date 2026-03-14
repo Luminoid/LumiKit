@@ -5,7 +5,6 @@
 
 import Foundation
 import Testing
-
 @testable import LumiKitCore
 
 // MARK: - LMKConcurrencyHelpers
@@ -25,9 +24,9 @@ struct ConcurrencyHelpersTests {
     }
 
     @Test("Decode recovers original model")
-    func decodeRecoversModel() {
+    func decodeRecoversModel() throws {
         let model = TestModel(name: "lumikit", count: 7)
-        let data = LMKConcurrencyHelpers.encode(model)!
+        let data = try #require(LMKConcurrencyHelpers.encode(model))
         let decoded = LMKConcurrencyHelpers.decode(TestModel.self, from: data)
         #expect(decoded == model)
     }
@@ -40,9 +39,9 @@ struct ConcurrencyHelpersTests {
     }
 
     @Test("Encode/decode round-trip for arrays")
-    func encodeDecodeArray() {
+    func encodeDecodeArray() throws {
         let models = [TestModel(name: "a", count: 1), TestModel(name: "b", count: 2)]
-        let data = LMKConcurrencyHelpers.encode(models)!
+        let data = try #require(LMKConcurrencyHelpers.encode(models))
         let decoded = LMKConcurrencyHelpers.decode([TestModel].self, from: data)
         #expect(decoded == models)
     }

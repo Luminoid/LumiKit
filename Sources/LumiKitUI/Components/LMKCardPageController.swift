@@ -195,7 +195,9 @@ open class LMKCardPageController: UIViewController {
     }
 
     @available(*, unavailable)
-    public required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+    public required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
 
     // MARK: - Lifecycle
 
@@ -408,7 +410,9 @@ open class LMKCardPageController: UIViewController {
         }
     }
 
-    @objc private func trailingButtonAction() { trailingButtonTapped() }
+    @objc private func trailingButtonAction() {
+        trailingButtonTapped()
+    }
 
     // MARK: - Helpers
 

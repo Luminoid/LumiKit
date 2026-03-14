@@ -33,7 +33,7 @@ public nonisolated struct LMKPhotoCropStrings: Sendable {
         title: String = "Crop",
         free: String = "Free",
         cancel: String = "Cancel",
-        done: String = "Done",
+        done: String = "Done"
     ) {
         self.title = title
         self.free = free
@@ -162,7 +162,7 @@ public final class LMKPhotoCropViewController: UIViewController {
             padding,
             padding,
             view.bounds.width - padding,
-            view.bounds.height - Self.aspectControlHeight - padding,
+            view.bounds.height - Self.aspectControlHeight - padding
         )
     }
 
@@ -414,11 +414,11 @@ public final class LMKPhotoCropViewController: UIViewController {
             let padding = LMKSpacing.xl
             let availableSize = CGSize(
                 width: viewSize.width - padding * 2,
-                height: viewSize.height - padding * 2,
+                height: viewSize.height - padding * 2
             )
             cachedBaseScale = min(
                 availableSize.width / image.size.width,
-                availableSize.height / image.size.height,
+                availableSize.height / image.size.height
             )
         }
 
@@ -430,7 +430,7 @@ public final class LMKPhotoCropViewController: UIViewController {
             x: (viewSize.width - scaledWidth) / 2,
             y: (viewSize.height - scaledHeight) / 2,
             width: scaledWidth,
-            height: scaledHeight,
+            height: scaledHeight
         )
     }
 
@@ -459,7 +459,7 @@ public final class LMKPhotoCropViewController: UIViewController {
             x: (view.bounds.width - cropWidth) / 2,
             y: (view.bounds.height - cropHeight) / 2,
             width: cropWidth,
-            height: cropHeight,
+            height: cropHeight
         )
 
         updateCropFrame()
@@ -584,7 +584,7 @@ public final class LMKPhotoCropViewController: UIViewController {
                 x: center.x - newWidth / 2,
                 y: center.y - newHeight / 2,
                 width: newWidth,
-                height: newHeight,
+                height: newHeight
             )
         }
 
@@ -707,7 +707,7 @@ public final class LMKPhotoCropViewController: UIViewController {
         var (newOriginX, newOriginY) = originFromAnchorForFixedRatio(handle: handle, anchorX: anchor.x, anchorY: anchor.y, width: newWidth, height: newHeight)
         (newOriginX, newOriginY, newWidth, newHeight) = applyBoundaryConstraintsForFixedRatio(
             handle: handle, anchorX: anchor.x, anchorY: anchor.y, ratio: ratio,
-            originX: newOriginX, originY: newOriginY, width: newWidth, height: newHeight, constraints: constraints,
+            originX: newOriginX, originY: newOriginY, width: newWidth, height: newHeight, constraints: constraints
         )
         newOriginX = max(constraints.minX, min(newOriginX, constraints.maxX - newWidth))
         newOriginY = max(constraints.minY, min(newOriginY, constraints.maxY - newHeight))
@@ -750,7 +750,7 @@ public final class LMKPhotoCropViewController: UIViewController {
     private func applyBoundaryConstraintsForFixedRatio(
         handle: ResizeHandle, anchorX: CGFloat, anchorY: CGFloat, ratio: CGFloat,
         originX: CGFloat, originY: CGFloat, width: CGFloat, height: CGFloat,
-        constraints: (minX: CGFloat, minY: CGFloat, maxX: CGFloat, maxY: CGFloat),
+        constraints: (minX: CGFloat, minY: CGFloat, maxX: CGFloat, maxY: CGFloat)
     ) -> (originX: CGFloat, originY: CGFloat, width: CGFloat, height: CGFloat) {
         var newOriginX = originX
         var newOriginY = originY
@@ -809,7 +809,7 @@ public final class LMKPhotoCropViewController: UIViewController {
         frame: inout CGRect,
         deltaX: CGFloat,
         deltaY: CGFloat,
-        constraints: (minX: CGFloat, minY: CGFloat, maxX: CGFloat, maxY: CGFloat),
+        constraints: (minX: CGFloat, minY: CGFloat, maxX: CGFloat, maxY: CGFloat)
     ) {
         var limitedDeltaX = deltaX
         var limitedDeltaY = deltaY
@@ -848,7 +848,7 @@ public final class LMKPhotoCropViewController: UIViewController {
         frame: inout CGRect,
         deltaX: CGFloat,
         deltaY: CGFloat,
-        constraints: (minX: CGFloat, minY: CGFloat, maxX: CGFloat, maxY: CGFloat),
+        constraints: (minX: CGFloat, minY: CGFloat, maxX: CGFloat, maxY: CGFloat)
     ) {
         var limitedDeltaX = deltaX
         var limitedDeltaY = deltaY
@@ -952,7 +952,7 @@ public final class LMKPhotoCropViewController: UIViewController {
             x: cropFrame.origin.x - imageViewFrame.origin.x,
             y: cropFrame.origin.y - imageViewFrame.origin.y,
             width: cropFrame.width,
-            height: cropFrame.height,
+            height: cropFrame.height
         )
 
         // Scale from image view to actual image pixel coordinates
@@ -961,7 +961,7 @@ public final class LMKPhotoCropViewController: UIViewController {
             x: cropInImageView.origin.x * scale,
             y: cropInImageView.origin.y * scale,
             width: cropInImageView.width * scale,
-            height: cropInImageView.height * scale,
+            height: cropInImageView.height * scale
         )
 
         // Clamp to image bounds, snapping to whole pixels to prevent

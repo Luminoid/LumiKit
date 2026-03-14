@@ -8,7 +8,7 @@
 import LumiKitUI
 import UIKit
 
-class DetailViewController: LMKScrollStackViewController {
+final class DetailViewController: LMKScrollStackViewController {
     /// Convenience alias so existing subclasses can keep using `stack`.
     var stack: UIStackView { stackView }
 }

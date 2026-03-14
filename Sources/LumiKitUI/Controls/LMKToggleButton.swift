@@ -53,7 +53,7 @@ open class LMKToggleButton: LMKButton {
         titleForStatusOn: String? = nil,
         titleForStatusOff: String? = nil,
         imageForStatusOn: UIImage? = nil,
-        imageForStatusOff: UIImage? = nil,
+        imageForStatusOff: UIImage? = nil
     ) {
         self.titleForStatusOn = titleForStatusOn
         self.titleForStatusOff = titleForStatusOff

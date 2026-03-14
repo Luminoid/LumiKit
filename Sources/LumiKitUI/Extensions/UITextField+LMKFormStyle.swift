@@ -35,7 +35,7 @@ public extension UITextView {
             top: LMKSpacing.textViewPaddingVertical,
             left: LMKSpacing.textViewPaddingHorizontal,
             bottom: LMKSpacing.textViewPaddingVertical,
-            right: LMKSpacing.textViewPaddingHorizontal,
+            right: LMKSpacing.textViewPaddingHorizontal
         )
     }
 }

@@ -101,7 +101,9 @@ final class PhotoBrowserDetailViewController: DetailViewController, LMKPhotoBrow
         Calendar.current.date(byAdding: .day, value: -index, to: Date())
     }
 
-    func photoSubtitle(at index: Int) -> String? { nil }
+    func photoSubtitle(at index: Int) -> String? {
+        nil
+    }
 
     // MARK: - LMKPhotoBrowserDelegate
 

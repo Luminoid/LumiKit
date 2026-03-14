@@ -154,7 +154,7 @@ public final class LMKToastView: UIView {
                 self.transform = .identity
                 self.alpha = 1
             },
-            completion: { _ in onShowComplete?() },
+            completion: { _ in onShowComplete?() }
         )
 
         dismissTimer = Timer.scheduledTimer(withTimeInterval: self.duration, repeats: false) { [weak self] _ in
@@ -185,7 +185,7 @@ public final class LMKToastView: UIView {
                 self.transform = CGAffineTransform(translationX: 0, y: Self.dismissYOffset)
                 self.alpha = 0
             },
-            completion: { _ in self.removeFromSuperview() },
+            completion: { _ in self.removeFromSuperview() }
         )
     }
 

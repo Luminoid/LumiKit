@@ -5,7 +5,6 @@
 
 import Testing
 import UIKit
-
 @testable import LumiKitUI
 
 // MARK: - LMKColor
@@ -20,7 +19,6 @@ struct LMKColorTests {
         #expect(LMKColor.error == LMKThemeManager.shared.current.error)
         #expect(LMKColor.textPrimary == LMKThemeManager.shared.current.textPrimary)
     }
-
 }
 
 // MARK: - LMKColor proxy

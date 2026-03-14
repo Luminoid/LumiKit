@@ -17,7 +17,7 @@
         // MARK: - Properties
 
         private let record: LMKNetworkRequestRecord
-        private let maxBodyCharacters = 50_000 // Increased limit with better rendering
+        private let maxBodyCharacters = 50000 // Increased limit with better rendering
 
         private lazy var textView: UITextView = {
             let text = UITextView()

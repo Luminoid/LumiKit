@@ -39,7 +39,7 @@ public nonisolated struct LMKPhotoBrowserStrings: Sendable {
     public init(
         emptyText: String = "No photos",
         counterFormat: String = "%d of %d",
-        tapToToggleHint: String = "Double-tap to zoom, tap to show or hide controls",
+        tapToToggleHint: String = "Double-tap to zoom, tap to show or hide controls"
     ) {
         self.emptyText = emptyText
         self.counterFormat = counterFormat
@@ -136,8 +136,8 @@ public final class LMKPhotoBrowserViewController: UIViewController {
             // Enable mouse/trackpad wheel scrolling
             collectionView.isScrollEnabled = true
 
-            /// Add gesture recognizer for mouse wheel scrolling (only for discrete scroll events)
-            /// This won't interfere with normal collection view scrolling
+            // Add gesture recognizer for mouse wheel scrolling (only for discrete scroll events)
+            // This won't interfere with normal collection view scrolling
             let scrollWheelGesture = UIPanGestureRecognizer(target: self, action: #selector(handleScrollWheel(_:)))
             scrollWheelGesture.allowedScrollTypesMask = .discrete
             scrollWheelGesture.delegate = self
@@ -271,10 +271,21 @@ public final class LMKPhotoBrowserViewController: UIViewController {
             }
         }
 
-        @objc private func dismissButtonHover() { applyHover(to: dismissButton) }
-        @objc private func dismissButtonUnhover() { removeHover(from: dismissButton) }
-        @objc private func actionButtonHover() { applyHover(to: actionButton) }
-        @objc private func actionButtonUnhover() { removeHover(from: actionButton) }
+        @objc private func dismissButtonHover() {
+            applyHover(to: dismissButton)
+        }
+
+        @objc private func dismissButtonUnhover() {
+            removeHover(from: dismissButton)
+        }
+
+        @objc private func actionButtonHover() {
+            applyHover(to: actionButton)
+        }
+
+        @objc private func actionButtonUnhover() {
+            removeHover(from: actionButton)
+        }
 
         // MARK: - Mouse/Trackpad Wheel Support
 
@@ -596,7 +607,7 @@ public final class LMKPhotoBrowserViewController: UIViewController {
         UIView.animate(
             withDuration: duration,
             delay: 0,
-            options: [.curveEaseOut, .allowUserInteraction, .beginFromCurrentState],
+            options: [.curveEaseOut, .allowUserInteraction, .beginFromCurrentState]
         ) {
             self.view.alpha = 0
             self.collectionView.transform = CGAffineTransform(scaleX: 0.7, y: 0.7)

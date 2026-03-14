@@ -18,11 +18,10 @@ public extension UIImage {
         // Guard against upscaling — return original if already smaller than target
         guard max(size.width, size.height) > maxDimension else { return self }
         let aspectRatio = size.width / size.height
-        let targetSize: CGSize
-        if size.width > size.height {
-            targetSize = CGSize(width: maxDimension, height: maxDimension / aspectRatio)
+        let targetSize = if size.width > size.height {
+            CGSize(width: maxDimension, height: maxDimension / aspectRatio)
         } else {
-            targetSize = CGSize(width: maxDimension * aspectRatio, height: maxDimension)
+            CGSize(width: maxDimension * aspectRatio, height: maxDimension)
         }
         return lmk_resized(to: targetSize)
     }

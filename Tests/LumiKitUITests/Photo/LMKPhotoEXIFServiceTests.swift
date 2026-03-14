@@ -8,7 +8,6 @@ import ImageIO
 import Testing
 import UIKit
 import UniformTypeIdentifiers
-
 @testable import LumiKitUI
 
 @Suite("LMKPhotoEXIFService")
@@ -95,7 +94,7 @@ struct LMKPhotoEXIFServiceTests {
     // MARK: - GPS Location Extraction
 
     @Test("extractLocation extracts Northern/Eastern coordinates")
-    func extractLocationNorthernEastern() {
+    func extractLocationNorthernEastern() throws {
         let image = UIImage.lmk_solidColor(.cyan, size: CGSize(width: 10, height: 10))
         // Tokyo coordinates (N, E)
         let imageData = createImageDataWithGPS(
@@ -109,12 +108,12 @@ struct LMKPhotoEXIFServiceTests {
         let coordinate = LMKPhotoEXIFService.extractLocation(from: image, imageData: imageData)
 
         #expect(coordinate != nil)
-        #expect(abs(coordinate!.latitude - 35.6762) < 0.001)
-        #expect(abs(coordinate!.longitude - 139.6503) < 0.001)
+        #expect(try abs(#require(coordinate?.latitude) - 35.6762) < 0.001)
+        #expect(try abs(#require(coordinate?.longitude) - 139.6503) < 0.001)
     }
 
     @Test("extractLocation extracts Southern/Western coordinates")
-    func extractLocationSouthernWestern() {
+    func extractLocationSouthernWestern() throws {
         let image = UIImage.lmk_solidColor(.orange, size: CGSize(width: 10, height: 10))
         // Sydney coordinates (S, E) but test with W for coverage
         let imageData = createImageDataWithGPS(
@@ -129,13 +128,13 @@ struct LMKPhotoEXIFServiceTests {
 
         #expect(coordinate != nil)
         // Latitude should be negative (South)
-        #expect(abs(coordinate!.latitude - (-33.8688)) < 0.001)
+        #expect(try abs(#require(coordinate?.latitude) - -33.8688) < 0.001)
         // Longitude should be negative (West)
-        #expect(abs(coordinate!.longitude - (-151.2093)) < 0.001)
+        #expect(try abs(#require(coordinate?.longitude) - -151.2093) < 0.001)
     }
 
     @Test("extractLocation handles mixed hemisphere (N/W)")
-    func extractLocationMixedHemisphere() {
+    func extractLocationMixedHemisphere() throws {
         let image = UIImage.lmk_solidColor(.magenta, size: CGSize(width: 10, height: 10))
         // San Francisco coordinates (N, W)
         let imageData = createImageDataWithGPS(
@@ -149,8 +148,8 @@ struct LMKPhotoEXIFServiceTests {
         let coordinate = LMKPhotoEXIFService.extractLocation(from: image, imageData: imageData)
 
         #expect(coordinate != nil)
-        #expect(abs(coordinate!.latitude - 37.7749) < 0.001)
-        #expect(abs(coordinate!.longitude - (-122.4194)) < 0.001)
+        #expect(try abs(#require(coordinate?.latitude) - 37.7749) < 0.001)
+        #expect(try abs(#require(coordinate?.longitude) - -122.4194) < 0.001)
     }
 
     @Test("extractLocation returns nil for invalid coordinates")
@@ -183,10 +182,10 @@ private func createImageDataWithEXIF(image: UIImage, dateTimeOriginal: String) -
     }
 
     let exifDict: [String: Any] = [
-        kCGImagePropertyExifDateTimeOriginal as String: dateTimeOriginal
+        kCGImagePropertyExifDateTimeOriginal as String: dateTimeOriginal,
     ]
     let metadata: [String: Any] = [
-        kCGImagePropertyExifDictionary as String: exifDict
+        kCGImagePropertyExifDictionary as String: exifDict,
     ]
 
     CGImageDestinationAddImage(destination, cgImage, metadata as CFDictionary)
@@ -214,10 +213,10 @@ private func createImageDataWithGPS(
         kCGImagePropertyGPSLatitude as String: latitude,
         kCGImagePropertyGPSLongitude as String: longitude,
         kCGImagePropertyGPSLatitudeRef as String: latRef,
-        kCGImagePropertyGPSLongitudeRef as String: lonRef
+        kCGImagePropertyGPSLongitudeRef as String: lonRef,
     ]
     let metadata: [String: Any] = [
-        kCGImagePropertyGPSDictionary as String: gpsDict
+        kCGImagePropertyGPSDictionary as String: gpsDict,
     ]
 
     CGImageDestinationAddImage(destination, cgImage, metadata as CFDictionary)

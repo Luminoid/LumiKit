@@ -82,7 +82,9 @@ open class LMKBottomSheetController: UIViewController {
     }
 
     @available(*, unavailable)
-    public required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+    public required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
 
     // MARK: - Lifecycle
 
@@ -180,11 +182,10 @@ open class LMKBottomSheetController: UIViewController {
         let remainingDistance = max(containerHeight - currentOffset, 1)
 
         let baseDuration = LMKAnimationHelper.Duration.actionSheet
-        let duration: TimeInterval
-        if velocity > 0 {
-            duration = min(max(Double(remainingDistance / velocity), 0.1), baseDuration)
+        let duration: TimeInterval = if velocity > 0 {
+            min(max(Double(remainingDistance / velocity), 0.1), baseDuration)
         } else {
-            duration = baseDuration * (remainingDistance / max(containerHeight, 1))
+            baseDuration * (remainingDistance / max(containerHeight, 1))
         }
 
         containerBottomConstraint?.update(offset: containerHeight)
@@ -215,8 +216,13 @@ open class LMKBottomSheetController: UIViewController {
 
     // MARK: - Actions
 
-    @objc private func cancelTapped() { onDismissTapped() }
-    @objc private func dimmingViewTapped() { onDismissTapped() }
+    @objc private func cancelTapped() {
+        onDismissTapped()
+    }
+
+    @objc private func dimmingViewTapped() {
+        onDismissTapped()
+    }
 
     @objc private func handlePanGesture(_ gesture: UIPanGestureRecognizer) {
         let translation = gesture.translation(in: view)

@@ -31,7 +31,7 @@ public enum LMKConcurrencyHelpers {
     /// Use this for UI updates from background contexts.
     public static func onMainActor<T: AnyObject & Sendable>(
         weak object: T,
-        _ work: @escaping @MainActor (T) -> Void,
+        _ work: @escaping @MainActor (T) -> Void
     ) {
         Task { @MainActor [weak object] in
             guard let object else { return }
@@ -68,7 +68,7 @@ public enum LMKConcurrencyHelpers {
     /// Use this for async operations in ViewControllers to prevent memory leaks.
     public static func executeTask<T: AnyObject & Sendable>(
         weak object: T,
-        operation: @escaping @MainActor (T) async throws -> Void,
+        operation: @escaping @MainActor (T) async throws -> Void
     ) {
         Task { @MainActor [weak object] in
             guard let object else {

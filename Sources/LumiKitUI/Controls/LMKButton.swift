@@ -82,11 +82,11 @@ open class LMKButton: UIButton {
     public func applyStyle(_ style: Style, title: String) {
         var config: UIButton.Configuration
         switch style {
-        case .filled(let color):
+        case let .filled(color):
             config = .filled()
             config.baseBackgroundColor = color
             config.baseForegroundColor = LMKColor.white
-        case .outlined(let color):
+        case let .outlined(color):
             config = .plain()
             config.baseForegroundColor = color
             config.background.strokeColor = color
@@ -100,7 +100,7 @@ open class LMKButton: UIButton {
             top: LMKSpacing.buttonPaddingVertical,
             leading: LMKSpacing.buttonPaddingHorizontal,
             bottom: LMKSpacing.buttonPaddingVertical,
-            trailing: LMKSpacing.buttonPaddingHorizontal,
+            trailing: LMKSpacing.buttonPaddingHorizontal
         )
         config.titleTextAttributesTransformer = UIConfigurationTextAttributesTransformer { incoming in
             var outgoing = incoming

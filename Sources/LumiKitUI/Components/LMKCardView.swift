@@ -40,7 +40,7 @@ public final class LMKCardView: UIView {
     }
 
     /// Content edge insets within the card.
-    public var contentInsets: UIEdgeInsets = UIEdgeInsets(
+    public var contentInsets: UIEdgeInsets = .init(
         top: LMKSpacing.large,
         left: LMKSpacing.large,
         bottom: LMKSpacing.large,

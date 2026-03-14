@@ -9,7 +9,6 @@
 import LumiKitCore
 import Testing
 import UIKit
-
 @testable import LumiKitUI
 
 // MARK: - LMKDatePickerHelper
@@ -80,7 +79,7 @@ struct LMKDatePickerHelperTests {
     }
 
     @Test("presentDatePickerAlert contains UIDatePicker")
-    func presentDatePickerAlert_containsDatePicker() {
+    func presentDatePickerAlert_containsDatePicker() throws {
         let hostVC = makeHostVC()
         LMKDatePickerHelper.presentDatePickerAlert(
             on: hostVC,
@@ -90,11 +89,11 @@ struct LMKDatePickerHelperTests {
         )
         let sheet = findActionSheet(in: hostVC)
         #expect(sheet != nil)
-        #expect(findDatePicker(in: sheet!.view) != nil)
+        #expect(try findDatePicker(in: #require(sheet?.view)) != nil)
     }
 
     @Test("presentDatePickerAlert applies default date")
-    func presentDatePickerAlert_defaultDate() {
+    func presentDatePickerAlert_defaultDate() throws {
         let hostVC = makeHostVC()
         let expectedDate = LMKDateHelper.calendar.date(byAdding: .day, value: -3, to: Date()) ?? Date()
 
@@ -106,13 +105,13 @@ struct LMKDatePickerHelperTests {
         )
 
         let sheet = findActionSheet(in: hostVC)
-        let picker = findDatePicker(in: sheet!.view)
+        let picker = try findDatePicker(in: #require(sheet?.view))
         #expect(picker != nil)
-        #expect(dayComponents(from: picker!.date) == dayComponents(from: expectedDate))
+        #expect(try dayComponents(from: #require(picker?.date)) == dayComponents(from: expectedDate))
     }
 
     @Test("presentDatePickerAlert sets maximum date to today by default")
-    func presentDatePickerAlert_maximumDate() {
+    func presentDatePickerAlert_maximumDate() throws {
         let hostVC = makeHostVC()
         LMKDatePickerHelper.presentDatePickerAlert(
             on: hostVC,
@@ -122,18 +121,18 @@ struct LMKDatePickerHelperTests {
         )
 
         let sheet = findActionSheet(in: hostVC)
-        let picker = findDatePicker(in: sheet!.view)
+        let picker = try findDatePicker(in: #require(sheet?.view))
         #expect(picker != nil)
-        #expect(picker!.maximumDate != nil)
-        #expect(dayComponents(from: picker!.maximumDate!) == dayComponents(from: LMKDateHelper.today))
+        #expect(try #require(picker?.maximumDate) != nil)
+        #expect(try dayComponents(from: #require(picker?.maximumDate)) == dayComponents(from: LMKDateHelper.today))
     }
 
     // MARK: - presentDatePicker
 
     @Test("presentDatePicker respects minimum and maximum date")
-    func presentDatePicker_dateConstraints() {
+    func presentDatePicker_dateConstraints() throws {
         let hostVC = makeHostVC()
-        let minDate = LMKDateHelper.calendar.date(byAdding: .month, value: -1, to: LMKDateHelper.today)!
+        let minDate = try #require(LMKDateHelper.calendar.date(byAdding: .month, value: -1, to: LMKDateHelper.today))
         let maxDate = LMKDateHelper.today
 
         LMKDatePickerHelper.presentDatePicker(
@@ -144,16 +143,16 @@ struct LMKDatePickerHelperTests {
         )
 
         let sheet = findActionSheet(in: hostVC)
-        let picker = findDatePicker(in: sheet!.view)
+        let picker = try findDatePicker(in: #require(sheet?.view))
         #expect(picker != nil)
-        #expect(dayComponents(from: picker!.minimumDate!) == dayComponents(from: minDate))
-        #expect(dayComponents(from: picker!.maximumDate!) == dayComponents(from: maxDate))
+        #expect(try dayComponents(from: #require(picker?.minimumDate)) == dayComponents(from: minDate))
+        #expect(try dayComponents(from: #require(#require(picker?.maximumDate))) == dayComponents(from: maxDate))
     }
 
     // MARK: - presentFutureDatePicker
 
     @Test("presentFutureDatePicker sets minimum date to today")
-    func presentFutureDatePicker_minimumDate() {
+    func presentFutureDatePicker_minimumDate() throws {
         let hostVC = makeHostVC()
         LMKDatePickerHelper.presentFutureDatePicker(
             on: hostVC,
@@ -162,17 +161,17 @@ struct LMKDatePickerHelperTests {
         )
 
         let sheet = findActionSheet(in: hostVC)
-        let picker = findDatePicker(in: sheet!.view)
+        let picker = try findDatePicker(in: #require(sheet?.view))
         #expect(picker != nil)
-        #expect(picker!.minimumDate != nil)
-        #expect(dayComponents(from: picker!.minimumDate!) == dayComponents(from: LMKDateHelper.today))
-        #expect(picker!.maximumDate == nil)
+        #expect(try #require(picker?.minimumDate) != nil)
+        #expect(try dayComponents(from: #require(picker?.minimumDate)) == dayComponents(from: LMKDateHelper.today))
+        #expect(picker?.maximumDate == nil)
     }
 
     @Test("presentFutureDatePicker with excludeToday sets minimum to tomorrow")
-    func presentFutureDatePicker_excludeToday() {
+    func presentFutureDatePicker_excludeToday() throws {
         let hostVC = makeHostVC()
-        let tomorrow = LMKDateHelper.calendar.date(byAdding: .day, value: 1, to: LMKDateHelper.today)!
+        let tomorrow = try #require(LMKDateHelper.calendar.date(byAdding: .day, value: 1, to: LMKDateHelper.today))
 
         LMKDatePickerHelper.presentFutureDatePicker(
             on: hostVC,
@@ -182,15 +181,15 @@ struct LMKDatePickerHelperTests {
         )
 
         let sheet = findActionSheet(in: hostVC)
-        let picker = findDatePicker(in: sheet!.view)
+        let picker = try findDatePicker(in: #require(sheet?.view))
         #expect(picker != nil)
-        #expect(dayComponents(from: picker!.minimumDate!) == dayComponents(from: tomorrow))
+        #expect(try dayComponents(from: #require(picker?.minimumDate)) == dayComponents(from: tomorrow))
     }
 
     // MARK: - presentPastDatePicker
 
     @Test("presentPastDatePicker sets maximum date to today with no minimum")
-    func presentPastDatePicker_dateConstraints() {
+    func presentPastDatePicker_dateConstraints() throws {
         let hostVC = makeHostVC()
         LMKDatePickerHelper.presentPastDatePicker(
             on: hostVC,
@@ -199,16 +198,16 @@ struct LMKDatePickerHelperTests {
         )
 
         let sheet = findActionSheet(in: hostVC)
-        let picker = findDatePicker(in: sheet!.view)
+        let picker = try findDatePicker(in: #require(sheet?.view))
         #expect(picker != nil)
-        #expect(dayComponents(from: picker!.maximumDate!) == dayComponents(from: LMKDateHelper.today))
-        #expect(picker!.minimumDate == nil)
+        #expect(try dayComponents(from: #require(picker?.maximumDate)) == dayComponents(from: LMKDateHelper.today))
+        #expect(picker?.minimumDate == nil)
     }
 
     // MARK: - presentDateRangePicker
 
     @Test("presentDateRangePicker contains two date pickers")
-    func presentDateRangePicker_twoPickers() {
+    func presentDateRangePicker_twoPickers() throws {
         let hostVC = makeHostVC()
         LMKDatePickerHelper.presentDateRangePicker(
             on: hostVC,
@@ -218,12 +217,12 @@ struct LMKDatePickerHelperTests {
 
         let sheet = findActionSheet(in: hostVC)
         #expect(sheet != nil)
-        let pickers = findAllDatePickers(in: sheet!.view)
+        let pickers = try findAllDatePickers(in: #require(sheet?.view))
         #expect(pickers.count == 2)
     }
 
     @Test("presentDateRangePicker uses compact style")
-    func presentDateRangePicker_compactStyle() {
+    func presentDateRangePicker_compactStyle() throws {
         let hostVC = makeHostVC()
         LMKDatePickerHelper.presentDateRangePicker(
             on: hostVC,
@@ -232,7 +231,7 @@ struct LMKDatePickerHelperTests {
         )
 
         let sheet = findActionSheet(in: hostVC)
-        let pickers = findAllDatePickers(in: sheet!.view)
+        let pickers = try findAllDatePickers(in: #require(sheet?.view))
         for picker in pickers {
             #expect(picker.preferredDatePickerStyle == .compact)
         }
@@ -241,7 +240,7 @@ struct LMKDatePickerHelperTests {
     // MARK: - presentDatePickerWithTextField
 
     @Test("presentDatePickerWithTextField contains text field and date picker")
-    func presentDatePickerWithTextField_containsBoth() {
+    func presentDatePickerWithTextField_containsBoth() throws {
         let hostVC = makeHostVC()
         LMKDatePickerHelper.presentDatePickerWithTextField(
             on: hostVC,
@@ -251,12 +250,12 @@ struct LMKDatePickerHelperTests {
 
         let sheet = findActionSheet(in: hostVC)
         #expect(sheet != nil)
-        #expect(findDatePicker(in: sheet!.view) != nil)
-        #expect(findTextField(in: sheet!.view) != nil)
+        #expect(try findDatePicker(in: #require(sheet?.view)) != nil)
+        #expect(try findTextField(in: #require(sheet?.view)) != nil)
     }
 
     @Test("presentDatePickerWithTextField uses default placeholder from strings")
-    func presentDatePickerWithTextField_defaultPlaceholder() {
+    func presentDatePickerWithTextField_defaultPlaceholder() throws {
         let original = LMKDatePickerHelper.strings
         defer { LMKDatePickerHelper.strings = original }
         LMKDatePickerHelper.strings = .init(textFieldPlaceholder: "Test placeholder")
@@ -269,12 +268,12 @@ struct LMKDatePickerHelperTests {
         )
 
         let sheet = findActionSheet(in: hostVC)
-        let textField = findTextField(in: sheet!.view)
+        let textField = try findTextField(in: #require(sheet?.view))
         #expect(textField?.placeholder == "Test placeholder")
     }
 
     @Test("presentDatePickerWithTextField respects custom placeholder override")
-    func presentDatePickerWithTextField_customPlaceholder() {
+    func presentDatePickerWithTextField_customPlaceholder() throws {
         let hostVC = makeHostVC()
         LMKDatePickerHelper.presentDatePickerWithTextField(
             on: hostVC,
@@ -284,12 +283,12 @@ struct LMKDatePickerHelperTests {
         )
 
         let sheet = findActionSheet(in: hostVC)
-        let textField = findTextField(in: sheet!.view)
+        let textField = try findTextField(in: #require(sheet?.view))
         #expect(textField?.placeholder == "Custom override")
     }
 
     @Test("presentDatePickerWithTextField sets maximum date to today")
-    func presentDatePickerWithTextField_maximumDate() {
+    func presentDatePickerWithTextField_maximumDate() throws {
         let hostVC = makeHostVC()
         LMKDatePickerHelper.presentDatePickerWithTextField(
             on: hostVC,
@@ -298,17 +297,17 @@ struct LMKDatePickerHelperTests {
         )
 
         let sheet = findActionSheet(in: hostVC)
-        let picker = findDatePicker(in: sheet!.view)
+        let picker = try findDatePicker(in: #require(sheet?.view))
         #expect(picker != nil)
-        #expect(dayComponents(from: picker!.maximumDate!) == dayComponents(from: LMKDateHelper.today))
+        #expect(try dayComponents(from: #require(picker?.maximumDate)) == dayComponents(from: LMKDateHelper.today))
     }
 
     // MARK: - Edge Cases
 
     @Test("presentDatePickerAlert clamps defaultDate after maximumDate")
-    func presentDatePickerAlert_clampsOutOfBounds() {
+    func presentDatePickerAlert_clampsOutOfBounds() throws {
         let hostVC = makeHostVC()
-        let futureDate = LMKDateHelper.calendar.date(byAdding: .year, value: 1, to: LMKDateHelper.today)!
+        let futureDate = try #require(LMKDateHelper.calendar.date(byAdding: .year, value: 1, to: LMKDateHelper.today))
 
         LMKDatePickerHelper.presentDatePickerAlert(
             on: hostVC,
@@ -319,17 +318,17 @@ struct LMKDatePickerHelperTests {
         )
 
         let sheet = findActionSheet(in: hostVC)
-        let picker = findDatePicker(in: sheet!.view)
+        let picker = try findDatePicker(in: #require(sheet?.view))
         #expect(picker != nil)
         // Should be clamped to today, not the future date
-        #expect(dayComponents(from: picker!.date) == dayComponents(from: LMKDateHelper.today))
+        #expect(try dayComponents(from: #require(picker?.date)) == dayComponents(from: LMKDateHelper.today))
     }
 
     @Test("presentDatePicker swaps min > max and clamps defaultDate")
-    func presentDatePicker_swapsMinMax() {
+    func presentDatePicker_swapsMinMax() throws {
         let hostVC = makeHostVC()
-        let pastDate = LMKDateHelper.calendar.date(byAdding: .month, value: -2, to: LMKDateHelper.today)!
-        let furtherPast = LMKDateHelper.calendar.date(byAdding: .month, value: -3, to: LMKDateHelper.today)!
+        let pastDate = try #require(LMKDateHelper.calendar.date(byAdding: .month, value: -2, to: LMKDateHelper.today))
+        let furtherPast = try #require(LMKDateHelper.calendar.date(byAdding: .month, value: -3, to: LMKDateHelper.today))
 
         // Pass min > max (swapped)
         LMKDatePickerHelper.presentDatePicker(
@@ -342,19 +341,19 @@ struct LMKDatePickerHelperTests {
         )
 
         let sheet = findActionSheet(in: hostVC)
-        let picker = findDatePicker(in: sheet!.view)
+        let picker = try findDatePicker(in: #require(sheet?.view))
         #expect(picker != nil)
         // min/max should be swapped so picker is usable
-        #expect(dayComponents(from: picker!.minimumDate!) == dayComponents(from: furtherPast))
-        #expect(dayComponents(from: picker!.maximumDate!) == dayComponents(from: pastDate))
+        #expect(try dayComponents(from: #require(picker?.minimumDate)) == dayComponents(from: furtherPast))
+        #expect(try dayComponents(from: #require(picker?.maximumDate)) == dayComponents(from: pastDate))
         // defaultDate (today) should be clamped to the resolved max (pastDate)
-        #expect(dayComponents(from: picker!.date) == dayComponents(from: pastDate))
+        #expect(try dayComponents(from: #require(picker?.date)) == dayComponents(from: pastDate))
     }
 
     @Test("presentFutureDatePicker clamps past defaultDate to minimum")
-    func presentFutureDatePicker_clampsPastDate() {
+    func presentFutureDatePicker_clampsPastDate() throws {
         let hostVC = makeHostVC()
-        let pastDate = LMKDateHelper.calendar.date(byAdding: .month, value: -1, to: LMKDateHelper.today)!
+        let pastDate = try #require(LMKDateHelper.calendar.date(byAdding: .month, value: -1, to: LMKDateHelper.today))
 
         LMKDatePickerHelper.presentFutureDatePicker(
             on: hostVC,
@@ -364,16 +363,16 @@ struct LMKDatePickerHelperTests {
         )
 
         let sheet = findActionSheet(in: hostVC)
-        let picker = findDatePicker(in: sheet!.view)
+        let picker = try findDatePicker(in: #require(sheet?.view))
         #expect(picker != nil)
         // Past date should be clamped to today (the minimum)
-        #expect(dayComponents(from: picker!.date) == dayComponents(from: LMKDateHelper.today))
+        #expect(try dayComponents(from: #require(picker?.date)) == dayComponents(from: LMKDateHelper.today))
     }
 
     @Test("presentDatePickerWithTextField clamps future defaultDate to today")
-    func presentDatePickerWithTextField_clampsFutureDate() {
+    func presentDatePickerWithTextField_clampsFutureDate() throws {
         let hostVC = makeHostVC()
-        let futureDate = LMKDateHelper.calendar.date(byAdding: .month, value: 3, to: LMKDateHelper.today)!
+        let futureDate = try #require(LMKDateHelper.calendar.date(byAdding: .month, value: 3, to: LMKDateHelper.today))
 
         LMKDatePickerHelper.presentDatePickerWithTextField(
             on: hostVC,
@@ -383,9 +382,9 @@ struct LMKDatePickerHelperTests {
         )
 
         let sheet = findActionSheet(in: hostVC)
-        let picker = findDatePicker(in: sheet!.view)
+        let picker = try findDatePicker(in: #require(sheet?.view))
         #expect(picker != nil)
-        #expect(dayComponents(from: picker!.date) == dayComponents(from: LMKDateHelper.today))
+        #expect(try dayComponents(from: #require(picker?.date)) == dayComponents(from: LMKDateHelper.today))
     }
 
     // MARK: - Configurable Strings

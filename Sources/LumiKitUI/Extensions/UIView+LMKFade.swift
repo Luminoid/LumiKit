@@ -20,7 +20,7 @@ public extension UIView {
 
     private func lmk_fade(to alpha: CGFloat, duration: Double, delay: Double, completion: ((Bool) -> Void)?) {
         let effectiveDuration = LMKAnimationHelper.shouldAnimate ? duration : 0
-        if effectiveDuration == 0 && delay == 0 {
+        if effectiveDuration == 0, delay == 0 {
             self.alpha = alpha
             completion?(true)
         } else {

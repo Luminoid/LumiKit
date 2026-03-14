@@ -148,20 +148,17 @@ public enum LMKDatePickerHelper {
         onConfirm: @escaping (Date) -> Void
     ) {
         let today = LMKDateHelper.today
-        let minimumDate: Date?
-
-        if excludeToday {
-            minimumDate = LMKDateHelper.calendar.date(byAdding: .day, value: 1, to: today)
+        let minimumDate: Date? = if excludeToday {
+            LMKDateHelper.calendar.date(byAdding: .day, value: 1, to: today)
         } else {
-            minimumDate = today
+            today
         }
 
         // Clamp: if defaultDate is in the past, snap to minimumDate
-        let defaultDateValue: Date
-        if let requested = defaultDate {
-            defaultDateValue = clampedDate(requested, min: minimumDate, max: nil)
+        let defaultDateValue: Date = if let requested = defaultDate {
+            clampedDate(requested, min: minimumDate, max: nil)
         } else {
-            defaultDateValue = minimumDate ?? today
+            minimumDate ?? today
         }
 
         presentDatePicker(

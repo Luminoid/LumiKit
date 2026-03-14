@@ -67,7 +67,7 @@ public enum LMKLabelFactory {
         text: String,
         font: UIFont,
         color: UIColor,
-        type: LMKTypographyType,
+        type: LMKTypographyType
     ) -> UILabel {
         let label = UILabel()
         label.attributedText = attributedString(text: text, font: font, color: color, type: type)
@@ -81,7 +81,7 @@ public enum LMKLabelFactory {
         text: String,
         font: UIFont,
         color: UIColor,
-        type: LMKTypographyType,
+        type: LMKTypographyType
     ) -> NSAttributedString {
         let paragraphStyle = NSMutableParagraphStyle()
 

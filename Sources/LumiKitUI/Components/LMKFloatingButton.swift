@@ -47,7 +47,7 @@ public final class LMKFloatingButton: UIView {
     // MARK: - Properties
 
     /// The currently visible floating button, if any.
-    public private(set) static weak var current: LMKFloatingButton?
+    public private(set) weak static var current: LMKFloatingButton?
 
     /// Called when the button is tapped.
     public var tapHandler: (() -> Void)?
@@ -278,13 +278,12 @@ public final class LMKFloatingButton: UIView {
         let margin = LMKFloatingButtonLayout.edgeMargin
         let safeArea = superview.safeAreaInsets
 
-        let targetX: CGFloat
-        if center.x < midX {
+        let targetX: CGFloat = if center.x < midX {
             // Snap to left edge
-            targetX = margin + safeArea.left + buttonSize / 2
+            margin + safeArea.left + buttonSize / 2
         } else {
             // Snap to right edge
-            targetX = superview.bounds.width - margin - safeArea.right - buttonSize / 2
+            superview.bounds.width - margin - safeArea.right - buttonSize / 2
         }
 
         let duration = LMKAnimationHelper.shouldAnimate ? LMKAnimationHelper.Duration.uiShort : 0

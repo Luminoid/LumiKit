@@ -5,7 +5,6 @@
 
 import Foundation
 import Testing
-
 @testable import LumiKitCore
 
 // MARK: - LMKDateHelper
@@ -34,8 +33,8 @@ struct LMKDateHelperTests {
     }
 
     @Test("isToday returns false for yesterday")
-    func isTodayYesterday() {
-        let yesterday = LMKDateHelper.calendar.date(byAdding: .day, value: -1, to: Date())!
+    func isTodayYesterday() throws {
+        let yesterday = try #require(LMKDateHelper.calendar.date(byAdding: .day, value: -1, to: Date()))
         #expect(!LMKDateHelper.isToday(yesterday))
     }
 
@@ -46,9 +45,9 @@ struct LMKDateHelperTests {
     }
 
     @Test("isSameDay for different days")
-    func isSameDayDifferent() {
+    func isSameDayDifferent() throws {
         let now = Date()
-        let tomorrow = LMKDateHelper.calendar.date(byAdding: .day, value: 1, to: now)!
+        let tomorrow = try #require(LMKDateHelper.calendar.date(byAdding: .day, value: 1, to: now))
         #expect(!LMKDateHelper.isSameDay(now, tomorrow))
     }
 
@@ -68,14 +67,14 @@ struct LMKDateHelperTests {
     }
 
     @Test("isValidDateRange rejects far future")
-    func validDateRangeFarFuture() {
-        let farFuture = LMKDateHelper.calendar.date(byAdding: .year, value: 50, to: Date())!
+    func validDateRangeFarFuture() throws {
+        let farFuture = try #require(LMKDateHelper.calendar.date(byAdding: .year, value: 50, to: Date()))
         #expect(!LMKDateHelper.isValidDateRange(farFuture))
     }
 
     @Test("isValidDateRange rejects far past")
-    func validDateRangeFarPast() {
-        let farPast = LMKDateHelper.calendar.date(byAdding: .year, value: -200, to: Date())!
+    func validDateRangeFarPast() throws {
+        let farPast = try #require(LMKDateHelper.calendar.date(byAdding: .year, value: -200, to: Date()))
         #expect(!LMKDateHelper.isValidDateRange(farPast))
     }
 

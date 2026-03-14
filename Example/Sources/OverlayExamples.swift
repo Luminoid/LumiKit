@@ -334,7 +334,9 @@ final class CardPageDetailViewController: DetailViewController {
         super.viewDidLoad()
 
         addSectionHeader("Basic Card Page")
-        stack.addArrangedSubview(LMKLabelFactory.body(text: "Header with back/trailing buttons, configurable strings, and content container. Designed for use inside a UINavigationController with hidden system nav bar."))
+        stack
+            .addArrangedSubview(LMKLabelFactory
+                .body(text: "Header with back/trailing buttons, configurable strings, and content container. Designed for use inside a UINavigationController with hidden system nav bar."))
         let basicButton = LMKButtonFactory.filled(role: .primary, title: "Show Basic Card Page", target: self, action: #selector(showBasic))
         stack.addArrangedSubview(basicButton)
 

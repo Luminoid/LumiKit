@@ -30,10 +30,21 @@ final class ToastDetailViewController: DetailViewController {
         stack.addArrangedSubview(infoButton)
     }
 
-    @objc private func showSuccess() { LMKToast.showSuccess(message: "Item saved successfully!", on: self) }
-    @objc private func showError() { LMKToast.showError(message: "Failed to save item", on: self) }
-    @objc private func showWarning() { LMKToast.showWarning(message: "Low storage warning", on: self) }
-    @objc private func showInfo() { LMKToast.showInfo(message: "Tap an item for details", on: self) }
+    @objc private func showSuccess() {
+        LMKToast.showSuccess(message: "Item saved successfully!", on: self)
+    }
+
+    @objc private func showError() {
+        LMKToast.showError(message: "Failed to save item", on: self)
+    }
+
+    @objc private func showWarning() {
+        LMKToast.showWarning(message: "Low storage warning", on: self)
+    }
+
+    @objc private func showInfo() {
+        LMKToast.showInfo(message: "Tap an item for details", on: self)
+    }
 }
 
 // MARK: - Alerts & Errors
@@ -53,7 +64,9 @@ final class AlertsDetailViewController: DetailViewController {
 
         addDivider()
         addSectionHeader("LMKErrorHandler")
-        stack.addArrangedSubview(LMKLabelFactory.caption(text: "Severity-based error presentation — info shows a toast, warning shows an alert, error shows a toast (or alert with retry), critical always shows an alert."))
+        stack
+            .addArrangedSubview(LMKLabelFactory
+                .caption(text: "Severity-based error presentation — info shows a toast, warning shows an alert, error shows a toast (or alert with retry), critical always shows an alert."))
 
         let infoButton = makeErrorButton(title: "Info (toast)", role: .info) { [weak self] in
             guard let self else { return }
@@ -184,7 +197,7 @@ final class ProgressDetailViewController: DetailViewController {
         let totalSteps = tasks.count * 3
 
         Task { [weak progressVC] in
-            for step in 1...totalSteps {
+            for step in 1 ... totalSteps {
                 try? await Task.sleep(for: .milliseconds(600))
                 guard let progressVC else { return }
                 let progress = Float(step) / Float(totalSteps)
@@ -256,10 +269,21 @@ final class HapticsDetailViewController: DetailViewController {
         stack.addArrangedSubview(impactRow2)
     }
 
-    @objc private func hapticSuccess() { LMKHapticFeedbackHelper.success() }
-    @objc private func hapticWarning() { LMKHapticFeedbackHelper.warning() }
-    @objc private func hapticError() { LMKHapticFeedbackHelper.error() }
-    @objc private func hapticSelection() { LMKHapticFeedbackHelper.selection() }
+    @objc private func hapticSuccess() {
+        LMKHapticFeedbackHelper.success()
+    }
+
+    @objc private func hapticWarning() {
+        LMKHapticFeedbackHelper.warning()
+    }
+
+    @objc private func hapticError() {
+        LMKHapticFeedbackHelper.error()
+    }
+
+    @objc private func hapticSelection() {
+        LMKHapticFeedbackHelper.selection()
+    }
 
     @objc private func hapticLight() {
         LMKHapticFeedbackHelper.prepareImpact(.light)

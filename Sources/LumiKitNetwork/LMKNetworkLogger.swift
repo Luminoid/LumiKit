@@ -35,8 +35,8 @@
         /// Configure the network logger. Call once at app launch.
         /// - Parameter maxRecords: Maximum number of requests to retain (default 100).
         public static func configure(maxRecords: Int = 100) {
-            Self.store = LMKNetworkRequestStore(maxRecords: maxRecords)
-            Self._isConfigured = true
+            store = LMKNetworkRequestStore(maxRecords: maxRecords)
+            _isConfigured = true
         }
 
         /// Enable network request logging by registering the URLProtocol.
@@ -49,16 +49,16 @@
                 return
             }
             #if LMK_ENABLE_NETWORK_LOGGING
-            URLProtocol.registerClass(LMKNetworkRequestLoggerProtocol.self)
+                URLProtocol.registerClass(LMKNetworkRequestLoggerProtocol.self)
             #else
-            print("[LMKNetworkLogger] Warning: Network logging disabled (LMK_ENABLE_NETWORK_LOGGING not defined)")
+                print("[LMKNetworkLogger] Warning: Network logging disabled (LMK_ENABLE_NETWORK_LOGGING not defined)")
             #endif
         }
 
         /// Disable network request logging by unregistering the URLProtocol.
         public static func disable() {
             #if LMK_ENABLE_NETWORK_LOGGING
-            URLProtocol.unregisterClass(LMKNetworkRequestLoggerProtocol.self)
+                URLProtocol.unregisterClass(LMKNetworkRequestLoggerProtocol.self)
             #endif
         }
 
@@ -94,139 +94,140 @@
 
     // MARK: - URLProtocol Implementation
 
-    /// Internal URLProtocol that intercepts all URLSession requests.
-    /// Not exposed publicly — use `LMKNetworkLogger` API instead.
-    ///
-    /// - Important: Enabled in DEBUG builds via LMK_ENABLE_NETWORK_LOGGING flag.
-    ///   The @preconcurrency attribute suppresses Swift 6 strict concurrency warnings
-    ///   for URLProtocol subclass usage.
-    ///
-    /// - Note: URLProtocol instances are used in a single-threaded context by
-    ///   URLSession's internal queue, so these properties don't need concurrency
-    ///   annotations. Regular instance variables are safe here.
+    // Internal URLProtocol that intercepts all URLSession requests.
+    // Not exposed publicly — use `LMKNetworkLogger` API instead.
+    //
+    // - Important: Enabled in DEBUG builds via LMK_ENABLE_NETWORK_LOGGING flag.
+    //   The @preconcurrency attribute suppresses Swift 6 strict concurrency warnings
+    //   for URLProtocol subclass usage.
+    //
+    // - Note: URLProtocol instances are used in a single-threaded context by
+    //   URLSession's internal queue, so these properties don't need concurrency
+    //   annotations. Regular instance variables are safe here.
     #if LMK_ENABLE_NETWORK_LOGGING
-    @preconcurrency @objc
-    final class LMKNetworkRequestLoggerProtocol: URLProtocol, URLSessionDataDelegate, @unchecked Sendable {
-        // swiftlint:disable:next force_unwrapping
-        private static let blankURL = URL(string: "about:blank")!
-        private static let maxBodyCaptureSize = 512 * 1024 // 512 KB
+        @preconcurrency @objc
+        final class LMKNetworkRequestLoggerProtocol: URLProtocol, URLSessionDataDelegate, @unchecked Sendable {
+            // swiftlint:disable:next force_unwrapping
+            private static let blankURL = URL(string: "about:blank")!
+            private static let maxBodyCaptureSize = 512 * 1024 // 512 KB
 
-        private var session: URLSession?
-        private var dataTask: URLSessionDataTask?
-        private var startTime: Date?
-        private var requestID: UUID?
-        private var responseData = Data()
+            private var session: URLSession?
+            private var dataTask: URLSessionDataTask?
+            private var startTime: Date?
+            private var requestID: UUID?
+            private var responseData = Data()
 
-        /// Serial queue for URLSession delegate callbacks to avoid Swift 6 strict concurrency deadlocks.
-        /// Using delegateQueue: nil causes URLSession to create a private queue that can deadlock.
-        private static let delegateQueue: OperationQueue = {
-            let queue = OperationQueue()
-            queue.maxConcurrentOperationCount = 1 // Serial queue
-            queue.name = "com.lumikit.network.logger.delegate"
-            return queue
-        }()
+            /// Serial queue for URLSession delegate callbacks to avoid Swift 6 strict concurrency deadlocks.
+            /// Using delegateQueue: nil causes URLSession to create a private queue that can deadlock.
+            private static let delegateQueue: OperationQueue = {
+                let queue = OperationQueue()
+                queue.maxConcurrentOperationCount = 1 // Serial queue
+                queue.name = "com.lumikit.network.logger.delegate"
+                return queue
+            }()
 
-        override required init(request: URLRequest, cachedResponse: CachedURLResponse?, client: (any URLProtocolClient)?) {
-            super.init(request: request, cachedResponse: cachedResponse, client: client)
-        }
-
-        // MARK: - URLProtocol Overrides
-
-        override static func canInit(with request: URLRequest) -> Bool {
-            // Avoid infinite loops — only intercept once
-            guard property(forKey: "LMKNetworkRequestLogger", in: request) == nil else {
-                return false
-            }
-            return true
-        }
-
-        override static func canonicalRequest(for request: URLRequest) -> URLRequest {
-            request
-        }
-
-        override func startLoading() {
-            startTime = Date()
-
-            // Mark request to avoid re-intercepting
-            guard let mutableRequest = (request as NSURLRequest).mutableCopy() as? NSMutableURLRequest else {
-                client?.urlProtocol(self, didFailWithError: NSError(domain: "LMKNetworkRequestLogger", code: -1))
-                return
-            }
-            Self.setProperty(true, forKey: "LMKNetworkRequestLogger", in: mutableRequest)
-
-            // Capture request details (thread-safe, no @MainActor needed)
-            if let store = LMKNetworkLogger.internalStore {
-                requestID = store.addRequest(
-                    request.url ?? Self.blankURL,
-                    method: request.httpMethod ?? "GET",
-                    headers: request.allHTTPHeaderFields ?? [:],
-                    body: request.httpBody
-                )
+            override required init(request: URLRequest, cachedResponse: CachedURLResponse?, client: (any URLProtocolClient)?) {
+                super.init(request: request, cachedResponse: cachedResponse, client: client)
             }
 
-            // Perform the actual request with a clean configuration (no URLProtocol interception)
-            let config = URLSessionConfiguration.ephemeral
-            config.protocolClasses = [] // Critical: prevent re-interception by URLProtocol
-            session = URLSession(configuration: config, delegate: self, delegateQueue: Self.delegateQueue)
-            dataTask = session?.dataTask(with: mutableRequest as URLRequest)
-            dataTask?.resume()
-        }
+            // MARK: - URLProtocol Overrides
 
-        override func stopLoading() {
-            dataTask?.cancel()
-            session?.invalidateAndCancel()
-        }
-
-        // MARK: - URLSessionDataDelegate
-        func urlSession(_ session: URLSession, dataTask: URLSessionDataTask, didReceive data: Data) {
-            if responseData.count < Self.maxBodyCaptureSize {
-                responseData.append(data)
-            }
-            client?.urlProtocol(self, didLoad: data)
-        }
-
-        func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {
-            let duration = startTime.map { Date().timeIntervalSince($0) } ?? 0
-
-            if let error {
-                client?.urlProtocol(self, didFailWithError: error)
-                if let id = requestID, let store = LMKNetworkLogger.internalStore {
-                    store.updateError(id: id, error: error, duration: duration)
+            override static func canInit(with request: URLRequest) -> Bool {
+                // Avoid infinite loops — only intercept once
+                guard property(forKey: "LMKNetworkRequestLogger", in: request) == nil else {
+                    return false
                 }
-            } else if let response = task.response as? HTTPURLResponse {
-                client?.urlProtocolDidFinishLoading(self)
-                if let id = requestID, let store = LMKNetworkLogger.internalStore {
-                    let headers = Dictionary(
-                        uniqueKeysWithValues: response.allHeaderFields.compactMap { key, value in
-                            guard let key = key as? String else { return nil as (String, String)? }
-                            return (key, "\(value)")
-                        }
-                    )
-                    store.updateResponse(
-                        id: id,
-                        statusCode: response.statusCode,
-                        headers: headers,
-                        body: responseData,
-                        duration: duration
+                return true
+            }
+
+            override static func canonicalRequest(for request: URLRequest) -> URLRequest {
+                request
+            }
+
+            override func startLoading() {
+                startTime = Date()
+
+                // Mark request to avoid re-intercepting
+                guard let mutableRequest = (request as NSURLRequest).mutableCopy() as? NSMutableURLRequest else {
+                    client?.urlProtocol(self, didFailWithError: NSError(domain: "LMKNetworkRequestLogger", code: -1))
+                    return
+                }
+                Self.setProperty(true, forKey: "LMKNetworkRequestLogger", in: mutableRequest)
+
+                // Capture request details (thread-safe, no @MainActor needed)
+                if let store = LMKNetworkLogger.internalStore {
+                    requestID = store.addRequest(
+                        request.url ?? Self.blankURL,
+                        method: request.httpMethod ?? "GET",
+                        headers: request.allHTTPHeaderFields ?? [:],
+                        body: request.httpBody
                     )
                 }
-            } else {
-                client?.urlProtocolDidFinishLoading(self)
+
+                // Perform the actual request with a clean configuration (no URLProtocol interception)
+                let config = URLSessionConfiguration.ephemeral
+                config.protocolClasses = [] // Critical: prevent re-interception by URLProtocol
+                session = URLSession(configuration: config, delegate: self, delegateQueue: Self.delegateQueue)
+                dataTask = session?.dataTask(with: mutableRequest as URLRequest)
+                dataTask?.resume()
             }
 
-            self.session?.finishTasksAndInvalidate()
-        }
+            override func stopLoading() {
+                dataTask?.cancel()
+                session?.invalidateAndCancel()
+            }
 
-        func urlSession(
-            _ session: URLSession,
-            dataTask: URLSessionDataTask,
-            didReceive response: URLResponse,
-            completionHandler: @escaping (URLSession.ResponseDisposition) -> Void
-        ) {
-            client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
-            completionHandler(.allow)
+            // MARK: - URLSessionDataDelegate
+
+            func urlSession(_ session: URLSession, dataTask: URLSessionDataTask, didReceive data: Data) {
+                if responseData.count < Self.maxBodyCaptureSize {
+                    responseData.append(data)
+                }
+                client?.urlProtocol(self, didLoad: data)
+            }
+
+            func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {
+                let duration = startTime.map { Date().timeIntervalSince($0) } ?? 0
+
+                if let error {
+                    client?.urlProtocol(self, didFailWithError: error)
+                    if let id = requestID, let store = LMKNetworkLogger.internalStore {
+                        store.updateError(id: id, error: error, duration: duration)
+                    }
+                } else if let response = task.response as? HTTPURLResponse {
+                    client?.urlProtocolDidFinishLoading(self)
+                    if let id = requestID, let store = LMKNetworkLogger.internalStore {
+                        let headers = Dictionary(
+                            uniqueKeysWithValues: response.allHeaderFields.compactMap { key, value in
+                                guard let key = key as? String else { return nil as (String, String)? }
+                                return (key, "\(value)")
+                            }
+                        )
+                        store.updateResponse(
+                            id: id,
+                            statusCode: response.statusCode,
+                            headers: headers,
+                            body: responseData,
+                            duration: duration
+                        )
+                    }
+                } else {
+                    client?.urlProtocolDidFinishLoading(self)
+                }
+
+                self.session?.finishTasksAndInvalidate()
+            }
+
+            func urlSession(
+                _ session: URLSession,
+                dataTask: URLSessionDataTask,
+                didReceive response: URLResponse,
+                completionHandler: @escaping (URLSession.ResponseDisposition) -> Void
+            ) {
+                client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
+                completionHandler(.allow)
+            }
         }
-    }
     #endif // LMK_ENABLE_NETWORK_LOGGING
 
 #endif // DEBUG

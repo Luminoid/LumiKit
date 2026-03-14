@@ -105,7 +105,7 @@ public final class LMKLottieRefreshControl: UIRefreshControl {
             x: (bounds.width - size) / 2,
             y: (bounds.height - size) / 2,
             width: size,
-            height: size,
+            height: size
         )
     }
 

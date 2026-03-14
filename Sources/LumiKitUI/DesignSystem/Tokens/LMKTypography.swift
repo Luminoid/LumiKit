@@ -48,10 +48,10 @@ public enum LMKTypography {
             // for missing fonts, and we silently fall back to the system font via ?? below.
             // This prevents crashes in production while still catching missing fonts during development.
             #if DEBUG
-            let actualFamily = font.familyName
-            if actualFamily != family {
-                LMKLogger.debug("Font family '\(family)' not found, using '\(actualFamily)'", category: .ui)
-            }
+                let actualFamily = font.familyName
+                if actualFamily != family {
+                    LMKLogger.debug("Font family '\(family)' not found, using '\(actualFamily)'", category: .ui)
+                }
             #endif
             return font
         }

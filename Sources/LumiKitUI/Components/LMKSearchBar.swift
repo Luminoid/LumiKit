@@ -70,10 +70,14 @@ public final class LMKSearchBar: UIView {
     }
 
     @discardableResult
-    override public func becomeFirstResponder() -> Bool { textField.becomeFirstResponder() }
+    override public func becomeFirstResponder() -> Bool {
+        textField.becomeFirstResponder()
+    }
 
     @discardableResult
-    override public func resignFirstResponder() -> Bool { textField.resignFirstResponder() }
+    override public func resignFirstResponder() -> Bool {
+        textField.resignFirstResponder()
+    }
 
     override public var canBecomeFirstResponder: Bool { textField.canBecomeFirstResponder }
     override public var isFirstResponder: Bool { textField.isFirstResponder }

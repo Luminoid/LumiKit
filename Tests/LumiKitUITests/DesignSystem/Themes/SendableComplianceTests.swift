@@ -5,7 +5,6 @@
 
 import Testing
 import UIKit
-
 @testable import LumiKitUI
 
 // MARK: - Sendable compliance
@@ -14,7 +13,9 @@ import UIKit
 struct SendableComplianceTests {
     @Test("All configuration structs are Sendable")
     func sendableStructs() {
-        func checkSendable<T: Sendable>(_ value: T) { _ = value }
+        func checkSendable(_ value: some Sendable) {
+            _ = value
+        }
 
         checkSendable(LMKTypographyTheme())
         checkSendable(LMKSpacingTheme())

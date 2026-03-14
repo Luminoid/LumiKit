@@ -108,7 +108,7 @@ public enum LMKLogger {
         category: LogCategory = .general,
         file: String = #file,
         function: String = #function,
-        line: Int = #line,
+        line: Int = #line
     ) {
         #if DEBUG
             let logMessage = formatLogMessage(message, file: file, function: function, line: line)
@@ -123,7 +123,7 @@ public enum LMKLogger {
         category: LogCategory = .general,
         file: String = #file,
         function: String = #function,
-        line: Int = #line,
+        line: Int = #line
     ) {
         let logMessage = formatLogMessage(message, file: file, function: function, line: line)
         os_log("%{public}@", log: category.osLog, type: .info, logMessage)
@@ -137,7 +137,7 @@ public enum LMKLogger {
         category: LogCategory = .error,
         file: String = #file,
         function: String = #function,
-        line: Int = #line,
+        line: Int = #line
     ) {
         var logMessage = formatLogMessage(message, file: file, function: function, line: line)
         if let error {
@@ -153,7 +153,7 @@ public enum LMKLogger {
         category: LogCategory = .general,
         file: String = #file,
         function: String = #function,
-        line: Int = #line,
+        line: Int = #line
     ) {
         let logMessage = formatLogMessage(message, file: file, function: function, line: line)
         os_log("%{public}@", log: category.osLog, type: .default, logMessage)

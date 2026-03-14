@@ -53,5 +53,4 @@ public enum LMKColor {
     // MARK: - Specialist
 
     public static var photoBrowserBackground: UIColor { LMKThemeManager.shared.current.photoBrowserBackground }
-
 }

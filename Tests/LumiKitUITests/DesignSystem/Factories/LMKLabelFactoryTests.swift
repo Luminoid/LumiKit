@@ -5,7 +5,6 @@
 
 import Testing
 import UIKit
-
 @testable import LumiKitUI
 
 // MARK: - LMKLabelFactory
@@ -79,7 +78,7 @@ struct LMKLabelFactoryTests {
     }
 
     @Test("attributedString includes line height and letter spacing")
-    func attributedStringAttributes() {
+    func attributedStringAttributes() throws {
         let attrString = LMKLabelFactory.attributedString(
             text: "Test",
             font: LMKTypography.body,
@@ -88,7 +87,7 @@ struct LMKLabelFactoryTests {
         )
         let paragraphStyle = attrString.attribute(.paragraphStyle, at: 0, effectiveRange: nil) as? NSParagraphStyle
         #expect(paragraphStyle != nil)
-        #expect(paragraphStyle!.minimumLineHeight > 0)
+        #expect(try #require(paragraphStyle?.minimumLineHeight) > 0)
         let kern = attrString.attribute(.kern, at: 0, effectiveRange: nil) as? CGFloat
         #expect(kern != nil)
     }

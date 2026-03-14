@@ -5,7 +5,6 @@
 
 import Testing
 import UIKit
-
 @testable import LumiKitUI
 
 // MARK: - LMKCropAspectRatio
@@ -30,26 +29,26 @@ struct CropAspectRatioTests {
     }
 
     @Test("4:3 ratio is approximately 1.33")
-    func fourThreeRatio() {
-        let ratio = LMKCropAspectRatio.fourThree.ratio!
+    func fourThreeRatio() throws {
+        let ratio = try #require(LMKCropAspectRatio.fourThree.ratio)
         #expect(abs(ratio - 4.0 / 3.0) < 0.001)
     }
 
     @Test("3:2 ratio is 1.5")
-    func threeTwoRatio() {
-        let ratio = LMKCropAspectRatio.threeTwo.ratio!
+    func threeTwoRatio() throws {
+        let ratio = try #require(LMKCropAspectRatio.threeTwo.ratio)
         #expect(abs(ratio - 1.5) < 0.001)
     }
 
     @Test("2:3 ratio is approximately 0.67")
-    func twoThreeRatio() {
-        let ratio = LMKCropAspectRatio.twoThree.ratio!
+    func twoThreeRatio() throws {
+        let ratio = try #require(LMKCropAspectRatio.twoThree.ratio)
         #expect(abs(ratio - 2.0 / 3.0) < 0.001)
     }
 
     @Test("3:4 ratio is 0.75")
-    func threeFourRatio() {
-        let ratio = LMKCropAspectRatio.threeFour.ratio!
+    func threeFourRatio() throws {
+        let ratio = try #require(LMKCropAspectRatio.threeFour.ratio)
         #expect(abs(ratio - 0.75) < 0.001)
     }
 
@@ -63,15 +62,15 @@ struct CropAspectRatioTests {
     }
 
     @Test("Landscape ratios are greater than 1")
-    func landscapeRatios() {
-        #expect(LMKCropAspectRatio.fourThree.ratio! > 1.0)
-        #expect(LMKCropAspectRatio.threeTwo.ratio! > 1.0)
+    func landscapeRatios() throws {
+        #expect(try #require(LMKCropAspectRatio.fourThree.ratio) > 1.0)
+        #expect(try #require(LMKCropAspectRatio.threeTwo.ratio) > 1.0)
     }
 
     @Test("Portrait ratios are less than 1")
-    func portraitRatios() {
-        #expect(LMKCropAspectRatio.twoThree.ratio! < 1.0)
-        #expect(LMKCropAspectRatio.threeFour.ratio! < 1.0)
+    func portraitRatios() throws {
+        #expect(try #require(LMKCropAspectRatio.twoThree.ratio) < 1.0)
+        #expect(try #require(LMKCropAspectRatio.threeFour.ratio) < 1.0)
     }
 
     @Test("Square ratio equals 1")
