@@ -12,7 +12,7 @@ packages:
 targets:
   LumiKitExample:
     type: application
-    platform: iOS
+    supportedDestinations: [iOS]
     sources:
       - Sources
       - Resources

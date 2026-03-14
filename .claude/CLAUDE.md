@@ -347,6 +347,14 @@ xcodebuild test \
 
 # Build single target (faster iteration)
 swift build --target LumiKitCore
+
+# Build Example app (XcodeGen project — must use -scheme, NEVER -target)
+cd Example && xcodebuild build \
+  -project LumiKitExample.xcodeproj \
+  -scheme LumiKitExample \
+  -destination 'platform=iOS Simulator,name=iPhone 17' \
+  -skipPackagePluginValidation \
+  CODE_SIGNING_ALLOWED=NO 2>&1 | tail -5
 ```
 
 ---

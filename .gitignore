@@ -1,6 +1,7 @@
 # Xcode
 xcuserdata/
 *.xcscmblueprint
+build/
 
 # Swift Package Manager
 .build/

@@ -20,6 +20,7 @@ final class ExampleViewController: UIViewController, UITableViewDataSource, UITa
         case feedback
         case overlays
         case media
+        case about
 
         var title: String {
             switch self {
@@ -29,6 +30,7 @@ final class ExampleViewController: UIViewController, UITableViewDataSource, UITa
             case .feedback: "Feedback"
             case .overlays: "Overlays"
             case .media: "Media"
+            case .about: "About"
             }
         }
 
@@ -40,7 +42,50 @@ final class ExampleViewController: UIViewController, UITableViewDataSource, UITa
             case .feedback: [.toast, .alerts, .progress, .haptics]
             case .overlays: [.actionSheet, .datePicker, .tipView, .cardPage, .cardPanel, .floatingButton]
             case .media: [.photoBrowser, .photoCrop, .qrCode]
+            case .about: []
             }
+        }
+    }
+
+    private enum InfoRow: Int, CaseIterable {
+        case version
+        case github
+        case platform
+        case swift
+        case license
+
+        var title: String {
+            switch self {
+            case .version: "Version"
+            case .github: "GitHub"
+            case .platform: "Platform"
+            case .swift: "Swift"
+            case .license: "License"
+            }
+        }
+
+        var detail: String {
+            switch self {
+            case .version: "0.2.0"
+            case .github: "Luminoid/LumiKit"
+            case .platform: "iOS 18+ · Mac Catalyst 18+"
+            case .swift: "6.2 · Strict Concurrency"
+            case .license: "MIT"
+            }
+        }
+
+        var iconName: String {
+            switch self {
+            case .version: "tag"
+            case .github: "link"
+            case .platform: "iphone"
+            case .swift: "swift"
+            case .license: "doc.text"
+            }
+        }
+
+        var isLink: Bool {
+            self == .github
         }
     }
 
@@ -207,6 +252,10 @@ final class ExampleViewController: UIViewController, UITableViewDataSource, UITa
         }
     }
 
+    // MARK: - Constants
+
+    private static let githubURL = URL(string: "https://github.com/Luminoid/LumiKit")!
+
     // MARK: - Properties
 
     private lazy var tableView: UITableView = {
@@ -240,14 +289,30 @@ final class ExampleViewController: UIViewController, UITableViewDataSource, UITa
     }
 
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        Section(rawValue: section)?.rows.count ?? 0
+        guard let section = Section(rawValue: section) else { return 0 }
+        if section == .about { return InfoRow.allCases.count }
+        return section.rows.count
     }
 
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCell(withIdentifier: "cell", for: indexPath)
         guard let section = Section(rawValue: indexPath.section) else { return cell }
-        let row = section.rows[indexPath.row]
 
+        if section == .about {
+            guard let infoRow = InfoRow(rawValue: indexPath.row) else { return cell }
+            var config = cell.defaultContentConfiguration()
+            config.text = infoRow.title
+            config.secondaryText = infoRow.detail
+            config.secondaryTextProperties.color = infoRow.isLink ? LMKColor.primary : LMKColor.textSecondary
+            config.image = UIImage(systemName: infoRow.iconName)
+            config.imageProperties.tintColor = LMKColor.primary
+            cell.contentConfiguration = config
+            cell.accessoryType = infoRow.isLink ? .disclosureIndicator : .none
+            cell.selectionStyle = infoRow.isLink ? .default : .none
+            return cell
+        }
+
+        let row = section.rows[indexPath.row]
         var config = cell.defaultContentConfiguration()
         config.text = row.title
         config.secondaryText = row.subtitle
@@ -255,6 +320,7 @@ final class ExampleViewController: UIViewController, UITableViewDataSource, UITa
         config.imageProperties.tintColor = LMKColor.primary
         cell.contentConfiguration = config
         cell.accessoryType = .disclosureIndicator
+        cell.selectionStyle = .default
         return cell
     }
 
@@ -263,6 +329,13 @@ final class ExampleViewController: UIViewController, UITableViewDataSource, UITa
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         tableView.deselectRow(at: indexPath, animated: true)
         guard let section = Section(rawValue: indexPath.section) else { return }
+
+        if section == .about {
+            guard let infoRow = InfoRow(rawValue: indexPath.row), infoRow.isLink else { return }
+            UIApplication.shared.open(Self.githubURL)
+            return
+        }
+
         let row = section.rows[indexPath.row]
         let detail = row.makeDetailViewController()
         detail.title = row.title
