@@ -111,4 +111,15 @@ open class LMKButton: UIButton {
         configuration = config
         pressAnimationEnabled = true
     }
+
+    /// Constrain the title to a single line that shrinks to fit the available width.
+    /// - Parameter minimumScaleFactor: Smallest fraction the font will shrink to (default 0.7).
+    @discardableResult
+    public func lmk_singleLineShrinkToFit(minimumScaleFactor: CGFloat = 0.7) -> Self {
+        configuration?.titleLineBreakMode = .byTruncatingTail
+        titleLabel?.numberOfLines = 1
+        titleLabel?.adjustsFontSizeToFitWidth = true
+        titleLabel?.minimumScaleFactor = minimumScaleFactor
+        return self
+    }
 }
