@@ -16,6 +16,10 @@ public nonisolated protocol LMKEnumSelectable {
 
 /// Bottom sheet for selecting from a list of `LMKEnumSelectable` options.
 ///
+/// Uses type-erased storage internally to avoid a Swift compiler crash
+/// with generic UIViewController subclasses under whole-module optimization
+/// (swiftlang/swift#82523).
+///
 /// Usage:
 /// ```swift
 /// LMKEnumSelectionBottomSheet.present(
@@ -26,13 +30,14 @@ public nonisolated protocol LMKEnumSelectable {
 ///     onSelect: { option in viewModel.sortOption = option }
 /// )
 /// ```
-public final class LMKEnumSelectionBottomSheet<T: Equatable & LMKEnumSelectable>: LMKBottomSheetController, UITableViewDataSource, UITableViewDelegate {
+public final class LMKEnumSelectionBottomSheet: LMKBottomSheetController, UITableViewDataSource, UITableViewDelegate {
     // MARK: - Properties
 
     private let titleText: String
-    private let options: [T]
-    private let currentSelection: T
-    private let onSelect: (T) -> Void
+    private let optionNames: [String]
+    private let optionIcons: [String]
+    private let selectedIndex: Int?
+    private let onSelectIndex: (Int) -> Void
     private let showIcons: Bool
 
     // MARK: - Lazy Views
@@ -59,12 +64,13 @@ public final class LMKEnumSelectionBottomSheet<T: Equatable & LMKEnumSelectable>
 
     // MARK: - Initialization
 
-    public init(title: String, options: [T], currentSelection: T, showIcons: Bool = false, onSelect: @escaping (T) -> Void) {
+    private init(title: String, optionNames: [String], optionIcons: [String], selectedIndex: Int?, showIcons: Bool, onSelectIndex: @escaping (Int) -> Void) {
         self.titleText = title
-        self.options = options
-        self.currentSelection = currentSelection
+        self.optionNames = optionNames
+        self.optionIcons = optionIcons
+        self.selectedIndex = selectedIndex
         self.showIcons = showIcons
-        self.onSelect = onSelect
+        self.onSelectIndex = onSelectIndex
         super.init()
     }
 
@@ -85,7 +91,7 @@ public final class LMKEnumSelectionBottomSheet<T: Equatable & LMKEnumSelectable>
         }
 
         // Preferred table height based on content; shrinks if capped by max height.
-        let tableHeight = LMKBottomSheetLayout.rowHeight * CGFloat(options.count)
+        let tableHeight = LMKBottomSheetLayout.rowHeight * CGFloat(optionNames.count)
         tableView.snp.makeConstraints { make in
             make.height.equalTo(tableHeight).priority(.high)
         }
@@ -101,15 +107,20 @@ public final class LMKEnumSelectionBottomSheet<T: Equatable & LMKEnumSelectable>
     // MARK: - UITableViewDataSource
 
     public func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        options.count
+        optionNames.count
     }
 
     public func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         guard let cell = tableView.dequeueReusableCell(withIdentifier: "LMKEnumSelectionCell", for: indexPath) as? LMKEnumSelectionCell else {
             return UITableViewCell()
         }
-        let option = options[indexPath.row]
-        cell.configure(with: option, isSelected: option == currentSelection, showIcon: showIcons)
+        let row = indexPath.row
+        cell.configure(
+            displayName: optionNames[row],
+            iconName: optionIcons[row],
+            isSelected: row == selectedIndex,
+            showIcon: showIcons
+        )
         return cell
     }
 
@@ -121,16 +132,16 @@ public final class LMKEnumSelectionBottomSheet<T: Equatable & LMKEnumSelectable>
 
     public func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         tableView.deselectRow(at: indexPath, animated: true)
-        let handler = onSelect
-        let option = options[indexPath.row]
+        let handler = onSelectIndex
+        let index = indexPath.row
         dismissSheet()
-        handler(option)
+        handler(index)
     }
 
     // MARK: - Static Convenience
 
     /// Present an enum selection bottom sheet.
-    public static func present(
+    public static func present<T: Equatable & LMKEnumSelectable>(
         in viewController: UIViewController,
         title: String,
         options: [T],
@@ -138,12 +149,16 @@ public final class LMKEnumSelectionBottomSheet<T: Equatable & LMKEnumSelectable>
         showIcons: Bool = false,
         onSelect: @escaping (T) -> Void
     ) {
+        let optionNames = options.map(\.displayName)
+        let optionIcons = options.map(\.iconName)
+        let selectedIndex = options.firstIndex(of: currentSelection)
         let sheet = LMKEnumSelectionBottomSheet(
             title: title,
-            options: options,
-            currentSelection: currentSelection,
+            optionNames: optionNames,
+            optionIcons: optionIcons,
+            selectedIndex: selectedIndex,
             showIcons: showIcons,
-            onSelect: onSelect
+            onSelectIndex: { index in onSelect(options[index]) }
         )
         addAsChild(sheet, in: viewController)
     }
@@ -226,14 +241,14 @@ final class LMKEnumSelectionCell: UITableViewCell {
         iconImageView.isHidden = true
     }
 
-    func configure(with option: some LMKEnumSelectable, isSelected: Bool, showIcon: Bool = false) {
-        titleLabel.text = option.displayName
+    func configure(displayName: String, iconName: String, isSelected: Bool, showIcon: Bool = false) {
+        titleLabel.text = displayName
         iconImageView.isHidden = !showIcon
 
         if showIcon {
-            if let assetImage = UIImage(named: option.iconName) {
+            if let assetImage = UIImage(named: iconName) {
                 iconImageView.image = assetImage
-            } else if let sfSymbol = UIImage(systemName: option.iconName) {
+            } else if let sfSymbol = UIImage(systemName: iconName) {
                 iconImageView.image = sfSymbol
             } else {
                 iconImageView.image = UIImage(systemName: "circle.fill")
