@@ -168,8 +168,6 @@ final class ProgressDetailViewController: DetailViewController {
 
     @objc private func showDeterminate() {
         let progressVC = LMKProgressViewController(title: "Importing Data")
-        progressVC.modalPresentationStyle = .overFullScreen
-        progressVC.modalTransitionStyle = .crossDissolve
         progressVC.onCancel = { [weak progressVC] in
             progressVC?.dismiss(animated: true)
         }
@@ -179,9 +177,11 @@ final class ProgressDetailViewController: DetailViewController {
     }
 
     @objc private func showIndeterminate() {
-        let progressVC = LMKProgressViewController(title: "Processing...", style: .indeterminate)
-        progressVC.modalPresentationStyle = .overFullScreen
-        progressVC.modalTransitionStyle = .crossDissolve
+        let progressVC = LMKProgressViewController(
+            title: "Processing...",
+            subtitle: "This may take a moment",
+            style: .indeterminate
+        )
         progressVC.onCancel = { [weak progressVC] in
             progressVC?.dismiss(animated: true)
         }

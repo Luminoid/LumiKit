@@ -53,6 +53,15 @@ public final class LMKProgressViewController: UIViewController {
         return label
     }()
 
+    private let subtitleLabel: UILabel = {
+        let label = UILabel()
+        label.font = LMKTypography.caption
+        label.textColor = LMKColor.textSecondary
+        label.textAlignment = .center
+        label.numberOfLines = 0
+        return label
+    }()
+
     private let taskLabel: UILabel = {
         let label = UILabel()
         label.font = LMKTypography.body
@@ -101,11 +110,13 @@ public final class LMKProgressViewController: UIViewController {
     private static let announcementThrottleInterval: TimeInterval = 2.0
 
     private let style: Style
+    private let subtitle: String?
 
     // MARK: - Initialization
 
-    public init(title: String, style: Style = .determinate) {
+    public init(title: String, subtitle: String? = nil, style: Style = .determinate) {
         self.style = style
+        self.subtitle = subtitle
         super.init(nibName: nil, bundle: nil)
         titleLabel.text = title
         modalPresentationStyle = .overFullScreen
@@ -132,6 +143,7 @@ public final class LMKProgressViewController: UIViewController {
         containerView.backgroundColor = LMKColor.backgroundPrimary
         containerView.lmk_applyShadow(LMKShadow.card())
         titleLabel.textColor = LMKColor.textPrimary
+        subtitleLabel.textColor = LMKColor.textSecondary
         taskLabel.textColor = LMKColor.textSecondary
         progressView.progressTintColor = LMKColor.primary
         progressView.trackTintColor = LMKColor.backgroundSecondary
@@ -187,6 +199,14 @@ public final class LMKProgressViewController: UIViewController {
             }
 
             cancelTopAnchor = progressLabel.snp.bottom
+        } else if let subtitleText = subtitle {
+            subtitleLabel.text = subtitleText
+            containerView.addSubview(subtitleLabel)
+            subtitleLabel.snp.makeConstraints { make in
+                make.top.equalTo(titleLabel.snp.bottom).offset(Self.titleToTaskSpacing)
+                make.leading.trailing.equalToSuperview().inset(Self.horizontalInsets)
+            }
+            cancelTopAnchor = subtitleLabel.snp.bottom
         } else {
             cancelTopAnchor = titleLabel.snp.bottom
         }
