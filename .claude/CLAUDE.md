@@ -326,7 +326,7 @@ LMKThemeManager.shared.apply(spacing: .init(large: 20))
 # Build all targets (iOS Simulator)
 xcodebuild build \
   -scheme LumiKit-Package \
-  -destination 'platform=iOS Simulator,name=iPhone 17' \
+  -destination 'platform=iOS Simulator,name=iPhone 17,OS=26.2' \
   -skipPackagePluginValidation \
   CODE_SIGNING_ALLOWED=NO 2>&1 | tail -5
 
@@ -340,7 +340,7 @@ xcodebuild build \
 # Run tests (requires iOS Simulator — UIKit targets can't use `swift test`)
 xcodebuild test \
   -scheme LumiKit-Package \
-  -destination 'platform=iOS Simulator,name=iPhone 17' \
+  -destination 'platform=iOS Simulator,name=iPhone 17,OS=26.2' \
   -skipPackagePluginValidation \
   CODE_SIGNING_ALLOWED=NO 2>&1 | tail -20
 
@@ -351,7 +351,7 @@ swift build --target LumiKitCore
 cd Example && xcodebuild build \
   -project LumiKitExample.xcodeproj \
   -scheme LumiKitExample \
-  -destination 'platform=iOS Simulator,name=iPhone 17' \
+  -destination 'platform=iOS Simulator,name=iPhone 17,OS=26.2' \
   -skipPackagePluginValidation \
   CODE_SIGNING_ALLOWED=NO 2>&1 | tail -5
 ```
