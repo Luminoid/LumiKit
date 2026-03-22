@@ -176,8 +176,8 @@ LumiKit/
 │   │   │   ├── LMKCardPanelController, LMKCardPanelLayout,
 │   │   │   ├── LMKNavigationDirection, LMKOverscrollFooterHelper,
 │   │   │   └── LMKScrollStackViewController
-│   │   ├── Controls/          # LMKButton, LMKSegmentedControl, LMKToggleButton,
-│   │   │                      # LMKTextField, LMKTextView
+│   │   ├── Controls/          # LMKButton, LMKSegmentedControl, LMKControlScrollView,
+│   │   │                      # LMKToggleButton, LMKTextField, LMKTextView
 │   │   ├── DesignSystem/
 │   │   │   ├── Tokens/        # LMKColor, LMKSpacing, LMKCornerRadius, LMKAlpha,
 │   │   │   │                  # LMKLayout, LMKShadow, LMKTypography, LMKBadge
@@ -339,7 +339,8 @@ LMKThemeManager.shared.apply(spacing: .init(large: 20))
 | Control | Purpose |
 |---------|---------|
 | `LMKButton` | Configurable button with tap handler and multiple styles |
-| `LMKSegmentedControl` | Custom segmented control |
+| `LMKSegmentedControl` | Segmented control with closure handlers and optional scroll support via `isScrollable` + `makeScrollableContainer()` |
+| `LMKControlScrollView` | Scroll view that cancels touch tracking on embedded controls — enables panning over segments |
 | `LMKTextField` | Text field with validation states, helper text, leading icon |
 | `LMKTextView` | Multi-line text input with placeholder and character limit |
 | `LMKToggleButton` | Toggle button with on/off states |

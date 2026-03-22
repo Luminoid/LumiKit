@@ -101,6 +101,26 @@ final class SegmentedControlDetailViewController: DetailViewController {
         }
         stack.addArrangedSubview(typedSegmented)
         stack.addArrangedSubview(typedLabel)
+
+        addDivider()
+        addSectionHeader("Scrollable")
+        stack.addArrangedSubview(LMKLabelFactory.caption(text: "Set isScrollable = true and use makeScrollableContainer() for many segments."))
+
+        let scrollableSegmented = LMKSegmentedControl(items: (1 ... 12).map { "Month \($0)" })
+        scrollableSegmented.selectedSegmentIndex = 0
+        scrollableSegmented.apportionsSegmentWidthsByContent = true
+        let scrollContainer = scrollableSegmented.makeScrollableContainer()
+        scrollContainer.snp.makeConstraints { make in
+            make.height.equalTo(32)
+        }
+
+        let scrollLabel = LMKLabelFactory.caption(text: "Selected: Month 1")
+        scrollLabel.textAlignment = .center
+        scrollableSegmented.valueChangedHandler = { index in
+            scrollLabel.text = "Selected: Month \(index + 1)"
+        }
+        stack.addArrangedSubview(scrollContainer)
+        stack.addArrangedSubview(scrollLabel)
     }
 }
 
