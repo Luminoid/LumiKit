@@ -85,6 +85,8 @@ LumiKit/
 │   │   ├── LMKNetworkRequestStoreTests.swift  # FIFO, thread safety
 │   │   ├── LMKNetworkRequestRecordTests.swift # Computed properties, display formatting
 │   │   └── LMKNetworkLoggerTests.swift        # Configuration, state transitions
+│   ├── LumiKitLottieTests/  # 7 tests, 1 suite
+│   │   └── LMKLottieRefreshControlTests.swift
 │   └── LumiKitUITests/      # 542 tests, 94 suites — mirrors LumiKitUI/ subfolders
 │       ├── Alerts/          # AlertPresenter, ErrorHandler
 │       ├── Animation/       # AnimationHelper

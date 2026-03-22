@@ -66,7 +66,7 @@ let package = Package(
             path: "Sources/LumiKitLottie",
             swiftSettings: [
                 .defaultIsolation(MainActor.self),
-            ],
+            ]
         ),
 
         // MARK: - Tests
@@ -74,12 +74,12 @@ let package = Package(
         .testTarget(
             name: "LumiKitCoreTests",
             dependencies: ["LumiKitCore"],
-            path: "Tests/LumiKitCoreTests",
+            path: "Tests/LumiKitCoreTests"
         ),
         .testTarget(
             name: "LumiKitUITests",
             dependencies: ["LumiKitUI"],
-            path: "Tests/LumiKitUITests",
+            path: "Tests/LumiKitUITests"
         ),
         .testTarget(
             name: "LumiKitLottieTests",
@@ -91,5 +91,5 @@ let package = Package(
             dependencies: ["LumiKitNetwork"],
             path: "Tests/LumiKitNetworkTests"
         ),
-    ],
+    ]
 )

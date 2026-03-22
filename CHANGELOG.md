@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-03-22
+
+### Added
+
+- **LMKSegmentedControl** — `isScrollable` support with `LMKControlScrollView` for horizontally scrollable segments
+- **LMKButton** — `lmk_singleLineShrinkToFit` for auto-shrinking single-line button text
+
+### Changed
+
+- **LMKProgressViewController** — Updated API surface
+- **LMKEnumSelectionBottomSheet** — Type-erased to work around Swift 6.2 WMO compiler crash
+- **LMKDatePickerHelper** — TextField return handling
+- **Test suite** — Expanded from 615 to 686 tests (76 Core + 61 Network + 542 UI + 7 Lottie), 89 test files (up from 86)
+
+### Fixed
+
+- Thread safety, memory retention, and code quality improvements across all targets
+- Package.swift trailing comma formatting
+
 ## [0.3.0] - 2026-03-13
 
 ### Added
