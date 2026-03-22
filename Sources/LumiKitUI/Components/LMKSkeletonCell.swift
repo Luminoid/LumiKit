@@ -15,7 +15,7 @@ public final class LMKSkeletonCell: UITableViewCell {
         UIEdgeInsets(top: LMKSpacing.xs, left: LMKSpacing.large, bottom: LMKSpacing.xs, right: LMKSpacing.large)
     }
 
-    private static let shimmerAnimationDuration: TimeInterval = 1.8
+    private static var shimmerAnimationDuration: TimeInterval { LMKAnimationHelper.Duration.shimmer }
     private static let staggerDelayPerIndex: TimeInterval = 0.1
     private static let gradientLocations: [NSNumber] = [0.0, 0.5, 1.0]
     private static let gradientStartPoint = CGPoint(x: 0.0, y: 0.5)

@@ -48,10 +48,10 @@ LumiKit is organized into four targets so apps can import only what they need:
 | **LumiKitUI** | LumiKitCore + LumiKitNetwork + SnapKit | Design system tokens, theme manager, animation, haptics, alerts, components, controls, photo browser/crop, network debug UI (DEBUG), UIKit extensions |
 | **LumiKitLottie** | LumiKitUI + Lottie | Lottie-powered pull-to-refresh control |
 
-**100 source files** across 4 targets, with **615 tests** across 4 test targets:
+**100 source files** across 4 targets, with **686 tests** across 4 test targets:
 - **LumiKitCoreTests**: 76 tests (12 suites)
-- **LumiKitNetworkTests**: 8 tests (1 suite)
-- **LumiKitUITests**: 524 tests (91 suites)
+- **LumiKitNetworkTests**: 61 tests (3 suites)
+- **LumiKitUITests**: 542 tests (94 suites)
 - **LumiKitLottieTests**: 7 tests (1 suite)
 
 ---
@@ -163,7 +163,7 @@ LumiKit/
 │   │   └── URLSessionConfiguration+LMKDebug.swift  # .enableNetworkLogging()
 │   ├── LumiKitUI/
 │   │   ├── Alerts/            # LMKAlertPresenter, LMKErrorHandler
-│   │   ├── Animation/         # LMKAnimationHelper, LMKAnimationTheme
+│   │   ├── Animation/         # LMKAnimationHelper
 │   │   ├── Components/
 │   │   │   ├── BottomSheet/   # LMKBottomSheetController (base), LMKActionSheet,
 │   │   │   │                  # LMKEnumSelectionBottomSheet, LMKBottomSheetLayout
@@ -207,13 +207,16 @@ LumiKit/
 │   │   ├── Log/               # LMKLogStore (ring buffer, thread safety),
 │   │   │                      # LMKLogger (log store integration)
 │   │   └── Validation/        # URLValidator
-│   ├── LumiKitNetworkTests/   # 8 tests, 1 suite
-│   │   └── LMKNetworkRequestStoreTests.swift  # FIFO, thread safety
-│   ├── LumiKitUITests/        # 524 tests, 91 suites
+│   ├── LumiKitNetworkTests/   # 61 tests, 3 suites
+│   │   ├── LMKNetworkRequestStoreTests.swift  # FIFO, thread safety
+│   │   ├── LMKNetworkRequestRecordTests.swift # Computed properties, display formatting
+│   │   └── LMKNetworkLoggerTests.swift        # Configuration, state transitions
+│   ├── LumiKitUITests/        # 542 tests, 94 suites
 │   │   ├── Alerts/            # AlertPresenter, ErrorHandler
 │   │   ├── Animation/         # AnimationHelper
 │   │   ├── Components/
-│   │   │   ├── BottomSheet/   # BottomSheetController, ActionSheet, BottomSheetLayout
+│   │   │   ├── BottomSheet/   # BottomSheetController, ActionSheet, BottomSheetLayout,
+│   │   │   │                  # EnumSelectionBottomSheet
 │   │   │   ├── Pickers/       # DatePickerHelper
 │   │   │   ├── Badge, Banner, Card, Chip, Divider, EmptyState,
 │   │   │   ├── Gradient, LoadingState, SearchBar, Skeleton, Toast,
@@ -253,7 +256,7 @@ All design tokens are fully configurable via `LMKThemeManager`. Each category ha
 | Alpha | `LMKAlpha` | `LMKAlphaTheme` | `.overlay`, `.disabled`, `.overlayStrong` |
 | Layout | `LMKLayout` | `LMKLayoutTheme` | `.minimumTouchTarget` (44), `.iconMedium` (24) |
 | Shadow | `LMKShadow` | `LMKShadowTheme` | `small()`, `button()`, `cellCard()`, `card()`, `medium()`, `large()` |
-| Animation | `LMKAnimationHelper` | `LMKAnimationTheme` | `.Duration.*`, `.Spring.damping`, `.shouldAnimate` |
+| Animation | `LMKAnimationHelper` | `LMKAnimationTheme` | `.Duration.*`, `.Spring.damping`, `.shouldAnimate`, `.shimmer` |
 | Badge | `LMKBadgeView` | `LMKBadgeTheme` | `minWidth`, `height`, `horizontalPadding` |
 
 ### Configuration
@@ -375,7 +378,7 @@ All UIKit extensions use the `lmk_` prefix to avoid naming conflicts.
 | Utility | Purpose |
 |---------|---------|
 | `LMKAnimationHelper` | Centralized animation timing with Reduce Motion support (`shouldAnimate`), spring damping, and duration presets |
-| `LMKAnimationTheme` | Configurable animation token struct (durations, spring parameters) via `LMKThemeManager` |
+| `LMKAnimationTheme` | Configurable animation token struct (durations including `shimmer` for skeleton loading, spring parameters) via `LMKThemeManager` |
 | `LMKHapticFeedbackHelper` | Haptic feedback helpers — light, medium, heavy, soft, rigid impact and success/error notification feedback |
 
 ---
@@ -516,7 +519,7 @@ Network debugging works correctly in Swift 6 strict concurrency mode, including 
 # Build all targets (iOS Simulator)
 xcodebuild build \
   -scheme LumiKit-Package \
-  -destination 'platform=iOS Simulator,name=iPhone 17' \
+  -destination 'platform=iOS Simulator,name=iPhone 17,OS=26.2' \
   -skipPackagePluginValidation \
   CODE_SIGNING_ALLOWED=NO
 
@@ -530,7 +533,7 @@ xcodebuild build \
 # Run tests (requires iOS Simulator — UIKit targets can't use swift test)
 xcodebuild test \
   -scheme LumiKit-Package \
-  -destination 'platform=iOS Simulator,name=iPhone 17' \
+  -destination 'platform=iOS Simulator,name=iPhone 17,OS=26.2' \
   -skipPackagePluginValidation \
   CODE_SIGNING_ALLOWED=NO
 

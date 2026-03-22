@@ -144,7 +144,8 @@ open class LMKCardPanelController: UIViewController {
             usingSpringWithDamping: LMKAnimationHelper.Spring.damping,
             initialSpringVelocity: 0,
             options: .curveEaseOut
-        ) {
+        ) { [weak self] in
+            guard let self else { return }
             self.cardView.alpha = 1
             self.cardView.transform = .identity
             if self.dismissesOnBackgroundTap {
@@ -155,10 +156,10 @@ open class LMKCardPanelController: UIViewController {
 
     private func animateOut(completion: @escaping () -> Void) {
         let duration = LMKAnimationHelper.shouldAnimate ? LMKAnimationHelper.Duration.actionSheet : 0
-        UIView.animate(withDuration: duration, delay: 0, options: .curveEaseIn) {
-            self.cardView.alpha = 0
-            self.cardView.transform = CGAffineTransform(translationX: 0, y: -LMKCardPanelLayout.slideOffset)
-            self.view.backgroundColor = .clear
+        UIView.animate(withDuration: duration, delay: 0, options: .curveEaseIn) { [weak self] in
+            self?.cardView.alpha = 0
+            self?.cardView.transform = CGAffineTransform(translationX: 0, y: -LMKCardPanelLayout.slideOffset)
+            self?.view.backgroundColor = .clear
         } completion: { _ in
             completion()
         }

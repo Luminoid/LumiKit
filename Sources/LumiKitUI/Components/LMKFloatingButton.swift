@@ -241,8 +241,8 @@ public final class LMKFloatingButton: UIView {
         case .began:
             panStartCenter = center
             if LMKAnimationHelper.shouldAnimate {
-                UIView.animate(withDuration: LMKAnimationHelper.Duration.buttonPress) {
-                    self.transform = CGAffineTransform(scaleX: 0.95, y: 0.95)
+                UIView.animate(withDuration: LMKAnimationHelper.Duration.buttonPress) { [weak self] in
+                    self?.transform = CGAffineTransform(scaleX: 0.95, y: 0.95)
                 }
             }
 
@@ -259,8 +259,8 @@ public final class LMKFloatingButton: UIView {
         case .ended, .cancelled:
             snapToNearestEdge()
             if LMKAnimationHelper.shouldAnimate {
-                UIView.animate(withDuration: LMKAnimationHelper.Duration.buttonPress) {
-                    self.transform = .identity
+                UIView.animate(withDuration: LMKAnimationHelper.Duration.buttonPress) { [weak self] in
+                    self?.transform = .identity
                 }
             }
 
@@ -293,8 +293,8 @@ public final class LMKFloatingButton: UIView {
             usingSpringWithDamping: LMKAnimationHelper.Spring.damping,
             initialSpringVelocity: 0,
             options: [.curveEaseOut],
-            animations: {
-                self.center.x = targetX
+            animations: { [weak self] in
+                self?.center.x = targetX
             }
         )
     }

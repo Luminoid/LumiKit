@@ -9,6 +9,7 @@
 #if DEBUG
 
     @preconcurrency import Foundation
+    import LumiKitCore
 
     /// Network debugging system for the Lumi ecosystem.
     ///
@@ -45,13 +46,13 @@
         ///   If network logging is not working, ensure the flag is defined in Package.swift.
         public static func enable() {
             guard _isConfigured else {
-                print("[LMKNetworkLogger] Warning: Call configure() before enable()")
+                LMKLogger.warning("Call configure() before enable()", category: .network)
                 return
             }
             #if LMK_ENABLE_NETWORK_LOGGING
                 URLProtocol.registerClass(LMKNetworkRequestLoggerProtocol.self)
             #else
-                print("[LMKNetworkLogger] Warning: Network logging disabled (LMK_ENABLE_NETWORK_LOGGING not defined)")
+                LMKLogger.warning("Network logging disabled (LMK_ENABLE_NETWORK_LOGGING not defined)", category: .network)
             #endif
         }
 
@@ -107,8 +108,7 @@
     #if LMK_ENABLE_NETWORK_LOGGING
         @preconcurrency @objc
         final class LMKNetworkRequestLoggerProtocol: URLProtocol, URLSessionDataDelegate, @unchecked Sendable {
-            // swiftlint:disable:next force_unwrapping
-            private static let blankURL = URL(string: "about:blank")!
+            private static let blankURL = URL(string: "about:blank") ?? URL(fileURLWithPath: "/")
             private static let maxBodyCaptureSize = 512 * 1024 // 512 KB
 
             private var session: URLSession?

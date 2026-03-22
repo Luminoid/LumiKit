@@ -38,7 +38,7 @@ LumiKit/
 │   │   └── URLSessionConfiguration+LMKDebug.swift  # .enableNetworkLogging()
 │   ├── LumiKitUI/
 │   │   ├── Alerts/          # LMKAlertPresenter, LMKErrorHandler
-│   │   ├── Animation/       # LMKAnimationHelper, LMKAnimationTheme
+│   │   ├── Animation/       # LMKAnimationHelper
 │   │   ├── Components/
 │   │   │   ├── BottomSheet/  # LMKBottomSheetController (base), LMKActionSheet,
 │   │   │   │                 # LMKEnumSelectionBottomSheet, LMKBottomSheetLayout
@@ -57,7 +57,7 @@ LumiKit/
 │   │   │   │                 # LMKLayout, LMKShadow, LMKTypography, LMKBadge
 │   │   │   ├── Themes/       # LMKSpacingTheme, LMKCornerRadiusTheme, LMKAlphaTheme,
 │   │   │   │                 # LMKLayoutTheme, LMKShadowTheme, LMKTypographyTheme,
-│   │   │   │                 # LMKBadgeTheme
+│   │   │   │                 # LMKBadgeTheme, LMKAnimationTheme
 │   │   │   ├── Factories/    # LMKButtonFactory, LMKCardFactory, LMKLabelFactory
 │   │   │   └── LMKTheme.swift  # LMKTheme protocol + LMKThemeManager + LMKDefaultTheme
 │   │   ├── Debug/            # [DEBUG only]
@@ -81,13 +81,16 @@ LumiKit/
 │   │   ├── File/            # FileUtil
 │   │   ├── Log/             # LMKLogStoreTests (ring buffer, thread safety), LMKLoggerTests (log store integration)
 │   │   └── Validation/      # URLValidator
-│   ├── LumiKitNetworkTests/  # 8 tests, 1 suite
-│   │   └── LMKNetworkRequestStoreTests.swift  # FIFO, thread safety
-│   └── LumiKitUITests/      # 524 tests, 91 suites — mirrors LumiKitUI/ subfolders
+│   ├── LumiKitNetworkTests/  # 61 tests, 3 suites
+│   │   ├── LMKNetworkRequestStoreTests.swift  # FIFO, thread safety
+│   │   ├── LMKNetworkRequestRecordTests.swift # Computed properties, display formatting
+│   │   └── LMKNetworkLoggerTests.swift        # Configuration, state transitions
+│   └── LumiKitUITests/      # 542 tests, 94 suites — mirrors LumiKitUI/ subfolders
 │       ├── Alerts/          # AlertPresenter, ErrorHandler
 │       ├── Animation/       # AnimationHelper
 │       ├── Components/
-│       │   ├── BottomSheet/  # BottomSheetController, ActionSheet, BottomSheetLayout
+│       │   ├── BottomSheet/  # BottomSheetController, ActionSheet, BottomSheetLayout,
+│       │   │                 # EnumSelectionBottomSheet
 │       │   ├── Pickers/      # DatePickerHelper
 │       │   └── (root)        # Badge, Banner, Card, Chip, Divider, EmptyState,
 │       │                     # FloatingButton, Gradient, LoadingState, SearchBar,
@@ -163,7 +166,7 @@ LMKThemeManager.shared.apply(spacing: .init(large: 20))
 | Alpha | `LMKAlpha` | `LMKAlphaTheme` | `.overlay`, `.disabled`, `.overlayStrong` |
 | Layout | `LMKLayout` | `LMKLayoutTheme` | `.minimumTouchTarget` (44), `.iconMedium` (24), `.searchBarHeight` (36) |
 | Shadow | `LMKShadow` | `LMKShadowTheme` | `cellCard()`, `card()`, `button()`, `small()` |
-| Animation | `LMKAnimationHelper` | `LMKAnimationTheme` | `.Duration.*`, `.Spring.damping`, `.shouldAnimate` |
+| Animation | `LMKAnimationHelper` | `LMKAnimationTheme` | `.Duration.*`, `.Spring.damping`, `.shouldAnimate`, `.shimmer` |
 | Badge | `LMKBadgeView` | `LMKBadgeTheme` | `minWidth`, `height`, `horizontalPadding`, `borderWidth` |
 
 ### Design System Files

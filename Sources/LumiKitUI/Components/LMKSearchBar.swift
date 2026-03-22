@@ -214,7 +214,7 @@ public final class LMKSearchBar: UIView {
             cancelButtonWidthConstraint?.update(offset: 0)
         }
         let duration = LMKAnimationHelper.shouldAnimate ? LMKAnimationHelper.Duration.actionSheet : 0
-        UIView.animate(withDuration: duration) { self.layoutIfNeeded() }
+        UIView.animate(withDuration: duration) { [weak self] in self?.layoutIfNeeded() }
     }
 }
 

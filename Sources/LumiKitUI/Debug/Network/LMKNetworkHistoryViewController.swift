@@ -23,7 +23,7 @@
             table.register(LMKNetworkRequestCell.self, forCellReuseIdentifier: "Cell")
             table.backgroundColor = LMKColor.backgroundPrimary
             table.separatorStyle = .singleLine
-            table.separatorColor = LMKColor.textSecondary.withAlphaComponent(0.2)
+            table.separatorColor = LMKColor.textSecondary.withAlphaComponent(LMKAlpha.overlayDark)
             table.rowHeight = UITableView.automaticDimension
             table.estimatedRowHeight = 80
             return table
@@ -149,7 +149,7 @@
 
         private lazy var urlLabel: UILabel = {
             let label = UILabel()
-            label.font = UIFont.systemFont(ofSize: 13, weight: .regular)
+            label.font = LMKTypography.caption
             label.numberOfLines = 3
             label.textColor = LMKColor.textPrimary
             return label
@@ -196,7 +196,7 @@
             }
 
             statusLabel.snp.makeConstraints { make in
-                make.top.equalTo(methodLabel.snp.bottom).offset(2)
+                make.top.equalTo(methodLabel.snp.bottom).offset(LMKSpacing.xxs)
                 make.leading.equalTo(methodLabel)
                 make.width.equalTo(40)
             }
@@ -208,7 +208,7 @@
             }
 
             timeLabel.snp.makeConstraints { make in
-                make.top.equalTo(urlLabel.snp.bottom).offset(2)
+                make.top.equalTo(urlLabel.snp.bottom).offset(LMKSpacing.xxs)
                 make.leading.equalTo(urlLabel)
                 make.bottom.equalToSuperview().offset(-LMKSpacing.small)
             }

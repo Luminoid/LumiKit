@@ -584,8 +584,8 @@ public final class LMKPhotoBrowserViewController: UIViewController {
         let visible = !isOverlayHidden
         let alpha: CGFloat = visible ? 1 : 0
         let duration = (animated && LMKAnimationHelper.shouldAnimate) ? LMKAnimationHelper.Duration.alert : 0
-        UIView.animate(withDuration: duration, delay: 0, options: .curveEaseInOut) {
-            self.setOverlayAlpha(alpha)
+        UIView.animate(withDuration: duration, delay: 0, options: .curveEaseInOut) { [weak self] in
+            self?.setOverlayAlpha(alpha)
         }
         dismissButton?.isUserInteractionEnabled = visible
         actionButton?.isUserInteractionEnabled = visible
@@ -608,9 +608,9 @@ public final class LMKPhotoBrowserViewController: UIViewController {
             withDuration: duration,
             delay: 0,
             options: [.curveEaseOut, .allowUserInteraction, .beginFromCurrentState]
-        ) {
-            self.view.alpha = 0
-            self.collectionView.transform = CGAffineTransform(scaleX: 0.7, y: 0.7)
+        ) { [weak self] in
+            self?.view.alpha = 0
+            self?.collectionView.transform = CGAffineTransform(scaleX: 0.7, y: 0.7)
         } completion: { [weak self] _ in
             guard let self else { return }
             self.collectionView.transform = .identity
@@ -635,10 +635,10 @@ public final class LMKPhotoBrowserViewController: UIViewController {
             }
         } else {
             let duration = LMKAnimationHelper.shouldAnimate ? LMKAnimationHelper.Duration.actionSheet : 0
-            UIView.animate(withDuration: duration, delay: 0, options: .curveEaseOut) {
+            UIView.animate(withDuration: duration, delay: 0, options: .curveEaseOut) { [weak self] in
+                guard let self else { return }
                 self.view.alpha = 1
                 self.collectionView.transform = .identity
-                // Restore overlay to its intended state
                 if !self.isOverlayHidden {
                     self.setOverlayAlpha(1)
                 }

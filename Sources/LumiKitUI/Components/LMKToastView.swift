@@ -150,9 +150,9 @@ public final class LMKToastView: UIView {
             withDuration: duration, delay: 0,
             usingSpringWithDamping: LMKAnimationHelper.Spring.damping, initialSpringVelocity: 0,
             options: [.allowUserInteraction, .curveEaseOut],
-            animations: {
-                self.transform = .identity
-                self.alpha = 1
+            animations: { [weak self] in
+                self?.transform = .identity
+                self?.alpha = 1
             },
             completion: { _ in onShowComplete?() }
         )
@@ -181,11 +181,11 @@ public final class LMKToastView: UIView {
         UIView.animate(
             withDuration: shouldReduceMotion ? 0 : LMKAnimationHelper.Duration.actionSheet,
             delay: 0, options: [.allowUserInteraction, .curveEaseIn],
-            animations: {
-                self.transform = CGAffineTransform(translationX: 0, y: Self.dismissYOffset)
-                self.alpha = 0
+            animations: { [weak self] in
+                self?.transform = CGAffineTransform(translationX: 0, y: Self.dismissYOffset)
+                self?.alpha = 0
             },
-            completion: { _ in self.removeFromSuperview() }
+            completion: { [weak self] _ in self?.removeFromSuperview() }
         )
     }
 

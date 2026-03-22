@@ -66,10 +66,12 @@ public enum LMKConcurrencyHelpers {
 
     /// Execute a task with proper cancellation handling and weak self capture.
     /// Use this for async operations in ViewControllers to prevent memory leaks.
+    /// - Returns: The task handle, which callers can store for cancellation in `deinit`.
+    @discardableResult
     public static func executeTask<T: AnyObject & Sendable>(
         weak object: T,
         operation: @escaping @MainActor (T) async throws -> Void
-    ) {
+    ) -> Task<Void, Never> {
         Task { @MainActor [weak object] in
             guard let object else {
                 LMKLogger.info("Task cancelled: object deallocated", category: .ui)

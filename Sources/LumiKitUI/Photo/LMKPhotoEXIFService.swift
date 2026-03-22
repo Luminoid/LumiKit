@@ -9,6 +9,7 @@ import CoreLocation
 import ImageIO
 @preconcurrency import PhotosUI
 import UIKit
+import UniformTypeIdentifiers
 
 /// Extracts date and GPS coordinates from photo EXIF metadata.
 ///
@@ -22,16 +23,16 @@ import UIKit
 /// let coordinate = await LMKPhotoEXIFService.extractLocation(from: pickerResult)
 /// ```
 public nonisolated enum LMKPhotoEXIFService {
-    // MARK: - Cached Formatters
+    // MARK: - Date Extraction
 
-    private static let exifDateFormatter: DateFormatter = {
+    /// Create a thread-local EXIF date formatter.
+    /// `DateFormatter` is not thread-safe, so a new instance is created per call.
+    private static func makeEXIFDateFormatter() -> DateFormatter {
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy:MM:dd HH:mm:ss"
         formatter.locale = Locale(identifier: "en_US_POSIX")
         return formatter
-    }()
-
-    // MARK: - Date Extraction
+    }
 
     /// Extract a date from EXIF/TIFF metadata dictionaries.
     ///
@@ -39,7 +40,7 @@ public nonisolated enum LMKPhotoEXIFService {
     /// - Parameter metadata: The image metadata dictionary from `CGImageSourceCopyPropertiesAtIndex`.
     /// - Returns: The extracted date, or `nil` if no date field is present.
     private static func extractDateFromMetadata(_ metadata: [String: Any]) -> Date? {
-        let formatter = exifDateFormatter
+        let formatter = makeEXIFDateFormatter()
 
         // Try EXIF DateTimeOriginal
         if let exif = metadata[kCGImagePropertyExifDictionary as String] as? [String: Any],
@@ -86,7 +87,7 @@ public nonisolated enum LMKPhotoEXIFService {
     /// - Returns: The extracted date, or `nil`.
     public static func extractDate(from result: PHPickerResult) async -> Date? {
         await withCheckedContinuation { continuation in
-            result.itemProvider.loadDataRepresentation(forTypeIdentifier: "public.image") { data, _ in
+            _ = result.itemProvider.loadDataRepresentation(for: UTType.image) { data, _ in
                 guard let data,
                       let source = CGImageSourceCreateWithData(data as CFData, nil),
                       let metadata = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [String: Any] else {
@@ -145,7 +146,7 @@ public nonisolated enum LMKPhotoEXIFService {
     /// - Returns: Valid coordinates, or `nil`.
     public static func extractLocation(from result: PHPickerResult) async -> CLLocationCoordinate2D? {
         await withCheckedContinuation { continuation in
-            result.itemProvider.loadDataRepresentation(forTypeIdentifier: "public.image") { data, _ in
+            _ = result.itemProvider.loadDataRepresentation(for: UTType.image) { data, _ in
                 guard let data,
                       let source = CGImageSourceCreateWithData(data as CFData, nil),
                       let metadata = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [String: Any],

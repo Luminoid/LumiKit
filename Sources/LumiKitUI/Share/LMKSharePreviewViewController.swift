@@ -268,7 +268,7 @@ public final class LMKSharePreviewViewController: UIViewController {
         PHPhotoLibrary.shared().performChanges {
             PHAssetChangeRequest.creationRequestForAsset(from: imageToSave)
         } completionHandler: { [weak self] success, error in
-            Task { @MainActor in
+            Task { @MainActor [weak self] in
                 guard let self else { return }
                 if let error {
                     LMKLogger.error("Failed to save image to photos", error: error, category: .general)

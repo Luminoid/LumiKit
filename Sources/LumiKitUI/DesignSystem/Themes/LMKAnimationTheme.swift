@@ -27,6 +27,8 @@ public nonisolated struct LMKAnimationTheme: Sendable {
     public var listUpdate: TimeInterval
     public var listInsertDelete: TimeInterval
     public var cardExpand: TimeInterval
+    /// Looping shimmer animation duration (skeleton loading cells).
+    public var shimmer: TimeInterval
     /// Damping for smooth spring animations.
     public var springDamping: CGFloat
 
@@ -43,6 +45,7 @@ public nonisolated struct LMKAnimationTheme: Sendable {
         listUpdate: TimeInterval = 0.3,
         listInsertDelete: TimeInterval = 0.3,
         cardExpand: TimeInterval = 0.3,
+        shimmer: TimeInterval = 1.8,
         springDamping: CGFloat = 0.8
     ) {
         self.screenTransition = screenTransition
@@ -57,6 +60,7 @@ public nonisolated struct LMKAnimationTheme: Sendable {
         self.listUpdate = listUpdate
         self.listInsertDelete = listInsertDelete
         self.cardExpand = cardExpand
+        self.shimmer = shimmer
         self.springDamping = springDamping
     }
 }

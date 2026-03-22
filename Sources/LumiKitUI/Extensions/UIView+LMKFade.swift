@@ -24,7 +24,7 @@ public extension UIView {
             self.alpha = alpha
             completion?(true)
         } else {
-            UIView.animate(withDuration: effectiveDuration, delay: delay, options: [.beginFromCurrentState], animations: { self.alpha = alpha }, completion: completion)
+            UIView.animate(withDuration: effectiveDuration, delay: delay, options: [.beginFromCurrentState], animations: { [weak self] in self?.alpha = alpha }, completion: completion)
         }
     }
 }

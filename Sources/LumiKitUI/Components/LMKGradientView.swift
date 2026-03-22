@@ -46,8 +46,10 @@ public final class LMKGradientView: UIView {
 
     private var gradientLayer: CAGradientLayer {
         // Safe: layerClass override guarantees the type.
-        // swiftlint:disable:next force_cast
-        layer as! CAGradientLayer
+        guard let gradient = layer as? CAGradientLayer else {
+            fatalError("LMKGradientView.layer must be CAGradientLayer (layerClass override)")
+        }
+        return gradient
     }
 
     /// Gradient colors.

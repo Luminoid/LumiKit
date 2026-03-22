@@ -36,6 +36,8 @@ public enum LMKAnimationHelper {
         public static var listUpdate: TimeInterval { config.listUpdate }
         public static var listInsertDelete: TimeInterval { config.listInsertDelete }
         public static var cardExpand: TimeInterval { config.cardExpand }
+        /// Looping shimmer animation duration (skeleton loading cells).
+        public static var shimmer: TimeInterval { config.shimmer }
     }
 
     /// Whether animations should run (`false` when Reduce Motion is enabled).
