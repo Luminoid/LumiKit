@@ -411,7 +411,7 @@ LumiKitUI includes device-aware helpers and system observers:
 | `LMKDeviceHelper` | Device type detection (`.iPhone`, `.iPad`, `.macCatalyst`), screen size classification, notch detection |
 | `LMKKeyboardObserver` | Keyboard show/hide observer with height and animation duration info |
 | `LMKImageUtil` | SF Symbol creation (`makeSymbolImage` with background), `CVPixelBuffer` to JPEG conversion |
-| `LMKMarkdownRenderer` | Markdown-to-attributed-string rendering and pre-configured inline text views |
+| `LMKMarkdownRenderer` | Markdown-to-attributed-string rendering: `render()` for inline (bold/italic), `renderFull()` for long-form content (headings, lists, line breaks preserved) |
 | `LMKSceneUtil` | Key window and connected scene retrieval |
 
 ---

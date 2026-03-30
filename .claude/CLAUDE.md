@@ -309,7 +309,7 @@ LMKThemeManager.shared.apply(spacing: .init(large: 20))
 | `LMKDeviceHelper` | Device type (`.iPhone`, `.iPad`, `.macCatalyst`), screen size classification, notch detection |
 | `LMKKeyboardObserver` | Keyboard show/hide observer with height + animation info |
 | `LMKImageUtil` | SF Symbol creation (`makeSymbolImage` with background), `CVPixelBuffer` to JPEG conversion |
-| `LMKMarkdownRenderer` | Markdown-to-attributed-string rendering and pre-configured inline text views (`makeInlineTextView`) |
+| `LMKMarkdownRenderer` | Markdown-to-attributed-string: `render()` for inline (bold/italic), `renderFull()` for long-form content (headings, lists, `\n` preserved), `makeInlineTextView` |
 | `LMKSceneUtil` | Key window and connected scene retrieval |
 
 ---

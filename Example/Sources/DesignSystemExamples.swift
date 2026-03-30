@@ -211,6 +211,47 @@ final class MarkdownDetailViewController: DetailViewController {
         addDivider()
         addSectionHeader("Plain Text Fallback")
         addMarkdownLabel("No markdown here — just plain text with the base font and color applied.")
+
+        addDivider()
+        addSectionHeader("Full Markdown — Report")
+        addFullMarkdownTextView("""
+        ## Q1 Performance Review
+
+        **Period:** January – March 2026
+        **Author:** Engineering Team
+
+        ---
+
+        ### 1. Summary
+
+        Overall system reliability improved to **99.7% uptime**, up from *98.9%* last quarter. Two major incidents occurred, both resolved within SLA.
+
+        ### 2. Key Metrics
+
+        *   **API Latency (p95):** 142ms → 98ms
+        *   **Error Rate:** 0.8% → 0.3%
+        *   **Deploy Frequency:** 2x/week → daily
+
+        ### 3. Incidents
+
+        1.  **Database failover (Jan 15):** Primary replica went unresponsive during peak traffic.
+            *   Root cause: connection pool exhaustion
+            *   Resolution: increased pool size, added circuit breaker
+        2.  **Auth service outage (Feb 22):** Token refresh loop caused cascading failures.
+            *   Root cause: clock skew between nodes
+            *   Resolution: switched to *monotonic timestamps*
+
+        ### 4. Next Steps
+
+        - Migrate to **regional failover** by end of Q2
+        - Add *structured logging* across all services
+        - Complete load testing for the new payment flow
+        - Hire two additional SREs
+
+        ### 5. Conclusion
+
+        The team made **significant progress** on reliability and performance. The remaining gaps in observability and regional redundancy are the top priorities for Q2.
+        """)
     }
 
     private func addMarkdownLabel(
@@ -226,5 +267,21 @@ final class MarkdownDetailViewController: DetailViewController {
 
     private func addMarkdownTextView(_ markdown: String) {
         stack.addArrangedSubview(LMKMarkdownRenderer.makeInlineTextView(markdown: markdown))
+    }
+
+    private func addFullMarkdownTextView(_ markdown: String) {
+        let textView = UITextView()
+        textView.isEditable = false
+        textView.isSelectable = true
+        textView.isScrollEnabled = false
+        textView.backgroundColor = .clear
+        textView.textContainerInset = UIEdgeInsets(
+            top: LMKSpacing.small,
+            left: LMKSpacing.small,
+            bottom: LMKSpacing.small,
+            right: LMKSpacing.small
+        )
+        textView.attributedText = LMKMarkdownRenderer.renderFull(markdown)
+        stack.addArrangedSubview(textView)
     }
 }
