@@ -20,7 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **LMKSegmentedControl** — **Breaking**: Fully rewritten as custom `UIControl` (no longer a `UISegmentedControl` subclass). Features sliding pill indicator with spring animation, `LMKColor.primary` fill, haptic feedback, and dark mode support. API: `init(items: [String])`, `selectedSegmentIndex`, `valueChangedHandler`. Removed `didValueChangeHandler`, `numberOfSegments` (use `items.count`), `apportionsSegmentWidthsByContent`
 - **LMKButton** — Filled and outlined styles now use `cornerStyle = .capsule` (pill shape) instead of `LMKCornerRadius.small`
 - **LMKControlScrollView** — Removed. `LMKSegmentedControl.makeScrollableContainer()` now returns `UIScrollView` directly
-- **Test suite** — Expanded from 542 to 565 UI tests (new: LMKSwitch 7, LMKPageIndicator 8, LMKButton styles 5, updated LMKSegmentedControl 10)
+- **Test suite** — Expanded from 542 to 599 UI tests (new: LMKSwitch 7, LMKPageIndicator 8, LMKButton styles 5, updated LMKSegmentedControl 10, and additional coverage across components)
 
 ## [0.4.0] - 2026-03-22
 
@@ -236,6 +236,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - All configurable strings use module-level `nonisolated(unsafe)` vars for localization
 - MIT License
 
+[0.4.0]: https://github.com/Luminoid/LumiKit/compare/0.3.0...0.4.0
 [0.3.0]: https://github.com/Luminoid/LumiKit/compare/0.2.0...0.3.0
 [0.2.0]: https://github.com/Luminoid/LumiKit/compare/0.1.0...0.2.0
 [0.1.0]: https://github.com/Luminoid/LumiKit/releases/tag/0.1.0

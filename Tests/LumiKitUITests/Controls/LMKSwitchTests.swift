@@ -50,7 +50,7 @@ struct LMKSwitchTests {
     @Test
     func `Is a UIControl subclass`() {
         let toggle = LMKSwitch()
-        #expect(toggle is UIControl)
+        #expect(toggle as Any is UIControl)
     }
 
     @Test

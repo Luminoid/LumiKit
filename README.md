@@ -48,10 +48,10 @@ LumiKit is organized into four targets so apps can import only what they need:
 | **LumiKitUI** | LumiKitCore + LumiKitNetwork + SnapKit | Design system tokens, theme manager, animation, haptics, alerts, components, controls, photo browser/crop, network debug UI (DEBUG), UIKit extensions |
 | **LumiKitLottie** | LumiKitUI + Lottie | Lottie-powered pull-to-refresh control |
 
-**104 source files** across 4 targets, with **709 tests** across 4 test targets:
+**104 source files** across 4 targets, with **743 tests** across 4 test targets:
 - **LumiKitCoreTests**: 76 tests (12 suites)
 - **LumiKitNetworkTests**: 61 tests (3 suites)
-- **LumiKitUITests**: 565 tests (97 suites)
+- **LumiKitUITests**: 599 tests (96 suites)
 - **LumiKitLottieTests**: 7 tests (1 suite)
 
 ---
@@ -130,14 +130,14 @@ xcodegen generate
 open LumiKitExample.xcodeproj
 ```
 
-The example includes **29 interactive pages** across 6 sections:
+The example includes **33 interactive pages** across 6 sections:
 
-- **Design System**: Typography, Colors, Markdown
-- **Components**: Cards, Badges, Chips, Banners, Empty State, Gradient, Loading State
-- **Controls**: Buttons, Segmented Control, Text Field, Text View, Toggle & Search, Page Indicator
+- **Design System**: Colors, Typography, Markdown
+- **Controls**: Buttons, Switch, Toggle Button, Segmented Control, Text Field, Text View, Search Bar
+- **Components**: Divider, Badges, Chips, Cards, Gradient, Page Indicator, Banners, Empty State, Loading State
 - **Feedback**: Toast, Alerts & Errors, Progress, Haptics
 - **Overlays**: Action Sheet, Date Picker, Tip View, Card Page, Card Panel, Floating Button
-- **Media**: Photo Browser, Photo Crop, QR Code
+- **Media**: Photo Grid, Photo Browser, Photo Crop, QR Code
 
 ---
 
@@ -212,7 +212,7 @@ LumiKit/
 │   │   ├── LMKNetworkRequestStoreTests.swift  # FIFO, thread safety
 │   │   ├── LMKNetworkRequestRecordTests.swift # Computed properties, display formatting
 │   │   └── LMKNetworkLoggerTests.swift        # Configuration, state transitions
-│   ├── LumiKitUITests/        # 542 tests, 94 suites
+│   ├── LumiKitUITests/        # 599 tests, 96 suites
 │   │   ├── Alerts/            # AlertPresenter, ErrorHandler
 │   │   ├── Animation/         # AnimationHelper
 │   │   ├── Components/

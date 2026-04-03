@@ -74,6 +74,6 @@ struct LMKSegmentedControlTests {
     @Test
     func `Is a UIControl subclass`() {
         let control = LMKSegmentedControl(items: ["A"])
-        #expect(control is UIControl)
+        #expect(control as Any is UIControl)
     }
 }

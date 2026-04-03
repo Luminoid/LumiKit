@@ -87,7 +87,7 @@ LumiKit/
 │   │   └── LMKNetworkLoggerTests.swift        # Configuration, state transitions
 │   ├── LumiKitLottieTests/  # 7 tests, 1 suite
 │   │   └── LMKLottieRefreshControlTests.swift
-│   └── LumiKitUITests/      # 565 tests, 97 suites — mirrors LumiKitUI/ subfolders
+│   └── LumiKitUITests/      # 599 tests, 96 suites — mirrors LumiKitUI/ subfolders
 │       ├── Alerts/          # AlertPresenter, ErrorHandler
 │       ├── Animation/       # AnimationHelper
 │       ├── Components/
@@ -422,4 +422,4 @@ public final class LMKExampleViewController: UIViewController {
 
 ---
 
-*Optimized for Claude Code • Last updated: 2026-03-13*
+*Optimized for Claude Code • Last updated: 2026-04-03*
