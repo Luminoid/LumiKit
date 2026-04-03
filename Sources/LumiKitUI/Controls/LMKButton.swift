@@ -89,7 +89,8 @@ open class LMKButton: UIButton {
             configuration?.showsActivityIndicator = isLoading
             if isLoading {
                 savedTitle = configuration?.title
-                configuration?.title = nil
+                // Use a space instead of nil to preserve the title's line height contribution.
+                configuration?.title = " "
             } else {
                 configuration?.title = savedTitle
             }

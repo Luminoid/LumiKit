@@ -9,6 +9,34 @@ import LumiKitUI
 import SnapKit
 import UIKit
 
+// MARK: - Button Role Helpers
+
+extension LMKButtonRole {
+    fileprivate static let allRoles: [LMKButtonRole] = [.primary, .secondary, .destructive, .warning, .success, .info]
+
+    fileprivate var displayName: String {
+        switch self {
+        case .primary: "Primary"
+        case .secondary: "Secondary"
+        case .destructive: "Destructive"
+        case .warning: "Warning"
+        case .success: "Success"
+        case .info: "Info"
+        }
+    }
+
+    @MainActor fileprivate var color: UIColor {
+        switch self {
+        case .primary: LMKColor.primary
+        case .secondary: LMKColor.secondary
+        case .destructive: LMKColor.error
+        case .warning: LMKColor.warning
+        case .success: LMKColor.success
+        case .info: LMKColor.info
+        }
+    }
+}
+
 // MARK: - Buttons
 
 final class ButtonsDetailViewController: DetailViewController {
@@ -16,86 +44,71 @@ final class ButtonsDetailViewController: DetailViewController {
         super.viewDidLoad()
 
         addSectionHeader("Filled")
-
-        let primaryBtn = LMKButtonFactory.filled(role: .primary, title: "Primary", target: self, action: #selector(showSuccessToast))
-        stack.addArrangedSubview(primaryBtn)
-
-        let secondaryBtn = LMKButtonFactory.filled(role: .secondary, title: "Secondary", target: self, action: #selector(showSuccessToast))
-        stack.addArrangedSubview(secondaryBtn)
-
-        let destructiveBtn = LMKButtonFactory.filled(role: .destructive, title: "Destructive", target: self, action: #selector(showSuccessToast))
-        stack.addArrangedSubview(destructiveBtn)
-
-        let warningBtn = LMKButtonFactory.filled(role: .warning, title: "Warning", target: self, action: #selector(showSuccessToast))
-        stack.addArrangedSubview(warningBtn)
-
-        let successBtn = LMKButtonFactory.filled(role: .success, title: "Success", target: self, action: #selector(showSuccessToast))
-        stack.addArrangedSubview(successBtn)
-
-        let infoBtn = LMKButtonFactory.filled(role: .info, title: "Info", target: self, action: #selector(showSuccessToast))
-        stack.addArrangedSubview(infoBtn)
+        for role in LMKButtonRole.allRoles {
+            let btn = LMKButton(title: role.displayName, style: .filled(role.color))
+            btn.tapHandler = { [weak self] in
+                guard let self else { return }
+                LMKToast.showSuccess(message: "Filled \(role.displayName) tapped", on: self)
+            }
+            stack.addArrangedSubview(btn)
+        }
 
         addDivider()
         addSectionHeader("Outlined")
-
-        let primaryOutlined = LMKButtonFactory.outlined(role: .primary, title: "Primary", target: self, action: #selector(showInfoToast))
-        stack.addArrangedSubview(primaryOutlined)
-
-        let secondaryOutlined = LMKButtonFactory.outlined(role: .secondary, title: "Secondary", target: self, action: #selector(showInfoToast))
-        stack.addArrangedSubview(secondaryOutlined)
-
-        let destructiveOutlined = LMKButtonFactory.outlined(role: .destructive, title: "Destructive", target: self, action: #selector(showInfoToast))
-        stack.addArrangedSubview(destructiveOutlined)
+        for role in [LMKButtonRole.primary, .secondary, .destructive] {
+            let btn = LMKButton(title: role.displayName, style: .outlined(role.color))
+            btn.tapHandler = { [weak self] in
+                guard let self else { return }
+                LMKToast.showInfo(message: "Outlined \(role.displayName) tapped", on: self)
+            }
+            stack.addArrangedSubview(btn)
+        }
 
         addDivider()
         addSectionHeader("Ghost (Text-Only)")
-
-        let ghostPrimary = LMKButtonFactory.ghost(role: .primary, title: "Primary Ghost", target: self, action: #selector(showInfoToast))
-        stack.addArrangedSubview(ghostPrimary)
-
-        let ghostDestructive = LMKButtonFactory.ghost(role: .destructive, title: "Destructive Ghost", target: self, action: #selector(showInfoToast))
-        stack.addArrangedSubview(ghostDestructive)
+        for role in [LMKButtonRole.primary, .destructive] {
+            let btn = LMKButton(title: "\(role.displayName) Ghost", style: .ghost(role.color))
+            btn.tapHandler = { [weak self] in
+                guard let self else { return }
+                LMKToast.showInfo(message: "Ghost \(role.displayName) tapped", on: self)
+            }
+            stack.addArrangedSubview(btn)
+        }
 
         addDivider()
         addSectionHeader("Icon-Only")
-
-        let iconRow = UIStackView()
-        iconRow.axis = .horizontal
-        iconRow.spacing = LMKSpacing.medium
-        iconRow.alignment = .center
-
-        let chevronLeft = LMKButtonFactory.iconOnly(role: .primary, iconName: "chevron.left", target: self, action: #selector(showInfoToast))
-        let chevronRight = LMKButtonFactory.iconOnly(role: .primary, iconName: "chevron.right", target: self, action: #selector(showInfoToast))
-        let closeBtn = LMKButtonFactory.iconOnly(role: .destructive, iconName: "xmark", target: self, action: #selector(showInfoToast))
-        iconRow.addArrangedSubview(chevronLeft)
-        iconRow.addArrangedSubview(chevronRight)
-        iconRow.addArrangedSubview(closeBtn)
-        iconRow.addArrangedSubview(UIView()) // spacer
+        let iconRow = UIStackView(lmk_axis: .horizontal, spacing: LMKSpacing.medium, alignment: .center)
+        let icons: [(String, LMKButtonRole)] = [("chevron.left", .primary), ("chevron.right", .primary), ("xmark", .destructive)]
+        for (iconName, role) in icons {
+            let btn = LMKButton(frame: .zero)
+            btn.applyIconStyle(.iconOnly(role.color), iconName: iconName)
+            btn.tapHandler = { [weak self] in
+                guard let self else { return }
+                LMKToast.showInfo(message: "\(iconName) tapped", on: self)
+            }
+            iconRow.addArrangedSubview(btn)
+        }
+        iconRow.addArrangedSubview(UIView())
         stack.addArrangedSubview(iconRow)
 
         addDivider()
         addSectionHeader("Loading State")
-
-        let loadingBtn = LMKButtonFactory.filled(role: .primary, title: "Tap to Load", target: self, action: #selector(showSuccessToast))
+        let loadingBtn = LMKButton(title: "Tap to Load", style: .filled(LMKColor.primary))
         loadingBtn.isLoading = true
         stack.addArrangedSubview(loadingBtn)
 
         addDivider()
-        addSectionHeader("Typed Handler")
-        let typed = LMKButtonFactory.filled(role: .primary, title: "Typed Handler", target: self, action: #selector(showTypedToast))
-        stack.addArrangedSubview(typed)
-    }
-
-    @objc private func showSuccessToast() {
-        LMKToast.showSuccess(message: "Button tapped!", on: self)
-    }
-
-    @objc private func showInfoToast() {
-        LMKToast.showInfo(message: "Outlined button tapped!", on: self)
-    }
-
-    @objc private func showTypedToast() {
-        LMKToast.showSuccess(message: "Typed handler tapped!", on: self)
+        addSectionHeader("didTapHandler")
+        let typedBtn = LMKButton(title: "Button Reference Handler", style: .filled(LMKColor.primary))
+        typedBtn.didTapHandler = { [weak self] button in
+            guard let self else { return }
+            button.isLoading = true
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+                button.isLoading = false
+                LMKToast.showSuccess(message: "Async operation complete", on: self)
+            }
+        }
+        stack.addArrangedSubview(typedBtn)
     }
 }
 
@@ -193,6 +206,8 @@ final class SegmentedControlDetailViewController: DetailViewController {
 // MARK: - Text Field
 
 final class TextFieldDetailViewController: DetailViewController {
+    private var liveValidationField: LMKTextField?
+
     override func viewDidLoad() {
         super.viewDidLoad()
 
@@ -237,12 +252,12 @@ final class TextFieldDetailViewController: DetailViewController {
         liveField.helperText = "Validates on each keystroke"
         liveField.leadingIcon = UIImage(systemName: "person")
         liveField.textField.addTarget(self, action: #selector(liveValidate(_:)), for: .editingChanged)
-        liveField.tag = 100
+        liveValidationField = liveField
         stack.addArrangedSubview(liveField)
     }
 
     @objc private func liveValidate(_ textField: UITextField) {
-        guard let lmkField = view.viewWithTag(100) as? LMKTextField else { return }
+        guard let lmkField = liveValidationField else { return }
         let text = textField.text ?? ""
         if text.isEmpty {
             lmkField.validationState = .normal
@@ -284,13 +299,13 @@ final class TextViewDetailViewController: DetailViewController {
     }
 }
 
-// MARK: - Toggle & Switch
+// MARK: - Switch
 
-final class SearchToggleDetailViewController: DetailViewController {
+final class SwitchDetailViewController: DetailViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
 
-        addSectionHeader("LMKSwitch (Custom Switch)")
+        addSectionHeader("Basic")
         stack.addArrangedSubview(LMKLabelFactory.caption(text: "Custom toggle replacing UISwitch. Rounded track + sliding thumb with spring animation."))
 
         let toggleLabel = LMKLabelFactory.body(text: "Off")
@@ -301,24 +316,27 @@ final class SearchToggleDetailViewController: DetailViewController {
             toggleLabel.text = isOn ? "On" : "Off"
         }
 
-        let toggleRow = UIStackView(arrangedSubviews: [LMKLabelFactory.body(text: "Notifications"), UIView(), toggle])
-        toggleRow.axis = .horizontal
-        toggleRow.alignment = .center
+        let toggleRow = UIStackView(lmk_axis: .horizontal, alignment: .center, arrangedSubviews: [LMKLabelFactory.body(text: "Notifications"), UIView(), toggle])
         stack.addArrangedSubview(toggleRow)
         stack.addArrangedSubview(toggleLabel)
 
         addDivider()
-        addSectionHeader("Pre-set Toggle")
+        addSectionHeader("Pre-set State")
 
         let presetToggle = LMKSwitch()
         presetToggle.setOn(true, animated: false)
-        let presetRow = UIStackView(arrangedSubviews: [LMKLabelFactory.body(text: "Dark Mode"), UIView(), presetToggle])
-        presetRow.axis = .horizontal
-        presetRow.alignment = .center
+        let presetRow = UIStackView(lmk_axis: .horizontal, alignment: .center, arrangedSubviews: [LMKLabelFactory.body(text: "Dark Mode"), UIView(), presetToggle])
         stack.addArrangedSubview(presetRow)
+    }
+}
 
-        addDivider()
-        addSectionHeader("Toggle Button")
+// MARK: - Toggle Button
+
+final class ToggleButtonDetailViewController: DetailViewController {
+    override func viewDidLoad() {
+        super.viewDidLoad()
+
+        addSectionHeader("Basic")
         let toggleButton = LMKToggleButton(
             titleForStatusOn: "Notifications On",
             titleForStatusOff: "Notifications Off"
@@ -329,16 +347,45 @@ final class SearchToggleDetailViewController: DetailViewController {
         toggleButton.status = .off
         toggleButton.snp.makeConstraints { $0.height.equalTo(LMKLayout.minimumTouchTarget) }
         stack.addArrangedSubview(toggleButton)
+    }
+}
+
+// MARK: - Search Bar
+
+final class SearchBarDetailViewController: DetailViewController {
+    override func viewDidLoad() {
+        super.viewDidLoad()
+
+        addSectionHeader("Basic")
+        stack.addArrangedSubview(LMKLabelFactory.caption(text: "Uses backgroundTertiary — best visible on grouped/secondary backgrounds."))
+        let basicBar = LMKSearchBar()
+        basicBar.placeholder = "Search items..."
+        stack.addArrangedSubview(basicBar)
 
         addDivider()
-        addSectionHeader("Search Bar")
+        addSectionHeader("On Secondary Background")
+        let container = UIView()
+        container.backgroundColor = LMKColor.backgroundSecondary
+        container.layer.cornerRadius = LMKCornerRadius.medium
+
         let searchBar = LMKSearchBar()
-        searchBar.placeholder = "Search items..."
-        stack.addArrangedSubview(searchBar)
+        searchBar.placeholder = "Search plants..."
+        container.addSubview(searchBar)
+        searchBar.snp.makeConstraints { make in
+            make.edges.equalToSuperview().inset(LMKSpacing.medium)
+        }
+        stack.addArrangedSubview(container)
+    }
+}
 
-        addDivider()
-        addSectionHeader("Divider")
-        stack.addArrangedSubview(LMKLabelFactory.caption(text: "Horizontal divider below:"))
+// MARK: - Divider
+
+final class DividerDetailViewController: DetailViewController {
+    override func viewDidLoad() {
+        super.viewDidLoad()
+
+        addSectionHeader("Horizontal")
+        stack.addArrangedSubview(LMKLabelFactory.caption(text: "Pixel-perfect separator between content sections:"))
         stack.addArrangedSubview(LMKDividerView())
         stack.addArrangedSubview(LMKLabelFactory.caption(text: "Content continues here"))
     }
@@ -441,8 +488,7 @@ final class PageIndicatorDetailViewController: DetailViewController {
             ind.currentPage += 1
         }
 
-        let navRow = UIStackView()
-        navRow.axis = .horizontal
+        let navRow = UIStackView(lmk_axis: .horizontal)
         navRow.addArrangedSubview(prevBtn)
         navRow.addArrangedSubview(UIView())
         navRow.addArrangedSubview(nextBtn)

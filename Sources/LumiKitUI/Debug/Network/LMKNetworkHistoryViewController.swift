@@ -56,11 +56,10 @@
         override public func viewWillAppear(_ animated: Bool) {
             super.viewWillAppear(animated)
             loadRecords()
-            if refreshTimer == nil {
-                refreshTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
-                    Task { @MainActor in
-                        self?.loadRecords()
-                    }
+            refreshTimer?.invalidate()
+            refreshTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
+                Task { @MainActor in
+                    self?.loadRecords()
                 }
             }
         }

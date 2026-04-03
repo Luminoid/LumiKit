@@ -48,7 +48,7 @@ LumiKit is organized into four targets so apps can import only what they need:
 | **LumiKitUI** | LumiKitCore + LumiKitNetwork + SnapKit | Design system tokens, theme manager, animation, haptics, alerts, components, controls, photo browser/crop, network debug UI (DEBUG), UIKit extensions |
 | **LumiKitLottie** | LumiKitUI + Lottie | Lottie-powered pull-to-refresh control |
 
-**102 source files** across 4 targets, with **709 tests** across 4 test targets:
+**104 source files** across 4 targets, with **709 tests** across 4 test targets:
 - **LumiKitCoreTests**: 76 tests (12 suites)
 - **LumiKitNetworkTests**: 61 tests (3 suites)
 - **LumiKitUITests**: 565 tests (97 suites)
@@ -192,8 +192,8 @@ LumiKit/
 │   │   ├── Extensions/        # UIKit extensions (lmk_ prefix)
 │   │   ├── Haptics/           # LMKHapticFeedbackHelper
 │   │   ├── Photo/             # LMKPhotoBrowserViewController, LMKPhotoBrowserCell,
-│   │   │                      # LMKPhotoCropViewController, LMKPhotoEXIFService,
-│   │   │                      # LMKPhotoBrowserConfig
+│   │   │                      # LMKPhotoCropViewController, LMKPhotoGridViewController,
+│   │   │                      # LMKPhotoGridCell, LMKPhotoEXIFService, LMKPhotoBrowserConfig
 │   │   ├── QRCode/            # LMKQRCodeGenerator
 │   │   ├── Share/             # LMKShareService, LMKSharePreviewViewController
 │   │   └── Utilities/         # LMKDeviceHelper, LMKKeyboardObserver,
@@ -424,6 +424,7 @@ LumiKitUI includes device-aware helpers and system observers:
 |-----------|---------|
 | `LMKPhotoBrowserViewController` | Full-screen photo browser with zoom and swipe navigation |
 | `LMKPhotoCropViewController` | Photo cropping with aspect ratio support |
+| `LMKPhotoGridViewController` | Photo grid with pinch-to-zoom column control, sort by date, content mode toggle, and photo browser integration |
 | `LMKPhotoEXIFService` | EXIF date and GPS extraction from UIImage or PHPickerResult |
 
 Both photo view controllers force dark mode (`overrideUserInterfaceStyle = .dark`) and set `preferredStatusBarStyle = .lightContent`. They handle `modalPresentationCapturesStatusBarAppearance` automatically, so the status bar is correct when presented modally. If you embed them in a `UINavigationController`, override `childForStatusBarStyle` on the nav controller to return `topViewController`.

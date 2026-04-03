@@ -89,7 +89,7 @@ struct LMKButtonTests {
         let button = LMKButton(title: "Save", style: .filled(.red))
         button.isLoading = true
         #expect(button.configuration?.showsActivityIndicator == true)
-        #expect(button.configuration?.title == nil)
+        #expect(button.configuration?.title == " ") // Space preserves button height
         #expect(button.isUserInteractionEnabled == false)
     }
 

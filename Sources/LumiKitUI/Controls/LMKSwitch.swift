@@ -84,10 +84,7 @@ public final class LMKSwitch: UIControl {
         // Thumb
         thumbView.backgroundColor = .white
         thumbView.layer.cornerRadius = Self.thumbDiameter / 2
-        thumbView.layer.shadowColor = UIColor.black.cgColor
-        thumbView.layer.shadowOffset = CGSize(width: 0, height: 1)
-        thumbView.layer.shadowOpacity = 0.2
-        thumbView.layer.shadowRadius = 2
+        thumbView.lmk_applyShadow(LMKShadow.small())
         thumbView.isUserInteractionEnabled = false
         addSubview(thumbView)
 

@@ -12,7 +12,7 @@ public enum LMKCardFactory {
     /// Create a card view with secondary background, medium corner radius, and cell card shadow.
     ///
     /// - Note: `layer.shadowColor` stores a CGColor snapshot. Re-apply shadow via
-    ///   `lmk_applyShadow(_:)` in `traitCollectionDidChange` for dark mode support.
+    ///   `lmk_applyShadow(_:)` in a `registerForTraitChanges` handler for dark mode support.
     public static func cardView() -> UIView {
         makeCard(shadow: LMKShadow.cellCard())
     }
@@ -20,7 +20,7 @@ public enum LMKCardFactory {
     /// Create an elevated card view with stronger shadow.
     ///
     /// - Note: `layer.shadowColor` stores a CGColor snapshot. Re-apply shadow via
-    ///   `lmk_applyShadow(_:)` in `traitCollectionDidChange` for dark mode support.
+    ///   `lmk_applyShadow(_:)` in a `registerForTraitChanges` handler for dark mode support.
     public static func elevatedCardView() -> UIView {
         makeCard(shadow: LMKShadow.card())
     }

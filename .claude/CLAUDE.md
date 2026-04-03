@@ -66,8 +66,8 @@ LumiKit/
 │   │   │                    # UIStackView, UITextField, UIButton, UITableViewCell, etc.
 │   │   ├── Haptics/         # LMKHapticFeedbackHelper
 │   │   ├── Photo/           # LMKPhotoBrowserViewController, LMKPhotoBrowserCell,
-│   │   │                    # LMKPhotoCropViewController, LMKPhotoEXIFService,
-│   │   │                    # LMKPhotoBrowserConfig
+│   │   │                    # LMKPhotoCropViewController, LMKPhotoGridViewController,
+│   │   │                    # LMKPhotoGridCell, LMKPhotoEXIFService, LMKPhotoBrowserConfig
 │   │   ├── QRCode/          # LMKQRCodeGenerator
 │   │   ├── Share/           # LMKShareService, LMKSharePreviewViewController
 │   │   └── Utilities/       # LMKDeviceHelper, LMKKeyboardObserver, LMKSceneUtil,
@@ -87,7 +87,7 @@ LumiKit/
 │   │   └── LMKNetworkLoggerTests.swift        # Configuration, state transitions
 │   ├── LumiKitLottieTests/  # 7 tests, 1 suite
 │   │   └── LMKLottieRefreshControlTests.swift
-│   └── LumiKitUITests/      # 542 tests, 94 suites — mirrors LumiKitUI/ subfolders
+│   └── LumiKitUITests/      # 565 tests, 97 suites — mirrors LumiKitUI/ subfolders
 │       ├── Alerts/          # AlertPresenter, ErrorHandler
 │       ├── Animation/       # AnimationHelper
 │       ├── Components/
@@ -295,6 +295,7 @@ LMKThemeManager.shared.apply(spacing: .init(large: 20))
 | `LMKPhotoBrowserViewController` | `final class` | Full-screen photo browser with zoom, swipe, delete |
 | `LMKPhotoBrowserConfig` | `enum` | Shared configuration constants (e.g. `interPageSpacing`) |
 | `LMKPhotoCropViewController` | `final class` | Square crop editor with pan/zoom |
+| `LMKPhotoGridViewController` | `final class` | Photo grid with pinch-to-zoom columns, sort, content mode toggle, browser integration |
 | `LMKPhotoEXIFService` | `nonisolated enum` (static) | EXIF date + GPS extraction from UIImage or PHPickerResult |
 
 ### Pickers (`Components/Pickers/`)

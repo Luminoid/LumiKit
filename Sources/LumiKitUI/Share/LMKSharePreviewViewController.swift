@@ -246,7 +246,7 @@ public final class LMKSharePreviewViewController: UIViewController {
             performSaveImage()
         case .notDetermined:
             PHPhotoLibrary.requestAuthorization(for: .addOnly) { [weak self] newStatus in
-                DispatchQueue.main.async {
+                Task { @MainActor in
                     if newStatus == .authorized || newStatus == .limited {
                         self?.performSaveImage()
                     } else {

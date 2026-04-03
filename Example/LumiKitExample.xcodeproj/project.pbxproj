@@ -8,34 +8,34 @@
 
 /* Begin PBXBuildFile section */
 		047822D6720CE3A9B3F0D39B /* LumiKitUI in Frameworks */ = {isa = PBXBuildFile; productRef = 2F68DA943A7AC838DB04D706 /* LumiKitUI */; };
-		105EFE9D5ADB91AEC2FDE413 /* DetailViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42FBB04A148E7139E1FF0995 /* DetailViewController.swift */; };
-		38C672D29A5229EBE665C848 /* DesignSystemExamples.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60BB8EFB6C137EBC751F20AC /* DesignSystemExamples.swift */; };
-		6866F8211967DA823D406767 /* OverlayExamples.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3E0F5BA6A2392ED7B59E6CAD /* OverlayExamples.swift */; };
-		6B0AEE6A79436BDB59D8BC52 /* ControlExamples.swift in Sources */ = {isa = PBXBuildFile; fileRef = BDB4E383EA3A05318909A092 /* ControlExamples.swift */; };
-		7CEAE2CFE6F3459CF12AA3B8 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 266C27EB7D3242022FA646B1 /* SceneDelegate.swift */; };
-		8DA6AE05BF1F647DC25C8043 /* ExampleViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 209A8FE1218B1F3B9AC4C27E /* ExampleViewController.swift */; };
-		B0DC9359A000D2E8A6EC7624 /* ComponentExamples.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4C7CB4CD18E5FBD6D6ABF7BC /* ComponentExamples.swift */; };
-		B97C2431575FC1826B0D8F68 /* ExampleTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4EE462A6DA85E94E76074806 /* ExampleTheme.swift */; };
+		21FADE7A431E99C689E22BCD /* ExampleViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9B50227ABA29034C8561A94D /* ExampleViewController.swift */; };
+		2B98309CBBF522AA80A2F5EA /* OverlayExamples.swift in Sources */ = {isa = PBXBuildFile; fileRef = CDFCCD48C6E200E242618752 /* OverlayExamples.swift */; };
+		2BF2259AC5DC25989F472BF6 /* DetailViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = F49C587FAE89BA2CD1A5AD20 /* DetailViewController.swift */; };
+		4260186F009492452AC405F5 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = DAE7925528F006F31D46E13D /* SceneDelegate.swift */; };
+		5BA1FB8853BD2D6D9C4AED53 /* ControlExamples.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3170DF1DC699C02B0826BA23 /* ControlExamples.swift */; };
+		668ABF8FF1CE7F379C901524 /* DesignSystemExamples.swift in Sources */ = {isa = PBXBuildFile; fileRef = CB3BA0EF50F341F6CB5B0DE9 /* DesignSystemExamples.swift */; };
+		880C1D37E2AFFDA4D4F2E174 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1035AED8A1327983D40EA2F6 /* AppDelegate.swift */; };
+		990D265B4C929A4955A347D5 /* MediaExamples.swift in Sources */ = {isa = PBXBuildFile; fileRef = 790F5E5A7AFB55134E93EE5F /* MediaExamples.swift */; };
+		AED0CBCF06783C5BBCDD4F67 /* ExampleTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E83041427958D614AB1C07D /* ExampleTheme.swift */; };
 		BB50C3AFE3CFDD56E1F010C4 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = F4FEA4A6AC67074774361233 /* Assets.xcassets */; };
-		BF232A4012BFEA34259F4E63 /* MediaExamples.swift in Sources */ = {isa = PBXBuildFile; fileRef = 07FEC3C9A733053C2F21C779 /* MediaExamples.swift */; };
-		C781F75D6E7EE6D151DD89ED /* FeedbackExamples.swift in Sources */ = {isa = PBXBuildFile; fileRef = A36C432E6E9D1CEE43FD6C1C /* FeedbackExamples.swift */; };
-		F65AC6D91C57253EE3C4A89B /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 93FB8A0B3A17095ACACC4000 /* AppDelegate.swift */; };
+		BC85CB55DFD2BC16C58131CB /* ComponentExamples.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13DE2860AD235084F535FCC4 /* ComponentExamples.swift */; };
+		D8B917A6437923B874F0EAD3 /* FeedbackExamples.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F7F3AA23CD31D462ADC1046 /* FeedbackExamples.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		07FEC3C9A733053C2F21C779 /* MediaExamples.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediaExamples.swift; sourceTree = "<group>"; };
 		0C01ADD96E8B682AB888384E /* LumiKit */ = {isa = PBXFileReference; lastKnownFileType = folder; name = LumiKit; path = ..; sourceTree = SOURCE_ROOT; };
-		209A8FE1218B1F3B9AC4C27E /* ExampleViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExampleViewController.swift; sourceTree = "<group>"; };
-		266C27EB7D3242022FA646B1 /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
+		1035AED8A1327983D40EA2F6 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
+		13DE2860AD235084F535FCC4 /* ComponentExamples.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ComponentExamples.swift; sourceTree = "<group>"; };
 		2B9C75CF348A9670C0B7CEE4 /* LumiKitExample.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = LumiKitExample.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		3E0F5BA6A2392ED7B59E6CAD /* OverlayExamples.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverlayExamples.swift; sourceTree = "<group>"; };
-		42FBB04A148E7139E1FF0995 /* DetailViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetailViewController.swift; sourceTree = "<group>"; };
-		4C7CB4CD18E5FBD6D6ABF7BC /* ComponentExamples.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ComponentExamples.swift; sourceTree = "<group>"; };
-		4EE462A6DA85E94E76074806 /* ExampleTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExampleTheme.swift; sourceTree = "<group>"; };
-		60BB8EFB6C137EBC751F20AC /* DesignSystemExamples.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DesignSystemExamples.swift; sourceTree = "<group>"; };
-		93FB8A0B3A17095ACACC4000 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
-		A36C432E6E9D1CEE43FD6C1C /* FeedbackExamples.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FeedbackExamples.swift; sourceTree = "<group>"; };
-		BDB4E383EA3A05318909A092 /* ControlExamples.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ControlExamples.swift; sourceTree = "<group>"; };
+		2E83041427958D614AB1C07D /* ExampleTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExampleTheme.swift; sourceTree = "<group>"; };
+		3170DF1DC699C02B0826BA23 /* ControlExamples.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ControlExamples.swift; sourceTree = "<group>"; };
+		6F7F3AA23CD31D462ADC1046 /* FeedbackExamples.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FeedbackExamples.swift; sourceTree = "<group>"; };
+		790F5E5A7AFB55134E93EE5F /* MediaExamples.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediaExamples.swift; sourceTree = "<group>"; };
+		9B50227ABA29034C8561A94D /* ExampleViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExampleViewController.swift; sourceTree = "<group>"; };
+		CB3BA0EF50F341F6CB5B0DE9 /* DesignSystemExamples.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DesignSystemExamples.swift; sourceTree = "<group>"; };
+		CDFCCD48C6E200E242618752 /* OverlayExamples.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverlayExamples.swift; sourceTree = "<group>"; };
+		DAE7925528F006F31D46E13D /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
+		F49C587FAE89BA2CD1A5AD20 /* DetailViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetailViewController.swift; sourceTree = "<group>"; };
 		F4FEA4A6AC67074774361233 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -51,12 +51,36 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		07E6F58FF768E05CFB9A722F /* Overlays */ = {
+			isa = PBXGroup;
+			children = (
+				CDFCCD48C6E200E242618752 /* OverlayExamples.swift */,
+			);
+			path = Overlays;
+			sourceTree = "<group>";
+		};
 		11734A1BD76B6C3263E3CA80 /* Products */ = {
 			isa = PBXGroup;
 			children = (
 				2B9C75CF348A9670C0B7CEE4 /* LumiKitExample.app */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		33CA6AEB5F73D822083494CB /* DesignSystem */ = {
+			isa = PBXGroup;
+			children = (
+				CB3BA0EF50F341F6CB5B0DE9 /* DesignSystemExamples.swift */,
+			);
+			path = DesignSystem;
+			sourceTree = "<group>";
+		};
+		3727E7106E9555AE723DEFDE /* Controls */ = {
+			isa = PBXGroup;
+			children = (
+				3170DF1DC699C02B0826BA23 /* ControlExamples.swift */,
+			);
+			path = Controls;
 			sourceTree = "<group>";
 		};
 		392B8A3F174A27E27B575B04 = {
@@ -67,6 +91,28 @@
 				C0CA27369E548F87F01ACF25 /* Sources */,
 				11734A1BD76B6C3263E3CA80 /* Products */,
 			);
+			sourceTree = "<group>";
+		};
+		3BF6383421FABB9F63420E0C /* Catalog */ = {
+			isa = PBXGroup;
+			children = (
+				F49C587FAE89BA2CD1A5AD20 /* DetailViewController.swift */,
+				9B50227ABA29034C8561A94D /* ExampleViewController.swift */,
+			);
+			path = Catalog;
+			sourceTree = "<group>";
+		};
+		6508230DF9FCDEDCDAFC0CB4 /* Examples */ = {
+			isa = PBXGroup;
+			children = (
+				DEEFBF27DF24D3329435C7DF /* Components */,
+				3727E7106E9555AE723DEFDE /* Controls */,
+				33CA6AEB5F73D822083494CB /* DesignSystem */,
+				CEC9AA0B35F2657F4DBFB94C /* Feedback */,
+				E8374B47FFAF2A029BFC0F1A /* Media */,
+				07E6F58FF768E05CFB9A722F /* Overlays */,
+			);
+			path = Examples;
 			sourceTree = "<group>";
 		};
 		7A93CAB069EB0353EAEAC502 /* Resources */ = {
@@ -88,19 +134,45 @@
 		C0CA27369E548F87F01ACF25 /* Sources */ = {
 			isa = PBXGroup;
 			children = (
-				93FB8A0B3A17095ACACC4000 /* AppDelegate.swift */,
-				4C7CB4CD18E5FBD6D6ABF7BC /* ComponentExamples.swift */,
-				BDB4E383EA3A05318909A092 /* ControlExamples.swift */,
-				60BB8EFB6C137EBC751F20AC /* DesignSystemExamples.swift */,
-				42FBB04A148E7139E1FF0995 /* DetailViewController.swift */,
-				4EE462A6DA85E94E76074806 /* ExampleTheme.swift */,
-				209A8FE1218B1F3B9AC4C27E /* ExampleViewController.swift */,
-				A36C432E6E9D1CEE43FD6C1C /* FeedbackExamples.swift */,
-				07FEC3C9A733053C2F21C779 /* MediaExamples.swift */,
-				3E0F5BA6A2392ED7B59E6CAD /* OverlayExamples.swift */,
-				266C27EB7D3242022FA646B1 /* SceneDelegate.swift */,
+				D10E97B18A6D86A628994B02 /* App */,
+				3BF6383421FABB9F63420E0C /* Catalog */,
+				6508230DF9FCDEDCDAFC0CB4 /* Examples */,
 			);
 			path = Sources;
+			sourceTree = "<group>";
+		};
+		CEC9AA0B35F2657F4DBFB94C /* Feedback */ = {
+			isa = PBXGroup;
+			children = (
+				6F7F3AA23CD31D462ADC1046 /* FeedbackExamples.swift */,
+			);
+			path = Feedback;
+			sourceTree = "<group>";
+		};
+		D10E97B18A6D86A628994B02 /* App */ = {
+			isa = PBXGroup;
+			children = (
+				1035AED8A1327983D40EA2F6 /* AppDelegate.swift */,
+				2E83041427958D614AB1C07D /* ExampleTheme.swift */,
+				DAE7925528F006F31D46E13D /* SceneDelegate.swift */,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
+		DEEFBF27DF24D3329435C7DF /* Components */ = {
+			isa = PBXGroup;
+			children = (
+				13DE2860AD235084F535FCC4 /* ComponentExamples.swift */,
+			);
+			path = Components;
+			sourceTree = "<group>";
+		};
+		E8374B47FFAF2A029BFC0F1A /* Media */ = {
+			isa = PBXGroup;
+			children = (
+				790F5E5A7AFB55134E93EE5F /* MediaExamples.swift */,
+			);
+			path = Media;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -177,17 +249,17 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				F65AC6D91C57253EE3C4A89B /* AppDelegate.swift in Sources */,
-				B0DC9359A000D2E8A6EC7624 /* ComponentExamples.swift in Sources */,
-				6B0AEE6A79436BDB59D8BC52 /* ControlExamples.swift in Sources */,
-				38C672D29A5229EBE665C848 /* DesignSystemExamples.swift in Sources */,
-				105EFE9D5ADB91AEC2FDE413 /* DetailViewController.swift in Sources */,
-				B97C2431575FC1826B0D8F68 /* ExampleTheme.swift in Sources */,
-				8DA6AE05BF1F647DC25C8043 /* ExampleViewController.swift in Sources */,
-				C781F75D6E7EE6D151DD89ED /* FeedbackExamples.swift in Sources */,
-				BF232A4012BFEA34259F4E63 /* MediaExamples.swift in Sources */,
-				6866F8211967DA823D406767 /* OverlayExamples.swift in Sources */,
-				7CEAE2CFE6F3459CF12AA3B8 /* SceneDelegate.swift in Sources */,
+				880C1D37E2AFFDA4D4F2E174 /* AppDelegate.swift in Sources */,
+				BC85CB55DFD2BC16C58131CB /* ComponentExamples.swift in Sources */,
+				5BA1FB8853BD2D6D9C4AED53 /* ControlExamples.swift in Sources */,
+				668ABF8FF1CE7F379C901524 /* DesignSystemExamples.swift in Sources */,
+				2BF2259AC5DC25989F472BF6 /* DetailViewController.swift in Sources */,
+				AED0CBCF06783C5BBCDD4F67 /* ExampleTheme.swift in Sources */,
+				21FADE7A431E99C689E22BCD /* ExampleViewController.swift in Sources */,
+				D8B917A6437923B874F0EAD3 /* FeedbackExamples.swift in Sources */,
+				990D265B4C929A4955A347D5 /* MediaExamples.swift in Sources */,
+				2B98309CBBF522AA80A2F5EA /* OverlayExamples.swift in Sources */,
+				4260186F009492452AC405F5 /* SceneDelegate.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -331,7 +403,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 0.4.0;
+				MARKETING_VERSION = 0.3.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.luminoid.lumikit.example;
 				SDKROOT = auto;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
@@ -361,7 +433,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 0.4.0;
+				MARKETING_VERSION = 0.3.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.luminoid.lumikit.example;
 				SDKROOT = auto;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
