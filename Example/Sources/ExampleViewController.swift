@@ -41,7 +41,7 @@ final class ExampleViewController: UIViewController, UITableViewDataSource, UITa
             case .controls: [.buttons, .segmentedControl, .textField, .textView, .searchToggle, .pageIndicator]
             case .feedback: [.toast, .alerts, .progress, .haptics]
             case .overlays: [.actionSheet, .datePicker, .tipView, .cardPage, .cardPanel, .floatingButton]
-            case .media: [.photoBrowser, .photoCrop, .qrCode]
+            case .media: [.photoGrid, .photoBrowser, .photoCrop, .qrCode]
             case .about: []
             }
         }
@@ -116,6 +116,7 @@ final class ExampleViewController: UIViewController, UITableViewDataSource, UITa
         case cardPage
         case cardPanel
         case floatingButton
+        case photoGrid
         case photoBrowser
         case photoCrop
         case qrCode
@@ -148,6 +149,7 @@ final class ExampleViewController: UIViewController, UITableViewDataSource, UITa
             case .cardPage: "Card Page"
             case .cardPanel: "Card Panel"
             case .floatingButton: "Floating Button"
+            case .photoGrid: "Photo Grid"
             case .photoBrowser: "Photo Browser"
             case .photoCrop: "Photo Crop"
             case .qrCode: "QR Code"
@@ -182,6 +184,7 @@ final class ExampleViewController: UIViewController, UITableViewDataSource, UITa
             case .cardPage: "Card page with multi-page navigation"
             case .cardPanel: "Floating card panel in overlay window"
             case .floatingButton: "Draggable floating action button"
+            case .photoGrid: "Square grid with pinch zoom and sort"
             case .photoBrowser: "Full-screen photo viewer with zoom"
             case .photoCrop: "Crop with aspect ratios and zoom"
             case .qrCode: "Generate QR codes from text"
@@ -216,6 +219,7 @@ final class ExampleViewController: UIViewController, UITableViewDataSource, UITa
             case .cardPage: "square.stack"
             case .cardPanel: "rectangle.inset.filled"
             case .floatingButton: "circle.circle"
+            case .photoGrid: "square.grid.2x2"
             case .photoBrowser: "photo.on.rectangle"
             case .photoCrop: "crop"
             case .qrCode: "qrcode"
@@ -251,6 +255,7 @@ final class ExampleViewController: UIViewController, UITableViewDataSource, UITa
             case .cardPage: CardPageDetailViewController()
             case .cardPanel: CardPanelDetailViewController()
             case .floatingButton: FloatingButtonDetailViewController()
+            case .photoGrid: PhotoGridDetailViewController()
             case .photoBrowser: PhotoBrowserDetailViewController()
             case .photoCrop: PhotoCropDetailViewController()
             case .qrCode: QRCodeDetailViewController()

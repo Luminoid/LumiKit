@@ -2,12 +2,119 @@
 //  MediaExamples.swift
 //  LumiKitExample
 //
-//  Photo browser, photo crop, and QR code examples.
+//  Photo grid, photo browser, photo crop, and QR code examples.
 //
 
 import LumiKitUI
 import SnapKit
 import UIKit
+
+// MARK: - Photo Grid
+
+final class PhotoGridDetailViewController: UIViewController, LMKPhotoGridDataSource, LMKPhotoGridDelegate {
+    private var sampleImages: [UIImage] = []
+    private var sampleDates: [Date] = []
+    private var gridVC: LMKPhotoGridViewController?
+
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        view.backgroundColor = LMKColor.backgroundPrimary
+        generateSampleData()
+        setupGrid()
+    }
+
+    private static let sampleSymbols = [
+        "star.fill", "camera.fill", "sun.max.fill", "drop.fill", "flame.fill",
+        "leaf.fill", "heart.fill", "bolt.fill", "moon.fill", "cloud.fill",
+        "snowflake", "wind", "tornado", "sparkles", "wand.and.stars",
+        "paintbrush.fill", "eyedropper.full", "scissors", "pencil", "trash.fill",
+        "globe", "map.fill", "location.fill", "flag.fill", "pin.fill",
+        "bell.fill", "tag.fill", "bookmark.fill", "envelope.fill", "phone.fill",
+        "video.fill", "mic.fill", "speaker.wave.3.fill", "music.note",
+        "play.fill", "pause.fill", "stop.fill", "forward.fill", "backward.fill",
+        "shuffle", "repeat", "airplayaudio", "antenna.radiowaves.left.and.right",
+        "wifi", "network", "lock.fill", "key.fill", "shield.fill",
+        "person.fill", "person.2.fill", "person.3.fill",
+    ]
+
+    private static let sampleColors: [UIColor] = [
+        .systemRed, .systemOrange, .systemYellow, .systemGreen, .systemMint,
+        .systemTeal, .systemCyan, .systemBlue, .systemIndigo, .systemPurple,
+        .systemPink, .systemBrown, .systemGray, .systemGray2, .systemGray3,
+    ]
+
+    private static let sampleAspectRatios: [CGSize] = [
+        CGSize(width: 200, height: 200),   // 1:1
+        CGSize(width: 200, height: 150),   // 4:3 landscape
+        CGSize(width: 150, height: 200),   // 3:4 portrait
+        CGSize(width: 200, height: 112),   // 16:9 landscape
+        CGSize(width: 112, height: 200),   // 9:16 portrait
+        CGSize(width: 200, height: 133),   // 3:2 landscape
+        CGSize(width: 133, height: 200),   // 2:3 portrait
+        CGSize(width: 200, height: 260),   // tall portrait
+        CGSize(width: 260, height: 200),   // wide landscape
+    ]
+
+    private func generateSampleData() {
+        let symbols = Self.sampleSymbols
+        let colors = Self.sampleColors
+        let ratios = Self.sampleAspectRatios
+        let calendar = Calendar.current
+        let photoCount = 300
+
+        for i in 0 ..< photoCount {
+            let symbol = symbols[i % symbols.count]
+            let color = colors[i % colors.count]
+            let size = ratios[i % ratios.count]
+            let pointSize = min(size.width, size.height) * 0.3
+            if let image = LMKImageUtil.makeSymbolImage(
+                symbol, size: size,
+                symbolPointSize: pointSize, tintColor: color,
+                backgroundColor: color.withAlphaComponent(0.15)
+            ) {
+                sampleImages.append(image)
+                // Spread dates across the last 2 years with some randomness
+                let dayOffset = -(i * 2 + (i * 7) % 5)
+                let date = calendar.date(byAdding: .day, value: dayOffset, to: Date()) ?? Date()
+                sampleDates.append(date)
+            }
+        }
+    }
+
+    private func setupGrid() {
+        let grid = LMKPhotoGridViewController(columnCount: 3)
+        grid.dataSource = self
+        grid.delegate = self
+        gridVC = grid
+
+        addChild(grid)
+        view.addSubview(grid.view)
+        grid.view.snp.makeConstraints { make in
+            make.edges.equalToSuperview()
+        }
+        grid.didMove(toParent: self)
+    }
+
+    // MARK: - LMKPhotoGridDataSource
+
+    var numberOfPhotos: Int { sampleImages.count }
+
+    func photoGridImage(at index: Int) -> UIImage? {
+        guard index >= 0, index < sampleImages.count else { return nil }
+        return sampleImages[index]
+    }
+
+    func photoGridDate(at index: Int) -> Date? {
+        guard index >= 0, index < sampleDates.count else { return nil }
+        return sampleDates[index]
+    }
+
+    // MARK: - LMKPhotoGridDelegate
+
+    func photoGrid(_ grid: LMKPhotoGridViewController, didRequestActionForPhotoAt index: Int) {
+        LMKToast.showInfo(message: "Action for photo \(index + 1)", on: self)
+    }
+}
 
 // MARK: - Photo Browser
 
