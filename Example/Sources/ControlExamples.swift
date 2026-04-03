@@ -111,7 +111,9 @@ final class SegmentedControlDetailViewController: DetailViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
 
-        addSectionHeader("Basic")
+        addSectionHeader("Pill (Default)")
+        stack.addArrangedSubview(LMKLabelFactory.caption(text: "Capsule corners, draggable indicator. Try dragging the pill!"))
+
         let segmented = LMKSegmentedControl(items: ["Item 1", "Item 2", "Item 3"])
         segmented.selectedSegmentIndex = 0
         segmented.valueChangedHandler = { [weak self] index in
@@ -121,8 +123,40 @@ final class SegmentedControlDetailViewController: DetailViewController {
         stack.addArrangedSubview(statusLabel)
 
         addDivider()
+        addSectionHeader("Rounded Corner Style")
+        stack.addArrangedSubview(LMKLabelFactory.caption(text: "cornerStyle = .rounded — fixed medium corner radius."))
+
+        let roundedLabel = LMKLabelFactory.caption(text: "Selected: List")
+        roundedLabel.textAlignment = .center
+        let rounded = LMKSegmentedControl(items: ["List", "Grid", "Map"])
+        rounded.cornerStyle = .rounded
+        rounded.selectedSegmentIndex = 0
+        let roundedItems = ["List", "Grid", "Map"]
+        rounded.valueChangedHandler = { index in
+            roundedLabel.text = "Selected: \(roundedItems[index])"
+        }
+        stack.addArrangedSubview(rounded)
+        stack.addArrangedSubview(roundedLabel)
+
+        addDivider()
+        addSectionHeader("Custom Item Padding")
+        stack.addArrangedSubview(LMKLabelFactory.caption(text: "itemPadding = 24pt for extra breathing room."))
+
+        let paddedLabel = LMKLabelFactory.caption(text: "Selected: Photos")
+        paddedLabel.textAlignment = .center
+        let padded = LMKSegmentedControl(items: ["Photos", "Videos"])
+        padded.itemPadding = LMKSpacing.xxl
+        padded.selectedSegmentIndex = 0
+        let paddedItems = ["Photos", "Videos"]
+        padded.valueChangedHandler = { index in
+            paddedLabel.text = "Selected: \(paddedItems[index])"
+        }
+        stack.addArrangedSubview(padded)
+        stack.addArrangedSubview(paddedLabel)
+
+        addDivider()
         addSectionHeader("Many Segments")
-        stack.addArrangedSubview(LMKLabelFactory.caption(text: "Five segments with sliding pill indicator."))
+        stack.addArrangedSubview(LMKLabelFactory.caption(text: "Five segments — width adapts to content."))
 
         let manySegmented = LMKSegmentedControl(items: ["Mon", "Tue", "Wed", "Thu", "Fri"])
         manySegmented.selectedSegmentIndex = 0

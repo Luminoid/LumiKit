@@ -19,7 +19,23 @@ import UIKit
 /// control.valueChangedHandler = { index in print("Selected: \(index)") }
 /// ```
 open class LMKSegmentedControl: UIControl {
+    /// Corner style for the segmented control.
+    public enum CornerStyle {
+        /// Fully rounded capsule (corner radius = height / 2).
+        case pill
+        /// Fixed medium corner radius from the design system.
+        case rounded
+    }
+
     // MARK: - Public API
+
+    /// Corner style for the container and indicator. Default is `.pill`.
+    public var cornerStyle: CornerStyle = .pill {
+        didSet {
+            guard cornerStyle != oldValue else { return }
+            setNeedsLayout()
+        }
+    }
 
     /// Called when the selected segment changes. Receives the new selected index.
     public var valueChangedHandler: ((Int) -> Void)?
@@ -31,9 +47,18 @@ open class LMKSegmentedControl: UIControl {
     public var selectedSegmentIndex: Int = 0 {
         didSet {
             guard selectedSegmentIndex != oldValue else { return }
-            moveIndicator(animated: false)
+            if !isDragging { moveIndicator(animated: false) }
             updateLabelColors()
             updateAccessibility()
+        }
+    }
+
+    /// Horizontal padding added to each side of every segment label.
+    /// Increases the overall width of the control. Default is `LMKSpacing.medium` (12pt).
+    public var itemPadding: CGFloat = LMKSpacing.medium {
+        didSet {
+            guard itemPadding != oldValue else { return }
+            invalidateIntrinsicContentSize()
         }
     }
 
@@ -53,11 +78,21 @@ open class LMKSegmentedControl: UIControl {
     private let containerView = UIView()
     private let indicatorView = UIView()
     private let segmentStack = UIStackView()
-    private let inset: CGFloat = 3
+    private let inset: CGFloat = 4
+    private let indicatorInset: CGFloat = 2
 
     /// Constraint anchoring the indicator to the selected label.
     private var indicatorLeading: Constraint?
     private var indicatorTrailing: Constraint?
+
+    /// The pan gesture for dragging the indicator.
+    private var panGesture: UIPanGestureRecognizer?
+    /// Pan drag state: offset from indicator center at touch-down.
+    private var panStartOffset: CGFloat = 0
+    /// Whether the indicator is being dragged (constraints suspended).
+    private var isDragging = false
+    /// The selected index before the drag began.
+    private var preDragIndex = 0
 
     // MARK: - Initialization
 
@@ -97,6 +132,7 @@ open class LMKSegmentedControl: UIControl {
     /// instead of equal-width distribution.
     public func makeScrollableContainer() -> UIScrollView {
         isScrollable = true
+        panGesture?.isEnabled = false
 
         // Switch to natural sizing so content can exceed the visible width
         segmentStack.distribution = .fill
@@ -130,15 +166,27 @@ open class LMKSegmentedControl: UIControl {
     // MARK: - Intrinsic Size
 
     override open var intrinsicContentSize: CGSize {
-        CGSize(width: UIView.noIntrinsicMetric, height: LMKLayout.minimumTouchTarget)
+        let labelsWidth = segmentLabels.reduce(CGFloat(0)) { total, label in
+            total + label.intrinsicContentSize.width
+        }
+        let totalItemPadding = itemPadding * 2 * CGFloat(items.count)
+        let width = labelsWidth + totalItemPadding + inset * 2
+        return CGSize(width: width, height: LMKLayout.minimumTouchTarget)
     }
 
     // MARK: - Layout
 
     override open func layoutSubviews() {
         super.layoutSubviews()
-        containerView.layer.cornerRadius = LMKCornerRadius.medium
-        indicatorView.layer.cornerRadius = LMKCornerRadius.medium - inset
+        switch cornerStyle {
+        case .pill:
+            containerView.layer.cornerRadius = bounds.height / 2
+            let indicatorHeight = bounds.height - (inset + indicatorInset) * 2
+            indicatorView.layer.cornerRadius = indicatorHeight / 2
+        case .rounded:
+            containerView.layer.cornerRadius = LMKCornerRadius.medium
+            indicatorView.layer.cornerRadius = LMKCornerRadius.medium - inset - indicatorInset
+        }
     }
 
     // MARK: - Setup
@@ -147,11 +195,9 @@ open class LMKSegmentedControl: UIControl {
         // Container — the full background
         containerView.backgroundColor = LMKColor.backgroundTertiary
         containerView.clipsToBounds = true
-        containerView.layer.borderWidth = 1
-        containerView.layer.borderColor = LMKColor.divider.cgColor
 
-        // Indicator — the sliding selected pill
-        indicatorView.backgroundColor = LMKColor.primary
+        // Indicator — the sliding selected pill (soft tint)
+        indicatorView.backgroundColor = LMKColor.primary.withAlphaComponent(LMKAlpha.overlayMedium)
         indicatorView.clipsToBounds = true
 
         // Stack for segment labels
@@ -174,15 +220,22 @@ open class LMKSegmentedControl: UIControl {
 
         // Indicator initial constraints (will be updated in moveIndicator)
         indicatorView.snp.makeConstraints { make in
-            make.top.bottom.equalTo(segmentStack)
+            make.top.bottom.equalTo(segmentStack).inset(indicatorInset)
         }
 
         snp.makeConstraints { make in
             make.height.equalTo(LMKLayout.minimumTouchTarget)
         }
 
+        setContentHuggingPriority(.defaultHigh, for: .horizontal)
+        setContentCompressionResistancePriority(.defaultHigh, for: .horizontal)
+
         let tap = UITapGestureRecognizer(target: self, action: #selector(handleTap(_:)))
         addGestureRecognizer(tap)
+
+        let pan = UIPanGestureRecognizer(target: self, action: #selector(handlePan(_:)))
+        addGestureRecognizer(pan)
+        panGesture = pan
 
         _ = registerForTraitChanges([UITraitUserInterfaceStyle.self]) { (self: Self, _: UITraitCollection) in
             self.refreshColors()
@@ -215,6 +268,7 @@ open class LMKSegmentedControl: UIControl {
         }
 
         updateLabelColors()
+        invalidateIntrinsicContentSize()
         // Set initial indicator position via constraints
         moveIndicator(animated: false)
     }
@@ -230,8 +284,8 @@ open class LMKSegmentedControl: UIControl {
         indicatorTrailing?.deactivate()
 
         indicatorView.snp.makeConstraints { make in
-            indicatorLeading = make.leading.equalTo(targetLabel).constraint
-            indicatorTrailing = make.trailing.equalTo(targetLabel).constraint
+            indicatorLeading = make.leading.equalTo(targetLabel).offset(indicatorInset).constraint
+            indicatorTrailing = make.trailing.equalTo(targetLabel).offset(-indicatorInset).constraint
         }
 
         if animated, LMKAnimationHelper.shouldAnimate {
@@ -251,7 +305,9 @@ open class LMKSegmentedControl: UIControl {
 
     private func updateLabelColors() {
         for (index, label) in segmentLabels.enumerated() {
-            label.textColor = index == selectedSegmentIndex ? LMKColor.white : LMKColor.textSecondary
+            let isSelected = index == selectedSegmentIndex
+            label.textColor = isSelected ? LMKColor.primary : LMKColor.textSecondary
+            label.font = isSelected ? LMKTypography.bodyMedium : LMKTypography.subbodyMedium
         }
     }
 
@@ -278,12 +334,77 @@ open class LMKSegmentedControl: UIControl {
         }
     }
 
+    @objc private func handlePan(_ gesture: UIPanGestureRecognizer) {
+        let location = gesture.location(in: containerView)
+
+        switch gesture.state {
+        case .began:
+            // Only start dragging if touch is on or near the indicator
+            let hitArea = indicatorView.frame.insetBy(dx: -LMKSpacing.small, dy: -LMKSpacing.small)
+            guard hitArea.contains(location) else {
+                gesture.state = .cancelled
+                return
+            }
+            isDragging = true
+            preDragIndex = selectedSegmentIndex
+            panStartOffset = location.x - indicatorView.center.x
+
+        case .changed:
+            guard isDragging else { return }
+            // Move indicator to follow finger, clamped within the container
+            let indicatorWidth = indicatorView.bounds.width
+            let totalInset = inset + indicatorInset
+            let minX = totalInset + indicatorWidth / 2
+            let maxX = containerView.bounds.width - totalInset - indicatorWidth / 2
+            let targetX = min(max(location.x - panStartOffset, minX), maxX)
+
+            // Suspend constraints and position directly
+            indicatorLeading?.deactivate()
+            indicatorTrailing?.deactivate()
+            indicatorView.center.x = targetX
+
+            // Update highlighted segment based on indicator center
+            let stackLocation = CGPoint(x: targetX - inset, y: segmentStack.bounds.midY)
+            if let index = segmentIndex(at: stackLocation), index != selectedSegmentIndex {
+                selectedSegmentIndex = index
+                updateLabelColors()
+                updateAccessibility()
+                LMKHapticFeedbackHelper.selection()
+            }
+
+        case .ended, .cancelled:
+            guard isDragging else { return }
+            isDragging = false
+            // Snap indicator to the current segment with spring animation
+            moveIndicator(animated: true)
+            // Fire value changed only if selection changed
+            if selectedSegmentIndex != preDragIndex {
+                valueChangedHandler?(selectedSegmentIndex)
+                sendActions(for: .valueChanged)
+            }
+
+        default:
+            break
+        }
+    }
+
+    /// Returns the segment index at the given point in the stack, or `nil` if outside.
+    private func segmentIndex(at point: CGPoint) -> Int? {
+        for (index, label) in segmentLabels.enumerated() where label.frame.contains(point) {
+            return index
+        }
+        // If beyond edges, return first or last
+        guard !segmentLabels.isEmpty else { return nil }
+        if point.x <= 0 { return 0 }
+        if point.x >= segmentStack.bounds.width { return segmentLabels.count - 1 }
+        return nil
+    }
+
     // MARK: - Dynamic Colors
 
     private func refreshColors() {
         containerView.backgroundColor = LMKColor.backgroundTertiary
-        containerView.layer.borderColor = LMKColor.divider.cgColor
-        indicatorView.backgroundColor = LMKColor.primary
+        indicatorView.backgroundColor = LMKColor.primary.withAlphaComponent(LMKAlpha.overlayMedium)
         updateLabelColors()
     }
 }

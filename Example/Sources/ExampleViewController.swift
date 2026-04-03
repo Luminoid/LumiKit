@@ -66,7 +66,7 @@ final class ExampleViewController: UIViewController, UITableViewDataSource, UITa
 
         var detail: String {
             switch self {
-            case .version: "0.3.0"
+            case .version: "0.4.0"
             case .github: "Luminoid/LumiKit"
             case .platform: "iOS 18+ · Mac Catalyst 18+"
             case .swift: "6.2 · Strict Concurrency"
@@ -167,7 +167,7 @@ final class ExampleViewController: UIViewController, UITableViewDataSource, UITa
             case .gradient: "Linear gradients with configurable directions"
             case .loadingState: "Inline, overlay, and skeleton loading"
             case .buttons: "Filled, outlined, ghost, icon-only, loading"
-            case .segmentedControl: "Sliding pill indicator with spring animation"
+            case .segmentedControl: "Draggable pill indicator, corner styles, padding"
             case .textField: "Validation states, icons, helper text"
             case .textView: "Multi-line input with character limit"
             case .searchToggle: "Custom toggle switch, search bar, divider"

@@ -53,7 +53,7 @@ public final class LMKSwitch: UIControl {
     // MARK: - Initialization
 
     public init() {
-        super.init(frame: .zero)
+        super.init(frame: CGRect(origin: .zero, size: CGSize(width: Self.trackWidth, height: Self.trackHeight)))
         setupUI()
     }
 
