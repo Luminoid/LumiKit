@@ -9,11 +9,10 @@ import UIKit
 
 // MARK: - UIViewController+LMKOrientation
 
-@Suite("UIViewController+LMKOrientation")
 @MainActor
 struct UIViewControllerOrientationTests {
-    @Test("lmk_windowOrientation returns unknown when no window")
-    func orientationWithoutWindow() {
+    @Test
+    func `lmk_windowOrientation returns unknown when no window`() {
         let vc = UIViewController()
         vc.loadViewIfNeeded()
         // Without a window, should return .unknown

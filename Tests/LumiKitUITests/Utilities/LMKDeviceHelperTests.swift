@@ -9,11 +9,10 @@ import UIKit
 
 // MARK: - LMKDeviceHelper
 
-@Suite("LMKDeviceHelper")
 @MainActor
 struct LMKDeviceHelperTests {
-    @Test("deviceType returns a valid case")
-    func deviceTypeValid() {
+    @Test
+    func `deviceType returns a valid case`() {
         let type = LMKDeviceHelper.deviceType
         // Should be one of the valid cases (we can't predict which in tests)
         switch type {
@@ -22,8 +21,8 @@ struct LMKDeviceHelperTests {
         }
     }
 
-    @Test("screenSize returns a valid case")
-    func screenSizeValid() {
+    @Test
+    func `screenSize returns a valid case`() {
         let size = LMKDeviceHelper.screenSize
         switch size {
         case .compact, .regular, .large, .extraLarge:
@@ -31,8 +30,8 @@ struct LMKDeviceHelperTests {
         }
     }
 
-    @Test("isIPad and isMacCatalyst are consistent")
-    func consistency() {
+    @Test
+    func `isIPad and isMacCatalyst are consistent`() {
         let type = LMKDeviceHelper.deviceType
         if type == .iPad {
             #expect(LMKDeviceHelper.isIPad)

@@ -28,6 +28,25 @@ public enum LMKButtonFactory {
         makeOutlinedButton(title: title, color: color(for: role), target: target, action: action)
     }
 
+    // MARK: - Ghost Buttons
+
+    /// Create a ghost (text-only) button for the given semantic role.
+    public static func ghost(role: LMKButtonRole, title: String, target: Any?, action: Selector) -> LMKButton {
+        let button = LMKButton(title: title, style: .ghost(color(for: role)))
+        button.addTarget(target, action: action, for: .touchUpInside)
+        return button
+    }
+
+    // MARK: - Icon-Only Buttons
+
+    /// Create an icon-only button for the given semantic role.
+    public static func iconOnly(role: LMKButtonRole, iconName: String, target: Any?, action: Selector) -> LMKButton {
+        let button = LMKButton(frame: .zero)
+        button.applyIconStyle(.iconOnly(color(for: role)), iconName: iconName)
+        button.addTarget(target, action: action, for: .touchUpInside)
+        return button
+    }
+
     // MARK: - Private Helpers
 
     private static func color(for role: LMKButtonRole) -> UIColor {

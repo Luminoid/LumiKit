@@ -11,12 +11,11 @@
     import LumiKitNetwork
     import Testing
 
-    @Suite("LMKNetworkRequestStore")
     struct LMKNetworkRequestStoreTests {
         // MARK: - Basic Functionality
 
-        @Test("Add request and retrieve")
-        func addAndRetrieve() throws {
+        @Test
+        func `Add request and retrieve`() throws {
             let store = LMKNetworkRequestStore(maxRecords: 10)
             let url = try #require(URL(string: "https://example.com"))
 
@@ -28,8 +27,8 @@
             #expect(store.records.first?.request.url == url)
         }
 
-        @Test("Multiple requests are newest-first")
-        func multipleRequestsNewestFirst() throws {
+        @Test
+        func `Multiple requests are newest-first`() throws {
             let store = LMKNetworkRequestStore(maxRecords: 10)
             let url1 = try #require(URL(string: "https://example.com/1"))
             let url2 = try #require(URL(string: "https://example.com/2"))
@@ -45,8 +44,8 @@
             #expect(store.records[2].id == id1)
         }
 
-        @Test("Clear removes all records")
-        func clearRecords() throws {
+        @Test
+        func `Clear removes all records`() throws {
             let store = LMKNetworkRequestStore(maxRecords: 10)
             _ = try store.addRequest(#require(URL(string: "https://example.com")), method: "GET", headers: [:], body: nil)
             _ = try store.addRequest(#require(URL(string: "https://example.com")), method: "POST", headers: [:], body: nil)
@@ -61,8 +60,8 @@
 
         // MARK: - Ring Buffer (FIFO Eviction)
 
-        @Test("Ring buffer evicts oldest when exceeding maxRecords")
-        func ringBufferEviction() throws {
+        @Test
+        func `Ring buffer evicts oldest when exceeding maxRecords`() throws {
             let store = LMKNetworkRequestStore(maxRecords: 5)
 
             // Add 7 requests (exceeds maxRecords by 2)
@@ -90,8 +89,8 @@
             #expect(store.records[0].id == ids[6])
         }
 
-        @Test("Ring buffer with large overage")
-        func ringBufferLargeOverage() throws {
+        @Test
+        func `Ring buffer with large overage`() throws {
             let store = LMKNetworkRequestStore(maxRecords: 10)
 
             // Add 50 requests
@@ -118,8 +117,8 @@
 
         // MARK: - Thread Safety
 
-        @Test("Concurrent additions are thread-safe")
-        func concurrentAdditions() async throws {
+        @Test
+        func `Concurrent additions are thread-safe`() async throws {
             let store = LMKNetworkRequestStore(maxRecords: 500)
             let url = try #require(URL(string: "https://example.com"))
 
@@ -143,8 +142,8 @@
             #expect(store.count == 200)
         }
 
-        @Test("Concurrent read and write")
-        func concurrentReadWrite() async throws {
+        @Test
+        func `Concurrent read and write`() async throws {
             let store = LMKNetworkRequestStore(maxRecords: 100)
             let url = try #require(URL(string: "https://example.com"))
 
@@ -176,8 +175,8 @@
             #expect(store.count <= 50)
         }
 
-        @Test("Concurrent updates are thread-safe")
-        func concurrentUpdates() async throws {
+        @Test
+        func `Concurrent updates are thread-safe`() async throws {
             let store = LMKNetworkRequestStore(maxRecords: 100)
             let url = try #require(URL(string: "https://example.com"))
 

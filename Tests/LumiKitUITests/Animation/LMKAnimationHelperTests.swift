@@ -9,11 +9,10 @@ import UIKit
 
 // MARK: - LMKAnimationHelper
 
-@Suite("LMKAnimationHelper")
 @MainActor
 struct LMKAnimationHelperTests {
-    @Test("Duration values are positive")
-    func durationsPositive() {
+    @Test
+    func `Duration values are positive`() {
         #expect(LMKAnimationHelper.Duration.screenTransition > 0)
         #expect(LMKAnimationHelper.Duration.modalPresentation > 0)
         #expect(LMKAnimationHelper.Duration.buttonPress > 0)
@@ -21,14 +20,14 @@ struct LMKAnimationHelperTests {
         #expect(LMKAnimationHelper.Duration.photoLoad > 0)
     }
 
-    @Test("Spring damping is in valid range")
-    func springDampingRange() {
+    @Test
+    func `Spring damping is in valid range`() {
         let damping = LMKAnimationHelper.Spring.damping
         #expect(damping > 0 && damping <= 1)
     }
 
-    @Test("tableViewRowAnimation returns valid value")
-    func tableViewRowAnimation() {
+    @Test
+    func `tableViewRowAnimation returns valid value`() {
         let animation = LMKAnimationHelper.tableViewRowAnimation
         // Should be either .automatic or .none depending on Reduce Motion
         #expect(animation == .automatic || animation == .none)
@@ -36,8 +35,8 @@ struct LMKAnimationHelperTests {
 
     // MARK: - Additional Duration Tests
 
-    @Test("All duration values are positive")
-    func allDurationsPositive() {
+    @Test
+    func `All duration values are positive`() {
         #expect(LMKAnimationHelper.Duration.screenTransition > 0)
         #expect(LMKAnimationHelper.Duration.modalPresentation > 0)
         #expect(LMKAnimationHelper.Duration.actionSheet > 0)
@@ -52,8 +51,8 @@ struct LMKAnimationHelperTests {
         #expect(LMKAnimationHelper.Duration.cardExpand > 0)
     }
 
-    @Test("Duration values are reasonable (< 2 seconds)")
-    func durationsReasonable() {
+    @Test
+    func `Duration values are reasonable (< 2 seconds)`() {
         // Animations should be quick (< 2 seconds)
         #expect(LMKAnimationHelper.Duration.screenTransition < 2.0)
         #expect(LMKAnimationHelper.Duration.modalPresentation < 2.0)
@@ -63,8 +62,8 @@ struct LMKAnimationHelperTests {
 
     // MARK: - Curve Tests
 
-    @Test("Animation curves are defined")
-    func curvesAreDefined() {
+    @Test
+    func `Animation curves are defined`() {
         _ = LMKAnimationHelper.Curve.easeInOut
         _ = LMKAnimationHelper.Curve.easeOut
         _ = LMKAnimationHelper.Curve.easeIn
@@ -73,8 +72,8 @@ struct LMKAnimationHelperTests {
 
     // MARK: - Button Press Animation Tests
 
-    @Test("animateButtonPressDown respects shouldAnimate")
-    func buttonPressDownRespectsReduceMotion() {
+    @Test
+    func `animateButtonPressDown respects shouldAnimate`() {
         let button = UIButton()
         button.frame = CGRect(x: 0, y: 0, width: 100, height: 44)
 
@@ -82,8 +81,8 @@ struct LMKAnimationHelperTests {
         // Test completes without crashing
     }
 
-    @Test("animateButtonPressUp calls completion")
-    func buttonPressUpCallsCompletion() {
+    @Test
+    func `animateButtonPressUp calls completion`() {
         let button = UIButton()
         button.frame = CGRect(x: 0, y: 0, width: 100, height: 44)
 
@@ -98,8 +97,8 @@ struct LMKAnimationHelperTests {
         }
     }
 
-    @Test("animateButtonPress works without completion")
-    func buttonPressWorksWithoutCompletion() {
+    @Test
+    func `animateButtonPress works without completion`() {
         let button = UIButton()
         button.frame = CGRect(x: 0, y: 0, width: 100, height: 44)
 
@@ -109,8 +108,8 @@ struct LMKAnimationHelperTests {
 
     // MARK: - Success Feedback Tests
 
-    @Test("animateSuccessFeedback adds checkmark view")
-    func successFeedbackAddsCheckmark() {
+    @Test
+    func `animateSuccessFeedback adds checkmark view`() {
         let view = UIView(frame: CGRect(x: 0, y: 0, width: 200, height: 200))
 
         LMKAnimationHelper.animateSuccessFeedback(on: view)
@@ -119,8 +118,8 @@ struct LMKAnimationHelperTests {
         #expect(!view.subviews.isEmpty)
     }
 
-    @Test("animateSuccessFeedback removes duplicate checkmarks")
-    func successFeedbackRemovesDuplicates() {
+    @Test
+    func `animateSuccessFeedback removes duplicate checkmarks`() {
         let view = UIView(frame: CGRect(x: 0, y: 0, width: 200, height: 200))
 
         // Add success feedback twice
@@ -136,8 +135,8 @@ struct LMKAnimationHelperTests {
 
     // MARK: - Error Shake Tests
 
-    @Test("animateErrorShake completes without crashing")
-    func errorShakeWorks() {
+    @Test
+    func `animateErrorShake completes without crashing`() {
         let view = UIView(frame: CGRect(x: 0, y: 0, width: 200, height: 44))
 
         var completionCalled = false
@@ -153,8 +152,8 @@ struct LMKAnimationHelperTests {
 
     // MARK: - Photo Load Tests
 
-    @Test("animatePhotoLoad completes without crashing")
-    func photoLoadWorks() {
+    @Test
+    func `animatePhotoLoad completes without crashing`() {
         let imageView = UIImageView(frame: CGRect(x: 0, y: 0, width: 100, height: 100))
         imageView.alpha = 1.0
 
@@ -165,8 +164,8 @@ struct LMKAnimationHelperTests {
 
     // MARK: - Fade Tests
 
-    @Test("fadeIn completes without crashing")
-    func fadeInWorks() {
+    @Test
+    func `fadeIn completes without crashing`() {
         let view = UIView()
         view.alpha = 1.0
 
@@ -175,8 +174,8 @@ struct LMKAnimationHelperTests {
         // Test completes successfully (alpha will be 0 or 1 depending on Reduce Motion and timing)
     }
 
-    @Test("fadeOut with completion")
-    func fadeOutCallsCompletion() {
+    @Test
+    func `fadeOut with completion`() {
         let view = UIView()
         view.alpha = 1.0
 
@@ -192,8 +191,8 @@ struct LMKAnimationHelperTests {
 
     // MARK: - List Update Tests
 
-    @Test("animateListUpdate calls animations block")
-    func listUpdateCallsAnimations() {
+    @Test
+    func `animateListUpdate calls animations block`() {
         var animationsCalled = false
 
         LMKAnimationHelper.animateListUpdate(animations: {

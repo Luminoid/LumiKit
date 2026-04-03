@@ -9,18 +9,17 @@ import UIKit
 
 // MARK: - LMKThemeManager
 
-@Suite("LMKThemeManager")
 @MainActor
 struct LMKThemeManagerTests {
-    @Test("Default theme is LMKDefaultTheme")
-    func defaultTheme() {
+    @Test
+    func `Default theme is LMKDefaultTheme`() {
         let theme = LMKThemeManager.shared.current
         // Default theme returns systemGreen for primary
         #expect(theme.primary == UIColor.systemGreen)
     }
 
-    @Test("Apply custom theme changes current")
-    func applyCustomTheme() {
+    @Test
+    func `Apply custom theme changes current`() {
         struct TestTheme: LMKTheme {
             var primary: UIColor { .systemPurple }
             var primaryDark: UIColor { .systemPurple }
@@ -55,11 +54,10 @@ struct LMKThemeManagerTests {
 
 // MARK: - LMKThemeManager.configure
 
-@Suite("LMKThemeManager.configure")
 @MainActor
 struct LMKThemeManagerConfigureTests {
-    @Test("Configure applies multiple categories at once")
-    func configureMultipleCategories() {
+    @Test
+    func `Configure applies multiple categories at once`() {
         let originalTypography = LMKThemeManager.shared.typography
         let originalSpacing = LMKThemeManager.shared.spacing
         defer {
@@ -75,8 +73,8 @@ struct LMKThemeManagerConfigureTests {
         #expect(LMKSpacing.large == 18)
     }
 
-    @Test("Configure only applies provided categories")
-    func configurePartial() {
+    @Test
+    func `Configure only applies provided categories`() {
         let originalSpacing = LMKThemeManager.shared.spacing
         defer { LMKThemeManager.shared.apply(spacing: originalSpacing) }
 

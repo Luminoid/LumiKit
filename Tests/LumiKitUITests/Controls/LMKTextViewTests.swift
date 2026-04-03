@@ -9,32 +9,31 @@ import UIKit
 
 // MARK: - LMKTextView
 
-@Suite("LMKTextView")
 @MainActor
 struct LMKTextViewTests {
-    @Test("Text property proxies to textView")
-    func textProxy() {
+    @Test
+    func `Text property proxies to textView`() {
         let tv = LMKTextView()
         tv.text = "Hello"
         #expect(tv.textView.text == "Hello")
         #expect(tv.text == "Hello")
     }
 
-    @Test("Placeholder is set")
-    func placeholderSet() {
+    @Test
+    func `Placeholder is set`() {
         let tv = LMKTextView()
         tv.placeholder = "Notes"
         #expect(tv.placeholder == "Notes")
     }
 
-    @Test("Default max character count is nil (unlimited)")
-    func defaultMaxCount() {
+    @Test
+    func `Default max character count is nil (unlimited)`() {
         let tv = LMKTextView()
         #expect(tv.maxCharacterCount == nil)
     }
 
-    @Test("Default styling uses design tokens")
-    func defaultStyling() {
+    @Test
+    func `Default styling uses design tokens`() {
         let tv = LMKTextView()
         #expect(tv.textView.font == LMKTypography.body)
         #expect(tv.textView.backgroundColor == LMKColor.backgroundSecondary)

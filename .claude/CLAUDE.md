@@ -50,7 +50,7 @@ LumiKit/
 │   │   │                     # CardPanelController, CardPanelLayout,
 │   │   │                     # NavigationDirection, OverscrollFooterHelper,
 │   │   │                     # ScrollStackViewController
-│   │   ├── Controls/        # LMKButton, LMKSegmentedControl, LMKControlScrollView,
+│   │   ├── Controls/        # LMKButton, LMKSegmentedControl, LMKSwitch,
 │   │   │                    # LMKToggleButton, LMKTextField, LMKTextView
 │   │   ├── DesignSystem/
 │   │   │   ├── Tokens/       # LMKColor, LMKSpacing, LMKCornerRadius, LMKAlpha,
@@ -194,7 +194,7 @@ DesignSystem/
 │   ├── LMKShadowTheme.swift        # Shadow config
 │   └── LMKBadgeTheme.swift         # Badge sizing config
 └── Factories/
-    ├── LMKButtonFactory.swift      # Role-based button factory (LMKButtonRole + filled/outlined)
+    ├── LMKButtonFactory.swift      # Role-based button factory (LMKButtonRole + filled/outlined/ghost/iconOnly)
     ├── LMKCardFactory.swift        # Factory methods for card views
     └── LMKLabelFactory.swift       # Factory methods for styled labels
 ```
@@ -237,6 +237,7 @@ LMKThemeManager.shared.apply(spacing: .init(large: 20))
 | `LMKEnumSelectionBottomSheet` | `final class` | Generic bottom sheet for selecting from an enum's cases |
 | `LMKGradientView` | `final class` | CAGradientLayer-backed view with 4 direction options |
 | `LMKLoadingStateView` | `final class` | Loading indicator with optional message |
+| `LMKPageIndicator` | `final class` | Custom page indicator replacing `UIPageControl`. Active dot expands into pill with spring animation. `numberOfPages`, `currentPage`, `pageChangedHandler` |
 | `LMKProgressViewController` | `final class` | Blocking progress modal (`.determinate` with progress bar, `.indeterminate` spinner-only) |
 | `LMKSearchBar` | `final class` | Search bar with configurable strings |
 | `LMKSkeletonCell` | `final class` | Skeleton loading placeholder cell |
@@ -255,9 +256,9 @@ LMKThemeManager.shared.apply(spacing: .init(large: 20))
 
 | Control | Type | Purpose |
 |---------|------|---------|
-| `LMKButton` | `open class` | Configurable button with tap handler, styles |
-| `LMKSegmentedControl` | `open class` | Segmented control with closure handlers and optional scroll support (`isScrollable` + `makeScrollableContainer()`) |
-| `LMKControlScrollView` | `final class` | Scroll view that cancels touch tracking on embedded controls — enables panning over segments |
+| `LMKButton` | `open class` | UIButton subclass with 4 styles: `.filled`, `.outlined`, `.ghost` (text-only), `.iconOnly` (circular). Capsule corners, press animation, `isLoading` state. `tapHandler`/`didTapHandler` closures |
+| `LMKSegmentedControl` | `open class` | Custom `UIControl` (NOT `UISegmentedControl`) with sliding pill indicator, spring animation, haptic. `init(items:)`, `selectedSegmentIndex`, `valueChangedHandler`, `makeScrollableContainer()` |
+| `LMKSwitch` | `final class` | Custom toggle replacing `UISwitch`. Rounded track + sliding thumb, spring animation, haptic. `isOn`, `setOn(_:animated:)`, `valueChangedHandler`. Sends `.valueChanged` |
 | `LMKTextField` | `open class` | Text field with validation states, helper text, leading icon |
 | `LMKTextView` | `open class` | Multi-line text input with placeholder, character limit |
 | `LMKToggleButton` | `open class` | Toggle button with on/off states |

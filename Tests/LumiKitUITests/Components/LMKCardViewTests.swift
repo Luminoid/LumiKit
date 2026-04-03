@@ -9,30 +9,29 @@ import UIKit
 
 // MARK: - LMKCardView
 
-@Suite("LMKCardView")
 @MainActor
 struct LMKCardViewTests {
-    @Test("Default corner radius is LMKCornerRadius.medium")
-    func defaultCornerRadius() {
+    @Test
+    func `Default corner radius is LMKCornerRadius.medium`() {
         let card = LMKCardView()
         #expect(card.layer.cornerRadius == LMKCornerRadius.medium)
     }
 
-    @Test("contentView is a subview")
-    func contentViewIsSubview() {
+    @Test
+    func `contentView is a subview`() {
         let card = LMKCardView()
         #expect(card.contentView.superview === card)
     }
 
-    @Test("Shadow is applied")
-    func shadowApplied() {
+    @Test
+    func `Shadow is applied`() {
         let card = LMKCardView()
         #expect(card.layer.shadowOpacity > 0)
         #expect(!card.layer.masksToBounds)
     }
 
-    @Test("Custom corner radius is applied")
-    func customCornerRadius() {
+    @Test
+    func `Custom corner radius is applied`() {
         let card = LMKCardView()
         card.cardCornerRadius = 20
         #expect(card.layer.cornerRadius == 20)

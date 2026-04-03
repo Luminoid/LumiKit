@@ -9,11 +9,10 @@ import UIKit
 
 // MARK: - LMKSpacing
 
-@Suite("LMKSpacing")
 @MainActor
 struct LMKSpacingTests {
-    @Test("Spacing values follow 4pt grid")
-    func spacingGrid() {
+    @Test
+    func `Spacing values follow 4pt grid`() {
         #expect(LMKSpacing.xxs == 2)
         #expect(LMKSpacing.xs == 4)
         #expect(LMKSpacing.small == 8)
@@ -26,11 +25,10 @@ struct LMKSpacingTests {
 
 // MARK: - LMKSpacingTheme
 
-@Suite("LMKSpacingTheme")
 @MainActor
 struct LMKSpacingConfigurationTests {
-    @Test("Default spacing matches original values")
-    func defaultSpacing() {
+    @Test
+    func `Default spacing matches original values`() {
         let config = LMKSpacingTheme()
         #expect(config.xxs == 2)
         #expect(config.xs == 4)
@@ -43,8 +41,8 @@ struct LMKSpacingConfigurationTests {
         #expect(config.buttonPaddingHorizontal == 16)
     }
 
-    @Test("Custom spacing is applied via proxy")
-    func customSpacing() {
+    @Test
+    func `Custom spacing is applied via proxy`() {
         let original = LMKThemeManager.shared.spacing
         defer { LMKThemeManager.shared.apply(spacing: original) }
 

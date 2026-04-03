@@ -7,13 +7,12 @@ import Testing
 import UIKit
 @testable import LumiKitUI
 
-@Suite("LMKPhotoBrowserViewController")
 @MainActor
 struct LMKPhotoBrowserViewControllerTests {
     // MARK: - Initialization
 
-    @Test("Initializes with start index")
-    func initializesWithStartIndex() {
+    @Test
+    func `Initializes with start index`() {
         let dataSource = MockPhotoBrowserDataSource(photoCount: 5)
         let browser = LMKPhotoBrowserViewController(initialIndex: 2)
         browser.dataSource = dataSource
@@ -21,8 +20,8 @@ struct LMKPhotoBrowserViewControllerTests {
         #expect(browser.dataSource != nil)
     }
 
-    @Test("Loads view without crashing")
-    func loadsView() {
+    @Test
+    func `Loads view without crashing`() {
         let dataSource = MockPhotoBrowserDataSource(photoCount: 3)
         let browser = LMKPhotoBrowserViewController(initialIndex: 0)
         browser.dataSource = dataSource
@@ -34,8 +33,8 @@ struct LMKPhotoBrowserViewControllerTests {
 
     // MARK: - Data Source
 
-    @Test("Handles empty data source")
-    func handlesEmptyDataSource() {
+    @Test
+    func `Handles empty data source`() {
         let dataSource = MockPhotoBrowserDataSource(photoCount: 0)
         let browser = LMKPhotoBrowserViewController(initialIndex: 0)
         browser.dataSource = dataSource
@@ -46,8 +45,8 @@ struct LMKPhotoBrowserViewControllerTests {
         #expect(browser.isViewLoaded)
     }
 
-    @Test("Handles single photo")
-    func handlesSinglePhoto() {
+    @Test
+    func `Handles single photo`() {
         let dataSource = MockPhotoBrowserDataSource(photoCount: 1)
         let browser = LMKPhotoBrowserViewController(initialIndex: 0)
         browser.dataSource = dataSource
@@ -57,8 +56,8 @@ struct LMKPhotoBrowserViewControllerTests {
         #expect(browser.isViewLoaded)
     }
 
-    @Test("Handles multiple photos")
-    func handlesMultiplePhotos() {
+    @Test
+    func `Handles multiple photos`() {
         let dataSource = MockPhotoBrowserDataSource(photoCount: 10)
         let browser = LMKPhotoBrowserViewController(initialIndex: 5)
         browser.dataSource = dataSource
@@ -70,8 +69,8 @@ struct LMKPhotoBrowserViewControllerTests {
 
     // MARK: - Delegate
 
-    @Test("Accepts delegate assignment")
-    func acceptsDelegateAssignment() {
+    @Test
+    func `Accepts delegate assignment`() {
         let delegate = MockPhotoBrowserDelegate()
         let browser = LMKPhotoBrowserViewController(initialIndex: 0)
         browser.delegate = delegate
@@ -81,8 +80,8 @@ struct LMKPhotoBrowserViewControllerTests {
 
     // MARK: - Strings Configuration
 
-    @Test("Default strings are set")
-    func defaultStringsAreSet() {
+    @Test
+    func `Default strings are set`() {
         let browser = LMKPhotoBrowserViewController(initialIndex: 0)
 
         #expect(!browser.strings.emptyText.isEmpty)
@@ -90,8 +89,8 @@ struct LMKPhotoBrowserViewControllerTests {
         #expect(!browser.strings.tapToToggleHint.isEmpty)
     }
 
-    @Test("Custom strings can be set")
-    func customStringsCanBeSet() {
+    @Test
+    func `Custom strings can be set`() {
         let browser = LMKPhotoBrowserViewController(initialIndex: 0)
         let customStrings = LMKPhotoBrowserStrings(
             emptyText: "Custom Empty",
@@ -107,8 +106,8 @@ struct LMKPhotoBrowserViewControllerTests {
 
     // MARK: - Status Bar
 
-    @Test("Preferred status bar style is light content")
-    func statusBarStyleIsLightContent() {
+    @Test
+    func `Preferred status bar style is light content`() {
         let browser = LMKPhotoBrowserViewController(initialIndex: 0)
 
         #expect(browser.preferredStatusBarStyle == .lightContent)
@@ -116,8 +115,8 @@ struct LMKPhotoBrowserViewControllerTests {
 
     // MARK: - View Controller Lifecycle
 
-    @Test("View controller can be presented")
-    func canBePresented() {
+    @Test
+    func `View controller can be presented`() {
         let dataSource = MockPhotoBrowserDataSource(photoCount: 3)
         let browser = LMKPhotoBrowserViewController(initialIndex: 0)
         browser.dataSource = dataSource

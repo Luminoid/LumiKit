@@ -9,24 +9,23 @@ import UIKit
 
 // MARK: - LMKKeyboardObserver
 
-@Suite("LMKKeyboardObserver")
 @MainActor
 struct LMKKeyboardObserverTests {
-    @Test("Initial currentHeight is 0")
-    func initialHeight() {
+    @Test
+    func `Initial currentHeight is 0`() {
         let observer = LMKKeyboardObserver()
         #expect(observer.currentHeight == 0)
     }
 
-    @Test("startObserving and stopObserving don't crash")
-    func startStopObserving() {
+    @Test
+    func `startObserving and stopObserving don't crash`() {
         let observer = LMKKeyboardObserver()
         observer.startObserving()
         observer.stopObserving()
     }
 
-    @Test("KeyboardInfo isVisible is true when height > 0")
-    func keyboardInfoVisibility() {
+    @Test
+    func `KeyboardInfo isVisible is true when height > 0`() {
         let info = LMKKeyboardObserver.KeyboardInfo(
             height: 300,
             animationDuration: 0.25,
@@ -44,8 +43,8 @@ struct LMKKeyboardObserverTests {
 
     // MARK: - Notification Simulation
 
-    @Test("Show notification updates currentHeight")
-    func showNotificationUpdatesHeight() {
+    @Test
+    func `Show notification updates currentHeight`() {
         let observer = LMKKeyboardObserver()
         observer.startObserving()
 
@@ -64,8 +63,8 @@ struct LMKKeyboardObserverTests {
         observer.stopObserving()
     }
 
-    @Test("Hide notification resets currentHeight to 0")
-    func hideNotificationResetsHeight() {
+    @Test
+    func `Hide notification resets currentHeight to 0`() {
         let observer = LMKKeyboardObserver()
         observer.startObserving()
 
@@ -96,8 +95,8 @@ struct LMKKeyboardObserverTests {
         observer.stopObserving()
     }
 
-    @Test("onKeyboardChange callback fires on show")
-    func callbackFiresOnShow() {
+    @Test
+    func `onKeyboardChange callback fires on show`() {
         let observer = LMKKeyboardObserver()
         var receivedInfo: LMKKeyboardObserver.KeyboardInfo?
         observer.onKeyboardChange = { info in
@@ -123,8 +122,8 @@ struct LMKKeyboardObserverTests {
         observer.stopObserving()
     }
 
-    @Test("Duplicate height does not fire callback")
-    func duplicateHeightNoCallback() {
+    @Test
+    func `Duplicate height does not fire callback`() {
         let observer = LMKKeyboardObserver()
         var callCount = 0
         observer.onKeyboardChange = { _ in
@@ -146,8 +145,8 @@ struct LMKKeyboardObserverTests {
         observer.stopObserving()
     }
 
-    @Test("stopObserving prevents future notifications from updating height")
-    func stopObservingPreventsUpdates() {
+    @Test
+    func `stopObserving prevents future notifications from updating height`() {
         let observer = LMKKeyboardObserver()
         observer.startObserving()
         observer.stopObserving()
@@ -166,8 +165,8 @@ struct LMKKeyboardObserverTests {
         #expect(observer.currentHeight == 0)
     }
 
-    @Test("startObserving twice cleans up previous observers")
-    func startObservingTwice() {
+    @Test
+    func `startObserving twice cleans up previous observers`() {
         let observer = LMKKeyboardObserver()
         var callCount = 0
         observer.onKeyboardChange = { _ in

@@ -7,13 +7,12 @@ import Testing
 import UIKit
 @testable import LumiKitLottie
 
-@Suite("LMKLottieRefreshControl")
 @MainActor
 struct LMKLottieRefreshControlTests {
     // MARK: - Initialization
 
-    @Test("Initializes successfully")
-    func initializesSuccessfully() {
+    @Test
+    func `Initializes successfully`() {
         let refreshControl = LMKLottieRefreshControl()
 
         #expect(refreshControl.isRefreshing == false)
@@ -21,8 +20,8 @@ struct LMKLottieRefreshControlTests {
 
     // MARK: - Refresh State
 
-    @Test("Begins refreshing completes without crashing")
-    func beginsRefreshing() {
+    @Test
+    func `Begins refreshing completes without crashing`() {
         let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
         let refreshControl = LMKLottieRefreshControl()
         scrollView.refreshControl = refreshControl
@@ -32,8 +31,8 @@ struct LMKLottieRefreshControlTests {
         // Test completes successfully (actual refresh state requires visible hierarchy)
     }
 
-    @Test("Ends refreshing")
-    func endsRefreshing() {
+    @Test
+    func `Ends refreshing`() {
         let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
         let refreshControl = LMKLottieRefreshControl()
         scrollView.refreshControl = refreshControl
@@ -44,8 +43,8 @@ struct LMKLottieRefreshControlTests {
         #expect(refreshControl.isRefreshing == false)
     }
 
-    @Test("Initial state is not refreshing")
-    func initialStateNotRefreshing() {
+    @Test
+    func `Initial state is not refreshing`() {
         let refreshControl = LMKLottieRefreshControl()
 
         #expect(refreshControl.isRefreshing == false)
@@ -53,8 +52,8 @@ struct LMKLottieRefreshControlTests {
 
     // MARK: - Scroll View Integration
 
-    @Test("Can be added to scroll view")
-    func canBeAddedToScrollView() {
+    @Test
+    func `Can be added to scroll view`() {
         let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
         let refreshControl = LMKLottieRefreshControl()
 
@@ -63,8 +62,8 @@ struct LMKLottieRefreshControlTests {
         #expect(scrollView.refreshControl != nil)
     }
 
-    @Test("Can be added to table view")
-    func canBeAddedToTableView() {
+    @Test
+    func `Can be added to table view`() {
         let tableView = UITableView(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
         let refreshControl = LMKLottieRefreshControl()
 
@@ -75,8 +74,8 @@ struct LMKLottieRefreshControlTests {
 
     // MARK: - Multiple Cycles
 
-    @Test("Handles multiple refresh cycles")
-    func handlesMultipleRefreshCycles() {
+    @Test
+    func `Handles multiple refresh cycles`() {
         let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
         let refreshControl = LMKLottieRefreshControl()
         scrollView.refreshControl = refreshControl

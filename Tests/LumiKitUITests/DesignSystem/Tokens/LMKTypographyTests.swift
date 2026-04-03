@@ -9,46 +9,44 @@ import UIKit
 
 // MARK: - LMKTypography
 
-@Suite("LMKTypography")
 @MainActor
 struct LMKTypographyTests {
-    @Test("Heading fonts are larger than body")
-    func headingLargerThanBody() {
+    @Test
+    func `Heading fonts are larger than body`() {
         #expect(LMKTypography.h1.pointSize > LMKTypography.body.pointSize)
         #expect(LMKTypography.h2.pointSize >= LMKTypography.body.pointSize)
     }
 
-    @Test("Caption fonts are smaller than body")
-    func captionSmallerThanBody() {
+    @Test
+    func `Caption fonts are smaller than body`() {
         #expect(LMKTypography.caption.pointSize < LMKTypography.body.pointSize)
         #expect(LMKTypography.small.pointSize < LMKTypography.caption.pointSize)
     }
 
-    @Test("Italic body has italic trait")
-    func italicBodyHasItalicTrait() {
+    @Test
+    func `Italic body has italic trait`() {
         let traits = LMKTypography.italicBody.fontDescriptor.symbolicTraits
         #expect(traits.contains(.traitItalic))
     }
 
-    @Test("lineHeight returns positive value")
-    func lineHeightPositive() {
+    @Test
+    func `lineHeight returns positive value`() {
         let height = LMKTypography.lineHeight(for: LMKTypography.body, type: .body)
         #expect(height > 0)
     }
 
-    @Test("letterSpacing for heading is negative")
-    func letterSpacingHeading() {
+    @Test
+    func `letterSpacing for heading is negative`() {
         #expect(LMKTypography.letterSpacing(for: .heading) < 0)
     }
 }
 
 // MARK: - LMKTypographyTheme
 
-@Suite("LMKTypographyTheme")
 @MainActor
 struct LMKTypographyConfigurationTests {
-    @Test("Default typography matches original hardcoded values")
-    func defaultTypography() {
+    @Test
+    func `Default typography matches original hardcoded values`() {
         let config = LMKTypographyTheme()
         #expect(config.h1Size == 28)
         #expect(config.h2Size == 22)
@@ -63,8 +61,8 @@ struct LMKTypographyConfigurationTests {
         #expect(config.fontFamily == nil)
     }
 
-    @Test("Custom font sizes are applied via proxy")
-    func customFontSizes() {
+    @Test
+    func `Custom font sizes are applied via proxy`() {
         let original = LMKThemeManager.shared.typography
         defer { LMKThemeManager.shared.apply(typography: original) }
 
@@ -73,8 +71,8 @@ struct LMKTypographyConfigurationTests {
         #expect(LMKTypography.body.pointSize == 15)
     }
 
-    @Test("Custom font family is applied")
-    func customFontFamily() {
+    @Test
+    func `Custom font family is applied`() {
         let original = LMKThemeManager.shared.typography
         defer { LMKThemeManager.shared.apply(typography: original) }
 
@@ -83,8 +81,8 @@ struct LMKTypographyConfigurationTests {
         #expect(font.familyName == "Helvetica Neue")
     }
 
-    @Test("Line height multipliers are configurable")
-    func lineHeightMultipliers() {
+    @Test
+    func `Line height multipliers are configurable`() {
         let original = LMKThemeManager.shared.typography
         defer { LMKThemeManager.shared.apply(typography: original) }
 
@@ -92,8 +90,8 @@ struct LMKTypographyConfigurationTests {
         #expect(LMKTypography.headingLineHeightMultiplier == 1.5)
     }
 
-    @Test("Letter spacing is configurable")
-    func letterSpacing() {
+    @Test
+    func `Letter spacing is configurable`() {
         let original = LMKThemeManager.shared.typography
         defer { LMKThemeManager.shared.apply(typography: original) }
 
@@ -102,8 +100,8 @@ struct LMKTypographyConfigurationTests {
         #expect(LMKTypography.letterSpacing(for: .heading) == -1.0)
     }
 
-    @Test("Default font family is system font")
-    func defaultIsSystemFont() {
+    @Test
+    func `Default font family is system font`() {
         let original = LMKThemeManager.shared.typography
         defer { LMKThemeManager.shared.apply(typography: original) }
 

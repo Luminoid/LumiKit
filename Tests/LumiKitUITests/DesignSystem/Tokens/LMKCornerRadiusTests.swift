@@ -9,11 +9,10 @@ import UIKit
 
 // MARK: - LMKCornerRadius
 
-@Suite("LMKCornerRadius")
 @MainActor
 struct LMKCornerRadiusTests {
-    @Test("Corner radii are positive and ordered")
-    func cornerRadiiOrdered() {
+    @Test
+    func `Corner radii are positive and ordered`() {
         #expect(LMKCornerRadius.xs > 0)
         #expect(LMKCornerRadius.small > LMKCornerRadius.xs)
         #expect(LMKCornerRadius.medium > LMKCornerRadius.small)
@@ -24,11 +23,10 @@ struct LMKCornerRadiusTests {
 
 // MARK: - LMKCornerRadiusTheme
 
-@Suite("LMKCornerRadiusTheme")
 @MainActor
 struct LMKCornerRadiusConfigurationTests {
-    @Test("Default corner radius matches original values")
-    func defaultCornerRadius() {
+    @Test
+    func `Default corner radius matches original values`() {
         let config = LMKCornerRadiusTheme()
         #expect(config.xs == 4)
         #expect(config.small == 8)
@@ -37,8 +35,8 @@ struct LMKCornerRadiusConfigurationTests {
         #expect(config.xl == 20)
     }
 
-    @Test("Custom corner radius is applied via proxy")
-    func customCornerRadius() {
+    @Test
+    func `Custom corner radius is applied via proxy`() {
         let original = LMKThemeManager.shared.cornerRadius
         defer { LMKThemeManager.shared.apply(cornerRadius: original) }
 

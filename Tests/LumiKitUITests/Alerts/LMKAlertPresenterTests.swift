@@ -9,24 +9,23 @@ import UIKit
 
 // MARK: - LMKAlertPresenter
 
-@Suite("LMKAlertPresenter")
 struct LMKAlertPresenterTests {
-    @Test("Default strings are English")
-    func defaultStrings() {
+    @Test
+    func `Default strings are English`() {
         let strings = LMKAlertPresenter.Strings()
         #expect(strings.ok == "OK")
         #expect(strings.cancel == "Cancel")
     }
 
-    @Test("Custom strings are preserved")
-    func customStrings() {
+    @Test
+    func `Custom strings are preserved`() {
         let strings = LMKAlertPresenter.Strings(ok: "Aceptar", cancel: "Cancelar")
         #expect(strings.ok == "Aceptar")
         #expect(strings.cancel == "Cancelar")
     }
 
-    @Test("Static strings can be overridden")
-    func overrideStaticStrings() {
+    @Test
+    func `Static strings can be overridden`() {
         let original = LMKAlertPresenter.strings
         LMKAlertPresenter.strings = .init(ok: "OK!", cancel: "Nah")
         #expect(LMKAlertPresenter.strings.ok == "OK!")

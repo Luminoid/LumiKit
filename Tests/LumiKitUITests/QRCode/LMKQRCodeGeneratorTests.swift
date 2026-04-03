@@ -7,24 +7,23 @@ import Testing
 import UIKit
 @testable import LumiKitUI
 
-@Suite("LMKQRCodeGenerator")
 @MainActor
 struct LMKQRCodeGeneratorTests {
-    @Test("Valid string generates non-nil image")
-    func validStringGeneratesImage() throws {
+    @Test
+    func `Valid string generates non-nil image`() throws {
         let image = try #require(LMKQRCodeGenerator.generateQRCode(from: "https://example.com"))
         #expect(image.size.width > 0)
         #expect(image.size.height > 0)
     }
 
-    @Test("Empty string returns nil")
-    func emptyStringReturnsNil() {
+    @Test
+    func `Empty string returns nil`() {
         let image = LMKQRCodeGenerator.generateQRCode(from: "")
         #expect(image == nil)
     }
 
-    @Test("All correction levels produce images")
-    func allCorrectionLevels() {
+    @Test
+    func `All correction levels produce images`() {
         let levels: [LMKQRCodeGenerator.CorrectionLevel] = [.low, .medium, .quartile, .high]
         for level in levels {
             let image = LMKQRCodeGenerator.generateQRCode(from: "test", correctionLevel: level)
@@ -32,14 +31,14 @@ struct LMKQRCodeGeneratorTests {
         }
     }
 
-    @Test("Custom size produces image")
-    func customSize() {
+    @Test
+    func `Custom size produces image`() {
         let image = LMKQRCodeGenerator.generateQRCode(from: "test", size: 100)
         #expect(image != nil)
     }
 
-    @Test("Default correction level is medium")
-    func defaultCorrectionLevel() {
+    @Test
+    func `Default correction level is medium`() {
         // Both should succeed — default vs explicit medium
         let defaultImage = LMKQRCodeGenerator.generateQRCode(from: "test")
         let mediumImage = LMKQRCodeGenerator.generateQRCode(from: "test", correctionLevel: .medium)
@@ -47,16 +46,16 @@ struct LMKQRCodeGeneratorTests {
         #expect(mediumImage != nil)
     }
 
-    @Test("CorrectionLevel raw values match QR standard")
-    func correctionLevelRawValues() {
+    @Test
+    func `CorrectionLevel raw values match QR standard`() {
         #expect(LMKQRCodeGenerator.CorrectionLevel.low.rawValue == "L")
         #expect(LMKQRCodeGenerator.CorrectionLevel.medium.rawValue == "M")
         #expect(LMKQRCodeGenerator.CorrectionLevel.quartile.rawValue == "Q")
         #expect(LMKQRCodeGenerator.CorrectionLevel.high.rawValue == "H")
     }
 
-    @Test("URL content generates valid QR code")
-    func urlContentGenerates() {
+    @Test
+    func `URL content generates valid QR code`() {
         let image = LMKQRCodeGenerator.generateQRCode(from: "https://apps.apple.com/us/app/plantfolio-plus/id6757148663")
         #expect(image != nil)
     }

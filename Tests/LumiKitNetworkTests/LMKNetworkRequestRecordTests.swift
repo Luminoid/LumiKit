@@ -12,7 +12,6 @@
     import Testing
     @testable import LumiKitNetwork
 
-    @Suite("LMKNetworkRequestRecord")
     struct LMKNetworkRequestRecordTests {
         // MARK: - Helpers
 
@@ -45,165 +44,165 @@
 
         // MARK: - isSuccess
 
-        @Test("isSuccess returns true for HTTP 200")
-        func isSuccessForHTTP200() throws {
+        @Test
+        func `isSuccess returns true for HTTP 200`() throws {
             let record = try makeRecord(statusCode: 200)
             #expect(record.isSuccess)
         }
 
-        @Test("isSuccess returns true for HTTP 201")
-        func isSuccessForHTTP201() throws {
+        @Test
+        func `isSuccess returns true for HTTP 201`() throws {
             let record = try makeRecord(statusCode: 201)
             #expect(record.isSuccess)
         }
 
-        @Test("isSuccess returns true for HTTP 299")
-        func isSuccessForHTTP299() throws {
+        @Test
+        func `isSuccess returns true for HTTP 299`() throws {
             let record = try makeRecord(statusCode: 299)
             #expect(record.isSuccess)
         }
 
-        @Test("isSuccess returns false for HTTP 404")
-        func isNotSuccessForHTTP404() throws {
+        @Test
+        func `isSuccess returns false for HTTP 404`() throws {
             let record = try makeRecord(statusCode: 404)
             #expect(!record.isSuccess)
         }
 
-        @Test("isSuccess returns false for HTTP 500")
-        func isNotSuccessForHTTP500() throws {
+        @Test
+        func `isSuccess returns false for HTTP 500`() throws {
             let record = try makeRecord(statusCode: 500)
             #expect(!record.isSuccess)
         }
 
-        @Test("isSuccess returns false when no response")
-        func isNotSuccessWithoutResponse() throws {
+        @Test
+        func `isSuccess returns false when no response`() throws {
             let record = try makeRecord()
             #expect(!record.isSuccess)
         }
 
         // MARK: - isError
 
-        @Test("isError returns true when errorDescription is set")
-        func isErrorWithDescription() throws {
+        @Test
+        func `isError returns true when errorDescription is set`() throws {
             let record = try makeRecord(errorDescription: "Connection timed out")
             #expect(record.isError)
         }
 
-        @Test("isError returns true for non-2xx status code")
-        func isErrorForNon2xx() throws {
+        @Test
+        func `isError returns true for non-2xx status code`() throws {
             let record = try makeRecord(statusCode: 500)
             #expect(record.isError)
         }
 
-        @Test("isError returns false for 2xx with no error")
-        func isNotErrorFor2xx() throws {
+        @Test
+        func `isError returns false for 2xx with no error`() throws {
             let record = try makeRecord(statusCode: 200)
             #expect(!record.isError)
         }
 
-        @Test("isError returns false when no response and no error")
-        func isNotErrorPending() throws {
+        @Test
+        func `isError returns false when no response and no error`() throws {
             let record = try makeRecord()
             #expect(!record.isError)
         }
 
-        @Test("isError returns true when both error and non-2xx status")
-        func isErrorWithBothErrorAndBadStatus() throws {
+        @Test
+        func `isError returns true when both error and non-2xx status`() throws {
             let record = try makeRecord(statusCode: 502, errorDescription: "Bad gateway")
             #expect(record.isError)
         }
 
         // MARK: - displayURL
 
-        @Test("displayURL returns full URL string")
-        func displayURLReturnsFullString() throws {
+        @Test
+        func `displayURL returns full URL string`() throws {
             let record = try makeRecord(url: "https://api.example.com/v2/plants?page=1")
             #expect(record.displayURL == "https://api.example.com/v2/plants?page=1")
         }
 
         // MARK: - displayMethod
 
-        @Test("displayMethod returns request method")
-        func displayMethodReturnsMethod() throws {
+        @Test
+        func `displayMethod returns request method`() throws {
             let record = try makeRecord(method: "POST")
             #expect(record.displayMethod == "POST")
         }
 
-        @Test("displayMethod preserves case")
-        func displayMethodPreservesCase() throws {
+        @Test
+        func `displayMethod preserves case`() throws {
             let record = try makeRecord(method: "delete")
             #expect(record.displayMethod == "delete")
         }
 
         // MARK: - displayStatus
 
-        @Test("displayStatus returns status code as string")
-        func displayStatusWithCode() throws {
+        @Test
+        func `displayStatus returns status code as string`() throws {
             let record = try makeRecord(statusCode: 201)
             #expect(record.displayStatus == "201")
         }
 
-        @Test("displayStatus returns Error when errorDescription is set and no response")
-        func displayStatusError() throws {
+        @Test
+        func `displayStatus returns Error when errorDescription is set and no response`() throws {
             let record = try makeRecord(errorDescription: "timeout")
             #expect(record.displayStatus == "Error")
         }
 
-        @Test("displayStatus returns Pending when no response and no error")
-        func displayStatusPending() throws {
+        @Test
+        func `displayStatus returns Pending when no response and no error`() throws {
             let record = try makeRecord()
             #expect(record.displayStatus == "Pending")
         }
 
-        @Test("displayStatus returns code even when error also set")
-        func displayStatusPrefersCode() throws {
+        @Test
+        func `displayStatus returns code even when error also set`() throws {
             let record = try makeRecord(statusCode: 503, errorDescription: "Service unavailable")
             #expect(record.displayStatus == "503")
         }
 
         // MARK: - displayDuration
 
-        @Test("displayDuration formats milliseconds")
-        func displayDurationMilliseconds() throws {
+        @Test
+        func `displayDuration formats milliseconds`() throws {
             let record = try makeRecord(duration: 0.123)
             #expect(record.displayDuration == "123ms")
         }
 
-        @Test("displayDuration formats sub-millisecond as 0ms")
-        func displayDurationSubMillisecond() throws {
+        @Test
+        func `displayDuration formats sub-millisecond as 0ms`() throws {
             let record = try makeRecord(duration: 0.0004)
             #expect(record.displayDuration == "0ms")
         }
 
-        @Test("displayDuration formats seconds as milliseconds")
-        func displayDurationSeconds() throws {
+        @Test
+        func `displayDuration formats seconds as milliseconds`() throws {
             let record = try makeRecord(duration: 2.5)
             #expect(record.displayDuration == "2500ms")
         }
 
-        @Test("displayDuration returns dash when nil")
-        func displayDurationNil() throws {
+        @Test
+        func `displayDuration returns dash when nil`() throws {
             let record = try makeRecord()
             #expect(record.displayDuration == "-")
         }
 
         // MARK: - requestBodyText
 
-        @Test("requestBodyText returns nil when no body")
-        func requestBodyTextNil() throws {
+        @Test
+        func `requestBodyText returns nil when no body`() throws {
             let record = try makeRecord()
             #expect(record.requestBodyText == nil)
         }
 
-        @Test("requestBodyText returns plain text for non-JSON")
-        func requestBodyTextPlain() throws {
+        @Test
+        func `requestBodyText returns plain text for non-JSON`() throws {
             let body = Data("hello world".utf8)
             let record = try makeRecord(requestBody: body)
             #expect(record.requestBodyText == "hello world")
         }
 
-        @Test("requestBodyText pretty-prints JSON when Content-Type is application/json")
-        func requestBodyTextPrettyPrintsJSON() throws {
+        @Test
+        func `requestBodyText pretty-prints JSON when Content-Type is application/json`() throws {
             let json = Data(#"{"name":"Fern","type":"indoor"}"#.utf8)
             let record = try makeRecord(
                 requestHeaders: ["Content-Type": "application/json"],
@@ -216,8 +215,8 @@
             #expect(text.contains("\n"))
         }
 
-        @Test("requestBodyText handles case-insensitive Content-Type header")
-        func requestBodyTextCaseInsensitiveHeader() throws {
+        @Test
+        func `requestBodyText handles case-insensitive Content-Type header`() throws {
             let json = Data(#"{"a":1}"#.utf8)
             let record = try makeRecord(
                 requestHeaders: ["content-type": "application/json"],
@@ -227,8 +226,8 @@
             #expect(text.contains("\n"))
         }
 
-        @Test("requestBodyText returns binary placeholder for non-UTF8 data")
-        func requestBodyTextBinaryData() throws {
+        @Test
+        func `requestBodyText returns binary placeholder for non-UTF8 data`() throws {
             let body = Data([0xFF, 0xFE, 0x00, 0x01])
             let record = try makeRecord(requestBody: body)
             let text = try #require(record.requestBodyText)
@@ -238,27 +237,27 @@
 
         // MARK: - responseBodyText
 
-        @Test("responseBodyText returns nil when no response")
-        func responseBodyTextNilNoResponse() throws {
+        @Test
+        func `responseBodyText returns nil when no response`() throws {
             let record = try makeRecord()
             #expect(record.responseBodyText == nil)
         }
 
-        @Test("responseBodyText returns nil when response has no body")
-        func responseBodyTextNilNoBody() throws {
+        @Test
+        func `responseBodyText returns nil when response has no body`() throws {
             let record = try makeRecord(statusCode: 204)
             #expect(record.responseBodyText == nil)
         }
 
-        @Test("responseBodyText returns plain text")
-        func responseBodyTextPlain() throws {
+        @Test
+        func `responseBodyText returns plain text`() throws {
             let body = Data("OK".utf8)
             let record = try makeRecord(statusCode: 200, responseBody: body)
             #expect(record.responseBodyText == "OK")
         }
 
-        @Test("responseBodyText pretty-prints JSON response")
-        func responseBodyTextPrettyPrintsJSON() throws {
+        @Test
+        func `responseBodyText pretty-prints JSON response`() throws {
             let json = Data(#"{"id":42}"#.utf8)
             let record = try makeRecord(
                 statusCode: 200,
@@ -273,8 +272,8 @@
 
         // MARK: - formattedRequestHeaders()
 
-        @Test("formattedRequestHeaders returns sorted key-value pairs")
-        func formattedRequestHeadersSorted() throws {
+        @Test
+        func `formattedRequestHeaders returns sorted key-value pairs`() throws {
             let record = try makeRecord(
                 requestHeaders: [
                     "Content-Type": "application/json",
@@ -290,16 +289,16 @@
             #expect(lines[2] == "Content-Type: application/json")
         }
 
-        @Test("formattedRequestHeaders returns empty string when no headers")
-        func formattedRequestHeadersEmpty() throws {
+        @Test
+        func `formattedRequestHeaders returns empty string when no headers`() throws {
             let record = try makeRecord()
             #expect(record.formattedRequestHeaders() == "")
         }
 
         // MARK: - formattedResponseHeaders()
 
-        @Test("formattedResponseHeaders returns sorted key-value pairs")
-        func formattedResponseHeadersSorted() throws {
+        @Test
+        func `formattedResponseHeaders returns sorted key-value pairs`() throws {
             let record = try makeRecord(
                 statusCode: 200,
                 responseHeaders: [
@@ -314,14 +313,14 @@
             #expect(lines[1] == "X-Request-Id: abc-123")
         }
 
-        @Test("formattedResponseHeaders returns nil when no response")
-        func formattedResponseHeadersNil() throws {
+        @Test
+        func `formattedResponseHeaders returns nil when no response`() throws {
             let record = try makeRecord()
             #expect(record.formattedResponseHeaders() == nil)
         }
 
-        @Test("formattedResponseHeaders returns empty string when response has no headers")
-        func formattedResponseHeadersEmptyHeaders() throws {
+        @Test
+        func `formattedResponseHeaders returns empty string when response has no headers`() throws {
             let record = try makeRecord(statusCode: 200)
             let formatted = try #require(record.formattedResponseHeaders())
             #expect(formatted == "")
@@ -329,22 +328,22 @@
 
         // MARK: - statusCode
 
-        @Test("statusCode returns response status code")
-        func statusCodeFromResponse() throws {
+        @Test
+        func `statusCode returns response status code`() throws {
             let record = try makeRecord(statusCode: 404)
             #expect(record.statusCode == 404)
         }
 
-        @Test("statusCode returns nil when no response")
-        func statusCodeNilWithoutResponse() throws {
+        @Test
+        func `statusCode returns nil when no response`() throws {
             let record = try makeRecord()
             #expect(record.statusCode == nil)
         }
 
         // MARK: - Identifiable
 
-        @Test("Records have unique IDs")
-        func uniqueIDs() throws {
+        @Test
+        func `Records have unique IDs`() throws {
             let record1 = try makeRecord()
             let record2 = try makeRecord()
             #expect(record1.id != record2.id)

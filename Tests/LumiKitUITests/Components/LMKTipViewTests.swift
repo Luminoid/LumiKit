@@ -9,21 +9,20 @@ import Testing
 import UIKit
 @testable import LumiKitUI
 
-@Suite("LMKTipView")
 @MainActor
 struct LMKTipViewTests {
     // MARK: - Initialization
 
-    @Test("Init with message only uses defaults")
-    func initMessageOnly() {
+    @Test
+    func `Init with message only uses defaults`() {
         let tip = LMKTipView(message: "Hello")
 
         #expect(tip.superview == nil)
         #expect(tip.onDismiss == nil)
     }
 
-    @Test("Init with title, message, and icon")
-    func initFull() {
+    @Test
+    func `Init with title, message, and icon`() {
         let icon = UIImage(systemName: "star")
         let tip = LMKTipView(title: "Tip", message: "Message", icon: icon)
 
@@ -32,8 +31,8 @@ struct LMKTipViewTests {
 
     // MARK: - Layout Constants
 
-    @Test("Layout constants have expected values")
-    func layoutConstants() {
+    @Test
+    func `Layout constants have expected values`() {
         #expect(LMKTipLayout.arrowWidth == 16)
         #expect(LMKTipLayout.arrowHeight == 8)
         #expect(LMKTipLayout.arrowTipRadius == 2)
@@ -45,8 +44,8 @@ struct LMKTipViewTests {
 
     // MARK: - Configurable Strings
 
-    @Test("Default strings have expected values")
-    func defaultStrings() {
+    @Test
+    func `Default strings have expected values`() {
         let strings = LMKTipView.Strings()
 
         #expect(strings.dismissAccessibilityHint == "Tap anywhere to dismiss")
@@ -55,8 +54,8 @@ struct LMKTipViewTests {
 
     // MARK: - Bubble Styling
 
-    @Test("Bubble view has correct corner radius")
-    func bubbleCornerRadius() {
+    @Test
+    func `Bubble view has correct corner radius`() {
         let tip = LMKTipView(message: "Test")
 
         // The bubble view is the second subview (after dimming)
@@ -64,8 +63,8 @@ struct LMKTipViewTests {
         #expect(bubble?.layer.cornerRadius == LMKCornerRadius.medium)
     }
 
-    @Test("Bubble view has correct background color")
-    func bubbleBackground() {
+    @Test
+    func `Bubble view has correct background color`() {
         let tip = LMKTipView(message: "Test")
 
         let bubble = tip.subviews.first { $0 !== tip.subviews.first }
@@ -74,8 +73,8 @@ struct LMKTipViewTests {
 
     // MARK: - Dismiss Button
 
-    @Test("Dismiss button is hidden by default before show")
-    func dismissButtonHiddenByDefault() {
+    @Test
+    func `Dismiss button is hidden by default before show`() {
         let tip = LMKTipView(message: "Test")
 
         let bubble = tip.subviews.first { $0 !== tip.subviews.first }
@@ -96,8 +95,8 @@ struct LMKTipViewTests {
 
     // MARK: - Dimming
 
-    @Test("Dimming view is first subview")
-    func dimmingViewExists() {
+    @Test
+    func `Dimming view is first subview`() {
         let tip = LMKTipView(message: "Test")
 
         let dimming = tip.subviews.first
@@ -105,8 +104,8 @@ struct LMKTipViewTests {
         #expect(dimming?.gestureRecognizers?.isEmpty == false)
     }
 
-    @Test("Dimming view has tap gesture recognizer")
-    func dimmingHasTapGesture() {
+    @Test
+    func `Dimming view has tap gesture recognizer`() {
         let tip = LMKTipView(message: "Test")
 
         let dimming = tip.subviews.first
@@ -116,24 +115,24 @@ struct LMKTipViewTests {
 
     // MARK: - Accessibility
 
-    @Test("Bubble accessibility label contains message")
-    func accessibilityLabel() {
+    @Test
+    func `Bubble accessibility label contains message`() {
         let tip = LMKTipView(title: "Title", message: "Message")
 
         let bubble = tip.subviews.first { $0 !== tip.subviews.first }
         #expect(bubble?.accessibilityLabel == "Title. Message")
     }
 
-    @Test("Bubble accessibility label is message when no title")
-    func accessibilityLabelNoTitle() {
+    @Test
+    func `Bubble accessibility label is message when no title`() {
         let tip = LMKTipView(message: "Just a message")
 
         let bubble = tip.subviews.first { $0 !== tip.subviews.first }
         #expect(bubble?.accessibilityLabel == "Just a message")
     }
 
-    @Test("Dimming view is accessible as button")
-    func dimmingAccessibility() {
+    @Test
+    func `Dimming view is accessible as button`() {
         let tip = LMKTipView(message: "Test")
 
         let dimming = tip.subviews.first
@@ -143,8 +142,8 @@ struct LMKTipViewTests {
 
     // MARK: - Dismiss Callback
 
-    @Test("Dismiss callback can be set")
-    func dismissCallback() {
+    @Test
+    func `Dismiss callback can be set`() {
         var dismissed = false
         let tip = LMKTipView(message: "Test")
         tip.onDismiss = { dismissed = true }
@@ -156,8 +155,8 @@ struct LMKTipViewTests {
 
     // MARK: - Icon
 
-    @Test("Icon with background circle is created when icon provided")
-    func iconBackground() {
+    @Test
+    func `Icon with background circle is created when icon provided`() {
         let tip = LMKTipView(title: "Tip", message: "Msg", icon: UIImage(systemName: "star"))
 
         // Find the circular icon background (36pt round view)

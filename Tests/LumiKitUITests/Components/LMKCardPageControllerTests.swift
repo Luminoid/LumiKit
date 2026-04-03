@@ -14,13 +14,12 @@ import UIKit
 
 // MARK: - LMKCardPageController
 
-@Suite("LMKCardPageController")
 @MainActor
 struct LMKCardPageControllerTests {
     // MARK: - Initialization
 
-    @Test("Title is set from init")
-    func titleFromInit() {
+    @Test
+    func `Title is set from init`() {
         let page = TestCardPage(title: "Settings")
         page.loadViewIfNeeded()
 
@@ -30,8 +29,8 @@ struct LMKCardPageControllerTests {
 
     // MARK: - Header Layout
 
-    @Test("Header view has correct height")
-    func headerHeight() {
+    @Test
+    func `Header view has correct height`() {
         let page = TestCardPage(title: "Test")
         page.loadViewIfNeeded()
         page.view.frame = CGRect(x: 0, y: 0, width: 375, height: 600)
@@ -40,16 +39,16 @@ struct LMKCardPageControllerTests {
         #expect(page.headerView.frame.height == LMKCardPageLayout.headerHeight)
     }
 
-    @Test("Header view background is backgroundPrimary")
-    func headerBackground() {
+    @Test
+    func `Header view background is backgroundPrimary`() {
         let page = TestCardPage(title: "Test")
         page.loadViewIfNeeded()
 
         #expect(page.headerView.backgroundColor == LMKColor.backgroundPrimary)
     }
 
-    @Test("View background is backgroundPrimary")
-    func viewBackground() {
+    @Test
+    func `View background is backgroundPrimary`() {
         let page = TestCardPage(title: "Test")
         page.loadViewIfNeeded()
 
@@ -58,8 +57,8 @@ struct LMKCardPageControllerTests {
 
     // MARK: - Leading Button
 
-    @Test("Leading button has chevron.left image")
-    func leadingButtonImage() {
+    @Test
+    func `Leading button has chevron.left image`() {
         let page = TestCardPage(title: "Test")
         page.loadViewIfNeeded()
 
@@ -73,16 +72,16 @@ struct LMKCardPageControllerTests {
         #expect(page.leadingButton.image(for: .normal) == expectedImage)
     }
 
-    @Test("Leading button tint is secondary")
-    func leadingButtonTint() {
+    @Test
+    func `Leading button tint is secondary`() {
         let page = TestCardPage(title: "Test")
         page.loadViewIfNeeded()
 
         #expect(page.leadingButton.tintColor == LMKColor.secondary)
     }
 
-    @Test("Leading button visual size is 32pt")
-    func leadingButtonSize() {
+    @Test
+    func `Leading button visual size is 32pt`() {
         let page = TestCardPage(title: "Test")
         page.loadViewIfNeeded()
         page.view.frame = CGRect(x: 0, y: 0, width: 375, height: 600)
@@ -94,8 +93,8 @@ struct LMKCardPageControllerTests {
 
     // MARK: - Trailing Button
 
-    @Test("Trailing button uses default doc.on.doc symbol")
-    func trailingButtonDefaultSymbol() {
+    @Test
+    func `Trailing button uses default doc.on.doc symbol`() {
         let page = TestCardPage(title: "Test")
         page.loadViewIfNeeded()
 
@@ -109,8 +108,8 @@ struct LMKCardPageControllerTests {
         #expect(page.trailingButton.image(for: .normal) == expectedImage)
     }
 
-    @Test("Trailing button uses custom symbol from override")
-    func trailingButtonCustomSymbol() {
+    @Test
+    func `Trailing button uses custom symbol from override`() {
         let page = CustomSymbolCardPage(title: "Test")
         page.loadViewIfNeeded()
 
@@ -124,16 +123,16 @@ struct LMKCardPageControllerTests {
         #expect(page.trailingButton.image(for: .normal) == expectedImage)
     }
 
-    @Test("Trailing button tint is secondary")
-    func trailingButtonTint() {
+    @Test
+    func `Trailing button tint is secondary`() {
         let page = TestCardPage(title: "Test")
         page.loadViewIfNeeded()
 
         #expect(page.trailingButton.tintColor == LMKColor.secondary)
     }
 
-    @Test("Trailing button visual size is 32pt")
-    func trailingButtonSize() {
+    @Test
+    func `Trailing button visual size is 32pt`() {
         let page = TestCardPage(title: "Test")
         page.loadViewIfNeeded()
         page.view.frame = CGRect(x: 0, y: 0, width: 375, height: 600)
@@ -145,16 +144,16 @@ struct LMKCardPageControllerTests {
 
     // MARK: - Template Methods
 
-    @Test("setupContent is called during viewDidLoad")
-    func setupContentCalled() {
+    @Test
+    func `setupContent is called during viewDidLoad`() {
         let page = TestCardPage(title: "Test")
         #expect(!page.setupContentCalled)
         page.loadViewIfNeeded()
         #expect(page.setupContentCalled)
     }
 
-    @Test("leadingButtonTapped pops navigation controller")
-    func leadingButtonPopsNav() {
+    @Test
+    func `leadingButtonTapped pops navigation controller`() {
         let root = UIViewController()
         let nav = UINavigationController(rootViewController: root)
         let page = TestCardPage(title: "Test")
@@ -165,8 +164,8 @@ struct LMKCardPageControllerTests {
         #expect(nav.viewControllers.count == 1)
     }
 
-    @Test("trailingButtonTapped is callable and records call")
-    func trailingButtonTappedCallable() {
+    @Test
+    func `trailingButtonTapped is callable and records call`() {
         let page = TestCardPage(title: "Test")
         page.loadViewIfNeeded()
         page.trailingButtonTapped()
@@ -176,8 +175,8 @@ struct LMKCardPageControllerTests {
 
     // MARK: - Custom Header Height
 
-    @Test("Custom header height override is applied")
-    func customHeaderHeight() {
+    @Test
+    func `Custom header height override is applied`() {
         let page = CustomHeightCardPage(title: "Test")
         page.loadViewIfNeeded()
         page.view.frame = CGRect(x: 0, y: 0, width: 375, height: 600)
@@ -188,24 +187,24 @@ struct LMKCardPageControllerTests {
 
     // MARK: - Title Label
 
-    @Test("Title label has center alignment")
-    func titleLabelAlignment() {
+    @Test
+    func `Title label has center alignment`() {
         let page = TestCardPage(title: "Test")
         page.loadViewIfNeeded()
 
         #expect(page.headerTitleLabel.textAlignment == .center)
     }
 
-    @Test("Title label text color is textPrimary")
-    func titleLabelColor() {
+    @Test
+    func `Title label text color is textPrimary`() {
         let page = TestCardPage(title: "Test")
         page.loadViewIfNeeded()
 
         #expect(page.headerTitleLabel.textColor == LMKColor.textPrimary)
     }
 
-    @Test("Title label uses LMKTypography.bodyBold")
-    func titleLabelFont() {
+    @Test
+    func `Title label uses LMKTypography.bodyBold`() {
         let page = TestCardPage(title: "Test")
         page.loadViewIfNeeded()
 
@@ -214,18 +213,18 @@ struct LMKCardPageControllerTests {
 
     // MARK: - Configurable Strings
 
-    @Test("Default leading button accessibility label is Back")
-    func defaultLeadingAccessibilityLabel() {
+    @Test
+    func `Default leading button accessibility label is Back`() {
         #expect(LMKCardPageController.strings.leadingButtonAccessibilityLabel == "Back")
     }
 
-    @Test("Default trailing button accessibility label is Action")
-    func defaultTrailingAccessibilityLabel() {
+    @Test
+    func `Default trailing button accessibility label is Action`() {
         #expect(LMKCardPageController.strings.trailingButtonAccessibilityLabel == "Action")
     }
 
-    @Test("Custom strings are applied")
-    func customStringsApplied() {
+    @Test
+    func `Custom strings are applied`() {
         let original = LMKCardPageController.strings
         defer { LMKCardPageController.strings = original }
 
@@ -237,16 +236,16 @@ struct LMKCardPageControllerTests {
         #expect(LMKCardPageController.strings.trailingButtonAccessibilityLabel == "Acción")
     }
 
-    @Test("Leading button has accessibility label from strings")
-    func leadingButtonAccessibilityLabel() {
+    @Test
+    func `Leading button has accessibility label from strings`() {
         let page = TestCardPage(title: "Test")
         page.loadViewIfNeeded()
 
         #expect(page.leadingButton.accessibilityLabel == LMKCardPageController.strings.leadingButtonAccessibilityLabel)
     }
 
-    @Test("Trailing button has accessibility label from strings")
-    func trailingButtonAccessibilityLabel() {
+    @Test
+    func `Trailing button has accessibility label from strings`() {
         let page = TestCardPage(title: "Test")
         page.loadViewIfNeeded()
 
@@ -255,24 +254,24 @@ struct LMKCardPageControllerTests {
 
     // MARK: - Button Visibility
 
-    @Test("Leading button is hidden when showsLeadingButton is false")
-    func leadingButtonHidden() {
+    @Test
+    func `Leading button is hidden when showsLeadingButton is false`() {
         let page = NoButtonsCardPage(title: "Test")
         page.loadViewIfNeeded()
 
         #expect(page.leadingButton.isHidden)
     }
 
-    @Test("Trailing button is hidden when showsTrailingButton is false")
-    func trailingButtonHidden() {
+    @Test
+    func `Trailing button is hidden when showsTrailingButton is false`() {
         let page = NoButtonsCardPage(title: "Test")
         page.loadViewIfNeeded()
 
         #expect(page.trailingButton.isHidden)
     }
 
-    @Test("Both buttons visible by default")
-    func buttonsVisibleByDefault() {
+    @Test
+    func `Both buttons visible by default`() {
         let page = TestCardPage(title: "Test")
         page.loadViewIfNeeded()
 
@@ -280,8 +279,8 @@ struct LMKCardPageControllerTests {
         #expect(!page.trailingButton.isHidden)
     }
 
-    @Test("No back button page hides leading only")
-    func noBackButtonHidesLeadingOnly() {
+    @Test
+    func `No back button page hides leading only`() {
         let page = NoBackButtonCardPage(title: "Test")
         page.loadViewIfNeeded()
 
@@ -291,8 +290,8 @@ struct LMKCardPageControllerTests {
 
     // MARK: - Leading Button Symbol
 
-    @Test("Leading button uses custom symbol from override")
-    func leadingButtonCustomSymbol() {
+    @Test
+    func `Leading button uses custom symbol from override`() {
         let page = CustomLeadingCardPage(title: "Test")
         page.loadViewIfNeeded()
 
@@ -308,24 +307,24 @@ struct LMKCardPageControllerTests {
 
     // MARK: - Header Separator
 
-    @Test("Separator is hidden by default")
-    func separatorHiddenByDefault() {
+    @Test
+    func `Separator is hidden by default`() {
         let page = TestCardPage(title: "Test")
         page.loadViewIfNeeded()
 
         #expect(page.headerSeparator.isHidden)
     }
 
-    @Test("Separator is visible when showsHeaderSeparator is true")
-    func separatorVisibleWhenEnabled() {
+    @Test
+    func `Separator is visible when showsHeaderSeparator is true`() {
         let page = CustomLeadingCardPage(title: "Test")
         page.loadViewIfNeeded()
 
         #expect(!page.headerSeparator.isHidden)
     }
 
-    @Test("Separator color is divider")
-    func separatorColor() {
+    @Test
+    func `Separator color is divider`() {
         let page = CustomLeadingCardPage(title: "Test")
         page.loadViewIfNeeded()
 
@@ -334,16 +333,16 @@ struct LMKCardPageControllerTests {
 
     // MARK: - Multi-Page Navigation
 
-    @Test("canPopContent is false initially")
-    func canPopContentInitiallyFalse() {
+    @Test
+    func `canPopContent is false initially`() {
         let page = TestCardPage(title: "Test")
         page.loadViewIfNeeded()
 
         #expect(!page.canPopContent)
     }
 
-    @Test("Push adds to navigation stack")
-    func pushAddsToStack() {
+    @Test
+    func `Push adds to navigation stack`() {
         let page = TestCardPage(title: "Root")
         page.loadViewIfNeeded()
         page.view.frame = CGRect(x: 0, y: 0, width: 375, height: 600)
@@ -355,8 +354,8 @@ struct LMKCardPageControllerTests {
         #expect(page.canPopContent)
     }
 
-    @Test("Push updates title")
-    func pushUpdatesTitle() {
+    @Test
+    func `Push updates title`() {
         let page = TestCardPage(title: "Root")
         page.loadViewIfNeeded()
         page.view.frame = CGRect(x: 0, y: 0, width: 375, height: 600)
@@ -368,8 +367,8 @@ struct LMKCardPageControllerTests {
         #expect(page.title == "Detail")
     }
 
-    @Test("Push shows leading button even when showsLeadingButton is false")
-    func pushShowsLeadingButton() {
+    @Test
+    func `Push shows leading button even when showsLeadingButton is false`() {
         let page = NoBackButtonCardPage(title: "Root")
         page.loadViewIfNeeded()
         page.view.frame = CGRect(x: 0, y: 0, width: 375, height: 600)
@@ -382,8 +381,8 @@ struct LMKCardPageControllerTests {
         #expect(!page.leadingButton.isHidden)
     }
 
-    @Test("Pop restores previous title")
-    func popRestoresTitle() {
+    @Test
+    func `Pop restores previous title`() {
         let page = TestCardPage(title: "Root")
         page.loadViewIfNeeded()
         page.view.frame = CGRect(x: 0, y: 0, width: 375, height: 600)
@@ -396,8 +395,8 @@ struct LMKCardPageControllerTests {
         #expect(page.title == "Root")
     }
 
-    @Test("Pop hides leading button when back at root with showsLeadingButton false")
-    func popHidesLeadingButton() {
+    @Test
+    func `Pop hides leading button when back at root with showsLeadingButton false`() {
         let page = NoBackButtonCardPage(title: "Root")
         page.loadViewIfNeeded()
         page.view.frame = CGRect(x: 0, y: 0, width: 375, height: 600)
@@ -410,8 +409,8 @@ struct LMKCardPageControllerTests {
         #expect(page.leadingButton.isHidden)
     }
 
-    @Test("Pop does not hide leading button at root when showsLeadingButton is true")
-    func popKeepsLeadingButtonVisible() {
+    @Test
+    func `Pop does not hide leading button at root when showsLeadingButton is true`() {
         let page = TestCardPage(title: "Root")
         page.loadViewIfNeeded()
         page.view.frame = CGRect(x: 0, y: 0, width: 375, height: 600)
@@ -423,8 +422,8 @@ struct LMKCardPageControllerTests {
         #expect(!page.leadingButton.isHidden)
     }
 
-    @Test("canPopContent is false after popping last page")
-    func canPopContentFalseAfterLastPop() {
+    @Test
+    func `canPopContent is false after popping last page`() {
         let page = TestCardPage(title: "Root")
         page.loadViewIfNeeded()
         page.view.frame = CGRect(x: 0, y: 0, width: 375, height: 600)
@@ -436,8 +435,8 @@ struct LMKCardPageControllerTests {
         #expect(!page.canPopContent)
     }
 
-    @Test("Pop content is invoked before popping nav controller when stack is non-empty")
-    func popContentBeforeNav() {
+    @Test
+    func `Pop content is invoked before popping nav controller when stack is non-empty`() {
         let page = TestCardPage(title: "Root")
         page.loadViewIfNeeded()
         page.view.frame = CGRect(x: 0, y: 0, width: 375, height: 600)
@@ -453,8 +452,8 @@ struct LMKCardPageControllerTests {
         #expect(page.headerTitleLabel.text == "Root")
     }
 
-    @Test("Push preserves title when nil is passed")
-    func pushPreservesTitleWhenNil() {
+    @Test
+    func `Push preserves title when nil is passed`() {
         let page = TestCardPage(title: "Root")
         page.loadViewIfNeeded()
         page.view.frame = CGRect(x: 0, y: 0, width: 375, height: 600)
@@ -467,8 +466,8 @@ struct LMKCardPageControllerTests {
 
     // MARK: - Full Featured Example
 
-    @Test("Full-featured page configures all options correctly")
-    func fullFeaturedPage() {
+    @Test
+    func `Full-featured page configures all options correctly`() {
         let page = FullFeaturedCardPage(title: "Full Featured")
         page.loadViewIfNeeded()
         page.view.frame = CGRect(x: 0, y: 0, width: 375, height: 600)

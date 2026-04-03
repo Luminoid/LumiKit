@@ -9,22 +9,21 @@ import Testing
 
 // MARK: - String+LMK
 
-@Suite("String+LMK")
 struct StringLMKTests {
-    @Test("nonEmpty returns value for non-empty string")
-    func nonEmptyReturnsValue() {
+    @Test
+    func `nonEmpty returns value for non-empty string`() {
         let value: String? = "hello"
         #expect(value.nonEmpty == "hello")
     }
 
-    @Test("nonEmpty returns nil for empty string")
-    func nonEmptyReturnsNilForEmpty() {
+    @Test
+    func `nonEmpty returns nil for empty string`() {
         let value: String? = ""
         #expect(value.nonEmpty == nil)
     }
 
-    @Test("nonEmpty returns nil for nil")
-    func nonEmptyReturnsNilForNil() {
+    @Test
+    func `nonEmpty returns nil for nil`() {
         let value: String? = nil
         #expect(value.nonEmpty == nil)
     }

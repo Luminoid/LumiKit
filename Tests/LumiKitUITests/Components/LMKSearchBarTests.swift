@@ -39,31 +39,30 @@ private final class MockSearchBarDelegate: LMKSearchBarDelegate {
 
 // MARK: - LMKSearchBar
 
-@Suite("LMKSearchBar")
 @MainActor
 struct LMKSearchBarTests {
-    @Test("placeholder getter and setter")
-    func placeholderGetterSetter() {
+    @Test
+    func `placeholder getter and setter`() {
         let searchBar = LMKSearchBar()
         searchBar.placeholder = "Search plants..."
         #expect(searchBar.placeholder == "Search plants...")
     }
 
-    @Test("text getter and setter")
-    func textGetterSetter() {
+    @Test
+    func `text getter and setter`() {
         let searchBar = LMKSearchBar()
         searchBar.text = "Monstera"
         #expect(searchBar.text == "Monstera")
     }
 
-    @Test("showsCancelButton defaults to false")
-    func cancelButtonHiddenByDefault() {
+    @Test
+    func `showsCancelButton defaults to false`() {
         let searchBar = LMKSearchBar()
         #expect(!searchBar.showsCancelButton)
     }
 
-    @Test("showsCancelButton can be toggled")
-    func cancelButtonToggle() {
+    @Test
+    func `showsCancelButton can be toggled`() {
         let searchBar = LMKSearchBar()
         searchBar.showsCancelButton = true
         #expect(searchBar.showsCancelButton)
@@ -71,8 +70,8 @@ struct LMKSearchBarTests {
         #expect(!searchBar.showsCancelButton)
     }
 
-    @Test("Setting nil placeholder clears it")
-    func nilPlaceholder() {
+    @Test
+    func `Setting nil placeholder clears it`() {
         let searchBar = LMKSearchBar()
         searchBar.placeholder = "Search"
         searchBar.placeholder = nil
@@ -82,18 +81,17 @@ struct LMKSearchBarTests {
 
 // MARK: - LMKSearchBarStrings
 
-@Suite("LMKSearchBarStrings")
 @MainActor
 struct LMKSearchBarStringsTests {
-    @Test("Default strings are English")
-    func defaultStrings() {
+    @Test
+    func `Default strings are English`() {
         let strings = LMKSearchBar.Strings()
         #expect(strings.cancel == "Cancel")
         #expect(strings.clearAccessibilityLabel == "Clear")
     }
 
-    @Test("Custom strings override defaults")
-    func customStrings() {
+    @Test
+    func `Custom strings override defaults`() {
         let original = LMKSearchBar.strings
         defer { LMKSearchBar.strings = original }
 

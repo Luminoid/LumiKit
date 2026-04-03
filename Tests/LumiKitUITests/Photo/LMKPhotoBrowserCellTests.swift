@@ -7,18 +7,17 @@ import Testing
 import UIKit
 @testable import LumiKitUI
 
-@Suite("LMKPhotoBrowserCell")
 @MainActor
 struct LMKPhotoBrowserCellTests {
     // MARK: - Initialization
 
-    @Test("Cell has correct identifier")
-    func cellHasIdentifier() {
+    @Test
+    func `Cell has correct identifier`() {
         #expect(LMKPhotoBrowserCell.identifier == "LMKPhotoBrowserCell")
     }
 
-    @Test("Cell initializes with frame")
-    func initializesWithFrame() {
+    @Test
+    func `Cell initializes with frame`() {
         let cell = LMKPhotoBrowserCell(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
 
         #expect(cell.frame.width == 375)
@@ -27,8 +26,8 @@ struct LMKPhotoBrowserCellTests {
 
     // MARK: - Image Configuration
 
-    @Test("configure sets image")
-    func configureSetsImage() {
+    @Test
+    func `configure sets image`() {
         let cell = LMKPhotoBrowserCell(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
         let testImage = UIImage.lmk_solidColor(.red, size: CGSize(width: 100, height: 100))
 
@@ -37,8 +36,8 @@ struct LMKPhotoBrowserCellTests {
         // Test completes without crashing
     }
 
-    @Test("configure with different screen sizes")
-    func configureWithDifferentScreenSizes() {
+    @Test
+    func `configure with different screen sizes`() {
         let cell = LMKPhotoBrowserCell(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
         let testImage = UIImage.lmk_solidColor(.blue, size: CGSize(width: 100, height: 100))
 
@@ -50,8 +49,8 @@ struct LMKPhotoBrowserCellTests {
 
     // MARK: - Reset
 
-    @Test("resetZoom completes without crashing")
-    func resetZoomWorks() {
+    @Test
+    func `resetZoom completes without crashing`() {
         let cell = LMKPhotoBrowserCell(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
         let testImage = UIImage.lmk_solidColor(.green, size: CGSize(width: 100, height: 100))
         cell.configure(with: testImage, screenSize: CGSize(width: 375, height: 667))
@@ -63,8 +62,8 @@ struct LMKPhotoBrowserCellTests {
 
     // MARK: - Reuse
 
-    @Test("prepareForReuse completes without crashing")
-    func prepareForReuseWorks() {
+    @Test
+    func `prepareForReuse completes without crashing`() {
         let cell = LMKPhotoBrowserCell(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
         let testImage = UIImage.lmk_solidColor(.yellow, size: CGSize(width: 100, height: 100))
         cell.configure(with: testImage, screenSize: CGSize(width: 375, height: 667))
@@ -76,8 +75,8 @@ struct LMKPhotoBrowserCellTests {
 
     // MARK: - Layout
 
-    @Test("layoutSubviews completes without crashing")
-    func layoutSubviewsWorks() {
+    @Test
+    func `layoutSubviews completes without crashing`() {
         let cell = LMKPhotoBrowserCell(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
         let testImage = UIImage.lmk_solidColor(.purple, size: CGSize(width: 100, height: 100))
         cell.configure(with: testImage, screenSize: CGSize(width: 375, height: 667))
@@ -89,8 +88,8 @@ struct LMKPhotoBrowserCellTests {
 
     // MARK: - Different Image Sizes
 
-    @Test("Handles portrait image")
-    func handlesPortraitImage() {
+    @Test
+    func `Handles portrait image`() {
         let cell = LMKPhotoBrowserCell(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
         let portraitImage = UIImage.lmk_solidColor(.orange, size: CGSize(width: 100, height: 200))
 
@@ -99,8 +98,8 @@ struct LMKPhotoBrowserCellTests {
         // Should handle portrait aspect ratio
     }
 
-    @Test("Handles landscape image")
-    func handlesLandscapeImage() {
+    @Test
+    func `Handles landscape image`() {
         let cell = LMKPhotoBrowserCell(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
         let landscapeImage = UIImage.lmk_solidColor(.cyan, size: CGSize(width: 200, height: 100))
 
@@ -109,8 +108,8 @@ struct LMKPhotoBrowserCellTests {
         // Should handle landscape aspect ratio
     }
 
-    @Test("Handles square image")
-    func handlesSquareImage() {
+    @Test
+    func `Handles square image`() {
         let cell = LMKPhotoBrowserCell(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
         let squareImage = UIImage.lmk_solidColor(.magenta, size: CGSize(width: 100, height: 100))
 

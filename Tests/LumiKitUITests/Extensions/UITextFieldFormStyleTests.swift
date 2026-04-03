@@ -9,11 +9,10 @@ import UIKit
 
 // MARK: - UITextField+LMKFormStyle
 
-@Suite("UITextField+LMKFormStyle")
 @MainActor
 struct UITextFieldFormStyleTests {
-    @Test("lmk_applyFormContentPadding sets left and right views")
-    func applyFormContentPadding() {
+    @Test
+    func `lmk_applyFormContentPadding sets left and right views`() {
         let textField = UITextField()
         textField.lmk_applyFormContentPadding()
 
@@ -23,8 +22,8 @@ struct UITextFieldFormStyleTests {
         #expect(textField.rightViewMode == .always)
     }
 
-    @Test("lmk_applyFormContentPadding uses spacing token width")
-    func formContentPaddingWidth() {
+    @Test
+    func `lmk_applyFormContentPadding uses spacing token width`() {
         let textField = UITextField()
         textField.lmk_applyFormContentPadding()
 
@@ -33,8 +32,8 @@ struct UITextFieldFormStyleTests {
         #expect(textField.rightView?.frame.width == expectedWidth)
     }
 
-    @Test("lmk_applyFormStyle sets border style and background")
-    func applyFormStyle() {
+    @Test
+    func `lmk_applyFormStyle sets border style and background`() {
         let textField = UITextField()
         textField.lmk_applyFormStyle()
 
@@ -47,11 +46,10 @@ struct UITextFieldFormStyleTests {
 
 // MARK: - UITextView+LMKFormStyle
 
-@Suite("UITextView+LMKFormStyle")
 @MainActor
 struct UITextViewFormStyleTests {
-    @Test("lmk_applyFormContentPadding sets text container inset")
-    func applyFormContentPadding() {
+    @Test
+    func `lmk_applyFormContentPadding sets text container inset`() {
         let textView = UITextView()
         textView.lmk_applyFormContentPadding()
 

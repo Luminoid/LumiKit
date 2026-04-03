@@ -9,25 +9,24 @@ import UIKit
 
 // MARK: - LMKChipView
 
-@Suite("LMKChipView")
 @MainActor
 struct LMKChipViewTests {
-    @Test("Filled style has non-clear background")
-    func filledBackground() {
+    @Test
+    func `Filled style has non-clear background`() {
         let chip = LMKChipView(text: "Test", style: .filled)
         #expect(chip.backgroundColor != .clear)
         #expect(chip.backgroundColor != nil)
     }
 
-    @Test("Outlined style has clear background and border")
-    func outlinedBackground() {
+    @Test
+    func `Outlined style has clear background and border`() {
         let chip = LMKChipView(text: "Test", style: .outlined)
         #expect(chip.backgroundColor == .clear)
         #expect(chip.layer.borderWidth > 0)
     }
 
-    @Test("Configure sets accessibility label")
-    func accessibilityLabel() {
+    @Test
+    func `Configure sets accessibility label`() {
         let chip = LMKChipView(text: "Indoor")
         #expect(chip.accessibilityLabel == "Indoor")
         #expect(chip.accessibilityTraits == .staticText)
@@ -37,8 +36,8 @@ struct LMKChipViewTests {
 
     // MARK: - Dismiss
 
-    @Test("Dismiss handler shows xmark and sets button trait")
-    func dismissHandler() {
+    @Test
+    func `Dismiss handler shows xmark and sets button trait`() {
         let chip = LMKChipView(text: "Filter", style: .outlined)
         #expect(chip.accessibilityTraits == .staticText)
 
@@ -46,8 +45,8 @@ struct LMKChipViewTests {
         #expect(chip.accessibilityTraits == .button)
     }
 
-    @Test("Clearing dismiss handler removes button trait")
-    func clearDismissHandler() {
+    @Test
+    func `Clearing dismiss handler removes button trait`() {
         let chip = LMKChipView(text: "Filter", style: .outlined)
         chip.dismissHandler = {}
         #expect(chip.accessibilityTraits == .button)
@@ -58,8 +57,8 @@ struct LMKChipViewTests {
 
     // MARK: - Selection
 
-    @Test("Selection toggles filled chip to outlined appearance")
-    func selectionTogglesFilled() {
+    @Test
+    func `Selection toggles filled chip to outlined appearance`() {
         let chip = LMKChipView(text: "Active", style: .filled)
         let filledBackground = chip.backgroundColor
 
@@ -71,8 +70,8 @@ struct LMKChipViewTests {
         #expect(chip.backgroundColor == filledBackground)
     }
 
-    @Test("Selection toggles outlined chip to filled appearance")
-    func selectionTogglesOutlined() {
+    @Test
+    func `Selection toggles outlined chip to filled appearance`() {
         let chip = LMKChipView(text: "Active", style: .outlined)
         #expect(chip.backgroundColor == .clear)
 
@@ -84,8 +83,8 @@ struct LMKChipViewTests {
 
     // MARK: - Combined
 
-    @Test("Tap handler and dismiss handler both set button trait")
-    func bothHandlers() {
+    @Test
+    func `Tap handler and dismiss handler both set button trait`() {
         let chip = LMKChipView(text: "Both")
         chip.tapHandler = {}
         chip.dismissHandler = {}

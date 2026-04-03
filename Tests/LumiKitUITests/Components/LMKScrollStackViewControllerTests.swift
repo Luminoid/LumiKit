@@ -30,35 +30,34 @@ private final class CustomScrollVC: LMKScrollStackViewController {
 
 // MARK: - LMKScrollStackViewController (defaults)
 
-@Suite("LMKScrollStackViewController (defaults)")
 @MainActor
 struct LMKScrollStackViewControllerDefaultTests {
-    @Test("default stackSpacing is LMKSpacing.large")
-    func defaultStackSpacing() {
+    @Test
+    func `default stackSpacing is LMKSpacing.large`() {
         let vc = TestScrollVC()
         #expect(vc.stackSpacing == LMKSpacing.large)
     }
 
-    @Test("default keyboardDismissMode is .onDrag")
-    func defaultKeyboardDismissMode() {
+    @Test
+    func `default keyboardDismissMode is .onDrag`() {
         let vc = TestScrollVC()
         #expect(vc.keyboardDismissMode == .onDrag)
     }
 
-    @Test("default alwaysBounceVertical is false")
-    func defaultAlwaysBounceVertical() {
+    @Test
+    func `default alwaysBounceVertical is false`() {
         let vc = TestScrollVC()
         #expect(!vc.alwaysBounceVertical)
     }
 
-    @Test("default scrollViewUseSafeArea is true")
-    func defaultScrollViewUseSafeArea() {
+    @Test
+    func `default scrollViewUseSafeArea is true`() {
         let vc = TestScrollVC()
         #expect(vc.scrollViewUseSafeArea)
     }
 
-    @Test("default contentInsets uses cardPadding on all sides")
-    func defaultContentInsets() {
+    @Test
+    func `default contentInsets uses cardPadding on all sides`() {
         let vc = TestScrollVC()
         let padding = LMKSpacing.cardPadding
         let expected = UIEdgeInsets(top: padding, left: padding, bottom: padding, right: padding)
@@ -68,46 +67,45 @@ struct LMKScrollStackViewControllerDefaultTests {
 
 // MARK: - LMKScrollStackViewController (view hierarchy)
 
-@Suite("LMKScrollStackViewController (view hierarchy)")
 @MainActor
 struct LMKScrollStackViewControllerHierarchyTests {
-    @Test("scrollView is added to view after loadViewIfNeeded")
-    func scrollViewInHierarchy() {
+    @Test
+    func `scrollView is added to view after loadViewIfNeeded`() {
         let vc = TestScrollVC()
         vc.loadViewIfNeeded()
         #expect(vc.scrollView.superview === vc.view)
     }
 
-    @Test("contentView is added to scrollView")
-    func contentViewInScrollView() {
+    @Test
+    func `contentView is added to scrollView`() {
         let vc = TestScrollVC()
         vc.loadViewIfNeeded()
         #expect(vc.contentView.superview === vc.scrollView)
     }
 
-    @Test("stackView is added to contentView")
-    func stackViewInContentView() {
+    @Test
+    func `stackView is added to contentView`() {
         let vc = TestScrollVC()
         vc.loadViewIfNeeded()
         #expect(vc.stackView.superview === vc.contentView)
     }
 
-    @Test("view background is backgroundPrimary")
-    func viewBackgroundColor() {
+    @Test
+    func `view background is backgroundPrimary`() {
         let vc = TestScrollVC()
         vc.loadViewIfNeeded()
         #expect(vc.view.backgroundColor == LMKColor.backgroundPrimary)
     }
 
-    @Test("stackView axis is vertical")
-    func stackViewAxis() {
+    @Test
+    func `stackView axis is vertical`() {
         let vc = TestScrollVC()
         vc.loadViewIfNeeded()
         #expect(vc.stackView.axis == .vertical)
     }
 
-    @Test("stackView alignment is fill")
-    func stackViewAlignment() {
+    @Test
+    func `stackView alignment is fill`() {
         let vc = TestScrollVC()
         vc.loadViewIfNeeded()
         #expect(vc.stackView.alignment == .fill)
@@ -116,11 +114,10 @@ struct LMKScrollStackViewControllerHierarchyTests {
 
 // MARK: - LMKScrollStackViewController (template methods)
 
-@Suite("LMKScrollStackViewController (template methods)")
 @MainActor
 struct LMKScrollStackViewControllerTemplateTests {
-    @Test("setupStackContent is called during viewDidLoad")
-    func setupStackContentCalled() {
+    @Test
+    func `setupStackContent is called during viewDidLoad`() {
         let vc = TestScrollVC()
         vc.loadViewIfNeeded()
         #expect(vc.setupStackContentCalled)
@@ -129,25 +126,24 @@ struct LMKScrollStackViewControllerTemplateTests {
 
 // MARK: - LMKScrollStackViewController (custom configuration)
 
-@Suite("LMKScrollStackViewController (custom configuration)")
 @MainActor
 struct LMKScrollStackViewControllerCustomTests {
-    @Test("custom stackSpacing is applied to stackView")
-    func customStackSpacing() {
+    @Test
+    func `custom stackSpacing is applied to stackView`() {
         let vc = CustomScrollVC()
         vc.loadViewIfNeeded()
         #expect(vc.stackView.spacing == LMKSpacing.xl)
     }
 
-    @Test("custom keyboardDismissMode is applied to scrollView")
-    func customKeyboardDismissMode() {
+    @Test
+    func `custom keyboardDismissMode is applied to scrollView`() {
         let vc = CustomScrollVC()
         vc.loadViewIfNeeded()
         #expect(vc.scrollView.keyboardDismissMode == .interactive)
     }
 
-    @Test("custom alwaysBounceVertical is applied to scrollView")
-    func customAlwaysBounceVertical() {
+    @Test
+    func `custom alwaysBounceVertical is applied to scrollView`() {
         let vc = CustomScrollVC()
         vc.loadViewIfNeeded()
         #expect(vc.scrollView.alwaysBounceVertical)
@@ -156,11 +152,10 @@ struct LMKScrollStackViewControllerCustomTests {
 
 // MARK: - LMKScrollStackViewController (helpers)
 
-@Suite("LMKScrollStackViewController (helpers)")
 @MainActor
 struct LMKScrollStackViewControllerHelperTests {
-    @Test("addSectionHeader adds a UILabel to the stack view")
-    func sectionHeaderAddsLabel() {
+    @Test
+    func `addSectionHeader adds a UILabel to the stack view`() {
         let vc = TestScrollVC()
         vc.loadViewIfNeeded()
         vc.addSectionHeader("Test Header")
@@ -168,8 +163,8 @@ struct LMKScrollStackViewControllerHelperTests {
         #expect(vc.stackView.arrangedSubviews.first is UILabel)
     }
 
-    @Test("addDivider adds a LMKDividerView to the stack view")
-    func dividerAddsDividerView() {
+    @Test
+    func `addDivider adds a LMKDividerView to the stack view`() {
         let vc = TestScrollVC()
         vc.loadViewIfNeeded()
         vc.addDivider()

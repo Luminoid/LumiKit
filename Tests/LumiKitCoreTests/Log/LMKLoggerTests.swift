@@ -9,17 +9,16 @@ import Testing
 
 // MARK: - LMKLogger
 
-@Suite("LMKLogger")
 struct LMKLoggerTests {
-    @Test("Configure subsystem updates category logs")
-    func configureSubsystem() {
+    @Test
+    func `Configure subsystem updates category logs`() {
         LMKLogger.configure(subsystem: "com.test.lumikit")
         // If it doesn't crash, the subsystem was applied correctly.
         LMKLogger.info("Test message after configure", category: .general)
     }
 
-    @Test("Built-in categories exist")
-    func builtInCategories() {
+    @Test
+    func `Built-in categories exist`() {
         _ = LMKLogger.LogCategory.general
         _ = LMKLogger.LogCategory.data
         _ = LMKLogger.LogCategory.ui
@@ -28,8 +27,8 @@ struct LMKLoggerTests {
         _ = LMKLogger.LogCategory.localization
     }
 
-    @Test("Custom category creation")
-    func customCategory() {
+    @Test
+    func `Custom category creation`() {
         let category = LMKLogger.LogCategory(name: "CustomTest")
         LMKLogger.debug("Custom category test", category: category)
     }

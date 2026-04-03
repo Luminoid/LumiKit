@@ -7,13 +7,12 @@ import Testing
 import UIKit
 @testable import LumiKitUI
 
-@Suite("LMKPhotoCropViewController")
 @MainActor
 struct LMKPhotoCropViewControllerTests {
     // MARK: - Initialization
 
-    @Test("Initializes with image")
-    func initializesWithImage() {
+    @Test
+    func `Initializes with image`() {
         let image = UIImage.lmk_solidColor(.blue, size: CGSize(width: 200, height: 200))
         let cropVC = LMKPhotoCropViewController(image: image)
 
@@ -21,8 +20,8 @@ struct LMKPhotoCropViewControllerTests {
         #expect(cropVC.image.size == image.size)
     }
 
-    @Test("Initializes with image and delegate")
-    func initializesWithImageAndDelegate() {
+    @Test
+    func `Initializes with image and delegate`() {
         let image = UIImage.lmk_solidColor(.red, size: CGSize(width: 100, height: 100))
         let delegate = MockCropDelegate()
         let cropVC = LMKPhotoCropViewController(image: image, delegate: delegate)
@@ -30,8 +29,8 @@ struct LMKPhotoCropViewControllerTests {
         #expect(cropVC.isViewLoaded == false)
     }
 
-    @Test("Loads view without crashing")
-    func loadsView() {
+    @Test
+    func `Loads view without crashing`() {
         let image = UIImage.lmk_solidColor(.green, size: CGSize(width: 150, height: 150))
         let cropVC = LMKPhotoCropViewController(image: image)
 
@@ -42,8 +41,8 @@ struct LMKPhotoCropViewControllerTests {
 
     // MARK: - Different Image Sizes
 
-    @Test("Handles small image")
-    func handlesSmallImage() {
+    @Test
+    func `Handles small image`() {
         let image = UIImage.lmk_solidColor(.yellow, size: CGSize(width: 50, height: 50))
         let cropVC = LMKPhotoCropViewController(image: image)
 
@@ -52,8 +51,8 @@ struct LMKPhotoCropViewControllerTests {
         #expect(cropVC.isViewLoaded)
     }
 
-    @Test("Handles large image")
-    func handlesLargeImage() {
+    @Test
+    func `Handles large image`() {
         let image = UIImage.lmk_solidColor(.purple, size: CGSize(width: 1000, height: 1000))
         let cropVC = LMKPhotoCropViewController(image: image)
 
@@ -62,8 +61,8 @@ struct LMKPhotoCropViewControllerTests {
         #expect(cropVC.isViewLoaded)
     }
 
-    @Test("Handles portrait image")
-    func handlesPortraitImage() {
+    @Test
+    func `Handles portrait image`() {
         let image = UIImage.lmk_solidColor(.orange, size: CGSize(width: 100, height: 200))
         let cropVC = LMKPhotoCropViewController(image: image)
 
@@ -72,8 +71,8 @@ struct LMKPhotoCropViewControllerTests {
         #expect(cropVC.isViewLoaded)
     }
 
-    @Test("Handles landscape image")
-    func handlesLandscapeImage() {
+    @Test
+    func `Handles landscape image`() {
         let image = UIImage.lmk_solidColor(.cyan, size: CGSize(width: 300, height: 200))
         let cropVC = LMKPhotoCropViewController(image: image)
 
@@ -82,8 +81,8 @@ struct LMKPhotoCropViewControllerTests {
         #expect(cropVC.isViewLoaded)
     }
 
-    @Test("Handles square image")
-    func handlesSquareImage() {
+    @Test
+    func `Handles square image`() {
         let image = UIImage.lmk_solidColor(.magenta, size: CGSize(width: 200, height: 200))
         let cropVC = LMKPhotoCropViewController(image: image)
 
@@ -94,8 +93,8 @@ struct LMKPhotoCropViewControllerTests {
 
     // MARK: - Status Bar
 
-    @Test("Preferred status bar style is light content")
-    func statusBarStyleIsLightContent() {
+    @Test
+    func `Preferred status bar style is light content`() {
         let image = UIImage.lmk_solidColor(.brown, size: CGSize(width: 100, height: 100))
         let cropVC = LMKPhotoCropViewController(image: image)
 
@@ -105,8 +104,8 @@ struct LMKPhotoCropViewControllerTests {
 
     // MARK: - View Lifecycle
 
-    @Test("View controller can appear")
-    func canAppear() {
+    @Test
+    func `View controller can appear`() {
         let image = UIImage.lmk_solidColor(.gray, size: CGSize(width: 150, height: 150))
         let cropVC = LMKPhotoCropViewController(image: image)
 

@@ -9,17 +9,16 @@ import UIKit
 
 // MARK: - LMKTextField
 
-@Suite("LMKTextField")
 @MainActor
 struct LMKTextFieldTests {
-    @Test("Normal state has divider border color")
-    func normalState() {
+    @Test
+    func `Normal state has divider border color`() {
         let field = LMKTextField()
         #expect(field.textField.font == LMKTypography.body)
     }
 
-    @Test("Error state updates border and shows message")
-    func errorState() {
+    @Test
+    func `Error state updates border and shows message`() {
         let field = LMKTextField()
         field.validationState = .error("Invalid")
         // Verify state was set (border color testing is limited in unit tests)
@@ -30,15 +29,15 @@ struct LMKTextFieldTests {
         }
     }
 
-    @Test("Placeholder sets attributed placeholder")
-    func placeholder() {
+    @Test
+    func `Placeholder sets attributed placeholder`() {
         let field = LMKTextField()
         field.placeholder = "Email"
         #expect(field.textField.attributedPlaceholder?.string == "Email")
     }
 
-    @Test("Text property proxies to textField")
-    func textProxy() {
+    @Test
+    func `Text property proxies to textField`() {
         let field = LMKTextField()
         field.text = "Hello"
         #expect(field.textField.text == "Hello")

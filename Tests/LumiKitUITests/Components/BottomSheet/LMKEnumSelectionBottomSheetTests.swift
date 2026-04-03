@@ -43,31 +43,30 @@ private enum SingleOption: Equatable, LMKEnumSelectable {
 
 // MARK: - LMKEnumSelectable Protocol
 
-@Suite("LMKEnumSelectable Protocol")
 struct LMKEnumSelectableProtocolTests {
-    @Test("Conforming enum provides displayName")
-    func displayNameFromEnum() {
+    @Test
+    func `Conforming enum provides displayName`() {
         #expect(TestSortOption.name.displayName == "Name")
         #expect(TestSortOption.date.displayName == "Date")
         #expect(TestSortOption.type.displayName == "Type")
     }
 
-    @Test("Conforming enum provides iconName")
-    func iconNameFromEnum() {
+    @Test
+    func `Conforming enum provides iconName`() {
         #expect(TestSortOption.name.iconName == "textformat.abc")
         #expect(TestSortOption.date.iconName == "calendar")
         #expect(TestSortOption.type.iconName == "tag")
     }
 
-    @Test("All cases provide non-empty displayName")
-    func allCasesHaveDisplayName() {
+    @Test
+    func `All cases provide non-empty displayName`() {
         for option in TestSortOption.allCases {
             #expect(!option.displayName.isEmpty)
         }
     }
 
-    @Test("All cases provide non-empty iconName")
-    func allCasesHaveIconName() {
+    @Test
+    func `All cases provide non-empty iconName`() {
         for option in TestSortOption.allCases {
             #expect(!option.iconName.isEmpty)
         }
@@ -76,13 +75,12 @@ struct LMKEnumSelectableProtocolTests {
 
 // MARK: - LMKEnumSelectionBottomSheet
 
-@Suite("LMKEnumSelectionBottomSheet")
 @MainActor
 struct LMKEnumSelectionBottomSheetTests {
     // MARK: - Presentation
 
-    @Test("Present adds sheet as child of parent VC")
-    func presentAddsChild() {
+    @Test
+    func `Present adds sheet as child of parent VC`() {
         let parent = UIViewController()
         let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 375, height: 812))
         window.rootViewController = parent
@@ -100,8 +98,8 @@ struct LMKEnumSelectionBottomSheetTests {
         #expect(parent.children.first is LMKEnumSelectionBottomSheet)
     }
 
-    @Test("Present with showIcons adds sheet as child")
-    func presentWithIcons() {
+    @Test
+    func `Present with showIcons adds sheet as child`() {
         let parent = UIViewController()
         let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 375, height: 812))
         window.rootViewController = parent
@@ -119,8 +117,8 @@ struct LMKEnumSelectionBottomSheetTests {
         #expect(parent.children.count == 1)
     }
 
-    @Test("Present with single option")
-    func presentSingleOption() {
+    @Test
+    func `Present with single option`() {
         let parent = UIViewController()
         let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 375, height: 812))
         window.rootViewController = parent
@@ -139,8 +137,8 @@ struct LMKEnumSelectionBottomSheetTests {
 
     // MARK: - Table View Data Source
 
-    @Test("Table view has correct number of rows")
-    func tableViewRowCount() {
+    @Test
+    func `Table view has correct number of rows`() {
         let parent = UIViewController()
         let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 375, height: 812))
         window.rootViewController = parent
@@ -169,8 +167,8 @@ struct LMKEnumSelectionBottomSheetTests {
         }
     }
 
-    @Test("Table view cells are LMKEnumSelectionCell")
-    func tableViewCellType() {
+    @Test
+    func `Table view cells are LMKEnumSelectionCell`() {
         let parent = UIViewController()
         let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 375, height: 812))
         window.rootViewController = parent
@@ -196,8 +194,8 @@ struct LMKEnumSelectionBottomSheetTests {
         }
     }
 
-    @Test("Row height uses LMKBottomSheetLayout.rowHeight")
-    func tableViewRowHeight() {
+    @Test
+    func `Row height uses LMKBottomSheetLayout.rowHeight`() {
         let parent = UIViewController()
         let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 375, height: 812))
         window.rootViewController = parent
@@ -225,8 +223,8 @@ struct LMKEnumSelectionBottomSheetTests {
 
     // MARK: - Selection Callback
 
-    @Test("onSelect callback receives correct option")
-    func onSelectCallback() {
+    @Test
+    func `onSelect callback receives correct option`() {
         var selectedOption: TestSortOption?
         let parent = UIViewController()
         let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 375, height: 812))
@@ -256,8 +254,8 @@ struct LMKEnumSelectionBottomSheetTests {
 
     // MARK: - View Hierarchy
 
-    @Test("Sheet view is not nil after loading")
-    func sheetViewNotNil() {
+    @Test
+    func `Sheet view is not nil after loading`() {
         let parent = UIViewController()
         let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 375, height: 812))
         window.rootViewController = parent
@@ -280,8 +278,8 @@ struct LMKEnumSelectionBottomSheetTests {
         #expect(sheet.view != nil)
     }
 
-    @Test("Sheet contains a table view in its hierarchy")
-    func sheetContainsTableView() {
+    @Test
+    func `Sheet contains a table view in its hierarchy`() {
         let parent = UIViewController()
         let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 375, height: 812))
         window.rootViewController = parent

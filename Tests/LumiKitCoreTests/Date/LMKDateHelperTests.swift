@@ -9,10 +9,9 @@ import Testing
 
 // MARK: - LMKDateHelper
 
-@Suite("LMKDateHelper")
 struct LMKDateHelperTests {
-    @Test("today returns start of current day")
-    func todayIsStartOfDay() {
+    @Test
+    func `today returns start of current day`() {
         let today = LMKDateHelper.today
         let components = LMKDateHelper.calendar.dateComponents([.hour, .minute, .second], from: today)
         #expect(components.hour == 0)
@@ -20,39 +19,39 @@ struct LMKDateHelperTests {
         #expect(components.second == 0)
     }
 
-    @Test("today returns same value on repeated access")
-    func todayConsistency() {
+    @Test
+    func `today returns same value on repeated access`() {
         let first = LMKDateHelper.today
         let second = LMKDateHelper.today
         #expect(first == second)
     }
 
-    @Test("isToday returns true for now")
-    func isTodayNow() {
+    @Test
+    func `isToday returns true for now`() {
         #expect(LMKDateHelper.isToday(Date()))
     }
 
-    @Test("isToday returns false for yesterday")
-    func isTodayYesterday() throws {
+    @Test
+    func `isToday returns false for yesterday`() throws {
         let yesterday = try #require(LMKDateHelper.calendar.date(byAdding: .day, value: -1, to: Date()))
         #expect(!LMKDateHelper.isToday(yesterday))
     }
 
-    @Test("isSameDay for identical dates")
-    func isSameDayIdentical() {
+    @Test
+    func `isSameDay for identical dates`() {
         let now = Date()
         #expect(LMKDateHelper.isSameDay(now, now))
     }
 
-    @Test("isSameDay for different days")
-    func isSameDayDifferent() throws {
+    @Test
+    func `isSameDay for different days`() throws {
         let now = Date()
         let tomorrow = try #require(LMKDateHelper.calendar.date(byAdding: .day, value: 1, to: now))
         #expect(!LMKDateHelper.isSameDay(now, tomorrow))
     }
 
-    @Test("startOfDay strips time components")
-    func startOfDay() {
+    @Test
+    func `startOfDay strips time components`() {
         let now = Date()
         let start = LMKDateHelper.startOfDay(for: now)
         let components = LMKDateHelper.calendar.dateComponents([.hour, .minute, .second], from: start)
@@ -61,37 +60,37 @@ struct LMKDateHelperTests {
         #expect(components.second == 0)
     }
 
-    @Test("isValidDateRange accepts current date")
-    func validDateRangeCurrent() {
+    @Test
+    func `isValidDateRange accepts current date`() {
         #expect(LMKDateHelper.isValidDateRange(Date()))
     }
 
-    @Test("isValidDateRange rejects far future")
-    func validDateRangeFarFuture() throws {
+    @Test
+    func `isValidDateRange rejects far future`() throws {
         let farFuture = try #require(LMKDateHelper.calendar.date(byAdding: .year, value: 50, to: Date()))
         #expect(!LMKDateHelper.isValidDateRange(farFuture))
     }
 
-    @Test("isValidDateRange rejects far past")
-    func validDateRangeFarPast() throws {
+    @Test
+    func `isValidDateRange rejects far past`() throws {
         let farPast = try #require(LMKDateHelper.calendar.date(byAdding: .year, value: -200, to: Date()))
         #expect(!LMKDateHelper.isValidDateRange(farPast))
     }
 
-    @Test("Date.lmk_isToday extension works")
-    func dateExtensionIsToday() {
+    @Test
+    func `Date.lmk_isToday extension works`() {
         #expect(Date().lmk_isToday)
     }
 
-    @Test("Date.lmk_startOfDay extension works")
-    func dateExtensionStartOfDay() {
+    @Test
+    func `Date.lmk_startOfDay extension works`() {
         let start = Date().lmk_startOfDay
         let components = LMKDateHelper.calendar.dateComponents([.hour, .minute, .second], from: start)
         #expect(components.hour == 0)
     }
 
-    @Test("Date.lmk_isSameDay extension works")
-    func dateExtensionIsSameDay() {
+    @Test
+    func `Date.lmk_isSameDay extension works`() {
         let now = Date()
         #expect(now.lmk_isSameDay(as: now))
     }

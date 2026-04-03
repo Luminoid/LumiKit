@@ -48,6 +48,39 @@ final class ButtonsDetailViewController: DetailViewController {
         stack.addArrangedSubview(destructiveOutlined)
 
         addDivider()
+        addSectionHeader("Ghost (Text-Only)")
+
+        let ghostPrimary = LMKButtonFactory.ghost(role: .primary, title: "Primary Ghost", target: self, action: #selector(showInfoToast))
+        stack.addArrangedSubview(ghostPrimary)
+
+        let ghostDestructive = LMKButtonFactory.ghost(role: .destructive, title: "Destructive Ghost", target: self, action: #selector(showInfoToast))
+        stack.addArrangedSubview(ghostDestructive)
+
+        addDivider()
+        addSectionHeader("Icon-Only")
+
+        let iconRow = UIStackView()
+        iconRow.axis = .horizontal
+        iconRow.spacing = LMKSpacing.medium
+        iconRow.alignment = .center
+
+        let chevronLeft = LMKButtonFactory.iconOnly(role: .primary, iconName: "chevron.left", target: self, action: #selector(showInfoToast))
+        let chevronRight = LMKButtonFactory.iconOnly(role: .primary, iconName: "chevron.right", target: self, action: #selector(showInfoToast))
+        let closeBtn = LMKButtonFactory.iconOnly(role: .destructive, iconName: "xmark", target: self, action: #selector(showInfoToast))
+        iconRow.addArrangedSubview(chevronLeft)
+        iconRow.addArrangedSubview(chevronRight)
+        iconRow.addArrangedSubview(closeBtn)
+        iconRow.addArrangedSubview(UIView()) // spacer
+        stack.addArrangedSubview(iconRow)
+
+        addDivider()
+        addSectionHeader("Loading State")
+
+        let loadingBtn = LMKButtonFactory.filled(role: .primary, title: "Tap to Load", target: self, action: #selector(showSuccessToast))
+        loadingBtn.isLoading = true
+        stack.addArrangedSubview(loadingBtn)
+
+        addDivider()
         addSectionHeader("Typed Handler")
         let typed = LMKButtonFactory.filled(role: .primary, title: "Typed Handler", target: self, action: #selector(showTypedToast))
         stack.addArrangedSubview(typed)
@@ -88,30 +121,29 @@ final class SegmentedControlDetailViewController: DetailViewController {
         stack.addArrangedSubview(statusLabel)
 
         addDivider()
-        addSectionHeader("Typed Handler")
-        stack.addArrangedSubview(LMKLabelFactory.caption(text: "didValueChangeHandler receives the LMKSegmentedControl instance for direct access to selectedSegmentIndex."))
+        addSectionHeader("Many Segments")
+        stack.addArrangedSubview(LMKLabelFactory.caption(text: "Five segments with sliding pill indicator."))
 
-        let typedSegmented = LMKSegmentedControl(items: ["Day", "Week", "Month"])
-        typedSegmented.selectedSegmentIndex = 1
-        let typedLabel = LMKLabelFactory.caption(text: "Period: Week")
-        typedLabel.textAlignment = .center
-        typedSegmented.didValueChangeHandler = { control in
-            let titles = ["Day", "Week", "Month"]
-            typedLabel.text = "Period: \(titles[control.selectedSegmentIndex])"
+        let manySegmented = LMKSegmentedControl(items: ["Mon", "Tue", "Wed", "Thu", "Fri"])
+        manySegmented.selectedSegmentIndex = 0
+        let manyLabel = LMKLabelFactory.caption(text: "Selected: Mon")
+        manyLabel.textAlignment = .center
+        let days = ["Mon", "Tue", "Wed", "Thu", "Fri"]
+        manySegmented.valueChangedHandler = { index in
+            manyLabel.text = "Selected: \(days[index])"
         }
-        stack.addArrangedSubview(typedSegmented)
-        stack.addArrangedSubview(typedLabel)
+        stack.addArrangedSubview(manySegmented)
+        stack.addArrangedSubview(manyLabel)
 
         addDivider()
         addSectionHeader("Scrollable")
-        stack.addArrangedSubview(LMKLabelFactory.caption(text: "Set isScrollable = true and use makeScrollableContainer() for many segments."))
+        stack.addArrangedSubview(LMKLabelFactory.caption(text: "Use makeScrollableContainer() for many segments."))
 
         let scrollableSegmented = LMKSegmentedControl(items: (1 ... 12).map { "Month \($0)" })
         scrollableSegmented.selectedSegmentIndex = 0
-        scrollableSegmented.apportionsSegmentWidthsByContent = true
         let scrollContainer = scrollableSegmented.makeScrollableContainer()
         scrollContainer.snp.makeConstraints { make in
-            make.height.equalTo(32)
+            make.height.equalTo(40)
         }
 
         let scrollLabel = LMKLabelFactory.caption(text: "Selected: Month 1")
@@ -218,23 +250,51 @@ final class TextViewDetailViewController: DetailViewController {
     }
 }
 
-// MARK: - Search & Toggle
+// MARK: - Toggle & Switch
 
 final class SearchToggleDetailViewController: DetailViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
 
+        addSectionHeader("LMKSwitch (Custom Switch)")
+        stack.addArrangedSubview(LMKLabelFactory.caption(text: "Custom toggle replacing UISwitch. Rounded track + sliding thumb with spring animation."))
+
+        let toggleLabel = LMKLabelFactory.body(text: "Off")
+        toggleLabel.textAlignment = .center
+
+        let toggle = LMKSwitch()
+        toggle.valueChangedHandler = { isOn in
+            toggleLabel.text = isOn ? "On" : "Off"
+        }
+
+        let toggleRow = UIStackView(arrangedSubviews: [LMKLabelFactory.body(text: "Notifications"), UIView(), toggle])
+        toggleRow.axis = .horizontal
+        toggleRow.alignment = .center
+        stack.addArrangedSubview(toggleRow)
+        stack.addArrangedSubview(toggleLabel)
+
+        addDivider()
+        addSectionHeader("Pre-set Toggle")
+
+        let presetToggle = LMKSwitch()
+        presetToggle.setOn(true, animated: false)
+        let presetRow = UIStackView(arrangedSubviews: [LMKLabelFactory.body(text: "Dark Mode"), UIView(), presetToggle])
+        presetRow.axis = .horizontal
+        presetRow.alignment = .center
+        stack.addArrangedSubview(presetRow)
+
+        addDivider()
         addSectionHeader("Toggle Button")
-        let toggle = LMKToggleButton(
+        let toggleButton = LMKToggleButton(
             titleForStatusOn: "Notifications On",
             titleForStatusOff: "Notifications Off"
         )
-        toggle.setTitleColor(LMKColor.primary, for: .normal)
-        toggle.titleLabel?.font = LMKTypography.bodyMedium
-        toggle.flipStatusOnTap = true
-        toggle.status = .off
-        toggle.snp.makeConstraints { $0.height.equalTo(LMKLayout.minimumTouchTarget) }
-        stack.addArrangedSubview(toggle)
+        toggleButton.setTitleColor(LMKColor.primary, for: .normal)
+        toggleButton.titleLabel?.font = LMKTypography.bodyMedium
+        toggleButton.flipStatusOnTap = true
+        toggleButton.status = .off
+        toggleButton.snp.makeConstraints { $0.height.equalTo(LMKLayout.minimumTouchTarget) }
+        stack.addArrangedSubview(toggleButton)
 
         addDivider()
         addSectionHeader("Search Bar")
@@ -247,5 +307,111 @@ final class SearchToggleDetailViewController: DetailViewController {
         stack.addArrangedSubview(LMKLabelFactory.caption(text: "Horizontal divider below:"))
         stack.addArrangedSubview(LMKDividerView())
         stack.addArrangedSubview(LMKLabelFactory.caption(text: "Content continues here"))
+    }
+}
+
+// MARK: - Page Indicator
+
+final class PageIndicatorDetailViewController: DetailViewController {
+    override func viewDidLoad() {
+        super.viewDidLoad()
+
+        addSectionHeader("Basic (dots only)")
+        stack.addArrangedSubview(LMKLabelFactory.caption(text: "Default style — all dots same size, active dot uses primary color."))
+
+        let basicLabel = LMKLabelFactory.body(text: "Page 1 of 5")
+        basicLabel.textAlignment = .center
+
+        let basicIndicator = LMKPageIndicator()
+        basicIndicator.numberOfPages = 5
+        basicIndicator.currentPage = 0
+        basicIndicator.pageChangedHandler = { page in
+            basicLabel.text = "Page \(page + 1) of 5"
+        }
+        basicIndicator.snp.makeConstraints { $0.height.equalTo(20) }
+        stack.addArrangedSubview(basicIndicator)
+        stack.addArrangedSubview(basicLabel)
+
+        addDivider()
+        addSectionHeader("Expanding Pill")
+        stack.addArrangedSubview(LMKLabelFactory.caption(text: "expandsActiveDot = true — active dot grows into a pill shape."))
+
+        let pillLabel = LMKLabelFactory.body(text: "Page 1 of 5")
+        pillLabel.textAlignment = .center
+
+        let pillIndicator = LMKPageIndicator()
+        pillIndicator.numberOfPages = 5
+        pillIndicator.currentPage = 0
+        pillIndicator.expandsActiveDot = true
+        pillIndicator.pageChangedHandler = { page in
+            pillLabel.text = "Page \(page + 1) of 5"
+        }
+        pillIndicator.snp.makeConstraints { $0.height.equalTo(20) }
+        stack.addArrangedSubview(pillIndicator)
+        stack.addArrangedSubview(pillLabel)
+
+        addDivider()
+        addSectionHeader("Many Pages — Windowed (12 pages, max 7 dots)")
+        stack.addArrangedSubview(LMKLabelFactory.caption(text: "When pages > maxVisibleDots, a sliding window shows 7 dots. Edge dots are smaller."))
+
+        let manyLabel = LMKLabelFactory.body(text: "Page 1 of 12")
+        manyLabel.textAlignment = .center
+
+        let manyIndicator = LMKPageIndicator()
+        manyIndicator.numberOfPages = 12
+        manyIndicator.maxVisibleDots = 7
+        manyIndicator.currentPage = 0
+        manyIndicator.pageChangedHandler = { page in
+            manyLabel.text = "Page \(page + 1) of 12"
+        }
+        manyIndicator.snp.makeConstraints { $0.height.equalTo(20) }
+        stack.addArrangedSubview(manyIndicator)
+        stack.addArrangedSubview(manyLabel)
+
+        addDivider()
+        addSectionHeader("Many Pages — Windowed + Expanding Pill")
+
+        let manyPillLabel = LMKLabelFactory.body(text: "Page 1 of 15")
+        manyPillLabel.textAlignment = .center
+
+        let manyPillIndicator = LMKPageIndicator()
+        manyPillIndicator.numberOfPages = 15
+        manyPillIndicator.maxVisibleDots = 7
+        manyPillIndicator.expandsActiveDot = true
+        manyPillIndicator.currentPage = 0
+        manyPillIndicator.pageChangedHandler = { page in
+            manyPillLabel.text = "Page \(page + 1) of 15"
+        }
+        manyPillIndicator.snp.makeConstraints { $0.height.equalTo(20) }
+        stack.addArrangedSubview(manyPillIndicator)
+        stack.addArrangedSubview(manyPillLabel)
+
+        addDivider()
+        addSectionHeader("Programmatic Navigation")
+
+        let navIndicator = LMKPageIndicator()
+        navIndicator.numberOfPages = 4
+        navIndicator.currentPage = 0
+        navIndicator.snp.makeConstraints { $0.height.equalTo(20) }
+        stack.addArrangedSubview(navIndicator)
+
+        let prevBtn = LMKButton(title: "Previous", style: .ghost(LMKColor.primary))
+        prevBtn.tapHandler = { [weak navIndicator] in
+            guard let ind = navIndicator, ind.currentPage > 0 else { return }
+            ind.currentPage -= 1
+        }
+
+        let nextBtn = LMKButton(title: "Next", style: .ghost(LMKColor.primary))
+        nextBtn.tapHandler = { [weak navIndicator] in
+            guard let ind = navIndicator, ind.currentPage < ind.numberOfPages - 1 else { return }
+            ind.currentPage += 1
+        }
+
+        let navRow = UIStackView()
+        navRow.axis = .horizontal
+        navRow.addArrangedSubview(prevBtn)
+        navRow.addArrangedSubview(UIView())
+        navRow.addArrangedSubview(nextBtn)
+        stack.addArrangedSubview(navRow)
     }
 }

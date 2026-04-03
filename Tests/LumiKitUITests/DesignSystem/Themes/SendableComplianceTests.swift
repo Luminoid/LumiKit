@@ -9,10 +9,9 @@ import UIKit
 
 // MARK: - Sendable compliance
 
-@Suite("Sendable compliance")
 struct SendableComplianceTests {
-    @Test("All configuration structs are Sendable")
-    func sendableStructs() {
+    @Test
+    func `All configuration structs are Sendable`() {
         func checkSendable(_ value: some Sendable) {
             _ = value
         }

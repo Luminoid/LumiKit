@@ -9,12 +9,11 @@ import Testing
 
 // MARK: - LMKLogStore
 
-@Suite("LMKLogStore")
 struct LMKLogStoreTests {
     // MARK: - Basic Operations
 
-    @Test("Append and retrieve entries")
-    func appendAndRetrieve() {
+    @Test
+    func `Append and retrieve entries`() {
         let store = LMKLogStore(maxEntries: 10)
         store.append(makeEntry(level: .info, message: "Hello"))
         store.append(makeEntry(level: .error, message: "Oops"))
@@ -25,8 +24,8 @@ struct LMKLogStoreTests {
         #expect(store.entries[1].message == "Oops")
     }
 
-    @Test("Count reflects stored entries")
-    func count() {
+    @Test
+    func `Count reflects stored entries`() {
         let store = LMKLogStore(maxEntries: 10)
         #expect(store.isEmpty)
 
@@ -38,8 +37,8 @@ struct LMKLogStoreTests {
         #expect(store.count == 3)
     }
 
-    @Test("Clear removes all entries")
-    func clear() {
+    @Test
+    func `Clear removes all entries`() {
         let store = LMKLogStore(maxEntries: 10)
         store.append(makeEntry())
         store.append(makeEntry())
@@ -52,8 +51,8 @@ struct LMKLogStoreTests {
 
     // MARK: - Ring Buffer
 
-    @Test("FIFO eviction at max capacity")
-    func fifoEviction() {
+    @Test
+    func `FIFO eviction at max capacity`() {
         let store = LMKLogStore(maxEntries: 3)
         store.append(makeEntry(message: "first"))
         store.append(makeEntry(message: "second"))
@@ -66,8 +65,8 @@ struct LMKLogStoreTests {
         #expect(store.entries[2].message == "fourth")
     }
 
-    @Test("Max entries of 1 keeps only the latest")
-    func maxEntriesOne() {
+    @Test
+    func `Max entries of 1 keeps only the latest`() {
         let store = LMKLogStore(maxEntries: 1)
         store.append(makeEntry(message: "a"))
         store.append(makeEntry(message: "b"))
@@ -79,8 +78,8 @@ struct LMKLogStoreTests {
 
     // MARK: - Entries Snapshot
 
-    @Test("Entries returns a copy, not a reference")
-    func entriesReturnsCopy() {
+    @Test
+    func `Entries returns a copy, not a reference`() {
         let store = LMKLogStore(maxEntries: 10)
         store.append(makeEntry(message: "before"))
 
@@ -93,8 +92,8 @@ struct LMKLogStoreTests {
 
     // MARK: - Formatting
 
-    @Test("Formatted output contains level and category")
-    func formattedOutput() {
+    @Test
+    func `Formatted output contains level and category`() {
         let store = LMKLogStore(maxEntries: 10)
         store.append(makeEntry(level: .warning, category: "Network", message: "timeout"))
 
@@ -104,16 +103,16 @@ struct LMKLogStoreTests {
         #expect(output.contains("timeout"))
     }
 
-    @Test("Formatted empty store returns placeholder")
-    func formattedEmpty() {
+    @Test
+    func `Formatted empty store returns placeholder`() {
         let store = LMKLogStore(maxEntries: 10)
         #expect(store.formatted() == "(no logs captured)")
     }
 
     // MARK: - Thread Safety
 
-    @Test("Concurrent appends do not crash")
-    func concurrentAppends() async {
+    @Test
+    func `Concurrent appends do not crash`() async {
         let store = LMKLogStore(maxEntries: 100)
 
         await withTaskGroup(of: Void.self) { group in
@@ -130,16 +129,16 @@ struct LMKLogStoreTests {
 
     // MARK: - Log Level
 
-    @Test("All log levels have expected raw values")
-    func logLevelRawValues() {
+    @Test
+    func `All log levels have expected raw values`() {
         #expect(LMKLogLevel.debug.rawValue == "debug")
         #expect(LMKLogLevel.info.rawValue == "info")
         #expect(LMKLogLevel.warning.rawValue == "warning")
         #expect(LMKLogLevel.error.rawValue == "error")
     }
 
-    @Test("Log level CaseIterable has 4 cases")
-    func logLevelCaseIterable() {
+    @Test
+    func `Log level CaseIterable has 4 cases`() {
         #expect(LMKLogLevel.allCases.count == 4)
     }
 
@@ -156,24 +155,24 @@ struct LMKLogStoreTests {
 
 // MARK: - LMKLogger Log Store Integration
 
-@Suite("LMKLogger Log Store Integration", .serialized)
+@Suite(.serialized)
 struct LMKLoggerLogStoreIntegrationTests {
-    @Test("enableLogStore creates a store")
-    func enableCreatesStore() {
+    @Test
+    func `enableLogStore creates a store`() {
         LMKLogger.enableLogStore(maxEntries: 10)
         #expect(LMKLogger.logStore != nil)
         LMKLogger.disableLogStore()
     }
 
-    @Test("disableLogStore removes the store")
-    func disableRemovesStore() {
+    @Test
+    func `disableLogStore removes the store`() {
         LMKLogger.enableLogStore()
         LMKLogger.disableLogStore()
         #expect(LMKLogger.logStore == nil)
     }
 
-    @Test("Log calls populate the store when enabled")
-    func logCallsPopulateStore() {
+    @Test
+    func `Log calls populate the store when enabled`() {
         LMKLogger.enableLogStore(maxEntries: 100)
 
         LMKLogger.info("info msg", category: .data)
@@ -196,15 +195,15 @@ struct LMKLoggerLogStoreIntegrationTests {
         LMKLogger.disableLogStore()
     }
 
-    @Test("Log calls do nothing when store is disabled")
-    func logCallsWithoutStore() {
+    @Test
+    func `Log calls do nothing when store is disabled`() {
         LMKLogger.disableLogStore()
         LMKLogger.info("should not crash")
         #expect(LMKLogger.logStore == nil)
     }
 
-    @Test("LogCategory exposes name property")
-    func logCategoryName() {
+    @Test
+    func `LogCategory exposes name property`() {
         #expect(LMKLogger.LogCategory.general.name == "General")
         #expect(LMKLogger.LogCategory.data.name == "Data")
         #expect(LMKLogger.LogCategory.network.name == "Network")

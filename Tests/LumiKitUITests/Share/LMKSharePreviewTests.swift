@@ -7,11 +7,10 @@ import Testing
 import UIKit
 @testable import LumiKitUI
 
-@Suite("LMKSharePreviewViewController")
 @MainActor
 struct LMKSharePreviewTests {
-    @Test("Init creates page sheet with large detent")
-    func initCreatesPageSheet() {
+    @Test
+    func `Init creates page sheet with large detent`() {
         let image = UIImage.lmk_solidColor(.blue, size: CGSize(width: 100, height: 200))
         let vc = LMKSharePreviewViewController(image: image)
 
@@ -20,8 +19,8 @@ struct LMKSharePreviewTests {
         #expect(vc.sheetPresentationController?.prefersGrabberVisible == true)
     }
 
-    @Test("Default strings have expected values")
-    func defaultStrings() {
+    @Test
+    func `Default strings have expected values`() {
         let strings = LMKSharePreviewStrings()
         #expect(strings.share == "Share")
         #expect(strings.saveImage == "Save Image")
@@ -30,8 +29,8 @@ struct LMKSharePreviewTests {
         #expect(!strings.photoPermissionDenied.isEmpty)
     }
 
-    @Test("Custom strings are applied")
-    func customStrings() {
+    @Test
+    func `Custom strings are applied`() {
         let original = LMKSharePreviewViewController.strings
         defer { LMKSharePreviewViewController.strings = original }
 
@@ -47,8 +46,8 @@ struct LMKSharePreviewTests {
         #expect(LMKSharePreviewViewController.strings.saveImage == "Guardar imagen")
     }
 
-    @Test("Delegate can be set")
-    func delegateCanBeSet() {
+    @Test
+    func `Delegate can be set`() {
         let image = UIImage.lmk_solidColor(.blue, size: CGSize(width: 100, height: 200))
         let vc = LMKSharePreviewViewController(image: image)
 
@@ -59,8 +58,8 @@ struct LMKSharePreviewTests {
         #expect(vc.delegate != nil)
     }
 
-    @Test("viewDidLoad sets up UI")
-    func viewDidLoadSetsUpUI() {
+    @Test
+    func `viewDidLoad sets up UI`() {
         let image = UIImage.lmk_solidColor(.blue, size: CGSize(width: 100, height: 200))
         let vc = LMKSharePreviewViewController(image: image)
         vc.loadViewIfNeeded()

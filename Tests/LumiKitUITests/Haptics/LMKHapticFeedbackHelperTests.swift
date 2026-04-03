@@ -9,11 +9,10 @@ import UIKit
 
 // MARK: - LMKHapticFeedbackHelper
 
-@Suite("LMKHapticFeedbackHelper")
 @MainActor
 struct LMKHapticFeedbackHelperTests {
-    @Test("Feedback methods don't crash")
-    func feedbackMethods() {
+    @Test
+    func `Feedback methods don't crash`() {
         LMKHapticFeedbackHelper.success()
         LMKHapticFeedbackHelper.warning()
         LMKHapticFeedbackHelper.error()
@@ -23,8 +22,8 @@ struct LMKHapticFeedbackHelperTests {
         LMKHapticFeedbackHelper.heavy()
     }
 
-    @Test("Prepare methods don't crash")
-    func prepareMethods() {
+    @Test
+    func `Prepare methods don't crash`() {
         LMKHapticFeedbackHelper.prepareNotification()
         LMKHapticFeedbackHelper.prepareSelection()
         LMKHapticFeedbackHelper.prepareImpact(.light)

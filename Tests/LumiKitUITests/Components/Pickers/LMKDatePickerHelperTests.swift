@@ -13,7 +13,6 @@ import UIKit
 
 // MARK: - LMKDatePickerHelper
 
-@Suite("LMKDatePickerHelper")
 @MainActor
 struct LMKDatePickerHelperTests {
     // MARK: - Setup
@@ -66,8 +65,8 @@ struct LMKDatePickerHelperTests {
 
     // MARK: - presentDatePickerAlert
 
-    @Test("presentDatePickerAlert adds action sheet as child")
-    func presentDatePickerAlert_addsChild() {
+    @Test
+    func `presentDatePickerAlert adds action sheet as child`() {
         let hostVC = makeHostVC()
         LMKDatePickerHelper.presentDatePickerAlert(
             on: hostVC,
@@ -78,8 +77,8 @@ struct LMKDatePickerHelperTests {
         #expect(findActionSheet(in: hostVC) != nil)
     }
 
-    @Test("presentDatePickerAlert contains UIDatePicker")
-    func presentDatePickerAlert_containsDatePicker() throws {
+    @Test
+    func `presentDatePickerAlert contains UIDatePicker`() throws {
         let hostVC = makeHostVC()
         LMKDatePickerHelper.presentDatePickerAlert(
             on: hostVC,
@@ -92,8 +91,8 @@ struct LMKDatePickerHelperTests {
         #expect(try findDatePicker(in: #require(sheet?.view)) != nil)
     }
 
-    @Test("presentDatePickerAlert applies default date")
-    func presentDatePickerAlert_defaultDate() throws {
+    @Test
+    func `presentDatePickerAlert applies default date`() throws {
         let hostVC = makeHostVC()
         let expectedDate = LMKDateHelper.calendar.date(byAdding: .day, value: -3, to: Date()) ?? Date()
 
@@ -110,8 +109,8 @@ struct LMKDatePickerHelperTests {
         #expect(try dayComponents(from: #require(picker?.date)) == dayComponents(from: expectedDate))
     }
 
-    @Test("presentDatePickerAlert sets maximum date to today by default")
-    func presentDatePickerAlert_maximumDate() throws {
+    @Test
+    func `presentDatePickerAlert sets maximum date to today by default`() throws {
         let hostVC = makeHostVC()
         LMKDatePickerHelper.presentDatePickerAlert(
             on: hostVC,
@@ -129,8 +128,8 @@ struct LMKDatePickerHelperTests {
 
     // MARK: - presentDatePicker
 
-    @Test("presentDatePicker respects minimum and maximum date")
-    func presentDatePicker_dateConstraints() throws {
+    @Test
+    func `presentDatePicker respects minimum and maximum date`() throws {
         let hostVC = makeHostVC()
         let minDate = try #require(LMKDateHelper.calendar.date(byAdding: .month, value: -1, to: LMKDateHelper.today))
         let maxDate = LMKDateHelper.today
@@ -151,8 +150,8 @@ struct LMKDatePickerHelperTests {
 
     // MARK: - presentFutureDatePicker
 
-    @Test("presentFutureDatePicker sets minimum date to today")
-    func presentFutureDatePicker_minimumDate() throws {
+    @Test
+    func `presentFutureDatePicker sets minimum date to today`() throws {
         let hostVC = makeHostVC()
         LMKDatePickerHelper.presentFutureDatePicker(
             on: hostVC,
@@ -168,8 +167,8 @@ struct LMKDatePickerHelperTests {
         #expect(picker?.maximumDate == nil)
     }
 
-    @Test("presentFutureDatePicker with excludeToday sets minimum to tomorrow")
-    func presentFutureDatePicker_excludeToday() throws {
+    @Test
+    func `presentFutureDatePicker with excludeToday sets minimum to tomorrow`() throws {
         let hostVC = makeHostVC()
         let tomorrow = try #require(LMKDateHelper.calendar.date(byAdding: .day, value: 1, to: LMKDateHelper.today))
 
@@ -188,8 +187,8 @@ struct LMKDatePickerHelperTests {
 
     // MARK: - presentPastDatePicker
 
-    @Test("presentPastDatePicker sets maximum date to today with no minimum")
-    func presentPastDatePicker_dateConstraints() throws {
+    @Test
+    func `presentPastDatePicker sets maximum date to today with no minimum`() throws {
         let hostVC = makeHostVC()
         LMKDatePickerHelper.presentPastDatePicker(
             on: hostVC,
@@ -206,8 +205,8 @@ struct LMKDatePickerHelperTests {
 
     // MARK: - presentDateRangePicker
 
-    @Test("presentDateRangePicker contains two date pickers")
-    func presentDateRangePicker_twoPickers() throws {
+    @Test
+    func `presentDateRangePicker contains two date pickers`() throws {
         let hostVC = makeHostVC()
         LMKDatePickerHelper.presentDateRangePicker(
             on: hostVC,
@@ -221,8 +220,8 @@ struct LMKDatePickerHelperTests {
         #expect(pickers.count == 2)
     }
 
-    @Test("presentDateRangePicker uses compact style")
-    func presentDateRangePicker_compactStyle() throws {
+    @Test
+    func `presentDateRangePicker uses compact style`() throws {
         let hostVC = makeHostVC()
         LMKDatePickerHelper.presentDateRangePicker(
             on: hostVC,
@@ -239,8 +238,8 @@ struct LMKDatePickerHelperTests {
 
     // MARK: - presentDatePickerWithTextField
 
-    @Test("presentDatePickerWithTextField contains text field and date picker")
-    func presentDatePickerWithTextField_containsBoth() throws {
+    @Test
+    func `presentDatePickerWithTextField contains text field and date picker`() throws {
         let hostVC = makeHostVC()
         LMKDatePickerHelper.presentDatePickerWithTextField(
             on: hostVC,
@@ -254,8 +253,8 @@ struct LMKDatePickerHelperTests {
         #expect(try findTextField(in: #require(sheet?.view)) != nil)
     }
 
-    @Test("presentDatePickerWithTextField uses default placeholder from strings")
-    func presentDatePickerWithTextField_defaultPlaceholder() throws {
+    @Test
+    func `presentDatePickerWithTextField uses default placeholder from strings`() throws {
         let original = LMKDatePickerHelper.strings
         defer { LMKDatePickerHelper.strings = original }
         LMKDatePickerHelper.strings = .init(textFieldPlaceholder: "Test placeholder")
@@ -272,8 +271,8 @@ struct LMKDatePickerHelperTests {
         #expect(textField?.placeholder == "Test placeholder")
     }
 
-    @Test("presentDatePickerWithTextField respects custom placeholder override")
-    func presentDatePickerWithTextField_customPlaceholder() throws {
+    @Test
+    func `presentDatePickerWithTextField respects custom placeholder override`() throws {
         let hostVC = makeHostVC()
         LMKDatePickerHelper.presentDatePickerWithTextField(
             on: hostVC,
@@ -287,8 +286,8 @@ struct LMKDatePickerHelperTests {
         #expect(textField?.placeholder == "Custom override")
     }
 
-    @Test("presentDatePickerWithTextField sets maximum date to today")
-    func presentDatePickerWithTextField_maximumDate() throws {
+    @Test
+    func `presentDatePickerWithTextField sets maximum date to today`() throws {
         let hostVC = makeHostVC()
         LMKDatePickerHelper.presentDatePickerWithTextField(
             on: hostVC,
@@ -304,8 +303,8 @@ struct LMKDatePickerHelperTests {
 
     // MARK: - Edge Cases
 
-    @Test("presentDatePickerAlert clamps defaultDate after maximumDate")
-    func presentDatePickerAlert_clampsOutOfBounds() throws {
+    @Test
+    func `presentDatePickerAlert clamps defaultDate after maximumDate`() throws {
         let hostVC = makeHostVC()
         let futureDate = try #require(LMKDateHelper.calendar.date(byAdding: .year, value: 1, to: LMKDateHelper.today))
 
@@ -324,8 +323,8 @@ struct LMKDatePickerHelperTests {
         #expect(try dayComponents(from: #require(picker?.date)) == dayComponents(from: LMKDateHelper.today))
     }
 
-    @Test("presentDatePicker swaps min > max and clamps defaultDate")
-    func presentDatePicker_swapsMinMax() throws {
+    @Test
+    func `presentDatePicker swaps min > max and clamps defaultDate`() throws {
         let hostVC = makeHostVC()
         let pastDate = try #require(LMKDateHelper.calendar.date(byAdding: .month, value: -2, to: LMKDateHelper.today))
         let furtherPast = try #require(LMKDateHelper.calendar.date(byAdding: .month, value: -3, to: LMKDateHelper.today))
@@ -350,8 +349,8 @@ struct LMKDatePickerHelperTests {
         #expect(try dayComponents(from: #require(picker?.date)) == dayComponents(from: pastDate))
     }
 
-    @Test("presentFutureDatePicker clamps past defaultDate to minimum")
-    func presentFutureDatePicker_clampsPastDate() throws {
+    @Test
+    func `presentFutureDatePicker clamps past defaultDate to minimum`() throws {
         let hostVC = makeHostVC()
         let pastDate = try #require(LMKDateHelper.calendar.date(byAdding: .month, value: -1, to: LMKDateHelper.today))
 
@@ -369,8 +368,8 @@ struct LMKDatePickerHelperTests {
         #expect(try dayComponents(from: #require(picker?.date)) == dayComponents(from: LMKDateHelper.today))
     }
 
-    @Test("presentDatePickerWithTextField clamps future defaultDate to today")
-    func presentDatePickerWithTextField_clampsFutureDate() throws {
+    @Test
+    func `presentDatePickerWithTextField clamps future defaultDate to today`() throws {
         let hostVC = makeHostVC()
         let futureDate = try #require(LMKDateHelper.calendar.date(byAdding: .month, value: 3, to: LMKDateHelper.today))
 
@@ -389,8 +388,8 @@ struct LMKDatePickerHelperTests {
 
     // MARK: - Configurable Strings
 
-    @Test("Strings has sensible defaults")
-    func strings_defaults() {
+    @Test
+    func `Strings has sensible defaults`() {
         let s = LMKDatePickerHelper.Strings()
         #expect(s.confirm == "OK")
         #expect(s.fromLabel == "From")
@@ -398,8 +397,8 @@ struct LMKDatePickerHelperTests {
         #expect(s.textFieldPlaceholder == "Add notes...")
     }
 
-    @Test("Strings is Sendable")
-    func strings_sendable() {
+    @Test
+    func `Strings is Sendable`() {
         let s = LMKDatePickerHelper.Strings(confirm: "Accept")
         let _: any Sendable = s
     }

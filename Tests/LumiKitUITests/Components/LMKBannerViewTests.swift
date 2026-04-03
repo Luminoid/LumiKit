@@ -9,17 +9,16 @@ import UIKit
 
 // MARK: - LMKBannerView
 
-@Suite("LMKBannerView")
 @MainActor
 struct LMKBannerViewTests {
-    @Test("Banner creates with correct background")
-    func creation() {
+    @Test
+    func `Banner creates with correct background`() {
         let banner = LMKBannerView(type: .warning, message: "Test")
         #expect(banner.backgroundColor != nil)
     }
 
-    @Test("Action title shows/hides button")
-    func actionTitleToggle() {
+    @Test
+    func `Action title shows/hides button`() {
         let banner = LMKBannerView(type: .info, message: "Test")
         banner.actionTitle = "Retry"
         #expect(banner.actionTitle == "Retry")
@@ -27,21 +26,21 @@ struct LMKBannerViewTests {
         #expect(banner.actionTitle == nil)
     }
 
-    @Test("Default strings are English")
-    func defaultStrings() {
+    @Test
+    func `Default strings are English`() {
         let strings = LMKBannerView.Strings()
         #expect(strings.dismissAccessibilityLabel == "Dismiss")
     }
 
-    @Test("Banner background uses type color with alpha")
-    func bannerBackground() {
+    @Test
+    func `Banner background uses type color with alpha`() {
         let banner = LMKBannerView(type: .warning, message: "Test")
         #expect(banner.backgroundColor != nil)
         #expect(banner.backgroundColor != .clear)
     }
 
-    @Test("Banner manages accessibility elements")
-    func bannerAccessibilityElements() {
+    @Test
+    func `Banner manages accessibility elements`() {
         let banner = LMKBannerView(type: .info, message: "Test")
         #expect(banner.accessibilityElements != nil)
         #expect(!banner.isAccessibilityElement)

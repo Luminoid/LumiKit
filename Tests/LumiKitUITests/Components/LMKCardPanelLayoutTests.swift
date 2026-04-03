@@ -9,27 +9,26 @@ import Testing
 import UIKit
 @testable import LumiKitUI
 
-@Suite("LMKCardPanelLayout")
 @MainActor
 struct LMKCardPanelLayoutTests {
-    @Test("Card max width is positive")
-    func cardMaxWidthPositive() {
+    @Test
+    func `Card max width is positive`() {
         #expect(LMKCardPanelLayout.cardMaxWidth > 0)
     }
 
-    @Test("Card horizontal inset is positive")
-    func cardHorizontalInsetPositive() {
+    @Test
+    func `Card horizontal inset is positive`() {
         #expect(LMKCardPanelLayout.cardHorizontalInset > 0)
     }
 
-    @Test("Card max height ratio is between 0 and 1")
-    func cardMaxHeightRatioValid() {
+    @Test
+    func `Card max height ratio is between 0 and 1`() {
         #expect(LMKCardPanelLayout.cardMaxHeightRatio > 0)
         #expect(LMKCardPanelLayout.cardMaxHeightRatio <= 1.0)
     }
 
-    @Test("Slide offset is positive")
-    func slideOffsetPositive() {
+    @Test
+    func `Slide offset is positive`() {
         #expect(LMKCardPanelLayout.slideOffset > 0)
     }
 }

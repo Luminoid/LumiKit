@@ -9,30 +9,29 @@ import UIKit
 
 // MARK: - LMKImageUtil
 
-@Suite("LMKImageUtil")
 @MainActor
 struct LMKImageUtilTests {
-    @Test("getSFSymbolImage returns image for valid symbol name")
-    func validSymbolReturnsImage() {
+    @Test
+    func `getSFSymbolImage returns image for valid symbol name`() {
         let image = LMKImageUtil.getSFSymbolImage("heart.fill", pointSize: 24)
         #expect(image != nil)
     }
 
-    @Test("getSFSymbolImage returns nil for invalid symbol name")
-    func invalidSymbolReturnsNil() {
+    @Test
+    func `getSFSymbolImage returns nil for invalid symbol name`() {
         let image = LMKImageUtil.getSFSymbolImage("nonexistent.symbol.xyz", pointSize: 24)
         #expect(image == nil)
     }
 
-    @Test("getSFSymbolImage with color returns tinted image")
-    func symbolWithColor() {
+    @Test
+    func `getSFSymbolImage with color returns tinted image`() {
         let image = LMKImageUtil.getSFSymbolImage("star.fill", pointSize: 20, color: .red)
         #expect(image != nil)
         #expect(image?.renderingMode == .alwaysOriginal)
     }
 
-    @Test("getSFSymbolImage without color uses template rendering")
-    func symbolWithoutColor() {
+    @Test
+    func `getSFSymbolImage without color uses template rendering`() {
         let image = LMKImageUtil.getSFSymbolImage("star.fill", pointSize: 20)
         #expect(image != nil)
         #expect(image?.renderingMode != .alwaysOriginal)
@@ -41,36 +40,35 @@ struct LMKImageUtilTests {
 
 // MARK: - LMKImageUtil (makeSymbolImage)
 
-@Suite("LMKImageUtil (makeSymbolImage)")
 @MainActor
 struct LMKImageUtilMakeSymbolImageTests {
-    @Test("returns non-nil for valid symbol")
-    func validSymbol() {
+    @Test
+    func `returns non-nil for valid symbol`() {
         let image = LMKImageUtil.makeSymbolImage("heart.fill", size: CGSize(width: 44, height: 44), symbolPointSize: 20, tintColor: .red)
         #expect(image != nil)
     }
 
-    @Test("returns nil for invalid symbol")
-    func invalidSymbol() {
+    @Test
+    func `returns nil for invalid symbol`() {
         let image = LMKImageUtil.makeSymbolImage("nonexistent.xyz.abc", size: CGSize(width: 44, height: 44), symbolPointSize: 20, tintColor: .red)
         #expect(image == nil)
     }
 
-    @Test("returns image of correct size")
-    func correctSize() {
+    @Test
+    func `returns image of correct size`() {
         let size = CGSize(width: 60, height: 60)
         let image = LMKImageUtil.makeSymbolImage("star.fill", size: size, symbolPointSize: 24, tintColor: .blue)
         #expect(image?.size == size)
     }
 
-    @Test("without backgroundColor produces image")
-    func noBackground() {
+    @Test
+    func `without backgroundColor produces image`() {
         let image = LMKImageUtil.makeSymbolImage("checkmark", size: CGSize(width: 32, height: 32), symbolPointSize: 16, tintColor: .green, backgroundColor: nil)
         #expect(image != nil)
     }
 
-    @Test("with backgroundColor produces image")
-    func withBackground() {
+    @Test
+    func `with backgroundColor produces image`() {
         let image = LMKImageUtil.makeSymbolImage("checkmark", size: CGSize(width: 32, height: 32), symbolPointSize: 16, tintColor: .white, backgroundColor: .blue)
         #expect(image != nil)
     }

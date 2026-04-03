@@ -9,35 +9,34 @@ import UIKit
 
 // MARK: - LMKOverscrollFooterHelper
 
-@Suite("LMKOverscrollFooterHelper")
 @MainActor
 struct LMKOverscrollFooterHelperTests {
-    @Test("Initial overscrollAmount is 0")
-    func initialOverscrollAmount() {
+    @Test
+    func `Initial overscrollAmount is 0`() {
         let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 320, height: 480))
         let footer = UIView()
         let helper = LMKOverscrollFooterHelper(footerView: footer, scrollView: scrollView, footerHeight: 160)
         #expect(helper.overscrollAmount == 0)
     }
 
-    @Test("Initial overscrollProgress is 0")
-    func initialOverscrollProgress() {
+    @Test
+    func `Initial overscrollProgress is 0`() {
         let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 320, height: 480))
         let footer = UIView()
         let helper = LMKOverscrollFooterHelper(footerView: footer, scrollView: scrollView, footerHeight: 160)
         #expect(helper.overscrollProgress == 0)
     }
 
-    @Test("Footer view is added to scroll view")
-    func footerAddedToScrollView() {
+    @Test
+    func `Footer view is added to scroll view`() {
         let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 320, height: 480))
         let footer = UIView()
         _ = LMKOverscrollFooterHelper(footerView: footer, scrollView: scrollView, footerHeight: 160)
         #expect(footer.superview === scrollView)
     }
 
-    @Test("updatePosition sets footer frame when content exists")
-    func updatePositionSetsFrame() {
+    @Test
+    func `updatePosition sets footer frame when content exists`() {
         let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 320, height: 480))
         scrollView.contentSize = CGSize(width: 320, height: 1000)
         let footer = UIView()
@@ -50,8 +49,8 @@ struct LMKOverscrollFooterHelperTests {
         #expect(footer.frame.height == 160)
     }
 
-    @Test("updatePosition uses bounds height when content is shorter")
-    func updatePositionShortContent() {
+    @Test
+    func `updatePosition uses bounds height when content is shorter`() {
         let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 320, height: 480))
         scrollView.contentSize = CGSize(width: 320, height: 200)
         let footer = UIView()
@@ -63,8 +62,8 @@ struct LMKOverscrollFooterHelperTests {
         #expect(footer.frame.origin.y == 480)
     }
 
-    @Test("overscrollAmount calculated on overscroll")
-    func overscrollAmountCalculated() {
+    @Test
+    func `overscrollAmount calculated on overscroll`() {
         let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 320, height: 480))
         scrollView.contentSize = CGSize(width: 320, height: 1000)
         let footer = UIView()
@@ -78,8 +77,8 @@ struct LMKOverscrollFooterHelperTests {
         #expect(helper.overscrollAmount == 80)
     }
 
-    @Test("overscrollAmount is 0 when not overscrolling")
-    func overscrollAmountZeroWhenNotOverscrolling() {
+    @Test
+    func `overscrollAmount is 0 when not overscrolling`() {
         let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 320, height: 480))
         scrollView.contentSize = CGSize(width: 320, height: 1000)
         let footer = UIView()
@@ -92,8 +91,8 @@ struct LMKOverscrollFooterHelperTests {
         #expect(helper.overscrollAmount == 0)
     }
 
-    @Test("overscrollProgress is normalized 0-1")
-    func overscrollProgressNormalized() {
+    @Test
+    func `overscrollProgress is normalized 0-1`() {
         let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 320, height: 480))
         scrollView.contentSize = CGSize(width: 320, height: 1000)
         let footer = UIView()
@@ -105,8 +104,8 @@ struct LMKOverscrollFooterHelperTests {
         #expect(helper.overscrollProgress == 0.5)
     }
 
-    @Test("overscrollProgress capped at 1.0")
-    func overscrollProgressCapped() {
+    @Test
+    func `overscrollProgress capped at 1.0`() {
         let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 320, height: 480))
         scrollView.contentSize = CGSize(width: 320, height: 1000)
         let footer = UIView()
@@ -118,8 +117,8 @@ struct LMKOverscrollFooterHelperTests {
         #expect(helper.overscrollProgress == 1.0)
     }
 
-    @Test("overscrollProgress returns 0 when footerHeight is 0")
-    func overscrollProgressZeroHeight() {
+    @Test
+    func `overscrollProgress returns 0 when footerHeight is 0`() {
         let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 320, height: 480))
         scrollView.contentSize = CGSize(width: 320, height: 1000)
         let footer = UIView()
@@ -127,8 +126,8 @@ struct LMKOverscrollFooterHelperTests {
         #expect(helper.overscrollProgress == 0)
     }
 
-    @Test("updatePosition no-op when contentSize is zero")
-    func updatePositionNoOpZeroContent() {
+    @Test
+    func `updatePosition no-op when contentSize is zero`() {
         let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 320, height: 480))
         scrollView.contentSize = .zero
         let footer = UIView()

@@ -9,11 +9,10 @@ import UIKit
 
 // MARK: - UIViewController+LMKPopover
 
-@Suite("UIViewController+LMKPopover")
 @MainActor
 struct UIViewControllerPopoverTests {
-    @Test("lmk_centeredPopoverSourceRect returns center of view bounds")
-    func centeredPopoverSourceRect() {
+    @Test
+    func `lmk_centeredPopoverSourceRect returns center of view bounds`() {
         let vc = UIViewController()
         vc.view.frame = CGRect(x: 0, y: 0, width: 400, height: 600)
 
@@ -24,8 +23,8 @@ struct UIViewControllerPopoverTests {
         #expect(rect.height == 0)
     }
 
-    @Test("lmk_configurePopoverForActionSheet configures popover source")
-    func configurePopoverForActionSheet() {
+    @Test
+    func `lmk_configurePopoverForActionSheet configures popover source`() {
         let vc = UIViewController()
         vc.view.frame = CGRect(x: 0, y: 0, width: 400, height: 600)
         let alert = UIAlertController(title: "Test", message: nil, preferredStyle: .actionSheet)
@@ -40,8 +39,8 @@ struct UIViewControllerPopoverTests {
         }
     }
 
-    @Test("lmk_configurePopoverForActionSheet no-op for alert style")
-    func configurePopoverNoOpForAlert() {
+    @Test
+    func `lmk_configurePopoverForActionSheet no-op for alert style`() {
         let vc = UIViewController()
         let alert = UIAlertController(title: "Test", message: nil, preferredStyle: .alert)
 

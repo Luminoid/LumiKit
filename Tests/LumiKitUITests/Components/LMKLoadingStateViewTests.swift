@@ -9,40 +9,39 @@ import UIKit
 
 // MARK: - LMKLoadingStateView
 
-@Suite("LMKLoadingStateView")
 @MainActor
 struct LMKLoadingStateViewTests {
-    @Test("startLoading shows view and sets accessibility")
-    func startLoading() {
+    @Test
+    func `startLoading shows view and sets accessibility`() {
         let view = LMKLoadingStateView()
         view.startLoading(message: "Loading plants...")
         #expect(!view.isHidden)
         #expect(view.accessibilityLabel == "Loading plants...")
     }
 
-    @Test("stopLoading hides view")
-    func stopLoading() {
+    @Test
+    func `stopLoading hides view`() {
         let view = LMKLoadingStateView()
         view.startLoading(message: "Loading")
         view.stopLoading()
         #expect(view.isHidden)
     }
 
-    @Test("updateMessage sets label text and accessibility")
-    func updateMessage() {
+    @Test
+    func `updateMessage sets label text and accessibility`() {
         let view = LMKLoadingStateView()
         view.updateMessage("Step 2 of 3")
         #expect(view.accessibilityLabel == "Step 2 of 3")
     }
 
-    @Test("Accessibility traits include updatesFrequently")
-    func accessibilityTraits() {
+    @Test
+    func `Accessibility traits include updatesFrequently`() {
         let view = LMKLoadingStateView()
         #expect(view.accessibilityTraits.contains(.updatesFrequently))
     }
 
-    @Test("Overlay style has non-clear background")
-    func overlayStyle() {
+    @Test
+    func `Overlay style has non-clear background`() {
         let view = LMKLoadingStateView(overlayStyle: true)
         #expect(view.backgroundColor != .clear)
     }

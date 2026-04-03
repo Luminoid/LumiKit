@@ -9,17 +9,16 @@ import UIKit
 
 // MARK: - Component Configuration
 
-@Suite("Component token usage")
 @MainActor
 struct ComponentTokenTests {
-    @Test("LMKToastView creates with correct type")
-    func toastViewCreation() {
+    @Test
+    func `LMKToastView creates with correct type`() {
         let toast = LMKToastView(type: .success, message: "Test")
         #expect(toast.superview == nil) // Not added to any view yet
     }
 
-    @Test("LMKEmptyStateView can be configured")
-    func emptyStateViewConfiguration() {
+    @Test
+    func `LMKEmptyStateView can be configured`() {
         let emptyState = LMKEmptyStateView()
         emptyState.configure(
             message: "No items found",
@@ -30,8 +29,8 @@ struct ComponentTokenTests {
         #expect(emptyState.frame.size == .zero) // Not laid out yet
     }
 
-    @Test("LMKButton handlers work")
-    func buttonHandlers() {
+    @Test
+    func `LMKButton handlers work`() {
         var tapped = false
         let button = LMKButton()
         button.didTapHandler = { _ in tapped = true }

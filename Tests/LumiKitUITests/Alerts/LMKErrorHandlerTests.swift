@@ -9,11 +9,10 @@ import UIKit
 
 // MARK: - LMKErrorHandler
 
-@Suite("LMKErrorHandler")
 @MainActor
 struct LMKErrorHandlerTests {
-    @Test("Default error handler strings are English")
-    func defaultStrings() {
+    @Test
+    func `Default error handler strings are English`() {
         let strings = LMKErrorHandler.Strings()
         #expect(strings.errorTitle == "Error")
         #expect(strings.retry == "Retry")
@@ -22,22 +21,22 @@ struct LMKErrorHandlerTests {
         #expect(strings.infoTitle == "Info")
     }
 
-    @Test("Custom error handler strings are preserved")
-    func customStrings() {
+    @Test
+    func `Custom error handler strings are preserved`() {
         let strings = LMKErrorHandler.Strings(errorTitle: "Oops", retry: "Again", ok: "Done")
         #expect(strings.errorTitle == "Oops")
         #expect(strings.retry == "Again")
         #expect(strings.ok == "Done")
     }
 
-    @Test("Severity enum has all expected cases")
-    func severityCases() {
+    @Test
+    func `Severity enum has all expected cases`() {
         let cases: [LMKErrorHandler.Severity] = [.info, .warning, .error, .critical]
         #expect(cases.count == 4)
     }
 
-    @Test("Static strings can be overridden")
-    func overrideStaticStrings() {
+    @Test
+    func `Static strings can be overridden`() {
         let original = LMKErrorHandler.strings
         defer { LMKErrorHandler.strings = original }
 

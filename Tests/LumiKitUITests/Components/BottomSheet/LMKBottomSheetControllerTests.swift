@@ -12,13 +12,12 @@ import UIKit
 
 // MARK: - LMKBottomSheetController
 
-@Suite("LMKBottomSheetController")
 @MainActor
 struct LMKBottomSheetControllerTests {
     // MARK: - Initialization
 
-    @Test("Default cancel title uses LMKAlertPresenter string")
-    func defaultCancelTitle() {
+    @Test
+    func `Default cancel title uses LMKAlertPresenter string`() {
         let original = LMKAlertPresenter.strings
         defer { LMKAlertPresenter.strings = original }
 
@@ -29,8 +28,8 @@ struct LMKBottomSheetControllerTests {
         #expect(sheet.cancelButton.title(for: .normal) == "Cancelar")
     }
 
-    @Test("Custom cancel title is applied")
-    func customCancelTitle() {
+    @Test
+    func `Custom cancel title is applied`() {
         let sheet = TestBottomSheet(cancelTitle: "Close")
         sheet.loadViewIfNeeded()
 
@@ -39,8 +38,8 @@ struct LMKBottomSheetControllerTests {
 
     // MARK: - View Hierarchy
 
-    @Test("Container view has rounded top corners")
-    func containerCornerRadius() {
+    @Test
+    func `Container view has rounded top corners`() {
         let sheet = TestBottomSheet()
         sheet.loadViewIfNeeded()
 
@@ -48,16 +47,16 @@ struct LMKBottomSheetControllerTests {
         #expect(sheet.containerView.layer.maskedCorners == [.layerMinXMinYCorner, .layerMaxXMinYCorner])
     }
 
-    @Test("Dimming view starts hidden")
-    func dimmingViewStartsHidden() {
+    @Test
+    func `Dimming view starts hidden`() {
         let sheet = TestBottomSheet()
         sheet.loadViewIfNeeded()
 
         #expect(sheet.dimmingView.alpha == 0)
     }
 
-    @Test("Dimming view has tap gesture recognizer")
-    func dimmingViewHasTapGesture() {
+    @Test
+    func `Dimming view has tap gesture recognizer`() {
         let sheet = TestBottomSheet()
         sheet.loadViewIfNeeded()
 
@@ -65,16 +64,16 @@ struct LMKBottomSheetControllerTests {
         #expect(hasTap)
     }
 
-    @Test("Drag indicator has correct dimensions")
-    func dragIndicatorDimensions() {
+    @Test
+    func `Drag indicator has correct dimensions`() {
         let sheet = TestBottomSheet()
         sheet.loadViewIfNeeded()
 
         #expect(sheet.dragIndicator.layer.cornerRadius == LMKBottomSheetLayout.dragIndicatorCornerRadius)
     }
 
-    @Test("Cancel button has correct styling")
-    func cancelButtonStyling() {
+    @Test
+    func `Cancel button has correct styling`() {
         let sheet = TestBottomSheet()
         sheet.loadViewIfNeeded()
 
@@ -84,16 +83,16 @@ struct LMKBottomSheetControllerTests {
 
     // MARK: - Template Methods
 
-    @Test("setupSheetContent is called during viewDidLoad")
-    func setupSheetContentCalled() {
+    @Test
+    func `setupSheetContent is called during viewDidLoad`() {
         let sheet = TestBottomSheet()
         #expect(!sheet.setupSheetContentCalled)
         sheet.loadViewIfNeeded()
         #expect(sheet.setupSheetContentCalled)
     }
 
-    @Test("onDismissTapped is callable")
-    func onDismissTappedCallable() {
+    @Test
+    func `onDismissTapped is callable`() {
         let sheet = TestBottomSheet()
         sheet.loadViewIfNeeded()
         // Verify the method exists and is callable (dismiss animation is async)
@@ -102,8 +101,8 @@ struct LMKBottomSheetControllerTests {
 
     // MARK: - Static Convenience
 
-    @Test("addAsChild adds sheet as child VC")
-    func addAsChildAddsSheet() {
+    @Test
+    func `addAsChild adds sheet as child VC`() {
         let parent = UIViewController()
         let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 375, height: 812))
         window.rootViewController = parent
@@ -117,8 +116,8 @@ struct LMKBottomSheetControllerTests {
         #expect(sheet.view.superview === parent.view)
     }
 
-    @Test("addAsChild sets autoresizing mask")
-    func addAsChildSetsAutoresizing() {
+    @Test
+    func `addAsChild sets autoresizing mask`() {
         let parent = UIViewController()
         let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 375, height: 812))
         window.rootViewController = parent
@@ -133,8 +132,8 @@ struct LMKBottomSheetControllerTests {
 
     // MARK: - Max Height
 
-    @Test("computeMaxHeight returns positive value")
-    func computeMaxHeightPositive() {
+    @Test
+    func `computeMaxHeight returns positive value`() {
         let sheet = TestBottomSheet()
         sheet.loadViewIfNeeded()
         sheet.view.frame = CGRect(x: 0, y: 0, width: 375, height: 812)

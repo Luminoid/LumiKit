@@ -9,11 +9,10 @@ import UIKit
 
 // MARK: - LMKToggleButton
 
-@Suite("LMKToggleButton")
 @MainActor
 struct LMKToggleButtonTests {
-    @Test("accessibilityValue updates with status changes")
-    func accessibilityValueUpdates() {
+    @Test
+    func `accessibilityValue updates with status changes`() {
         let button = LMKToggleButton(titleForStatusOn: "On", titleForStatusOff: "Off")
         button.status = .off
         #expect(button.accessibilityValue == "Off")
@@ -21,8 +20,8 @@ struct LMKToggleButtonTests {
         #expect(button.accessibilityValue == "On")
     }
 
-    @Test("flipStatusOnTap toggles state on tap")
-    func flipStatusOnTap() {
+    @Test
+    func `flipStatusOnTap toggles state on tap`() {
         let button = LMKToggleButton()
         button.flipStatusOnTap = true
         button.status = .off
@@ -32,8 +31,8 @@ struct LMKToggleButtonTests {
         #expect(button.status == .off)
     }
 
-    @Test("flipStatusOnTap false prevents toggle")
-    func flipStatusDisabled() {
+    @Test
+    func `flipStatusOnTap false prevents toggle`() {
         let button = LMKToggleButton()
         button.flipStatusOnTap = false
         button.status = .off
@@ -41,8 +40,8 @@ struct LMKToggleButtonTests {
         #expect(button.status == .off)
     }
 
-    @Test("Title and image update with status")
-    func titleImageUpdate() {
+    @Test
+    func `Title and image update with status`() {
         let onImage = UIImage(systemName: "heart.fill")
         let offImage = UIImage(systemName: "heart")
         let button = LMKToggleButton(
@@ -60,18 +59,17 @@ struct LMKToggleButtonTests {
 
 // MARK: - LMKToggleButtonStrings
 
-@Suite("LMKToggleButtonStrings")
 @MainActor
 struct LMKToggleButtonStringsTests {
-    @Test("Default strings are English")
-    func defaultStrings() {
+    @Test
+    func `Default strings are English`() {
         let strings = LMKToggleButtonStrings()
         #expect(strings.onAccessibilityValue == "On")
         #expect(strings.offAccessibilityValue == "Off")
     }
 
-    @Test("Custom strings override accessibility values")
-    func customStringsOverride() {
+    @Test
+    func `Custom strings override accessibility values`() {
         let original = lmkToggleButtonStrings
         defer { lmkToggleButtonStrings = original }
 

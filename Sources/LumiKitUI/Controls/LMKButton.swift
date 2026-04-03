@@ -15,6 +15,10 @@ open class LMKButton: UIButton {
         case filled(UIColor)
         /// Clear background with colored border and text.
         case outlined(UIColor)
+        /// No background, no border — just colored text. For text links and lightweight actions.
+        case ghost(UIColor)
+        /// Circular icon-only button. No title, icon centered.
+        case iconOnly(UIColor)
     }
 
     /// Simple tap handler (no reference to button). Use for fire-and-forget actions.
@@ -78,6 +82,23 @@ open class LMKButton: UIButton {
 
     // MARK: - Styling
 
+    /// Whether the button is in a loading state. Shows an activity indicator and disables interaction.
+    public var isLoading: Bool = false {
+        didSet {
+            guard isLoading != oldValue else { return }
+            configuration?.showsActivityIndicator = isLoading
+            if isLoading {
+                savedTitle = configuration?.title
+                configuration?.title = nil
+            } else {
+                configuration?.title = savedTitle
+            }
+            isUserInteractionEnabled = !isLoading
+        }
+    }
+
+    private var savedTitle: String?
+
     /// Apply a visual style to the button.
     public func applyStyle(_ style: Style, title: String) {
         var config: UIButton.Configuration
@@ -86,22 +107,46 @@ open class LMKButton: UIButton {
             config = .filled()
             config.baseBackgroundColor = color
             config.baseForegroundColor = LMKColor.white
+            config.cornerStyle = .capsule
+            config.contentInsets = NSDirectionalEdgeInsets(
+                top: LMKSpacing.buttonPaddingVertical,
+                leading: LMKSpacing.buttonPaddingHorizontal,
+                bottom: LMKSpacing.buttonPaddingVertical,
+                trailing: LMKSpacing.buttonPaddingHorizontal
+            )
         case let .outlined(color):
             config = .plain()
             config.baseForegroundColor = color
             config.background.strokeColor = color
             config.background.strokeWidth = 1
+            config.cornerStyle = .capsule
+            config.contentInsets = NSDirectionalEdgeInsets(
+                top: LMKSpacing.buttonPaddingVertical,
+                leading: LMKSpacing.buttonPaddingHorizontal,
+                bottom: LMKSpacing.buttonPaddingVertical,
+                trailing: LMKSpacing.buttonPaddingHorizontal
+            )
+        case let .ghost(color):
+            config = .plain()
+            config.baseForegroundColor = color
+            config.contentInsets = NSDirectionalEdgeInsets(
+                top: LMKSpacing.xs,
+                leading: LMKSpacing.small,
+                bottom: LMKSpacing.xs,
+                trailing: LMKSpacing.small
+            )
+        case let .iconOnly(color):
+            config = .plain()
+            config.baseForegroundColor = color
+            config.contentInsets = NSDirectionalEdgeInsets(
+                top: LMKSpacing.small,
+                leading: LMKSpacing.small,
+                bottom: LMKSpacing.small,
+                trailing: LMKSpacing.small
+            )
         }
 
         config.title = title
-        config.cornerStyle = .fixed
-        config.background.cornerRadius = LMKCornerRadius.small
-        config.contentInsets = NSDirectionalEdgeInsets(
-            top: LMKSpacing.buttonPaddingVertical,
-            leading: LMKSpacing.buttonPaddingHorizontal,
-            bottom: LMKSpacing.buttonPaddingVertical,
-            trailing: LMKSpacing.buttonPaddingHorizontal
-        )
         config.titleTextAttributesTransformer = UIConfigurationTextAttributesTransformer { incoming in
             var outgoing = incoming
             outgoing.font = LMKTypography.bodyMedium
@@ -110,6 +155,16 @@ open class LMKButton: UIButton {
 
         configuration = config
         pressAnimationEnabled = true
+    }
+
+    /// Apply a style with an icon instead of title.
+    public func applyIconStyle(_ style: Style, iconName: String, pointSize: CGFloat = 16, weight: UIImage.SymbolWeight = .medium) {
+        let symbolConfig = UIImage.SymbolConfiguration(pointSize: pointSize, weight: weight)
+        let image = UIImage(systemName: iconName, withConfiguration: symbolConfig)
+
+        applyStyle(style, title: "")
+        configuration?.title = nil
+        configuration?.image = image
     }
 
     /// Constrain the title to a single line that shrinks to fit the available width.

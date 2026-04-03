@@ -9,30 +9,29 @@ import UIKit
 
 // MARK: - LMKCardFactory
 
-@Suite("LMKCardFactory")
 @MainActor
 struct LMKCardFactoryTests {
-    @Test("cardView has secondary background color")
-    func cardBackground() {
+    @Test
+    func `cardView has secondary background color`() {
         let card = LMKCardFactory.cardView()
         #expect(card.backgroundColor == LMKColor.backgroundSecondary)
     }
 
-    @Test("cardView has medium corner radius")
-    func cardCornerRadius() {
+    @Test
+    func `cardView has medium corner radius`() {
         let card = LMKCardFactory.cardView()
         #expect(card.layer.cornerRadius == LMKCornerRadius.medium)
     }
 
-    @Test("cardView has shadow applied")
-    func cardShadow() {
+    @Test
+    func `cardView has shadow applied`() {
         let card = LMKCardFactory.cardView()
         #expect(card.layer.shadowOpacity > 0)
         #expect(!card.layer.masksToBounds)
     }
 
-    @Test("cardView shadow matches cellCard configuration")
-    func cardShadowMatchesCellCard() {
+    @Test
+    func `cardView shadow matches cellCard configuration`() {
         let card = LMKCardFactory.cardView()
         let expected = LMKShadow.cellCard()
         #expect(card.layer.shadowColor == expected.color.cgColor)

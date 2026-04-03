@@ -9,18 +9,17 @@ import UIKit
 
 // MARK: - LMKAlpha
 
-@Suite("LMKAlpha")
 @MainActor
 struct LMKAlphaTests {
-    @Test("Alpha values are between 0 and 1")
-    func alphaRange() {
+    @Test
+    func `Alpha values are between 0 and 1`() {
         #expect(LMKAlpha.overlay > 0 && LMKAlpha.overlay <= 1)
         #expect(LMKAlpha.overlayStrong > 0 && LMKAlpha.overlayStrong <= 1)
         #expect(LMKAlpha.overlayOpaque > 0 && LMKAlpha.overlayOpaque <= 1)
     }
 
-    @Test("Alpha values are ordered by intensity")
-    func alphaOrdered() {
+    @Test
+    func `Alpha values are ordered by intensity`() {
         #expect(LMKAlpha.overlay < LMKAlpha.overlayStrong)
         #expect(LMKAlpha.overlayStrong < LMKAlpha.overlayOpaque)
     }
@@ -28,11 +27,10 @@ struct LMKAlphaTests {
 
 // MARK: - LMKAlphaTheme
 
-@Suite("LMKAlphaTheme")
 @MainActor
 struct LMKAlphaConfigurationTests {
-    @Test("Default alpha matches original values")
-    func defaultAlpha() {
+    @Test
+    func `Default alpha matches original values`() {
         let config = LMKAlphaTheme()
         #expect(config.overlay == 0.5)
         #expect(config.dimmingOverlay == 0.4)
@@ -42,8 +40,8 @@ struct LMKAlphaConfigurationTests {
         #expect(config.overlayOpaque == 0.8)
     }
 
-    @Test("Custom alpha is applied via proxy")
-    func customAlpha() {
+    @Test
+    func `Custom alpha is applied via proxy`() {
         let original = LMKThemeManager.shared.alpha
         defer { LMKThemeManager.shared.apply(alpha: original) }
 

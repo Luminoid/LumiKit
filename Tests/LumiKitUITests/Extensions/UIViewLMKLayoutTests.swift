@@ -9,18 +9,17 @@ import UIKit
 
 // MARK: - UIView+LMKLayout
 
-@Suite("UIView+LMKLayout")
 @MainActor
 struct UIViewLMKLayoutTests {
-    @Test("lmk_safeAreaSnp returns non-nil DSL")
-    func safeAreaSnpAccessor() {
+    @Test
+    func `lmk_safeAreaSnp returns non-nil DSL`() {
         let view = UIView()
         // Accessing the property should not crash and returns a valid DSL
         _ = view.lmk_safeAreaSnp
     }
 
-    @Test("lmk_setEdgesEqualToSuperview adds constraints")
-    func edgesEqualToSuperview() {
+    @Test
+    func `lmk_setEdgesEqualToSuperview adds constraints`() {
         let parent = UIView(frame: CGRect(x: 0, y: 0, width: 200, height: 200))
         let child = UIView()
         parent.addSubview(child)
@@ -29,15 +28,15 @@ struct UIViewLMKLayoutTests {
         #expect(child.frame == parent.bounds)
     }
 
-    @Test("lmk_setEdgesEqualToSuperview is no-op without superview")
-    func edgesEqualToSuperviewNoSuperview() {
+    @Test
+    func `lmk_setEdgesEqualToSuperview is no-op without superview`() {
         let child = UIView()
         // Should not crash when called without a superview
         child.lmk_setEdgesEqualToSuperview()
     }
 
-    @Test("lmk_centerInSuperview centers child in parent")
-    func centerInSuperview() {
+    @Test
+    func `lmk_centerInSuperview centers child in parent`() {
         let parent = UIView(frame: CGRect(x: 0, y: 0, width: 200, height: 200))
         let child = UIView()
         parent.addSubview(child)
@@ -48,15 +47,15 @@ struct UIViewLMKLayoutTests {
         #expect(child.center.y == parent.bounds.midY)
     }
 
-    @Test("lmk_centerInSuperview is no-op without superview")
-    func centerInSuperviewNoSuperview() {
+    @Test
+    func `lmk_centerInSuperview is no-op without superview`() {
         let child = UIView()
         // Should not crash when called without a superview
         child.lmk_centerInSuperview()
     }
 
-    @Test("lmk_setAutoLayoutSize sets fixed width and height")
-    func autoLayoutSize() {
+    @Test
+    func `lmk_setAutoLayoutSize sets fixed width and height`() {
         let parent = UIView(frame: CGRect(x: 0, y: 0, width: 300, height: 300))
         let child = UIView()
         parent.addSubview(child)

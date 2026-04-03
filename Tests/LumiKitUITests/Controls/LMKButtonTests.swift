@@ -9,11 +9,10 @@ import UIKit
 
 // MARK: - LMKButton
 
-@Suite("LMKButton")
 @MainActor
 struct LMKButtonTests {
-    @Test("tapHandler is called on didTap")
-    func tapHandlerCalled() {
+    @Test
+    func `tapHandler is called on didTap`() {
         let button = LMKButton()
         var called = false
         button.tapHandler = { called = true }
@@ -21,8 +20,8 @@ struct LMKButtonTests {
         #expect(called)
     }
 
-    @Test("didTapHandler receives button instance")
-    func didTapHandlerReceivesButton() {
+    @Test
+    func `didTapHandler receives button instance`() {
         let button = LMKButton()
         var received: LMKButton?
         button.didTapHandler = { received = $0 }
@@ -30,8 +29,8 @@ struct LMKButtonTests {
         #expect(received === button)
     }
 
-    @Test("Both handlers fire on single tap")
-    func bothHandlersFire() {
+    @Test
+    func `Both handlers fire on single tap`() {
         let button = LMKButton()
         var tapCalled = false
         var didTapCalled = false
@@ -42,23 +41,64 @@ struct LMKButtonTests {
         #expect(didTapCalled)
     }
 
-    @Test("pressAnimationEnabled defaults to false")
-    func pressAnimationDefaultsFalse() {
+    @Test
+    func `pressAnimationEnabled defaults to false`() {
         let button = LMKButton()
         #expect(!button.pressAnimationEnabled)
     }
 
-    @Test("imageContentMode defaults to scaleAspectFit")
-    func imageContentModeDefault() {
+    @Test
+    func `imageContentMode defaults to scaleAspectFit`() {
         let button = LMKButton()
         #expect(button.imageContentMode == .scaleAspectFit)
     }
 
-    @Test("No crash when tapHandler is nil")
-    func nilHandlerNoCrash() {
+    @Test
+    func `No crash when tapHandler is nil`() {
         let button = LMKButton()
         button.tapHandler = nil
         button.didTapHandler = nil
         button.didTap()
+    }
+
+    // MARK: - Style Tests
+
+    @Test
+    func `Ghost style applies correctly`() {
+        let button = LMKButton(title: "Link", style: .ghost(.red))
+        #expect(button.configuration != nil)
+        #expect(button.pressAnimationEnabled)
+    }
+
+    @Test
+    func `IconOnly style applies correctly`() {
+        let button = LMKButton(frame: .zero)
+        button.applyIconStyle(.iconOnly(.blue), iconName: "chevron.left")
+        #expect(button.configuration?.image != nil)
+        #expect(button.configuration?.title == nil)
+    }
+
+    @Test
+    func `Filled style uses capsule corners`() {
+        let button = LMKButton(title: "Save", style: .filled(.red))
+        #expect(button.configuration?.cornerStyle == .capsule)
+    }
+
+    @Test
+    func `Loading state shows activity indicator`() {
+        let button = LMKButton(title: "Save", style: .filled(.red))
+        button.isLoading = true
+        #expect(button.configuration?.showsActivityIndicator == true)
+        #expect(button.configuration?.title == nil)
+        #expect(button.isUserInteractionEnabled == false)
+    }
+
+    @Test
+    func `Loading state restores title when done`() {
+        let button = LMKButton(title: "Save", style: .filled(.red))
+        button.isLoading = true
+        button.isLoading = false
+        #expect(button.configuration?.title == "Save")
+        #expect(button.isUserInteractionEnabled == true)
     }
 }

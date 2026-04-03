@@ -12,13 +12,12 @@ import UIKit
 
 // MARK: - LMKActionSheet
 
-@Suite("LMKActionSheet")
 @MainActor
 struct LMKActionSheetTests {
     // MARK: - Action Struct
 
-    @Test("Action default style has correct properties")
-    func actionDefaultStyle() {
+    @Test
+    func `Action default style has correct properties`() {
         let action = LMKActionSheet.Action(title: "Edit") {}
         #expect(action.title == "Edit")
         #expect(action.style == .default)
@@ -26,49 +25,49 @@ struct LMKActionSheetTests {
         #expect(action.page == nil)
     }
 
-    @Test("Action destructive style")
-    func actionDestructiveStyle() {
+    @Test
+    func `Action destructive style`() {
         let action = LMKActionSheet.Action(title: "Delete", style: .destructive) {}
         #expect(action.title == "Delete")
         #expect(action.style == .destructive)
     }
 
-    @Test("Action with icon preserves image")
-    func actionWithIcon() {
+    @Test
+    func `Action with icon preserves image`() {
         let icon = UIImage(systemName: "trash")
         let action = LMKActionSheet.Action(title: "Delete", icon: icon) {}
         #expect(action.icon != nil)
     }
 
-    @Test("ActionStyle default and destructive are distinct")
-    func actionStyleDistinct() {
+    @Test
+    func `ActionStyle default and destructive are distinct`() {
         #expect(LMKActionSheet.ActionStyle.default != .destructive)
     }
 
-    @Test("Action with subtitle preserves subtitle")
-    func actionWithSubtitle() {
+    @Test
+    func `Action with subtitle preserves subtitle`() {
         let action = LMKActionSheet.Action(title: "Test", subtitle: "Detail") {}
         #expect(action.subtitle == "Detail")
     }
 
     // MARK: - Action Navigation Init
 
-    @Test("Action with page has non-nil page")
-    func actionWithPage() {
+    @Test
+    func `Action with page has non-nil page`() {
         let page = LMKActionSheet.Page(title: "Sub Page")
         let action = LMKActionSheet.Action(title: "Navigate", page: page)
         #expect(action.page != nil)
         #expect(action.page?.title == "Sub Page")
     }
 
-    @Test("Action without page has nil page")
-    func actionWithoutPage() {
+    @Test
+    func `Action without page has nil page`() {
         let action = LMKActionSheet.Action(title: "Regular") {}
         #expect(action.page == nil)
     }
 
-    @Test("Navigation action preserves style and icon")
-    func navigationActionPreservesProperties() {
+    @Test
+    func `Navigation action preserves style and icon`() {
         let icon = UIImage(systemName: "tag")
         let page = LMKActionSheet.Page(title: "Categories")
         let action = LMKActionSheet.Action(title: "Edit", style: .default, icon: icon, page: page)
@@ -80,8 +79,8 @@ struct LMKActionSheetTests {
 
     // MARK: - Page Struct
 
-    @Test("Page with all properties")
-    func pageWithAllProperties() {
+    @Test
+    func `Page with all properties`() {
         let contentView = UIView()
         let page = LMKActionSheet.Page(
             title: "Title",
@@ -101,8 +100,8 @@ struct LMKActionSheetTests {
         #expect(page.onConfirm != nil)
     }
 
-    @Test("Page with defaults only")
-    func pageWithDefaults() {
+    @Test
+    func `Page with defaults only`() {
         let page = LMKActionSheet.Page()
         #expect(page.title == nil)
         #expect(page.message == nil)
@@ -113,8 +112,8 @@ struct LMKActionSheetTests {
         #expect(page.onConfirm == nil)
     }
 
-    @Test("Page with content view and confirm")
-    func pageWithContentAndConfirm() {
+    @Test
+    func `Page with content view and confirm`() {
         let picker = UIDatePicker()
         let page = LMKActionSheet.Page(
             title: "Select Date",
@@ -129,8 +128,8 @@ struct LMKActionSheetTests {
 
     // MARK: - Initialization
 
-    @Test("Init with title and actions")
-    func initWithTitle() {
+    @Test
+    func `Init with title and actions`() {
         let sheet = LMKActionSheet(
             title: "Actions",
             actions: [.init(title: "OK") {}]
@@ -139,8 +138,8 @@ struct LMKActionSheetTests {
         #expect(sheet.view != nil)
     }
 
-    @Test("Init with title and message")
-    func initWithTitleAndMessage() {
+    @Test
+    func `Init with title and message`() {
         let sheet = LMKActionSheet(
             title: "Actions",
             message: "Choose an action",
@@ -150,8 +149,8 @@ struct LMKActionSheetTests {
         #expect(sheet.view != nil)
     }
 
-    @Test("Init with custom content view")
-    func initWithContentView() {
+    @Test
+    func `Init with custom content view`() {
         let picker = UIDatePicker()
         let sheet = LMKActionSheet(
             title: "Select Date",
@@ -163,8 +162,8 @@ struct LMKActionSheetTests {
         #expect(sheet.view != nil)
     }
 
-    @Test("Init without title or message")
-    func initWithoutTitleOrMessage() {
+    @Test
+    func `Init without title or message`() {
         let sheet = LMKActionSheet(
             actions: [.init(title: "Option 1") {}]
         )
@@ -172,15 +171,15 @@ struct LMKActionSheetTests {
         #expect(sheet.view != nil)
     }
 
-    @Test("Init with empty actions array")
-    func initWithEmptyActions() {
+    @Test
+    func `Init with empty actions array`() {
         let sheet = LMKActionSheet(title: "Empty", actions: [])
         sheet.loadViewIfNeeded()
         #expect(sheet.view != nil)
     }
 
-    @Test("Init with navigation actions")
-    func initWithNavigationActions() {
+    @Test
+    func `Init with navigation actions`() {
         let subPage = LMKActionSheet.Page(
             title: "Sub",
             actions: [.init(title: "Item") {}]
@@ -198,8 +197,8 @@ struct LMKActionSheetTests {
 
     // MARK: - View Hierarchy
 
-    @Test("Container view has top corners rounded")
-    func containerCornerRadius() {
+    @Test
+    func `Container view has top corners rounded`() {
         let sheet = LMKActionSheet(title: "Test", actions: [.init(title: "OK") {}])
         sheet.loadViewIfNeeded()
 
@@ -208,8 +207,8 @@ struct LMKActionSheetTests {
         #expect(container?.layer.maskedCorners == [.layerMinXMinYCorner, .layerMaxXMinYCorner])
     }
 
-    @Test("Dimming view covers full area")
-    func dimmingViewLayout() {
+    @Test
+    func `Dimming view covers full area`() {
         let sheet = LMKActionSheet(title: "Test", actions: [.init(title: "OK") {}])
         sheet.loadViewIfNeeded()
         sheet.view.frame = CGRect(x: 0, y: 0, width: 375, height: 812)
@@ -221,8 +220,8 @@ struct LMKActionSheetTests {
         #expect(dimming != nil)
     }
 
-    @Test("Cancel button uses LMKAlertPresenter cancel string")
-    func cancelButtonTitle() {
+    @Test
+    func `Cancel button uses LMKAlertPresenter cancel string`() {
         let original = LMKAlertPresenter.strings
         defer { LMKAlertPresenter.strings = original }
 
@@ -236,8 +235,8 @@ struct LMKActionSheetTests {
 
     // MARK: - Multiple Actions
 
-    @Test("Multiple actions create correct number of rows")
-    func multipleActionRows() {
+    @Test
+    func `Multiple actions create correct number of rows`() {
         let sheet = LMKActionSheet(
             title: "Actions",
             actions: [
@@ -255,8 +254,8 @@ struct LMKActionSheetTests {
 
     // MARK: - Static Presentation
 
-    @Test("Static present adds sheet as child VC")
-    func staticPresentAddsChild() {
+    @Test
+    func `Static present adds sheet as child VC`() {
         let parent = UIViewController()
         let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 375, height: 812))
         window.rootViewController = parent
@@ -272,8 +271,8 @@ struct LMKActionSheetTests {
         #expect(parent.children.first is LMKActionSheet)
     }
 
-    @Test("Static present with content view adds sheet as child VC")
-    func staticPresentWithContentView() {
+    @Test
+    func `Static present with content view adds sheet as child VC`() {
         let parent = UIViewController()
         let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 375, height: 812))
         window.rootViewController = parent
@@ -294,8 +293,8 @@ struct LMKActionSheetTests {
 
     // MARK: - Action Handler
 
-    @Test("Action handler is called")
-    func actionHandlerCalled() {
+    @Test
+    func `Action handler is called`() {
         var handlerCalled = false
         let action = LMKActionSheet.Action(title: "Tap Me") {
             handlerCalled = true
@@ -306,16 +305,16 @@ struct LMKActionSheetTests {
 
     // MARK: - Configurable Strings
 
-    @Test("Default back string is Back")
-    func defaultBackString() {
+    @Test
+    func `Default back string is Back`() {
         let original = LMKActionSheet.strings
         defer { LMKActionSheet.strings = original }
 
         #expect(LMKActionSheet.strings.back == "Back")
     }
 
-    @Test("Custom back string is used")
-    func customBackString() {
+    @Test
+    func `Custom back string is used`() {
         let original = LMKActionSheet.strings
         defer { LMKActionSheet.strings = original }
 
@@ -325,8 +324,8 @@ struct LMKActionSheetTests {
 
     // MARK: - Back Button
 
-    @Test("Back button is hidden on root page")
-    func backButtonHiddenAtRoot() {
+    @Test
+    func `Back button is hidden on root page`() {
         let sheet = LMKActionSheet(
             title: "Root",
             actions: [.init(title: "OK") {}]
@@ -340,8 +339,8 @@ struct LMKActionSheetTests {
 
     // MARK: - Chevron Indicator
 
-    @Test("Navigation action row shows chevron image view")
-    func navigationActionShowsChevron() throws {
+    @Test
+    func `Navigation action row shows chevron image view`() throws {
         let page = LMKActionSheet.Page(title: "Sub", actions: [.init(title: "Item") {}])
         let sheet = LMKActionSheet(
             title: "Root",
@@ -357,8 +356,8 @@ struct LMKActionSheetTests {
         #expect(chevron?.isHidden == false)
     }
 
-    @Test("Regular action row hides chevron")
-    func regularActionHidesChevron() throws {
+    @Test
+    func `Regular action row hides chevron`() throws {
         let sheet = LMKActionSheet(
             title: "Root",
             actions: [.init(title: "Regular") {}]
@@ -375,8 +374,8 @@ struct LMKActionSheetTests {
 
     // MARK: - Mixed Actions
 
-    @Test("Mixed navigation and regular actions have correct row count")
-    func mixedActionsCorrectRowCount() {
+    @Test
+    func `Mixed navigation and regular actions have correct row count`() {
         let page = LMKActionSheet.Page(title: "Sub")
         let sheet = LMKActionSheet(
             title: "Root",
@@ -395,8 +394,8 @@ struct LMKActionSheetTests {
 
     // MARK: - Page with Confirm Button
 
-    @Test("Sheet with confirm title shows confirm button")
-    func sheetWithConfirmShowsButton() {
+    @Test
+    func `Sheet with confirm title shows confirm button`() {
         let sheet = LMKActionSheet(
             title: "Test",
             actions: [.init(title: "Option") {}],
@@ -408,8 +407,8 @@ struct LMKActionSheetTests {
         #expect(confirmBtn != nil)
     }
 
-    @Test("Sheet without confirm title has no confirm button")
-    func sheetWithoutConfirmNoButton() {
+    @Test
+    func `Sheet without confirm title has no confirm button`() {
         let sheet = LMKActionSheet(
             title: "Test",
             actions: [.init(title: "Option") {}]

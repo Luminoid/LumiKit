@@ -9,11 +9,10 @@ import UIKit
 
 // MARK: - LMKBadgeTheme
 
-@Suite("LMKBadgeTheme")
 @MainActor
 struct LMKBadgeThemeTests {
-    @Test("Default badge theme values")
-    func defaultValues() {
+    @Test
+    func `Default badge theme values`() {
         let config = LMKBadgeTheme()
         #expect(config.minWidth == 18)
         #expect(config.height == 18)
@@ -21,8 +20,8 @@ struct LMKBadgeThemeTests {
         #expect(config.borderWidth == 1.5)
     }
 
-    @Test("Custom badge theme applied via ThemeManager")
-    func customTheme() {
+    @Test
+    func `Custom badge theme applied via ThemeManager`() {
         let original = LMKThemeManager.shared.badge
         defer { LMKThemeManager.shared.apply(badge: original) }
 

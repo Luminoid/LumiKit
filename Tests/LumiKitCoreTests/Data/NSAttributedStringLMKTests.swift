@@ -9,26 +9,25 @@ import Testing
 
 // MARK: - NSAttributedString+LMK
 
-@Suite("NSAttributedString+LMK")
 struct NSAttributedStringLMKTests {
-    @Test("Concatenation operator combines strings")
-    func concatenation() {
+    @Test
+    func `Concatenation operator combines strings`() {
         let a = NSAttributedString(string: "Hello ")
         let b = NSAttributedString(string: "World")
         let result = a + b
         #expect(result.string == "Hello World")
     }
 
-    @Test("lmk_append adds text")
-    func appendText() {
+    @Test
+    func `lmk_append adds text`() {
         let result = NSMutableAttributedString()
             .lmk_append("Hello ")
             .lmk_append("World")
         #expect(result.string == "Hello World")
     }
 
-    @Test("lmk_applyToAll applies across full range")
-    func applyToAll() {
+    @Test
+    func `lmk_applyToAll applies across full range`() {
         let key = NSAttributedString.Key("lmk.test")
         let result = NSMutableAttributedString(string: "Test")
             .lmk_applyToAll([key: 2.0])
@@ -38,8 +37,8 @@ struct NSAttributedStringLMKTests {
         #expect(range.length == 4)
     }
 
-    @Test("lmk_applyToAll on empty string does not crash")
-    func applyToAllEmpty() {
+    @Test
+    func `lmk_applyToAll on empty string does not crash`() {
         let key = NSAttributedString.Key("lmk.test")
         let result = NSMutableAttributedString()
             .lmk_applyToAll([key: 2.0])

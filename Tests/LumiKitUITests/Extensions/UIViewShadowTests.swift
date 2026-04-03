@@ -9,19 +9,18 @@ import UIKit
 
 // MARK: - UIView+LMKShadow
 
-@Suite("UIView+LMKShadow")
 @MainActor
 struct UIViewShadowTests {
-    @Test("lmk_applyShadow sets layer properties")
-    func applyShadow() {
+    @Test
+    func `lmk_applyShadow sets layer properties`() {
         let view = UIView()
         view.lmk_applyShadow(LMKShadow.card())
         #expect(view.layer.shadowOpacity > 0)
         #expect(!view.layer.masksToBounds)
     }
 
-    @Test("lmk_removeShadow zeros opacity")
-    func removeShadow() {
+    @Test
+    func `lmk_removeShadow zeros opacity`() {
         let view = UIView()
         view.lmk_applyShadow(LMKShadow.card())
         view.lmk_removeShadow()

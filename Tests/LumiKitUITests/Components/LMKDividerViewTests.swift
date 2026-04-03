@@ -9,33 +9,32 @@ import UIKit
 
 // MARK: - LMKDividerView
 
-@Suite("LMKDividerView")
 @MainActor
 struct LMKDividerViewTests {
-    @Test("Horizontal divider intrinsic size")
-    func horizontalIntrinsicSize() {
+    @Test
+    func `Horizontal divider intrinsic size`() {
         let divider = LMKDividerView(orientation: .horizontal)
         let size = divider.intrinsicContentSize
         #expect(size.height > 0)
         #expect(size.width == UIView.noIntrinsicMetric)
     }
 
-    @Test("Vertical divider intrinsic size")
-    func verticalIntrinsicSize() {
+    @Test
+    func `Vertical divider intrinsic size`() {
         let divider = LMKDividerView(orientation: .vertical)
         let size = divider.intrinsicContentSize
         #expect(size.width > 0)
         #expect(size.height == UIView.noIntrinsicMetric)
     }
 
-    @Test("Default color is LMKColor.divider")
-    func defaultColor() {
+    @Test
+    func `Default color is LMKColor.divider`() {
         let divider = LMKDividerView()
         #expect(divider.backgroundColor == LMKColor.divider)
     }
 
-    @Test("Custom color is applied")
-    func customColor() {
+    @Test
+    func `Custom color is applied`() {
         let divider = LMKDividerView(color: .red)
         #expect(divider.backgroundColor == .red)
     }

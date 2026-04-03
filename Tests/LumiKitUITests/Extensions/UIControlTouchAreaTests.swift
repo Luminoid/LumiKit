@@ -9,32 +9,31 @@ import UIKit
 
 // MARK: - UIControl+LMKTouchArea
 
-@Suite("UIControl+LMKTouchArea")
 @MainActor
 struct UIControlTouchAreaTests {
-    @Test("Default touchAreaEdgeInsets is zero")
-    func defaultInsets() {
+    @Test
+    func `Default touchAreaEdgeInsets is zero`() {
         let control = UIControl()
         #expect(control.lmk_touchAreaEdgeInsets == .zero)
     }
 
-    @Test("Setting touchAreaEdgeInsets persists value")
-    func setInsets() {
+    @Test
+    func `Setting touchAreaEdgeInsets persists value`() {
         let control = UIControl()
         let insets = UIEdgeInsets(top: -10, left: -10, bottom: -10, right: -10)
         control.lmk_touchAreaEdgeInsets = insets
         #expect(control.lmk_touchAreaEdgeInsets == insets)
     }
 
-    @Test("pointInside with zero insets uses default bounds")
-    func pointInsideZeroInsets() {
+    @Test
+    func `pointInside with zero insets uses default bounds`() {
         let control = UIControl(frame: CGRect(x: 0, y: 0, width: 44, height: 44))
         #expect(control.lmk_pointInside(CGPoint(x: 22, y: 22), with: nil))
         #expect(!control.lmk_pointInside(CGPoint(x: 50, y: 50), with: nil))
     }
 
-    @Test("pointInside with negative insets expands touch area")
-    func pointInsideExpandedArea() {
+    @Test
+    func `pointInside with negative insets expands touch area`() {
         let control = UIControl(frame: CGRect(x: 0, y: 0, width: 20, height: 20))
         control.lmk_touchAreaEdgeInsets = UIEdgeInsets(top: -10, left: -10, bottom: -10, right: -10)
 
@@ -45,8 +44,8 @@ struct UIControlTouchAreaTests {
         #expect(!control.lmk_pointInside(CGPoint(x: -15, y: -15), with: nil))
     }
 
-    @Test("pointInside with positive insets shrinks touch area")
-    func pointInsideShrunkArea() {
+    @Test
+    func `pointInside with positive insets shrinks touch area`() {
         let control = UIControl(frame: CGRect(x: 0, y: 0, width: 44, height: 44))
         control.lmk_touchAreaEdgeInsets = UIEdgeInsets(top: 10, left: 10, bottom: 10, right: 10)
 
@@ -56,8 +55,8 @@ struct UIControlTouchAreaTests {
         #expect(control.lmk_pointInside(CGPoint(x: 22, y: 22), with: nil))
     }
 
-    @Test("pointInside returns false when control is disabled")
-    func pointInsideDisabled() {
+    @Test
+    func `pointInside returns false when control is disabled`() {
         let control = UIControl(frame: CGRect(x: 0, y: 0, width: 44, height: 44))
         control.lmk_touchAreaEdgeInsets = UIEdgeInsets(top: -10, left: -10, bottom: -10, right: -10)
         control.isEnabled = false
@@ -68,8 +67,8 @@ struct UIControlTouchAreaTests {
         #expect(!control.lmk_pointInside(CGPoint(x: -5, y: -5), with: nil))
     }
 
-    @Test("pointInside returns false when control is hidden")
-    func pointInsideHidden() {
+    @Test
+    func `pointInside returns false when control is hidden`() {
         let control = UIControl(frame: CGRect(x: 0, y: 0, width: 44, height: 44))
         control.lmk_touchAreaEdgeInsets = UIEdgeInsets(top: -10, left: -10, bottom: -10, right: -10)
         control.isHidden = true
@@ -78,8 +77,8 @@ struct UIControlTouchAreaTests {
         #expect(!control.lmk_pointInside(CGPoint(x: -5, y: -5), with: nil))
     }
 
-    @Test("touchAreaEdgeInsets uses associated object storage")
-    func associatedObjectStorage() {
+    @Test
+    func `touchAreaEdgeInsets uses associated object storage`() {
         let control1 = UIControl()
         let control2 = UIControl()
 

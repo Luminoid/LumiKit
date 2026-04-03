@@ -48,10 +48,10 @@ LumiKit is organized into four targets so apps can import only what they need:
 | **LumiKitUI** | LumiKitCore + LumiKitNetwork + SnapKit | Design system tokens, theme manager, animation, haptics, alerts, components, controls, photo browser/crop, network debug UI (DEBUG), UIKit extensions |
 | **LumiKitLottie** | LumiKitUI + Lottie | Lottie-powered pull-to-refresh control |
 
-**100 source files** across 4 targets, with **686 tests** across 4 test targets:
+**102 source files** across 4 targets, with **709 tests** across 4 test targets:
 - **LumiKitCoreTests**: 76 tests (12 suites)
 - **LumiKitNetworkTests**: 61 tests (3 suites)
-- **LumiKitUITests**: 542 tests (94 suites)
+- **LumiKitUITests**: 565 tests (97 suites)
 - **LumiKitLottieTests**: 7 tests (1 suite)
 
 ---
@@ -130,11 +130,11 @@ xcodegen generate
 open LumiKitExample.xcodeproj
 ```
 
-The example includes **28 interactive pages** across 6 sections:
+The example includes **29 interactive pages** across 6 sections:
 
 - **Design System**: Typography, Colors, Markdown
 - **Components**: Cards, Badges, Chips, Banners, Empty State, Gradient, Loading State
-- **Controls**: Buttons, Segmented Control, Text Field, Text View, Search & Toggle
+- **Controls**: Buttons, Segmented Control, Text Field, Text View, Toggle & Search, Page Indicator
 - **Feedback**: Toast, Alerts & Errors, Progress, Haptics
 - **Overlays**: Action Sheet, Date Picker, Tip View, Card Page, Card Panel, Floating Button
 - **Media**: Photo Browser, Photo Crop, QR Code
@@ -170,13 +170,14 @@ LumiKit/
 │   │   │   ├── Pickers/       # LMKDatePickerHelper
 │   │   │   ├── LMKBadgeView, LMKBannerView, LMKCardView, LMKChipView,
 │   │   │   ├── LMKDividerView, LMKEmptyStateView, LMKFloatingButton,
-│   │   │   ├── LMKGradientView, LMKLoadingStateView, LMKProgressViewController,
-│   │   │   ├── LMKSearchBar, LMKSkeletonCell, LMKToastView, LMKTipView,
+│   │   │   ├── LMKGradientView, LMKLoadingStateView, LMKPageIndicator,
+│   │   │   ├── LMKProgressViewController, LMKSearchBar, LMKSkeletonCell,
+│   │   │   ├── LMKToastView, LMKTipView,
 │   │   │   ├── LMKCardPageController, LMKCardPageLayout,
 │   │   │   ├── LMKCardPanelController, LMKCardPanelLayout,
 │   │   │   ├── LMKNavigationDirection, LMKOverscrollFooterHelper,
 │   │   │   └── LMKScrollStackViewController
-│   │   ├── Controls/          # LMKButton, LMKSegmentedControl, LMKControlScrollView,
+│   │   ├── Controls/          # LMKButton, LMKSegmentedControl, LMKSwitch,
 │   │   │                      # LMKToggleButton, LMKTextField, LMKTextView
 │   │   ├── DesignSystem/
 │   │   │   ├── Tokens/        # LMKColor, LMKSpacing, LMKCornerRadius, LMKAlpha,
@@ -299,7 +300,7 @@ LMKThemeManager.shared.apply(spacing: .init(large: 20))
 
 | Factory | Purpose |
 |---------|---------|
-| `LMKButtonFactory` | Role-based button factory — `filled(role:)` and `outlined(role:)` with `LMKButtonRole` (primary, secondary, destructive, warning, success, info) |
+| `LMKButtonFactory` | Role-based button factory — `filled(role:)`, `outlined(role:)`, `ghost(role:)`, and `iconOnly(role:)` with `LMKButtonRole` (primary, secondary, destructive, warning, success, info) |
 | `LMKCardFactory` | Card views with shadow and corner radius |
 | `LMKLabelFactory` | Styled labels (title, subtitle, body, caption) |
 
@@ -333,6 +334,7 @@ LMKThemeManager.shared.apply(spacing: .init(large: 20))
 | `LMKCardPanelLayout` | Shared layout constants for card panel controllers (max width, insets, height ratio) |
 | `LMKScrollStackViewController` | Base class for scrollable vertical stack layout — configurable spacing, insets, keyboard dismiss, safe area. Subclasses override `setupStackContent()` |
 | `LMKNavigationDirection` | Shared navigation direction enum (`.forward`, `.backward`, `.none`) used by CardPageController and ActionSheet |
+| `LMKPageIndicator` | Custom page indicator replacing `UIPageControl`. Active dot expands into pill shape with spring animation. `numberOfPages`, `currentPage`, `pageChangedHandler` |
 | `LMKOverscrollFooterHelper` | Positions a footer view below scroll content, revealed only on overscroll |
 
 ---
@@ -341,9 +343,9 @@ LMKThemeManager.shared.apply(spacing: .init(large: 20))
 
 | Control | Purpose |
 |---------|---------|
-| `LMKButton` | Configurable button with tap handler and multiple styles |
-| `LMKSegmentedControl` | Segmented control with closure handlers and optional scroll support via `isScrollable` + `makeScrollableContainer()` |
-| `LMKControlScrollView` | Scroll view that cancels touch tracking on embedded controls — enables panning over segments |
+| `LMKButton` | Configurable button with tap handler, pill shape, and 4 styles: `.filled`, `.outlined`, `.ghost` (text-only), `.iconOnly` (circular icon). Supports `isLoading` state |
+| `LMKSegmentedControl` | Custom segmented control with sliding pill indicator, spring animation, and haptic feedback. Not a `UISegmentedControl` subclass |
+| `LMKSwitch` | Custom toggle switch replacing `UISwitch`. Rounded track with sliding thumb, spring animation, haptic feedback. `isOn`, `setOn(_:animated:)`, `valueChangedHandler` |
 | `LMKTextField` | Text field with validation states, helper text, leading icon |
 | `LMKTextView` | Multi-line text input with placeholder and character limit |
 | `LMKToggleButton` | Toggle button with on/off states |
@@ -598,6 +600,7 @@ LumiKitCore has no default isolation and is safe to use from any concurrency con
 | App | Description |
 |-----|-------------|
 | [Plantfolio Plus](https://luminoid.github.io/plantfolio-site) | Plant care, watering schedules, collections, and photos for iOS, iPadOS, and Mac |
+| Petfolio | Pet care, health tracking, vet visits, food inventory for iOS, iPadOS, and Mac |
 
 ---
 

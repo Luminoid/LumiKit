@@ -12,19 +12,18 @@
     import Testing
     @testable import LumiKitNetwork
 
-    @Suite("LMKNetworkLogger")
     struct LMKNetworkLoggerTests {
         // MARK: - Configuration
 
-        @Test("isConfigured returns true after configure()")
-        func isConfiguredAfterConfigure() {
+        @Test
+        func `isConfigured returns true after configure()`() {
             LMKNetworkLogger.configure(maxRecords: 50)
 
             #expect(LMKNetworkLogger.isConfigured)
         }
 
-        @Test("configure sets up internal store")
-        func configureCreatesStore() {
+        @Test
+        func `configure sets up internal store`() {
             LMKNetworkLogger.configure(maxRecords: 10)
 
             // Store is functional — count should be 0
@@ -32,16 +31,16 @@
             #expect(LMKNetworkLogger.records.isEmpty)
         }
 
-        @Test("configure with custom maxRecords")
-        func configureCustomMaxRecords() {
+        @Test
+        func `configure with custom maxRecords`() {
             LMKNetworkLogger.configure(maxRecords: 5)
 
             #expect(LMKNetworkLogger.isConfigured)
             #expect(LMKNetworkLogger.count == .zero)
         }
 
-        @Test("configure can be called multiple times")
-        func configureMultipleTimes() {
+        @Test
+        func `configure can be called multiple times`() {
             LMKNetworkLogger.configure(maxRecords: 10)
             LMKNetworkLogger.configure(maxRecords: 20)
 
@@ -51,8 +50,8 @@
 
         // MARK: - Enable / Disable
 
-        @Test("enable after configure does not crash")
-        func enableAfterConfigure() {
+        @Test
+        func `enable after configure does not crash`() {
             LMKNetworkLogger.configure(maxRecords: 50)
             LMKNetworkLogger.enable()
 
@@ -62,8 +61,8 @@
             LMKNetworkLogger.disable()
         }
 
-        @Test("disable after enable does not crash")
-        func disableAfterEnable() {
+        @Test
+        func `disable after enable does not crash`() {
             LMKNetworkLogger.configure(maxRecords: 50)
             LMKNetworkLogger.enable()
             LMKNetworkLogger.disable()
@@ -71,8 +70,8 @@
             #expect(LMKNetworkLogger.isConfigured)
         }
 
-        @Test("disable without enable does not crash")
-        func disableWithoutEnable() {
+        @Test
+        func `disable without enable does not crash`() {
             LMKNetworkLogger.configure(maxRecords: 50)
             LMKNetworkLogger.disable()
 
@@ -81,8 +80,8 @@
 
         // MARK: - Record Access
 
-        @Test("records returns empty array when no requests logged")
-        func recordsEmptyInitially() {
+        @Test
+        func `records returns empty array when no requests logged`() {
             LMKNetworkLogger.configure(maxRecords: 50)
             LMKNetworkLogger.clearRecords()
 
@@ -92,8 +91,8 @@
 
         // MARK: - Clear Records
 
-        @Test("clearRecords empties the store")
-        func clearRecordsEmpties() {
+        @Test
+        func `clearRecords empties the store`() {
             LMKNetworkLogger.configure(maxRecords: 50)
 
             // Pre-clear to ensure clean state
@@ -103,8 +102,8 @@
             #expect(LMKNetworkLogger.records.isEmpty)
         }
 
-        @Test("clearRecords is safe to call multiple times")
-        func clearRecordsMultipleTimes() {
+        @Test
+        func `clearRecords is safe to call multiple times`() {
             LMKNetworkLogger.configure(maxRecords: 50)
             LMKNetworkLogger.clearRecords()
             LMKNetworkLogger.clearRecords()
@@ -115,8 +114,8 @@
 
         // MARK: - State Transitions
 
-        @Test("Full lifecycle: configure → enable → disable")
-        func fullLifecycle() {
+        @Test
+        func `Full lifecycle: configure → enable → disable`() {
             // Configure
             LMKNetworkLogger.configure(maxRecords: 100)
             #expect(LMKNetworkLogger.isConfigured)
@@ -132,8 +131,8 @@
             #expect(LMKNetworkLogger.count == .zero)
         }
 
-        @Test("Reconfigure resets store")
-        func reconfigureResetsStore() {
+        @Test
+        func `Reconfigure resets store`() {
             LMKNetworkLogger.configure(maxRecords: 100)
             #expect(LMKNetworkLogger.isConfigured)
 
@@ -145,8 +144,8 @@
 
         // MARK: - Edge Cases
 
-        @Test("count returns 0 before configuration")
-        func countBeforeConfiguration() {
+        @Test
+        func `count returns 0 before configuration`() {
             // After other tests have configured, reconfigure to ensure clean state
             LMKNetworkLogger.configure(maxRecords: 50)
             LMKNetworkLogger.clearRecords()
@@ -154,8 +153,8 @@
             #expect(LMKNetworkLogger.count == .zero)
         }
 
-        @Test("records returns empty array before configuration")
-        func recordsBeforeConfiguration() {
+        @Test
+        func `records returns empty array before configuration`() {
             LMKNetworkLogger.configure(maxRecords: 50)
             LMKNetworkLogger.clearRecords()
 

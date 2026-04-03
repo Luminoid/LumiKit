@@ -9,11 +9,10 @@ import UIKit
 
 // MARK: - LMKColor
 
-@Suite("LMKColor")
 @MainActor
 struct LMKColorTests {
-    @Test("LMKColor proxies to active theme")
-    func colorProxiesToTheme() {
+    @Test
+    func `LMKColor proxies to active theme`() {
         LMKThemeManager.shared.apply(LMKDefaultTheme())
         #expect(LMKColor.primary == LMKThemeManager.shared.current.primary)
         #expect(LMKColor.error == LMKThemeManager.shared.current.error)
@@ -23,17 +22,16 @@ struct LMKColorTests {
 
 // MARK: - LMKColor proxy
 
-@Suite("LMKColor proxy")
 @MainActor
 struct LMKColorProxyTests {
-    @Test("imageBorder token resolves from theme")
-    func imageBorderToken() {
+    @Test
+    func `imageBorder token resolves from theme`() {
         let color = LMKColor.imageBorder
         #expect(color == LMKThemeManager.shared.current.imageBorder)
     }
 
-    @Test("photoBrowserBackground token resolves from theme")
-    func photoBrowserBackgroundToken() {
+    @Test
+    func `photoBrowserBackground token resolves from theme`() {
         let color = LMKColor.photoBrowserBackground
         #expect(color == LMKThemeManager.shared.current.photoBrowserBackground)
     }

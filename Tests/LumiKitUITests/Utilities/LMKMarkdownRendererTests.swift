@@ -9,29 +9,28 @@ import UIKit
 
 // MARK: - LMKMarkdownRenderer
 
-@Suite("LMKMarkdownRenderer")
 @MainActor
 struct LMKMarkdownRendererTests {
-    @Test("renders plain text without markdown")
-    func plainText() {
+    @Test
+    func `renders plain text without markdown`() {
         let result = LMKMarkdownRenderer.render("Hello world")
         #expect(result.string == "Hello world")
     }
 
-    @Test("strips bold markdown syntax from output text")
-    func boldStripsMarkdown() {
+    @Test
+    func `strips bold markdown syntax from output text`() {
         let result = LMKMarkdownRenderer.render("This is **bold** text")
         #expect(result.string == "This is bold text")
     }
 
-    @Test("strips italic markdown syntax from output text")
-    func italicStripsMarkdown() {
+    @Test
+    func `strips italic markdown syntax from output text`() {
         let result = LMKMarkdownRenderer.render("This is *italic* text")
         #expect(result.string == "This is italic text")
     }
 
-    @Test("applies custom font")
-    func customFont() {
+    @Test
+    func `applies custom font`() {
         let customFont = UIFont.systemFont(ofSize: 20)
         let result = LMKMarkdownRenderer.render("Hello", font: customFont)
 
@@ -39,8 +38,8 @@ struct LMKMarkdownRendererTests {
         #expect(font?.pointSize == 20)
     }
 
-    @Test("applies custom color across full range")
-    func customColor() {
+    @Test
+    func `applies custom color across full range`() {
         let result = LMKMarkdownRenderer.render("**bold** and plain", color: .red)
 
         let fullRange = NSRange(location: 0, length: result.length)
@@ -49,14 +48,14 @@ struct LMKMarkdownRendererTests {
         }
     }
 
-    @Test("falls back to plain text for empty string")
-    func emptyString() {
+    @Test
+    func `falls back to plain text for empty string`() {
         let result = LMKMarkdownRenderer.render("")
         #expect(result.string == "")
     }
 
-    @Test("handles mixed bold and italic")
-    func mixedFormatting() {
+    @Test
+    func `handles mixed bold and italic`() {
         let result = LMKMarkdownRenderer.render("**bold** and *italic*")
         #expect(result.string == "bold and italic")
     }
@@ -64,47 +63,46 @@ struct LMKMarkdownRendererTests {
 
 // MARK: - LMKMarkdownRenderer (makeInlineTextView)
 
-@Suite("LMKMarkdownRenderer (makeInlineTextView)")
 @MainActor
 struct LMKMarkdownRendererInlineTextViewTests {
-    @Test("isEditable is false")
-    func isNotEditable() {
+    @Test
+    func `isEditable is false`() {
         let tv = LMKMarkdownRenderer.makeInlineTextView(markdown: "Hello")
         #expect(!tv.isEditable)
     }
 
-    @Test("isScrollEnabled is false")
-    func isNotScrollable() {
+    @Test
+    func `isScrollEnabled is false`() {
         let tv = LMKMarkdownRenderer.makeInlineTextView(markdown: "Hello")
         #expect(!tv.isScrollEnabled)
     }
 
-    @Test("backgroundColor is clear")
-    func backgroundIsClear() {
+    @Test
+    func `backgroundColor is clear`() {
         let tv = LMKMarkdownRenderer.makeInlineTextView(markdown: "Hello")
         #expect(tv.backgroundColor == .clear)
     }
 
-    @Test("textContainerInset is zero")
-    func insetIsZero() {
+    @Test
+    func `textContainerInset is zero`() {
         let tv = LMKMarkdownRenderer.makeInlineTextView(markdown: "Hello")
         #expect(tv.textContainerInset == .zero)
     }
 
-    @Test("lineFragmentPadding is zero")
-    func paddingIsZero() {
+    @Test
+    func `lineFragmentPadding is zero`() {
         let tv = LMKMarkdownRenderer.makeInlineTextView(markdown: "Hello")
         #expect(tv.textContainer.lineFragmentPadding == 0)
     }
 
-    @Test("link color is LMKColor.primary")
-    func linkColor() {
+    @Test
+    func `link color is LMKColor.primary`() {
         let tv = LMKMarkdownRenderer.makeInlineTextView(markdown: "[link](https://example.com)")
         #expect(tv.linkTextAttributes[.foregroundColor] as? UIColor == LMKColor.primary)
     }
 
-    @Test("attributedText is not nil")
-    func hasAttributedText() {
+    @Test
+    func `attributedText is not nil`() {
         let tv = LMKMarkdownRenderer.makeInlineTextView(markdown: "**bold** text")
         #expect(tv.attributedText != nil)
         #expect(tv.attributedText.string == "bold text")

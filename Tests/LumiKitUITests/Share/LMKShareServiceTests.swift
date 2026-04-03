@@ -7,11 +7,10 @@ import Testing
 import UIKit
 @testable import LumiKitUI
 
-@Suite("LMKShareService")
 @MainActor
 struct LMKShareServiceTests {
-    @Test("shareImage calls present on view controller")
-    func shareImagePresents() {
+    @Test
+    func `shareImage calls present on view controller`() {
         let presentingVC = PresentationTrackingViewController()
         let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 375, height: 812))
         window.rootViewController = presentingVC
@@ -24,8 +23,8 @@ struct LMKShareServiceTests {
         #expect(presentingVC.lastPresentedViewController is UIActivityViewController)
     }
 
-    @Test("shareFile calls present on view controller")
-    func shareFilePresents() {
+    @Test
+    func `shareFile calls present on view controller`() {
         let presentingVC = PresentationTrackingViewController()
         let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 375, height: 812))
         window.rootViewController = presentingVC
@@ -40,8 +39,8 @@ struct LMKShareServiceTests {
         #expect(presentingVC.lastPresentedViewController is UIActivityViewController)
     }
 
-    @Test("shareImage with barButtonItem configures popover")
-    func shareImageWithBarButtonItem() {
+    @Test
+    func `shareImage with barButtonItem configures popover`() {
         let presentingVC = PresentationTrackingViewController()
         let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 375, height: 812))
         window.rootViewController = presentingVC

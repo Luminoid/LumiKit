@@ -9,11 +9,10 @@ import UIKit
 
 // MARK: - UITableViewCell+LMKHighlight
 
-@Suite("UITableViewCell+LMKHighlight")
 @MainActor
 struct UITableViewCellHighlightTests {
-    @Test("lmk_configureCustomHighlight sets selectedBackgroundView")
-    func configureCustomHighlight() {
+    @Test
+    func `lmk_configureCustomHighlight sets selectedBackgroundView`() {
         let cell = UITableViewCell()
         cell.lmk_configureCustomHighlight()
 
@@ -21,8 +20,8 @@ struct UITableViewCellHighlightTests {
         #expect(cell.selectedBackgroundView?.backgroundColor != nil)
     }
 
-    @Test("lmk_applyCustomHighlight with no containers changes contentView background")
-    func applyHighlightNoContainers() {
+    @Test
+    func `lmk_applyCustomHighlight with no containers changes contentView background`() {
         let cell = UITableViewCell()
 
         cell.lmk_applyCustomHighlight(highlighted: true, animated: false)
@@ -33,8 +32,8 @@ struct UITableViewCellHighlightTests {
         #expect(cell.contentView.backgroundColor == .clear)
     }
 
-    @Test("lmk_applyCustomHighlight with container adds overlay")
-    func applyHighlightWithContainer() {
+    @Test
+    func `lmk_applyCustomHighlight with container adds overlay`() {
         let cell = UITableViewCell()
 
         // Create a container-like subview (has background, corner radius)
@@ -50,8 +49,8 @@ struct UITableViewCellHighlightTests {
         #expect(overlay != nil)
     }
 
-    @Test("lmk_applyCustomHighlight removes overlay on unhighlight")
-    func removeHighlightOverlay() {
+    @Test
+    func `lmk_applyCustomHighlight removes overlay on unhighlight`() {
         let cell = UITableViewCell()
 
         let container = UIView()
@@ -68,8 +67,8 @@ struct UITableViewCellHighlightTests {
         #expect(overlayAfter == nil)
     }
 
-    @Test("lmk_applyCustomHighlight skips labels and buttons in container detection")
-    func skipsLabelsAndButtons() {
+    @Test
+    func `lmk_applyCustomHighlight skips labels and buttons in container detection`() {
         let cell = UITableViewCell()
 
         // Add a label with background — should NOT be treated as container
@@ -87,8 +86,8 @@ struct UITableViewCellHighlightTests {
         #expect(cell.contentView.backgroundColor != .clear)
     }
 
-    @Test("UITableView lmk_configureCellHighlight configures the cell")
-    func tableViewConfigureCell() {
+    @Test
+    func `UITableView lmk_configureCellHighlight configures the cell`() {
         let tableView = UITableView()
         let cell = UITableViewCell()
         tableView.lmk_configureCellHighlight(cell)

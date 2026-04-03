@@ -38,7 +38,7 @@ final class ExampleViewController: UIViewController, UITableViewDataSource, UITa
             switch self {
             case .designSystem: [.typography, .colors, .markdown]
             case .components: [.cards, .badges, .chips, .banners, .emptyState, .gradient, .loadingState]
-            case .controls: [.buttons, .segmentedControl, .textField, .textView, .searchToggle]
+            case .controls: [.buttons, .segmentedControl, .textField, .textView, .searchToggle, .pageIndicator]
             case .feedback: [.toast, .alerts, .progress, .haptics]
             case .overlays: [.actionSheet, .datePicker, .tipView, .cardPage, .cardPanel, .floatingButton]
             case .media: [.photoBrowser, .photoCrop, .qrCode]
@@ -105,6 +105,7 @@ final class ExampleViewController: UIViewController, UITableViewDataSource, UITa
         case textField
         case textView
         case searchToggle
+        case pageIndicator
         case toast
         case alerts
         case progress
@@ -135,7 +136,8 @@ final class ExampleViewController: UIViewController, UITableViewDataSource, UITa
             case .segmentedControl: "Segmented Control"
             case .textField: "Text Field"
             case .textView: "Text View"
-            case .searchToggle: "Search & Toggle"
+            case .searchToggle: "Toggle & Search"
+            case .pageIndicator: "Page Indicator"
             case .toast: "Toast"
             case .alerts: "Alerts & Errors"
             case .progress: "Progress"
@@ -164,11 +166,12 @@ final class ExampleViewController: UIViewController, UITableViewDataSource, UITa
             case .emptyState: "Full screen, card, and inline styles"
             case .gradient: "Linear gradients with configurable directions"
             case .loadingState: "Inline, overlay, and skeleton loading"
-            case .buttons: "Filled, outlined, factory, and plain styles"
-            case .segmentedControl: "Multi-option selection with handlers"
+            case .buttons: "Filled, outlined, ghost, icon-only, loading"
+            case .segmentedControl: "Sliding pill indicator with spring animation"
             case .textField: "Validation states, icons, helper text"
             case .textView: "Multi-line input with character limit"
-            case .searchToggle: "Search bar, toggle button, divider"
+            case .searchToggle: "Custom toggle switch, search bar, divider"
+            case .pageIndicator: "Animated expanding pill page dots"
             case .toast: "Success, error, warning, info toasts"
             case .alerts: "Confirmation, alert, and error presentation"
             case .progress: "Determinate and indeterminate progress"
@@ -201,7 +204,8 @@ final class ExampleViewController: UIViewController, UITableViewDataSource, UITa
             case .segmentedControl: "rectangle.split.3x1"
             case .textField: "character.cursor.ibeam"
             case .textView: "text.alignleft"
-            case .searchToggle: "slider.horizontal.3"
+            case .searchToggle: "switch.2"
+            case .pageIndicator: "circle.circle"
             case .toast: "bell"
             case .alerts: "exclamationmark.triangle"
             case .progress: "gauge.with.dots.needle.33percent"
@@ -218,6 +222,7 @@ final class ExampleViewController: UIViewController, UITableViewDataSource, UITa
             }
         }
 
+        // swiftlint:disable:next cyclomatic_complexity
         @MainActor func makeDetailViewController() -> UIViewController {
             switch self {
             case .typography: TypographyDetailViewController()
@@ -235,6 +240,7 @@ final class ExampleViewController: UIViewController, UITableViewDataSource, UITa
             case .textField: TextFieldDetailViewController()
             case .textView: TextViewDetailViewController()
             case .searchToggle: SearchToggleDetailViewController()
+            case .pageIndicator: PageIndicatorDetailViewController()
             case .toast: ToastDetailViewController()
             case .alerts: AlertsDetailViewController()
             case .progress: ProgressDetailViewController()
@@ -254,6 +260,7 @@ final class ExampleViewController: UIViewController, UITableViewDataSource, UITa
 
     // MARK: - Constants
 
+    // swiftlint:disable:next force_unwrapping
     private static let githubURL = URL(string: "https://github.com/Luminoid/LumiKit")!
 
     // MARK: - Properties

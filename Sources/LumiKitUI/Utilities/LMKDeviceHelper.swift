@@ -7,8 +7,8 @@
 
 import UIKit
 
-/// Device type classification.
-public enum LMKDeviceType: Sendable {
+/// Device type classification. Nonisolated because device type is constant at runtime.
+public nonisolated enum LMKDeviceType: Sendable, Equatable {
     case iPhone
     case iPad
     case macCatalyst
@@ -16,7 +16,7 @@ public enum LMKDeviceType: Sendable {
 }
 
 /// Screen size category for adaptive layouts.
-public enum LMKScreenSize: Sendable {
+public enum LMKScreenSize: Sendable, Equatable {
     /// iPhone SE, mini
     case compact
     /// Standard iPhone
@@ -29,24 +29,26 @@ public enum LMKScreenSize: Sendable {
 
 /// Device type and screen classification helpers.
 public enum LMKDeviceHelper {
-    /// Current device type.
-    public static var deviceType: LMKDeviceType {
+    /// Current device type. Nonisolated because device type never changes at runtime.
+    public nonisolated static var deviceType: LMKDeviceType {
         #if targetEnvironment(macCatalyst)
             .macCatalyst
         #else
-            switch UIDevice.current.userInterfaceIdiom {
-            case .phone: .iPhone
-            case .pad: .iPad
-            default: .other
+            MainActor.assumeIsolated {
+                switch UIDevice.current.userInterfaceIdiom {
+                case .phone: .iPhone
+                case .pad: .iPad
+                default: .other
+                }
             }
         #endif
     }
 
     /// Whether the current device is iPad.
-    public static var isIPad: Bool { deviceType == .iPad }
+    public nonisolated static var isIPad: Bool { deviceType == .iPad }
 
     /// Whether running as Mac Catalyst.
-    public static var isMacCatalyst: Bool { deviceType == .macCatalyst }
+    public nonisolated static var isMacCatalyst: Bool { deviceType == .macCatalyst }
 
     /// Screen size category based on screen bounds.
     ///

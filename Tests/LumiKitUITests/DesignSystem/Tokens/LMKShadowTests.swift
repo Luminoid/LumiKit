@@ -9,11 +9,10 @@ import UIKit
 
 // MARK: - LMKShadowTheme
 
-@Suite("LMKShadowTheme")
 @MainActor
 struct LMKShadowConfigurationTests {
-    @Test("Default shadow matches original values")
-    func defaultShadow() {
+    @Test
+    func `Default shadow matches original values`() {
         let config = LMKShadowTheme()
         #expect(config.cellCard.radius == 6)
         #expect(config.card.radius == 8)
@@ -24,8 +23,8 @@ struct LMKShadowConfigurationTests {
         #expect(config.iconOverlayOpacity == 0.8)
     }
 
-    @Test("Custom shadow is applied via proxy")
-    func customShadow() {
+    @Test
+    func `Custom shadow is applied via proxy`() {
         let original = LMKThemeManager.shared.shadow
         defer { LMKThemeManager.shared.apply(shadow: original) }
 

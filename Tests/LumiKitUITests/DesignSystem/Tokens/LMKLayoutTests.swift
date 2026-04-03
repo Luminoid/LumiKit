@@ -9,34 +9,32 @@ import UIKit
 
 // MARK: - LMKLayout
 
-@Suite("LMKLayout")
 @MainActor
 struct LMKLayoutTests {
-    @Test("minimumTouchTarget meets Apple HIG")
-    func minimumTouchTarget() {
+    @Test
+    func `minimumTouchTarget meets Apple HIG`() {
         #expect(LMKLayout.minimumTouchTarget >= 44)
     }
 
-    @Test("Icon sizes are positive and ordered")
-    func iconSizes() {
+    @Test
+    func `Icon sizes are positive and ordered`() {
         #expect(LMKLayout.iconExtraSmall > 0)
         #expect(LMKLayout.iconSmall > LMKLayout.iconExtraSmall)
         #expect(LMKLayout.iconMedium > LMKLayout.iconSmall)
     }
 
-    @Test("Cell height minimum is positive")
-    func cellHeightMin() {
+    @Test
+    func `Cell height minimum is positive`() {
         #expect(LMKLayout.cellHeightMin > 0)
     }
 }
 
 // MARK: - LMKLayoutTheme
 
-@Suite("LMKLayoutTheme")
 @MainActor
 struct LMKLayoutConfigurationTests {
-    @Test("Default layout matches original values")
-    func defaultLayout() {
+    @Test
+    func `Default layout matches original values`() {
         let config = LMKLayoutTheme()
         #expect(config.minimumTouchTarget == 44)
         #expect(config.iconMedium == 24)
@@ -49,8 +47,8 @@ struct LMKLayoutConfigurationTests {
         #expect(config.clearButtonSize == 22)
     }
 
-    @Test("Custom layout is applied via proxy")
-    func customLayout() {
+    @Test
+    func `Custom layout is applied via proxy`() {
         let original = LMKThemeManager.shared.layout
         defer { LMKThemeManager.shared.apply(layout: original) }
 
@@ -59,8 +57,8 @@ struct LMKLayoutConfigurationTests {
         #expect(LMKLayout.iconSmall == 20) // unchanged
     }
 
-    @Test("New search bar tokens are accessible")
-    func searchBarTokens() {
+    @Test
+    func `New search bar tokens are accessible`() {
         #expect(LMKLayout.searchBarHeight == 36)
         #expect(LMKLayout.searchBarIconSize == 18)
         #expect(LMKLayout.clearButtonSize == 22)

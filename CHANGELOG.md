@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **LMKSwitch** — Custom toggle switch replacing `UISwitch`. Features a rounded track with sliding circular thumb, spring animation, haptic feedback, `isOn`/`setOn(_:animated:)` API, `valueChangedHandler` closure, and VoiceOver accessibility
+- **LMKPageIndicator** — Custom page indicator replacing `UIPageControl`. Supports optional `expandsActiveDot` (default `false`) to expand the active dot into a pill shape with spring animation. `pageChangedHandler` and VoiceOver increment/decrement
+- **LMKButton styles** — Added `.ghost(UIColor)` (text-only, no background) and `.iconOnly(UIColor)` (circular icon button) styles
+- **LMKButton loading** — `isLoading` property shows activity indicator and disables interaction
+- **LMKButtonFactory** — Added `ghost(role:title:)` and `iconOnly(role:iconName:)` factory methods
+
+### Changed
+
+- **LMKSegmentedControl** — **Breaking**: Fully rewritten as custom `UIControl` (no longer a `UISegmentedControl` subclass). Features sliding pill indicator with spring animation, `LMKColor.primary` fill, haptic feedback, and dark mode support. API: `init(items: [String])`, `selectedSegmentIndex`, `valueChangedHandler`. Removed `didValueChangeHandler`, `numberOfSegments` (use `items.count`), `apportionsSegmentWidthsByContent`
+- **LMKButton** — Filled and outlined styles now use `cornerStyle = .capsule` (pill shape) instead of `LMKCornerRadius.small`
+- **LMKControlScrollView** — Removed. `LMKSegmentedControl.makeScrollableContainer()` now returns `UIScrollView` directly
+- **Test suite** — Expanded from 542 to 565 UI tests (new: LMKSwitch 7, LMKPageIndicator 8, LMKButton styles 5, updated LMKSegmentedControl 10)
+
 ## [0.4.0] - 2026-03-22
 
 ### Added
@@ -184,7 +199,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **LMKSegmentedControl** — Custom segmented control with closure callbacks
 - **LMKTextField** — Text field with validation states, helper text, leading icon
 - **LMKTextView** — Multi-line text input with placeholder and character limit
-- **LMKToggleButton** — Toggle button with on/off states
+- **LMKSwitchButton** — Toggle button with on/off states
 
 #### LumiKitUI — Photo
 - **LMKPhotoBrowserViewController** — Full-screen photo browser with zoom and swipe navigation

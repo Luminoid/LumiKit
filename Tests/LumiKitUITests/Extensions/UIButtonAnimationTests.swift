@@ -9,18 +9,17 @@ import UIKit
 
 // MARK: - UIButton+LMKAnimation
 
-@Suite("UIButton+LMKAnimation")
 @MainActor
 struct UIButtonAnimationTests {
-    @Test("lmk_animatePress doesn't crash")
-    func animatePress() {
+    @Test
+    func `lmk_animatePress doesn't crash`() {
         let button = UIButton()
         button.lmk_animatePress()
         // No crash = success — haptic and animation fire correctly
     }
 
-    @Test("lmk_animatePress is available as @objc selector")
-    func animatePressSelector() {
+    @Test
+    func `lmk_animatePress is available as @objc selector`() {
         let button = UIButton()
         #expect(button.responds(to: #selector(UIButton.lmk_animatePress)))
     }

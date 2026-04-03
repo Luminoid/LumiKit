@@ -9,21 +9,20 @@ import Testing
 import UIKit
 @testable import LumiKitUI
 
-@Suite("LMKFloatingButton")
 @MainActor
 struct LMKFloatingButtonTests {
     // MARK: - Initialization
 
-    @Test("Init with default size creates correct frame")
-    func initDefaultSize() {
+    @Test
+    func `Init with default size creates correct frame`() {
         let button = LMKFloatingButton(icon: UIImage(systemName: "star"))
 
         #expect(button.frame.width == LMKFloatingButtonLayout.defaultSize)
         #expect(button.frame.height == LMKFloatingButtonLayout.defaultSize)
     }
 
-    @Test("Init with custom size creates correct frame")
-    func initCustomSize() {
+    @Test
+    func `Init with custom size creates correct frame`() {
         let button = LMKFloatingButton(icon: nil, size: 48)
 
         #expect(button.frame.width == 48)
@@ -32,8 +31,8 @@ struct LMKFloatingButtonTests {
 
     // MARK: - Layout Constants
 
-    @Test("Layout constants have expected values")
-    func layoutConstants() {
+    @Test
+    func `Layout constants have expected values`() {
         #expect(LMKFloatingButtonLayout.defaultSize == 56)
         #expect(LMKFloatingButtonLayout.edgeMargin == 16)
         #expect(LMKFloatingButtonLayout.iconSize == 24)
@@ -42,16 +41,16 @@ struct LMKFloatingButtonTests {
 
     // MARK: - Shape
 
-    @Test("Button is circular")
-    func circularShape() {
+    @Test
+    func `Button is circular`() {
         let size: CGFloat = 56
         let button = LMKFloatingButton(icon: nil, size: size)
 
         #expect(button.layer.cornerRadius == size / 2)
     }
 
-    @Test("Button has primary background color")
-    func backgroundColor() {
+    @Test
+    func `Button has primary background color`() {
         let button = LMKFloatingButton(icon: nil)
 
         #expect(button.backgroundColor == LMKColor.primary)
@@ -59,16 +58,16 @@ struct LMKFloatingButtonTests {
 
     // MARK: - Icon
 
-    @Test("Icon view has white tint")
-    func iconTint() {
+    @Test
+    func `Icon view has white tint`() {
         let button = LMKFloatingButton(icon: UIImage(systemName: "gear"))
 
         let iconView = button.subviews.compactMap { $0 as? UIImageView }.first
         #expect(iconView?.tintColor == LMKColor.white)
     }
 
-    @Test("Setting icon updates image view")
-    func setIcon() {
+    @Test
+    func `Setting icon updates image view`() {
         let button = LMKFloatingButton(icon: nil)
         let newIcon = UIImage(systemName: "star")
         button.icon = newIcon
@@ -79,8 +78,8 @@ struct LMKFloatingButtonTests {
 
     // MARK: - Configurable Strings
 
-    @Test("Default strings have expected values")
-    func defaultStrings() {
+    @Test
+    func `Default strings have expected values`() {
         let strings = LMKFloatingButton.Strings()
 
         #expect(strings.accessibilityLabel == "Floating action button")
@@ -88,8 +87,8 @@ struct LMKFloatingButtonTests {
 
     // MARK: - Accessibility
 
-    @Test("Button has accessibility traits")
-    func accessibilityTraits() {
+    @Test
+    func `Button has accessibility traits`() {
         let button = LMKFloatingButton(icon: nil)
 
         #expect(button.isAccessibilityElement)
@@ -98,8 +97,8 @@ struct LMKFloatingButtonTests {
 
     // MARK: - Badge
 
-    @Test("Show badge adds badge view")
-    func showBadge() {
+    @Test
+    func `Show badge adds badge view`() {
         let button = LMKFloatingButton(icon: nil)
         button.showBadge(count: 3)
 
@@ -107,8 +106,8 @@ struct LMKFloatingButtonTests {
         #expect(badge != nil)
     }
 
-    @Test("Hide badge removes badge view")
-    func hideBadge() {
+    @Test
+    func `Hide badge removes badge view`() {
         let button = LMKFloatingButton(icon: nil)
         button.showBadge(count: 3)
         button.hideBadge()
@@ -117,8 +116,8 @@ struct LMKFloatingButtonTests {
         #expect(badge == nil)
     }
 
-    @Test("Show dot badge adds badge view")
-    func showDotBadge() {
+    @Test
+    func `Show dot badge adds badge view`() {
         let button = LMKFloatingButton(icon: nil)
         button.showBadge()
 
@@ -128,8 +127,8 @@ struct LMKFloatingButtonTests {
 
     // MARK: - Gestures
 
-    @Test("Button has tap and pan gesture recognizers")
-    func gestures() {
+    @Test
+    func `Button has tap and pan gesture recognizers`() {
         let button = LMKFloatingButton(icon: nil)
 
         let tapGestures = button.gestureRecognizers?.filter { $0 is UITapGestureRecognizer }

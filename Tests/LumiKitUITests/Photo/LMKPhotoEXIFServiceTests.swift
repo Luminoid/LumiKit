@@ -10,20 +10,19 @@ import UIKit
 import UniformTypeIdentifiers
 @testable import LumiKitUI
 
-@Suite("LMKPhotoEXIFService")
 @MainActor
 struct LMKPhotoEXIFServiceTests {
     // MARK: - Date Extraction
 
-    @Test("extractDate returns nil for image without EXIF")
-    func extractDateReturnsNilForPlainImage() {
+    @Test
+    func `extractDate returns nil for image without EXIF`() {
         let image = UIImage.lmk_solidColor(.red, size: CGSize(width: 10, height: 10))
         let date = LMKPhotoEXIFService.extractDate(from: image)
         #expect(date == nil)
     }
 
-    @Test("extractDate accepts optional imageData parameter")
-    func extractDateAcceptsImageData() {
+    @Test
+    func `extractDate accepts optional imageData parameter`() {
         let image = UIImage.lmk_solidColor(.red, size: CGSize(width: 10, height: 10))
         let data = image.pngData()
         let date = LMKPhotoEXIFService.extractDate(from: image, imageData: data)
@@ -33,15 +32,15 @@ struct LMKPhotoEXIFServiceTests {
 
     // MARK: - Location Extraction
 
-    @Test("extractLocation returns nil for image without GPS")
-    func extractLocationReturnsNilForPlainImage() {
+    @Test
+    func `extractLocation returns nil for image without GPS`() {
         let image = UIImage.lmk_solidColor(.blue, size: CGSize(width: 10, height: 10))
         let location = LMKPhotoEXIFService.extractLocation(from: image)
         #expect(location == nil)
     }
 
-    @Test("extractLocation accepts optional imageData parameter")
-    func extractLocationAcceptsImageData() {
+    @Test
+    func `extractLocation accepts optional imageData parameter`() {
         let image = UIImage.lmk_solidColor(.blue, size: CGSize(width: 10, height: 10))
         let data = image.jpegData(compressionQuality: 1.0)
         let location = LMKPhotoEXIFService.extractLocation(from: image, imageData: data)
@@ -50,8 +49,8 @@ struct LMKPhotoEXIFServiceTests {
 
     // MARK: - Coordinate Validation
 
-    @Test("CLLocationCoordinate2D validation works correctly")
-    func coordinateValidation() {
+    @Test
+    func `CLLocationCoordinate2D validation works correctly`() {
         let validCoord = CLLocationCoordinate2D(latitude: 37.7749, longitude: -122.4194)
         #expect(CLLocationCoordinate2DIsValid(validCoord))
 
@@ -64,8 +63,8 @@ struct LMKPhotoEXIFServiceTests {
 
     // MARK: - EXIF Date Extraction
 
-    @Test("extractDate extracts DateTimeOriginal from EXIF")
-    func extractDateFromEXIFDateTimeOriginal() {
+    @Test
+    func `extractDate extracts DateTimeOriginal from EXIF`() {
         let image = UIImage.lmk_solidColor(.green, size: CGSize(width: 10, height: 10))
         let exifDate = "2024:03:15 14:30:45"
         let imageData = createImageDataWithEXIF(image: image, dateTimeOriginal: exifDate)
@@ -80,8 +79,8 @@ struct LMKPhotoEXIFServiceTests {
         #expect(extractedDate == expectedDate)
     }
 
-    @Test("extractDate returns nil for malformed date string")
-    func extractDateReturnsNilForMalformedDate() {
+    @Test
+    func `extractDate returns nil for malformed date string`() {
         let image = UIImage.lmk_solidColor(.purple, size: CGSize(width: 10, height: 10))
         let badDate = "invalid-date-format"
         let imageData = createImageDataWithEXIF(image: image, dateTimeOriginal: badDate)
@@ -93,8 +92,8 @@ struct LMKPhotoEXIFServiceTests {
 
     // MARK: - GPS Location Extraction
 
-    @Test("extractLocation extracts Northern/Eastern coordinates")
-    func extractLocationNorthernEastern() throws {
+    @Test
+    func `extractLocation extracts Northern/Eastern coordinates`() throws {
         let image = UIImage.lmk_solidColor(.cyan, size: CGSize(width: 10, height: 10))
         // Tokyo coordinates (N, E)
         let imageData = createImageDataWithGPS(
@@ -112,8 +111,8 @@ struct LMKPhotoEXIFServiceTests {
         #expect(try abs(#require(coordinate?.longitude) - 139.6503) < 0.001)
     }
 
-    @Test("extractLocation extracts Southern/Western coordinates")
-    func extractLocationSouthernWestern() throws {
+    @Test
+    func `extractLocation extracts Southern/Western coordinates`() throws {
         let image = UIImage.lmk_solidColor(.orange, size: CGSize(width: 10, height: 10))
         // Sydney coordinates (S, E) but test with W for coverage
         let imageData = createImageDataWithGPS(
@@ -133,8 +132,8 @@ struct LMKPhotoEXIFServiceTests {
         #expect(try abs(#require(coordinate?.longitude) - -151.2093) < 0.001)
     }
 
-    @Test("extractLocation handles mixed hemisphere (N/W)")
-    func extractLocationMixedHemisphere() throws {
+    @Test
+    func `extractLocation handles mixed hemisphere (N/W)`() throws {
         let image = UIImage.lmk_solidColor(.magenta, size: CGSize(width: 10, height: 10))
         // San Francisco coordinates (N, W)
         let imageData = createImageDataWithGPS(
@@ -152,8 +151,8 @@ struct LMKPhotoEXIFServiceTests {
         #expect(try abs(#require(coordinate?.longitude) - -122.4194) < 0.001)
     }
 
-    @Test("extractLocation returns nil for invalid coordinates")
-    func extractLocationReturnsNilForInvalidCoordinates() {
+    @Test
+    func `extractLocation returns nil for invalid coordinates`() {
         let image = UIImage.lmk_solidColor(.brown, size: CGSize(width: 10, height: 10))
         // Invalid latitude (> 90)
         let imageData = createImageDataWithGPS(

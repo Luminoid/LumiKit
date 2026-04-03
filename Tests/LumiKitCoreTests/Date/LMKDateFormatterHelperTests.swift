@@ -9,17 +9,17 @@ import Testing
 
 // MARK: - LMKDateFormatterHelper
 
-@Suite("LMKDateFormatterHelper", .serialized)
+@Suite(.serialized)
 struct DateFormatterHelperTests {
-    @Test("Default format is MM/dd/yyyy")
-    func defaultFormat() {
+    @Test
+    func `Default format is MM/dd/yyyy`() {
         LMKDateFormatterHelper.configure(dateFormat: { "MM/dd/yyyy" })
         let formatter = LMKDateFormatterHelper.dateFormatter()
         #expect(formatter.dateFormat == "MM/dd/yyyy")
     }
 
-    @Test("Configure changes format")
-    func configureChangesFormat() {
+    @Test
+    func `Configure changes format`() {
         LMKDateFormatterHelper.configure(dateFormat: { "yyyy-MM-dd" })
         let formatter = LMKDateFormatterHelper.dateFormatter()
         #expect(formatter.dateFormat == "yyyy-MM-dd")
@@ -27,22 +27,22 @@ struct DateFormatterHelperTests {
         LMKDateFormatterHelper.configure(dateFormat: { "MM/dd/yyyy" })
     }
 
-    @Test("Include time appends HH:mm")
-    func includeTimeFormat() {
+    @Test
+    func `Include time appends HH:mm`() {
         LMKDateFormatterHelper.configure(dateFormat: { "MM/dd/yyyy" })
         let formatter = LMKDateFormatterHelper.dateFormatter(includeTime: true)
         #expect(formatter.dateFormat == "MM/dd/yyyy HH:mm")
     }
 
-    @Test("formatDate produces non-empty string")
-    func formatDateProducesString() {
+    @Test
+    func `formatDate produces non-empty string`() {
         LMKDateFormatterHelper.configure(dateFormat: { "MM/dd/yyyy" })
         let result = LMKDateFormatterHelper.formatDate(Date())
         #expect(!result.isEmpty)
     }
 
-    @Test("formatNumber produces string")
-    func formatNumber() {
+    @Test
+    func `formatNumber produces string`() {
         let result = LMKDateFormatterHelper.formatNumber(NSNumber(value: 42))
         #expect(!result.isEmpty)
     }

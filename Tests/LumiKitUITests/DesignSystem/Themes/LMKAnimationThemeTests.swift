@@ -9,11 +9,10 @@ import UIKit
 
 // MARK: - LMKAnimationTheme
 
-@Suite("LMKAnimationTheme")
 @MainActor
 struct LMKAnimationConfigurationTests {
-    @Test("Default animation matches original values")
-    func defaultAnimation() {
+    @Test
+    func `Default animation matches original values`() {
         let config = LMKAnimationTheme()
         #expect(config.screenTransition == 0.35)
         #expect(config.modalPresentation == 0.3)
@@ -23,8 +22,8 @@ struct LMKAnimationConfigurationTests {
         #expect(config.springDamping == 0.8)
     }
 
-    @Test("Custom animation is applied via proxy")
-    func customAnimation() {
+    @Test
+    func `Custom animation is applied via proxy`() {
         let original = LMKThemeManager.shared.animation
         defer { LMKThemeManager.shared.apply(animation: original) }
 
