@@ -314,6 +314,92 @@ final class LoadingStateDetailViewController: DetailViewController {
     }
 }
 
+// MARK: - Navigation Bar
+
+final class NavigationBarDetailViewController: DetailViewController {
+    override func viewDidLoad() {
+        super.viewDidLoad()
+
+        addSectionHeader("Large Title")
+        stack.addArrangedSubview(LMKLabelFactory.caption(text: "Bold left-aligned title with button row above. Used on root screens."))
+
+        let largeBar = LMKNavigationBar()
+        largeBar.title = "My Plants"
+        largeBar.largeTitleEnabled = true
+        largeBar.setRightItems([
+            .init(systemName: "plus") {},
+            .init(systemName: "ellipsis.circle") {},
+        ])
+        wrapInContainer(largeBar)
+
+        addDivider()
+        addSectionHeader("Standard (Inline) Title")
+        stack.addArrangedSubview(LMKLabelFactory.caption(text: "Centered title with back button. Used on pushed screens."))
+
+        let standardBar = LMKNavigationBar()
+        standardBar.title = "Plant Details"
+        standardBar.showsBackButton = true
+        standardBar.setRightItems([
+            .init(systemName: "square.and.arrow.up") {},
+        ])
+        wrapInContainer(standardBar)
+
+        addDivider()
+        addSectionHeader("Left Items")
+        stack.addArrangedSubview(LMKLabelFactory.caption(text: "Custom left items replace the back button."))
+
+        let leftItemsBar = LMKNavigationBar()
+        leftItemsBar.title = "Calendar"
+        leftItemsBar.setLeftItems([
+            .init(systemName: "sidebar.left") {},
+        ])
+        leftItemsBar.setRightItems([
+            .init(systemName: "plus") {},
+        ])
+        wrapInContainer(leftItemsBar)
+
+        addDivider()
+        addSectionHeader("Custom Colors")
+        stack.addArrangedSubview(LMKLabelFactory.caption(text: "Customizable background, title color, and button tint."))
+
+        let customBar = LMKNavigationBar()
+        customBar.title = "Settings"
+        customBar.largeTitleEnabled = true
+        customBar.barBackgroundColor = LMKColor.primary
+        customBar.largeTitleColor = .white
+        customBar.buttonTintColor = .white
+        customBar.showsSeparator = false
+        customBar.setRightItems([
+            .init(systemName: "gearshape") {},
+        ])
+        wrapInContainer(customBar)
+
+        addDivider()
+        addSectionHeader("No Separator")
+        stack.addArrangedSubview(LMKLabelFactory.caption(text: "showsSeparator = false for clean content-heavy screens."))
+
+        let noSepBar = LMKNavigationBar()
+        noSepBar.title = "Photos"
+        noSepBar.showsSeparator = false
+        noSepBar.setRightItems([
+            .init(systemName: "camera") {},
+        ])
+        wrapInContainer(noSepBar)
+    }
+
+    private func wrapInContainer(_ bar: LMKNavigationBar) {
+        let container = UIView()
+        container.backgroundColor = bar.barBackgroundColor == LMKColor.backgroundPrimary
+            ? LMKColor.backgroundSecondary
+            : bar.barBackgroundColor
+        container.layer.cornerRadius = LMKCornerRadius.medium
+        container.clipsToBounds = true
+        container.addSubview(bar)
+        bar.snp.makeConstraints { $0.edges.equalToSuperview() }
+        stack.addArrangedSubview(container)
+    }
+}
+
 /// Embedded table view that displays skeleton cells with shimmer animation.
 private final class SkeletonTableView: UIView, UITableViewDataSource {
     private static let cellID = "skeleton"

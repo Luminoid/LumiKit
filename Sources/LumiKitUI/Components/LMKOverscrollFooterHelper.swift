@@ -60,7 +60,7 @@ public final class LMKOverscrollFooterHelper {
     public func updatePosition() {
         guard let scrollView, scrollView.contentSize.height > 0 else { return }
 
-        let footerY = max(scrollView.contentSize.height, scrollView.bounds.height)
+        let footerY = max(scrollView.contentSize.height + scrollView.adjustedContentInset.bottom, scrollView.bounds.height)
         footerView.frame = CGRect(
             x: 0,
             y: footerY,

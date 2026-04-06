@@ -25,6 +25,12 @@ final class ActionSheetDetailViewController: DetailViewController {
         stack.addArrangedSubview(iconButton)
 
         addDivider()
+        addSectionHeader("With Selection (isSelected)")
+        stack.addArrangedSubview(LMKLabelFactory.caption(text: "Actions with isSelected: true show a checkmark. Useful for single-selection options like sort order."))
+        let selectionButton = LMKButtonFactory.filled(role: .primary, title: "Show Selection Sheet", target: self, action: #selector(showSelectionSheet))
+        stack.addArrangedSubview(selectionButton)
+
+        addDivider()
         addSectionHeader("Sub-Page Navigation")
         stack.addArrangedSubview(LMKLabelFactory.caption(text: "Actions can navigate to sub-pages within the same sheet. Tap back or cancel to return/dismiss."))
         let subPageButton = LMKButtonFactory.filled(role: .primary, title: "Show with Sub-Pages", target: self, action: #selector(showSubPageSheet))
@@ -77,6 +83,27 @@ final class ActionSheetDetailViewController: DetailViewController {
                     LMKToast.showError(message: "Delete tapped", on: self)
                 },
             ]
+        )
+    }
+
+    @objc private func showSelectionSheet() {
+        let sortOptions = ["Date Added", "Name", "Last Watered", "Species"]
+        let currentSort = "Name"
+
+        LMKActionSheet.present(
+            in: self,
+            title: "Sort By",
+            message: "Choose how to sort your plants.",
+            actions: sortOptions.map { option in
+                .init(
+                    title: option,
+                    icon: UIImage(systemName: option == currentSort ? "arrow.up.arrow.down" : "line.3.horizontal.decrease"),
+                    isSelected: option == currentSort
+                ) { [weak self] in
+                    guard let self else { return }
+                    LMKToast.showSuccess(message: "Sort: \(option)", on: self)
+                }
+            }
         )
     }
 

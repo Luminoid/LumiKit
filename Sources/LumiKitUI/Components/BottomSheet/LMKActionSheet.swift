@@ -86,6 +86,7 @@ public final class LMKActionSheet: LMKBottomSheetController {
         public let subtitle: String?
         public let icon: UIImage?
         public let style: ActionStyle
+        public let isSelected: Bool
         public let handler: () -> Void
         public let page: Page?
 
@@ -95,12 +96,14 @@ public final class LMKActionSheet: LMKBottomSheetController {
             subtitle: String? = nil,
             style: ActionStyle = .default,
             icon: UIImage? = nil,
+            isSelected: Bool = false,
             handler: @escaping () -> Void
         ) {
             self.title = title
             self.subtitle = subtitle
             self.style = style
             self.icon = icon
+            self.isSelected = isSelected
             self.handler = handler
             self.page = nil
         }
@@ -117,6 +120,7 @@ public final class LMKActionSheet: LMKBottomSheetController {
             self.subtitle = subtitle
             self.style = style
             self.icon = icon
+            self.isSelected = false
             self.handler = {}
             self.page = page
         }
@@ -593,6 +597,15 @@ final class ActionRowView: UIControl {
         return iv
     }()
 
+    private lazy var checkmarkImageView: UIImageView = {
+        let iv = UIImageView()
+        iv.image = UIImage(systemName: "checkmark")
+        iv.tintColor = LMKColor.primary
+        iv.contentMode = .scaleAspectFit
+        iv.isHidden = true
+        return iv
+    }()
+
     init(action: LMKActionSheet.Action) {
         self.action = action
         super.init(frame: .zero)
@@ -612,6 +625,7 @@ final class ActionRowView: UIControl {
         let hasIcon = action.icon != nil
         let hasSubtitle = action.subtitle != nil
         let hasChevron = action.page != nil
+        let hasCheckmark = action.isSelected && !hasChevron
 
         containerView.addSubview(iconImageView)
         iconImageView.isHidden = !hasIcon
@@ -631,15 +645,28 @@ final class ActionRowView: UIControl {
             make.width.height.equalTo(LMKLayout.iconSmall)
         }
 
+        containerView.addSubview(checkmarkImageView)
+        checkmarkImageView.isHidden = !hasCheckmark
+        checkmarkImageView.snp.makeConstraints { make in
+            make.trailing.equalToSuperview().inset(LMKSpacing.large)
+            make.centerY.equalToSuperview()
+            make.width.height.equalTo(LMKLayout.iconSmall)
+        }
+
         let textLeading: ConstraintRelatableTarget = hasIcon
             ? iconImageView.snp.trailing
             : containerView.snp.leading
         let textLeadingOffset = hasIcon ? LMKSpacing.medium : LMKSpacing.large
 
-        let textTrailing: ConstraintRelatableTarget = hasChevron
-            ? chevronImageView.snp.leading
-            : containerView.snp.trailing
-        let textTrailingOffset = hasChevron ? -LMKSpacing.small : -LMKSpacing.large
+        let hasTrailingAccessory = hasChevron || hasCheckmark
+        let textTrailing: ConstraintRelatableTarget = if hasChevron {
+            chevronImageView.snp.leading
+        } else if hasCheckmark {
+            checkmarkImageView.snp.leading
+        } else {
+            containerView.snp.trailing
+        }
+        let textTrailingOffset = hasTrailingAccessory ? -LMKSpacing.small : -LMKSpacing.large
 
         if hasSubtitle {
             subtitleLabel.text = action.subtitle
@@ -671,12 +698,12 @@ final class ActionRowView: UIControl {
 
     private func setupAccessibility() {
         isAccessibilityElement = true
-        accessibilityLabel = if let subtitle = action.subtitle {
-            "\(action.title), \(subtitle)"
-        } else {
-            action.title
+        var label = action.title
+        if let subtitle = action.subtitle {
+            label += ", \(subtitle)"
         }
-        accessibilityTraits = .button
+        accessibilityLabel = label
+        accessibilityTraits = action.isSelected ? [.button, .selected] : .button
         if action.page != nil {
             accessibilityHint = "Opens submenu"
         }
@@ -689,6 +716,7 @@ final class ActionRowView: UIControl {
         titleLabel.textColor = isDestructive ? LMKColor.error : LMKColor.textPrimary
         subtitleLabel.textColor = LMKColor.textSecondary
         chevronImageView.tintColor = LMKColor.textSecondary
+        checkmarkImageView.tintColor = LMKColor.primary
     }
 
     override var isHighlighted: Bool {

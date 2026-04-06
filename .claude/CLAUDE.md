@@ -44,7 +44,8 @@ LumiKit/
 │   │   │   │                 # LMKEnumSelectionBottomSheet, LMKBottomSheetLayout
 │   │   │   ├── Pickers/      # LMKDatePickerHelper
 │   │   │   └── (root)        # Badge, Banner, Card, Chip, Divider, EmptyState,
-│   │   │                     # FloatingButton, Gradient, LoadingState, Progress,
+│   │   │                     # FloatingButton, Gradient, LoadingState,
+│   │   │                     # NavigationBar, PageIndicator, Progress,
 │   │   │                     # SearchBar, Skeleton, Toast, TipView,
 │   │   │                     # CardPageController, CardPageLayout,
 │   │   │                     # CardPanelController, CardPanelLayout,
@@ -227,7 +228,7 @@ LMKThemeManager.shared.apply(spacing: .init(large: 20))
 | Component | Type | Purpose |
 |-----------|------|---------|
 | `LMKBottomSheetController` | `open class` | Base class for bottom sheet presentation — shared dimming, container, animation, dismiss |
-| `LMKActionSheet` | `final class` | Custom bottom-sheet action sheet with design-token styling and optional custom content |
+| `LMKActionSheet` | `final class` | Custom bottom-sheet action sheet with design-token styling, optional custom content, `isSelected` checkmark state, and sub-page navigation |
 | `LMKBadgeView` | `final class` | Notification count / status dot / custom text badge |
 | `LMKBannerView` | `final class` | Persistent notification bar with optional action & dismiss |
 | `LMKCardView` | `final class` | Card container with shadow, corner radius, content insets |
@@ -237,6 +238,7 @@ LMKThemeManager.shared.apply(spacing: .init(large: 20))
 | `LMKEnumSelectionBottomSheet` | `final class` | Generic bottom sheet for selecting from an enum's cases |
 | `LMKGradientView` | `final class` | CAGradientLayer-backed view with 4 direction options |
 | `LMKLoadingStateView` | `final class` | Loading indicator with optional message |
+| `LMKNavigationBar` | `final class` | Custom navigation bar with large title and standard inline modes. Configurable back button, left/right `LMKNavigationBarItem` arrays, separator, appearance (background, tint, title font/color). `pinToTop(of:)` for layout |
 | `LMKPageIndicator` | `final class` | Custom page indicator replacing `UIPageControl`. Active dot expands into pill with spring animation. `numberOfPages`, `currentPage`, `pageChangedHandler` |
 | `LMKProgressViewController` | `final class` | Blocking progress modal (`.determinate` with progress bar, `.indeterminate` spinner-only) |
 | `LMKSearchBar` | `final class` | Search bar with configurable strings |
@@ -422,4 +424,4 @@ public final class LMKExampleViewController: UIViewController {
 
 ---
 
-*Optimized for Claude Code • Last updated: 2026-04-03*
+*Optimized for Claude Code • Last updated: 2026-04-05*

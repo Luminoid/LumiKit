@@ -48,7 +48,7 @@ LumiKit is organized into four targets so apps can import only what they need:
 | **LumiKitUI** | LumiKitCore + LumiKitNetwork + SnapKit | Design system tokens, theme manager, animation, haptics, alerts, components, controls, photo browser/crop, network debug UI (DEBUG), UIKit extensions |
 | **LumiKitLottie** | LumiKitUI + Lottie | Lottie-powered pull-to-refresh control |
 
-**104 source files** across 4 targets, with **743 tests** across 4 test targets:
+**105 source files** across 4 targets, with **743 tests** across 4 test targets:
 - **LumiKitCoreTests**: 76 tests (12 suites)
 - **LumiKitNetworkTests**: 61 tests (3 suites)
 - **LumiKitUITests**: 599 tests (96 suites)
@@ -130,11 +130,11 @@ xcodegen generate
 open LumiKitExample.xcodeproj
 ```
 
-The example includes **33 interactive pages** across 6 sections:
+The example includes **34 interactive pages** across 6 sections:
 
 - **Design System**: Colors, Typography, Markdown
 - **Controls**: Buttons, Switch, Toggle Button, Segmented Control, Text Field, Text View, Search Bar
-- **Components**: Divider, Badges, Chips, Cards, Gradient, Page Indicator, Banners, Empty State, Loading State
+- **Components**: Divider, Badges, Chips, Cards, Gradient, Page Indicator, Navigation Bar, Banners, Empty State, Loading State
 - **Feedback**: Toast, Alerts & Errors, Progress, Haptics
 - **Overlays**: Action Sheet, Date Picker, Tip View, Card Page, Card Panel, Floating Button
 - **Media**: Photo Grid, Photo Browser, Photo Crop, QR Code
@@ -170,9 +170,9 @@ LumiKit/
 │   │   │   ├── Pickers/       # LMKDatePickerHelper
 │   │   │   ├── LMKBadgeView, LMKBannerView, LMKCardView, LMKChipView,
 │   │   │   ├── LMKDividerView, LMKEmptyStateView, LMKFloatingButton,
-│   │   │   ├── LMKGradientView, LMKLoadingStateView, LMKPageIndicator,
-│   │   │   ├── LMKProgressViewController, LMKSearchBar, LMKSkeletonCell,
-│   │   │   ├── LMKToastView, LMKTipView,
+│   │   │   ├── LMKGradientView, LMKLoadingStateView, LMKNavigationBar,
+│   │   │   ├── LMKPageIndicator, LMKProgressViewController, LMKSearchBar,
+│   │   │   ├── LMKSkeletonCell, LMKToastView, LMKTipView,
 │   │   │   ├── LMKCardPageController, LMKCardPageLayout,
 │   │   │   ├── LMKCardPanelController, LMKCardPanelLayout,
 │   │   │   ├── LMKNavigationDirection, LMKOverscrollFooterHelper,
@@ -311,7 +311,7 @@ LMKThemeManager.shared.apply(spacing: .init(large: 20))
 | Component | Purpose |
 |-----------|---------|
 | `LMKBottomSheetController` | Base class for bottom sheet presentation with shared dimming, container, velocity-aware drag-to-dismiss, and unified animation |
-| `LMKActionSheet` | Custom bottom-sheet action sheet with design-token styling and optional custom content |
+| `LMKActionSheet` | Custom bottom-sheet action sheet with design-token styling, optional custom content, `isSelected` checkmark state, and sub-page navigation |
 | `LMKBadgeView` | Notification count, status dot, or custom text badge |
 | `LMKBannerView` | Persistent notification bar with optional action and dismiss |
 | `LMKCardView` | Card container with shadow, corner radius, content insets |
@@ -321,6 +321,7 @@ LMKThemeManager.shared.apply(spacing: .init(large: 20))
 | `LMKEnumSelectionBottomSheet` | Bottom sheet for selecting from an enum's cases |
 | `LMKGradientView` | `CAGradientLayer`-backed view with 4 direction options |
 | `LMKLoadingStateView` | Loading indicator with optional message |
+| `LMKNavigationBar` | Custom navigation bar with large title and standard inline modes, configurable bar items, back button, and design-token styling |
 | `LMKProgressViewController` | Blocking progress modal (`.determinate` with progress bar, `.indeterminate` spinner-only) |
 | `LMKSearchBar` | Search bar with configurable placeholder and cancel text |
 | `LMKSkeletonCell` | Skeleton loading placeholder cell |

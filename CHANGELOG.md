@@ -9,18 +9,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **LMKNavigationBar** — Custom navigation bar with design-token styling. Supports large title mode (bold, left-aligned, separate row) and standard inline mode (centered title). Configurable back button, left/right bar items (`LMKNavigationBarItem`), separator, and full appearance customization (background, tint, title font/color). Uses `pinToTop(of:)` for easy layout
+- **LMKPhotoGridViewController** — Photo grid with square cells, pinch-to-zoom column control (2–6 columns), sort by date (newest/oldest), content mode toggle (aspect fill/fit), and integrated photo browser navigation. Delegates: `LMKPhotoGridDataSource`, `LMKPhotoGridDelegate`
 - **LMKSwitch** — Custom toggle switch replacing `UISwitch`. Features a rounded track with sliding circular thumb, spring animation, haptic feedback, `isOn`/`setOn(_:animated:)` API, `valueChangedHandler` closure, and VoiceOver accessibility
-- **LMKPageIndicator** — Custom page indicator replacing `UIPageControl`. Supports optional `expandsActiveDot` (default `false`) to expand the active dot into a pill shape with spring animation. `pageChangedHandler` and VoiceOver increment/decrement
+- **LMKPageIndicator** — Custom page indicator replacing `UIPageControl`. Supports optional `expandsActiveDot` (default `false`) to expand the active dot into a pill shape with spring animation. `maxVisibleDots` windowing for many pages. `pageChangedHandler` and VoiceOver increment/decrement
 - **LMKButton styles** — Added `.ghost(UIColor)` (text-only, no background) and `.iconOnly(UIColor)` (circular icon button) styles
 - **LMKButton loading** — `isLoading` property shows activity indicator and disables interaction
 - **LMKButtonFactory** — Added `ghost(role:title:)` and `iconOnly(role:iconName:)` factory methods
+- **LMKMarkdownRenderer.renderFull()** — Long-form markdown rendering with headings (H1–H4), ordered/unordered lists, horizontal rules, and preserved line breaks
 
 ### Changed
 
-- **LMKSegmentedControl** — **Breaking**: Fully rewritten as custom `UIControl` (no longer a `UISegmentedControl` subclass). Features sliding pill indicator with spring animation, `LMKColor.primary` fill, haptic feedback, and dark mode support. API: `init(items: [String])`, `selectedSegmentIndex`, `valueChangedHandler`. Removed `didValueChangeHandler`, `numberOfSegments` (use `items.count`), `apportionsSegmentWidthsByContent`
+- **LMKSegmentedControl** — **Breaking**: Fully rewritten as custom `UIControl` (no longer a `UISegmentedControl` subclass). Features sliding pill indicator with spring animation, `LMKColor.primary` fill, haptic feedback, and dark mode support. New properties: `cornerStyle` (`.capsule` default, `.rounded`), `itemPadding`, `makeScrollableContainer()`. API: `init(items: [String])`, `selectedSegmentIndex`, `valueChangedHandler`. Removed `didValueChangeHandler`, `numberOfSegments` (use `items.count`), `apportionsSegmentWidthsByContent`
 - **LMKButton** — Filled and outlined styles now use `cornerStyle = .capsule` (pill shape) instead of `LMKCornerRadius.small`
 - **LMKControlScrollView** — Removed. `LMKSegmentedControl.makeScrollableContainer()` now returns `UIScrollView` directly
+- **Source files** — Increased from 104 to 105 files (92 test files)
 - **Test suite** — Expanded from 542 to 599 UI tests (new: LMKSwitch 7, LMKPageIndicator 8, LMKButton styles 5, updated LMKSegmentedControl 10, and additional coverage across components)
+- **Example app** — Expanded from 33 to 34 interactive pages (new: Navigation Bar). Added `isSelected` checkmark demo to Action Sheet page. Reorganized into subdirectories by section
 
 ## [0.4.0] - 2026-03-22
 
