@@ -20,6 +20,8 @@ public nonisolated struct LMKSharePreviewStrings: Sendable {
     public var saveImage: String
     /// Error message shown when saving fails.
     public var saveError: String
+    /// Optional success message shown as a toast after saving. When `nil` (default), no toast is shown.
+    public var saveSuccess: String?
     /// Message shown when photo library permission is denied.
     public var photoPermissionDenied: String
 
@@ -27,11 +29,13 @@ public nonisolated struct LMKSharePreviewStrings: Sendable {
         share: String = "Share",
         saveImage: String = "Save Image",
         saveError: String = "Failed to save image",
+        saveSuccess: String? = nil,
         photoPermissionDenied: String = "Photo library access is required to save images. Please enable it in Settings."
     ) {
         self.share = share
         self.saveImage = saveImage
         self.saveError = saveError
+        self.saveSuccess = saveSuccess
         self.photoPermissionDenied = photoPermissionDenied
     }
 }
@@ -269,6 +273,9 @@ public final class LMKSharePreviewViewController: UIViewController {
                 LMKToast.showError(message: Self.strings.saveError, on: self)
             } else if success {
                 LMKLogger.info("Image saved to photos", category: .general)
+                if let message = Self.strings.saveSuccess {
+                    LMKToast.showSuccessOnWindow(message: message)
+                }
                 delegate?.sharePreviewDidSave(self)
                 dismiss(animated: true) { [weak self] in
                     guard let self else { return }
