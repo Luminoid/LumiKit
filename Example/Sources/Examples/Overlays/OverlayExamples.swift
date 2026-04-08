@@ -2,7 +2,8 @@
 //  OverlayExamples.swift
 //  LumiKitExample
 //
-//  Action sheet, date picker, user tip, card page, card panel, and floating button examples.
+//  Action sheet, enum selection, date picker, tip view, card page, card panel,
+//  and floating button examples.
 //
 
 import LumiKitUI
@@ -87,13 +88,13 @@ final class ActionSheetDetailViewController: DetailViewController {
     }
 
     @objc private func showSelectionSheet() {
-        let sortOptions = ["Date Added", "Name", "Last Watered", "Species"]
+        let sortOptions = ["Date Added", "Name", "Category", "Priority"]
         let currentSort = "Name"
 
         LMKActionSheet.present(
             in: self,
             title: "Sort By",
-            message: "Choose how to sort your plants.",
+            message: "Choose how to sort your items.",
             actions: sortOptions.map { option in
                 .init(
                     title: option,
@@ -117,7 +118,7 @@ final class ActionSheetDetailViewController: DetailViewController {
                     icon: UIImage(systemName: "tag"),
                     page: .init(
                         title: "Select Category",
-                        actions: ["Flower", "Progress", "Leaf", "Issue"].map { name in
+                        actions: ["General", "Progress", "Favorite", "Archive"].map { name in
                             .init(title: name) { [weak self] in
                                 guard let self else { return }
                                 LMKToast.showSuccess(message: "Selected: \(name)", on: self)
@@ -190,6 +191,110 @@ final class ActionSheetDetailViewController: DetailViewController {
                 },
             ]
         )
+    }
+}
+
+// MARK: - Enum Selection Bottom Sheet
+
+private enum SortOption: String, CaseIterable, LMKEnumSelectable {
+    case dateAdded
+    case name
+    case category
+    case priority
+
+    var displayName: String {
+        switch self {
+        case .dateAdded: "Date Added"
+        case .name: "Name"
+        case .category: "Category"
+        case .priority: "Priority"
+        }
+    }
+
+    var iconName: String {
+        switch self {
+        case .dateAdded: "calendar"
+        case .name: "textformat.abc"
+        case .category: "folder"
+        case .priority: "flag"
+        }
+    }
+}
+
+private enum ThemeOption: String, CaseIterable, LMKEnumSelectable {
+    case system
+    case light
+    case dark
+
+    var displayName: String {
+        switch self {
+        case .system: "System"
+        case .light: "Light"
+        case .dark: "Dark"
+        }
+    }
+
+    var iconName: String {
+        switch self {
+        case .system: "gear"
+        case .light: "sun.max"
+        case .dark: "moon"
+        }
+    }
+}
+
+final class EnumSelectionDetailViewController: DetailViewController {
+    private var currentSort: SortOption = .name
+    private var currentTheme: ThemeOption = .system
+
+    override func viewDidLoad() {
+        super.viewDidLoad()
+
+        addSectionHeader("Basic (No Icons)")
+        stack.addArrangedSubview(LMKLabelFactory.caption(text: "Generic bottom sheet for selecting from a list of options. Shows a checkmark on the current selection."))
+        let sortButton = LMKButtonFactory.filled(role: .primary, title: "Sort By: Name", target: self, action: #selector(showSortSheet))
+        sortButton.tag = 1
+        stack.addArrangedSubview(sortButton)
+
+        addDivider()
+        addSectionHeader("With Icons")
+        stack.addArrangedSubview(LMKLabelFactory.caption(text: "Set showIcons: true to display SF Symbols or asset images alongside each option."))
+        let themeButton = LMKButtonFactory.filled(role: .secondary, title: "Theme: System", target: self, action: #selector(showThemeSheet))
+        themeButton.tag = 2
+        stack.addArrangedSubview(themeButton)
+    }
+
+    @objc private func showSortSheet() {
+        LMKEnumSelectionBottomSheet.present(
+            in: self,
+            title: "Sort By",
+            options: SortOption.allCases,
+            currentSelection: currentSort
+        ) { [weak self] option in
+            guard let self else { return }
+            currentSort = option
+            if let button = view.viewWithTag(1) as? LMKButton {
+                button.setTitle("Sort By: \(option.displayName)", for: .normal)
+            }
+            LMKToast.showSuccess(message: "Sort: \(option.displayName)", on: self)
+        }
+    }
+
+    @objc private func showThemeSheet() {
+        LMKEnumSelectionBottomSheet.present(
+            in: self,
+            title: "Appearance",
+            options: ThemeOption.allCases,
+            currentSelection: currentTheme,
+            showIcons: true
+        ) { [weak self] option in
+            guard let self else { return }
+            currentTheme = option
+            if let button = view.viewWithTag(2) as? LMKButton {
+                button.setTitle("Theme: \(option.displayName)", for: .normal)
+            }
+            LMKToast.showSuccess(message: "Theme: \(option.displayName)", on: self)
+        }
     }
 }
 

@@ -20,8 +20,6 @@ public nonisolated struct LMKSharePreviewStrings: Sendable {
     public var saveImage: String
     /// Error message shown when saving fails.
     public var saveError: String
-    /// Success message shown after saving.
-    public var saveSuccess: String
     /// Message shown when photo library permission is denied.
     public var photoPermissionDenied: String
 
@@ -29,13 +27,11 @@ public nonisolated struct LMKSharePreviewStrings: Sendable {
         share: String = "Share",
         saveImage: String = "Save Image",
         saveError: String = "Failed to save image",
-        saveSuccess: String = "Image saved to Photos",
         photoPermissionDenied: String = "Photo library access is required to save images. Please enable it in Settings."
     ) {
         self.share = share
         self.saveImage = saveImage
         self.saveError = saveError
-        self.saveSuccess = saveSuccess
         self.photoPermissionDenied = photoPermissionDenied
     }
 }
@@ -265,23 +261,31 @@ public final class LMKSharePreviewViewController: UIViewController {
 
     private func performSaveImage() {
         let imageToSave = image
-        PHPhotoLibrary.shared().performChanges {
-            PHAssetChangeRequest.creationRequestForAsset(from: imageToSave)
-        } completionHandler: { [weak self] success, error in
-            Task { @MainActor [weak self] in
-                guard let self else { return }
-                if let error {
-                    LMKLogger.error("Failed to save image to photos", error: error, category: .general)
-                    LMKToast.showError(message: Self.strings.saveError, on: self)
-                } else if success {
-                    LMKLogger.info("Image saved to photos", category: .general)
-                    LMKToast.showSuccessOnWindow(message: Self.strings.saveSuccess)
-                    self.delegate?.sharePreviewDidSave(self)
-                    self.dismiss(animated: true) { [weak self] in
-                        guard let self else { return }
-                        self.delegate?.sharePreviewDidDismiss(self)
-                    }
+        Task { [weak self] in
+            let (success, error) = await Self.saveImageToPhotoLibrary(imageToSave)
+            guard let self else { return }
+            if let error {
+                LMKLogger.error("Failed to save image to photos", error: error, category: .general)
+                LMKToast.showError(message: Self.strings.saveError, on: self)
+            } else if success {
+                LMKLogger.info("Image saved to photos", category: .general)
+                delegate?.sharePreviewDidSave(self)
+                dismiss(animated: true) { [weak self] in
+                    guard let self else { return }
+                    self.delegate?.sharePreviewDidDismiss(self)
                 }
+            }
+        }
+    }
+
+    /// Fully severs MainActor isolation so the `performChanges` closure runs
+    /// safely on the background queue Photos dispatches it to.
+    private nonisolated static func saveImageToPhotoLibrary(_ image: UIImage) async -> (Bool, (any Error)?) {
+        await withCheckedContinuation { continuation in
+            PHPhotoLibrary.shared().performChanges {
+                PHAssetChangeRequest.creationRequestForAsset(from: image)
+            } completionHandler: { success, error in
+                continuation.resume(returning: (success, error))
             }
         }
     }

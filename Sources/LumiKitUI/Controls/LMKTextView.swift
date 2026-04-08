@@ -33,6 +33,7 @@ open class LMKTextView: UIView {
         set {
             textView.text = newValue
             updatePlaceholderVisibility()
+            updateCharacterCount()
         }
     }
 
@@ -55,7 +56,25 @@ open class LMKTextView: UIView {
     }
 
     /// Maximum number of characters. `nil` means unlimited.
-    public var maxCharacterCount: Int?
+    public var maxCharacterCount: Int? {
+        didSet { updateCharacterCount() }
+    }
+
+    /// Whether to show a character counter (e.g. "78/200") below the text view.
+    /// Requires ``maxCharacterCount`` to be set. Default `false`.
+    public var showsCharacterCount: Bool = false {
+        didSet { updateCharacterCount() }
+    }
+
+    /// Minimum height for the text view. Defaults to 100pt.
+    public var minimumHeight: CGFloat = 100 {
+        didSet {
+            textViewHeightConstraint?.update(offset: minimumHeight)
+        }
+    }
+
+    private var textViewHeightConstraint: Constraint?
+    private let counterLabel = UILabel()
 
     /// Called when text changes via user input.
     public var textChangedHandler: ((String?) -> Void)?
@@ -86,6 +105,7 @@ open class LMKTextView: UIView {
         addSubview(textView)
         textView.snp.makeConstraints { make in
             make.top.leading.trailing.equalToSuperview()
+            textViewHeightConstraint = make.height.greaterThanOrEqualTo(minimumHeight).constraint
         }
 
         placeholderLabel.font = LMKTypography.body
@@ -105,9 +125,24 @@ open class LMKTextView: UIView {
         helperLabel.font = LMKTypography.small
         helperLabel.textColor = LMKColor.textTertiary
         helperLabel.numberOfLines = 0
+        helperLabel.setContentHuggingPriority(.defaultLow, for: .horizontal)
         addSubview(helperLabel)
         helperLabel.snp.makeConstraints { make in
-            make.leading.trailing.equalToSuperview().inset(LMKSpacing.xs)
+            make.leading.equalToSuperview().inset(LMKSpacing.xs)
+            make.top.equalTo(textView.snp.bottom).offset(LMKSpacing.xs)
+            make.bottom.equalToSuperview()
+        }
+
+        counterLabel.font = LMKTypography.small
+        counterLabel.textColor = LMKColor.textTertiary
+        counterLabel.textAlignment = .right
+        counterLabel.setContentHuggingPriority(.required, for: .horizontal)
+        counterLabel.setContentCompressionResistancePriority(.required, for: .horizontal)
+        counterLabel.isHidden = true
+        addSubview(counterLabel)
+        counterLabel.snp.makeConstraints { make in
+            make.trailing.equalToSuperview().inset(LMKSpacing.xs)
+            make.leading.greaterThanOrEqualTo(helperLabel.snp.trailing).offset(LMKSpacing.small)
             make.top.equalTo(textView.snp.bottom).offset(LMKSpacing.xs)
             make.bottom.equalToSuperview()
         }
@@ -125,6 +160,16 @@ open class LMKTextView: UIView {
 
     private func updatePlaceholderVisibility() {
         placeholderLabel.isHidden = !(textView.text?.isEmpty ?? true)
+    }
+
+    private func updateCharacterCount() {
+        guard showsCharacterCount, let max = maxCharacterCount else {
+            counterLabel.isHidden = true
+            return
+        }
+        let count = textView.text?.count ?? 0
+        counterLabel.text = "\(count)/\(max)"
+        counterLabel.isHidden = false
     }
 
     private func updateHelperText() {
@@ -170,6 +215,7 @@ open class LMKTextView: UIView {
 extension LMKTextView: UITextViewDelegate {
     public func textViewDidChange(_ textView: UITextView) {
         updatePlaceholderVisibility()
+        updateCharacterCount()
         textChangedHandler?(textView.text)
         delegate?.textViewDidChange?(textView)
     }

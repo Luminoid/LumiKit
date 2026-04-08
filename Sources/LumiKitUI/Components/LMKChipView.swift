@@ -28,10 +28,10 @@ public enum LMKChipStyle {
 ///
 /// ```swift
 /// // Simple tag
-/// let chip = LMKChipView(text: "Indoor", style: .filled)
+/// let chip = LMKChipView(text: "Design", style: .filled)
 ///
 /// // Dismissible filter chip
-/// let filter = LMKChipView(text: "Watering", style: .outlined)
+/// let filter = LMKChipView(text: "Category", style: .outlined)
 /// filter.dismissHandler = { print("removed") }
 ///
 /// // Toggle chip

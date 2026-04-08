@@ -12,6 +12,7 @@
 		2B98309CBBF522AA80A2F5EA /* OverlayExamples.swift in Sources */ = {isa = PBXBuildFile; fileRef = CDFCCD48C6E200E242618752 /* OverlayExamples.swift */; };
 		2BF2259AC5DC25989F472BF6 /* DetailViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = F49C587FAE89BA2CD1A5AD20 /* DetailViewController.swift */; };
 		4260186F009492452AC405F5 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = DAE7925528F006F31D46E13D /* SceneDelegate.swift */; };
+		44C8788C150D82B5C248937F /* ExtensionExamples.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC9516F2368F27ED95F8C79E /* ExtensionExamples.swift */; };
 		5BA1FB8853BD2D6D9C4AED53 /* ControlExamples.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3170DF1DC699C02B0826BA23 /* ControlExamples.swift */; };
 		668ABF8FF1CE7F379C901524 /* DesignSystemExamples.swift in Sources */ = {isa = PBXBuildFile; fileRef = CB3BA0EF50F341F6CB5B0DE9 /* DesignSystemExamples.swift */; };
 		880C1D37E2AFFDA4D4F2E174 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1035AED8A1327983D40EA2F6 /* AppDelegate.swift */; };
@@ -32,6 +33,7 @@
 		6F7F3AA23CD31D462ADC1046 /* FeedbackExamples.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FeedbackExamples.swift; sourceTree = "<group>"; };
 		790F5E5A7AFB55134E93EE5F /* MediaExamples.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediaExamples.swift; sourceTree = "<group>"; };
 		9B50227ABA29034C8561A94D /* ExampleViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExampleViewController.swift; sourceTree = "<group>"; };
+		AC9516F2368F27ED95F8C79E /* ExtensionExamples.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExtensionExamples.swift; sourceTree = "<group>"; };
 		CB3BA0EF50F341F6CB5B0DE9 /* DesignSystemExamples.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DesignSystemExamples.swift; sourceTree = "<group>"; };
 		CDFCCD48C6E200E242618752 /* OverlayExamples.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverlayExamples.swift; sourceTree = "<group>"; };
 		DAE7925528F006F31D46E13D /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
@@ -108,6 +110,7 @@
 				DEEFBF27DF24D3329435C7DF /* Components */,
 				3727E7106E9555AE723DEFDE /* Controls */,
 				33CA6AEB5F73D822083494CB /* DesignSystem */,
+				F6DF3391733201319A63FEE9 /* Extensions */,
 				CEC9AA0B35F2657F4DBFB94C /* Feedback */,
 				E8374B47FFAF2A029BFC0F1A /* Media */,
 				07E6F58FF768E05CFB9A722F /* Overlays */,
@@ -173,6 +176,14 @@
 				790F5E5A7AFB55134E93EE5F /* MediaExamples.swift */,
 			);
 			path = Media;
+			sourceTree = "<group>";
+		};
+		F6DF3391733201319A63FEE9 /* Extensions */ = {
+			isa = PBXGroup;
+			children = (
+				AC9516F2368F27ED95F8C79E /* ExtensionExamples.swift */,
+			);
+			path = Extensions;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -256,6 +267,7 @@
 				2BF2259AC5DC25989F472BF6 /* DetailViewController.swift in Sources */,
 				AED0CBCF06783C5BBCDD4F67 /* ExampleTheme.swift in Sources */,
 				21FADE7A431E99C689E22BCD /* ExampleViewController.swift in Sources */,
+				44C8788C150D82B5C248937F /* ExtensionExamples.swift in Sources */,
 				D8B917A6437923B874F0EAD3 /* FeedbackExamples.swift in Sources */,
 				990D265B4C929A4955A347D5 /* MediaExamples.swift in Sources */,
 				2B98309CBBF522AA80A2F5EA /* OverlayExamples.swift in Sources */,
@@ -394,6 +406,9 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = "";
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSCameraUsageDescription = "Capture photos for the camera examples.";
+				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "Save photos from the share preview to your photo library.";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Browse and select photos for the photo browser examples.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -403,7 +418,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 0.3.0;
+				MARKETING_VERSION = 0.5.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.luminoid.lumikit.example;
 				SDKROOT = auto;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
@@ -424,6 +439,9 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = "";
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSCameraUsageDescription = "Capture photos for the camera examples.";
+				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "Save photos from the share preview to your photo library.";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Browse and select photos for the photo browser examples.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -433,7 +451,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 0.3.0;
+				MARKETING_VERSION = 0.5.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.luminoid.lumikit.example;
 				SDKROOT = auto;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";

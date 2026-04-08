@@ -48,10 +48,10 @@ LumiKit is organized into four targets so apps can import only what they need:
 | **LumiKitUI** | LumiKitCore + LumiKitNetwork + SnapKit | Design system tokens, theme manager, animation, haptics, alerts, components, controls, photo browser/crop, network debug UI (DEBUG), UIKit extensions |
 | **LumiKitLottie** | LumiKitUI + Lottie | Lottie-powered pull-to-refresh control |
 
-**105 source files** across 4 targets, with **743 tests** across 4 test targets:
-- **LumiKitCoreTests**: 76 tests (12 suites)
-- **LumiKitNetworkTests**: 61 tests (3 suites)
-- **LumiKitUITests**: 599 tests (96 suites)
+**106 source files** across 4 targets, with **804 tests** across 4 test targets:
+- **LumiKitCoreTests**: 76 tests (11 suites)
+- **LumiKitNetworkTests**: 65 tests (4 suites)
+- **LumiKitUITests**: 656 tests (81 suites)
 - **LumiKitLottieTests**: 7 tests (1 suite)
 
 ---
@@ -130,14 +130,15 @@ xcodegen generate
 open LumiKitExample.xcodeproj
 ```
 
-The example includes **34 interactive pages** across 6 sections:
+The example includes **40 interactive pages** across 7 sections:
 
 - **Design System**: Colors, Typography, Markdown
-- **Controls**: Buttons, Switch, Toggle Button, Segmented Control, Text Field, Text View, Search Bar
-- **Components**: Divider, Badges, Chips, Cards, Gradient, Page Indicator, Navigation Bar, Banners, Empty State, Loading State
+- **Controls**: Buttons, Segmented Control, Switch, Toggle Button, Text Field, Text View, Search Bar
+- **Components**: Divider, Badges, Chips, Cards, Gradient, Page Indicator, Navigation Bar, Banners, Empty State, Loading State, Overscroll Footer
 - **Feedback**: Toast, Alerts & Errors, Progress, Haptics
-- **Overlays**: Action Sheet, Date Picker, Tip View, Card Page, Card Panel, Floating Button
-- **Media**: Photo Grid, Photo Browser, Photo Crop, QR Code
+- **Overlays**: Action Sheet, Enum Selection, Date Picker, Tip View, Card Page, Card Panel, Floating Button
+- **Media**: Photo Grid, Photo Browser, Photo Crop, QR Code, Share
+- **Extensions**: Shadows, Borders & Radius, Fade Animations
 
 ---
 
@@ -200,7 +201,7 @@ LumiKit/
 │   │                          # LMKSceneUtil, LMKImageUtil, LMKMarkdownRenderer
 │   └── LumiKitLottie/         # LMKLottieRefreshControl
 ├── Tests/
-│   ├── LumiKitCoreTests/      # 76 tests, 12 suites
+│   ├── LumiKitCoreTests/      # 76 tests, 11 suites — mirrors LumiKitCore/ subfolders
 │   │   ├── Concurrency/       # LMKConcurrencyHelpers
 │   │   ├── Data/              # String+LMK, Collection+LMK, NSAttributedString+LMK, FormatHelper
 │   │   ├── Date/              # DateHelper, DateFormatterHelper
@@ -208,11 +209,12 @@ LumiKit/
 │   │   ├── Log/               # LMKLogStore (ring buffer, thread safety),
 │   │   │                      # LMKLogger (log store integration)
 │   │   └── Validation/        # URLValidator
-│   ├── LumiKitNetworkTests/   # 61 tests, 3 suites
-│   │   ├── LMKNetworkRequestStoreTests.swift  # FIFO, thread safety
-│   │   ├── LMKNetworkRequestRecordTests.swift # Computed properties, display formatting
-│   │   └── LMKNetworkLoggerTests.swift        # Configuration, state transitions
-│   ├── LumiKitUITests/        # 599 tests, 96 suites
+│   ├── LumiKitNetworkTests/   # 65 tests, 4 suites
+│   │   ├── LMKNetworkRequestStoreTests.swift         # FIFO, thread safety
+│   │   ├── LMKNetworkRequestRecordTests.swift        # Computed properties, display formatting
+│   │   ├── LMKNetworkLoggerTests.swift               # Configuration, state transitions
+│   │   └── URLSessionConfigurationLMKDebugTests.swift # enableNetworkLogging
+│   ├── LumiKitUITests/        # 656 tests, 81 suites
 │   │   ├── Alerts/            # AlertPresenter, ErrorHandler
 │   │   ├── Animation/         # AnimationHelper
 │   │   ├── Components/
@@ -222,7 +224,7 @@ LumiKit/
 │   │   │   ├── Badge, Banner, Card, Chip, Divider, EmptyState,
 │   │   │   ├── Gradient, LoadingState, SearchBar, Skeleton, Toast,
 │   │   │   ├── FloatingButton, TipView, CardPage, CardPanel,
-│   │   │   └── ScrollStackViewController
+│   │   │   └── Progress, ScrollStackViewController
 │   │   ├── Controls/          # Button, SegmentedControl, TextField, TextView, ToggleButton
 │   │   ├── DesignSystem/
 │   │   │   ├── Tokens/        # Color, Spacing, CornerRadius, Alpha, Typography, Layout, Shadow
@@ -230,12 +232,13 @@ LumiKit/
 │   │   │   ├── Factories/     # ButtonFactory, CardFactory, LabelFactory
 │   │   │   └── ThemeManager, ComponentToken integration
 │   │   ├── Extensions/        # UIColor, UIImage, UIStackView,
-│   │   │                      # UIView (shadow/border/fade/layout)
+│   │   │                      # UIView (shadow/border/fade/layout),
+│   │   │                      # UIViewController (TopViewController)
 │   │   ├── Photo/             # CropAspectRatio, PhotoEXIF
 │   │   ├── QRCode/            # QRCodeGenerator
 │   │   ├── Share/             # SharePreview, ShareService
 │   │   └── Utilities/         # DeviceHelper, ImageUtil, KeyboardObserver,
-│   │                          # MarkdownRenderer
+│   │                          # KeyboardInsetHelper, MarkdownRenderer
 │   └── LumiKitLottieTests/    # 7 tests, 1 suite
 │       └── LMKLottieRefreshControlTests.swift
 ```

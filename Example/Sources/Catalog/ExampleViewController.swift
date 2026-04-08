@@ -3,7 +3,7 @@
 //  LumiKitExample
 //
 //  Catalog list that navigates to detail pages for each component group.
-//  Organized into sections: Design System, Components, Controls, Feedback, Overlays, Media.
+//  Organized into sections: Design System, Controls, Components, Feedback, Overlays, Media, Extensions.
 //
 
 import LumiKitUI
@@ -31,12 +31,12 @@ private let exampleSections: [ExampleSection] = [
         ExampleItem(title: "Typography", subtitle: "Headings, body, caption, scientific name", iconName: "textformat", makeViewController: { TypographyDetailViewController() }),
         ExampleItem(title: "Markdown", subtitle: "Render markdown as attributed strings", iconName: "text.badge.checkmark", makeViewController: { MarkdownDetailViewController() }),
     ]),
-    // Interactive inputs — simple → complex
+    // Interactive inputs — action → selection → text input
     ExampleSection(title: "Controls", items: [
         ExampleItem(title: "Buttons", subtitle: "Filled, outlined, ghost, icon-only, loading", iconName: "rectangle.and.hand.point.up.left", makeViewController: { ButtonsDetailViewController() }),
+        ExampleItem(title: "Segmented Control", subtitle: "Draggable pill indicator, corner styles", iconName: "rectangle.split.3x1", makeViewController: { SegmentedControlDetailViewController() }),
         ExampleItem(title: "Switch", subtitle: "Custom toggle with spring animation", iconName: "switch.2", makeViewController: { SwitchDetailViewController() }),
         ExampleItem(title: "Toggle Button", subtitle: "Text button with on/off states", iconName: "togglepower", makeViewController: { ToggleButtonDetailViewController() }),
-        ExampleItem(title: "Segmented Control", subtitle: "Draggable pill indicator, corner styles", iconName: "rectangle.split.3x1", makeViewController: { SegmentedControlDetailViewController() }),
         ExampleItem(title: "Text Field", subtitle: "Validation states, icons, helper text", iconName: "character.cursor.ibeam", makeViewController: { TextFieldDetailViewController() }),
         ExampleItem(title: "Text View", subtitle: "Multi-line input with character limit", iconName: "text.alignleft", makeViewController: { TextViewDetailViewController() }),
         ExampleItem(title: "Search Bar", subtitle: "Search input with cancel button", iconName: "magnifyingglass", makeViewController: { SearchBarDetailViewController() }),
@@ -53,6 +53,7 @@ private let exampleSections: [ExampleSection] = [
         ExampleItem(title: "Banners", subtitle: "Persistent info, warning, and error banners", iconName: "exclamationmark.bubble", makeViewController: { BannerDetailViewController() }),
         ExampleItem(title: "Empty State", subtitle: "Full screen, card, and inline styles", iconName: "square.dashed", makeViewController: { EmptyStateDetailViewController() }),
         ExampleItem(title: "Loading State", subtitle: "Inline, overlay, and skeleton loading", iconName: "progress.indicator", makeViewController: { LoadingStateDetailViewController() }),
+        ExampleItem(title: "Overscroll Footer", subtitle: "Footer revealed on overscroll", iconName: "arrow.down.to.line", makeViewController: { OverscrollFooterDetailViewController() }),
     ]),
     // Transient notifications and user feedback
     ExampleSection(title: "Feedback", items: [
@@ -61,9 +62,10 @@ private let exampleSections: [ExampleSection] = [
         ExampleItem(title: "Progress", subtitle: "Determinate and indeterminate progress", iconName: "gauge.with.dots.needle.33percent", makeViewController: { ProgressDetailViewController() }),
         ExampleItem(title: "Haptics", subtitle: "Success, warning, error, impact feedback", iconName: "iphone.radiowaves.left.and.right", makeViewController: { HapticsDetailViewController() }),
     ]),
-    // Modal and floating presentations
+    // Modal and floating presentations — bottom sheets → overlays → floating
     ExampleSection(title: "Overlays", items: [
         ExampleItem(title: "Action Sheet", subtitle: "Action sheets with icons and sub-pages", iconName: "list.bullet", makeViewController: { ActionSheetDetailViewController() }),
+        ExampleItem(title: "Enum Selection", subtitle: "Generic enum picker bottom sheet", iconName: "checklist", makeViewController: { EnumSelectionDetailViewController() }),
         ExampleItem(title: "Date Picker", subtitle: "Single date, range, and date with notes", iconName: "calendar", makeViewController: { DatePickerDetailViewController() }),
         ExampleItem(title: "Tip View", subtitle: "Centered and pointed onboarding tips", iconName: "lightbulb", makeViewController: { TipViewDetailViewController() }),
         ExampleItem(title: "Card Page", subtitle: "Card page with multi-page navigation", iconName: "square.stack", makeViewController: { CardPageDetailViewController() }),
@@ -76,6 +78,13 @@ private let exampleSections: [ExampleSection] = [
         ExampleItem(title: "Photo Browser", subtitle: "Full-screen photo viewer with zoom", iconName: "photo.on.rectangle", makeViewController: { PhotoBrowserDetailViewController() }),
         ExampleItem(title: "Photo Crop", subtitle: "Crop with aspect ratios and zoom", iconName: "crop", makeViewController: { PhotoCropDetailViewController() }),
         ExampleItem(title: "QR Code", subtitle: "Generate QR codes from text", iconName: "qrcode", makeViewController: { QRCodeDetailViewController() }),
+        ExampleItem(title: "Share", subtitle: "Share preview sheet and share service", iconName: "square.and.arrow.up", makeViewController: { ShareDetailViewController() }),
+    ]),
+    // UIKit extension demos
+    ExampleSection(title: "Extensions", items: [
+        ExampleItem(title: "Shadows", subtitle: "Shadow presets and lmk_applyShadow", iconName: "shadow", makeViewController: { ShadowDetailViewController() }),
+        ExampleItem(title: "Borders & Radius", subtitle: "Borders, corner radius, and circular views", iconName: "square.dashed", makeViewController: { BorderDetailViewController() }),
+        ExampleItem(title: "Fade Animations", subtitle: "lmk_fadeIn and lmk_fadeOut", iconName: "circle.lefthalf.filled", makeViewController: { FadeDetailViewController() }),
     ]),
 ]
 
@@ -96,7 +105,7 @@ private struct InfoItem {
 }
 
 private let aboutItems: [InfoItem] = [
-    InfoItem("Version", detail: "0.4.0", iconName: "tag"),
+    InfoItem("Version", detail: Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "—", iconName: "tag"),
     InfoItem("GitHub", detail: "Luminoid/LumiKit", iconName: "link", isLink: true),
     InfoItem("Platform", detail: "iOS 18+ · Mac Catalyst 18+", iconName: "iphone"),
     InfoItem("Swift", detail: "6.2 · Strict Concurrency", iconName: "swift"),

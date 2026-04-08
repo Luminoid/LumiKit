@@ -17,15 +17,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **LMKButton loading** — `isLoading` property shows activity indicator and disables interaction
 - **LMKButtonFactory** — Added `ghost(role:title:)` and `iconOnly(role:iconName:)` factory methods
 - **LMKMarkdownRenderer.renderFull()** — Long-form markdown rendering with headings (H1–H4), ordered/unordered lists, horizontal rules, and preserved line breaks
+- **LMKActionSheet `isSelected`** — Action items support `isSelected: true` to display a trailing checkmark, with `.selected` accessibility trait
+- **LMKTextView `minimumHeight`** — Configurable minimum height property (default 100pt) that updates the height constraint dynamically
 
 ### Changed
 
 - **LMKSegmentedControl** — **Breaking**: Fully rewritten as custom `UIControl` (no longer a `UISegmentedControl` subclass). Features sliding pill indicator with spring animation, `LMKColor.primary` fill, haptic feedback, and dark mode support. New properties: `cornerStyle` (`.capsule` default, `.rounded`), `itemPadding`, `makeScrollableContainer()`. API: `init(items: [String])`, `selectedSegmentIndex`, `valueChangedHandler`. Removed `didValueChangeHandler`, `numberOfSegments` (use `items.count`), `apportionsSegmentWidthsByContent`
 - **LMKButton** — Filled and outlined styles now use `cornerStyle = .capsule` (pill shape) instead of `LMKCornerRadius.small`
 - **LMKControlScrollView** — Removed. `LMKSegmentedControl.makeScrollableContainer()` now returns `UIScrollView` directly
-- **Source files** — Increased from 104 to 105 files (92 test files)
-- **Test suite** — Expanded from 542 to 599 UI tests (new: LMKSwitch 7, LMKPageIndicator 8, LMKButton styles 5, updated LMKSegmentedControl 10, and additional coverage across components)
+- **Source files** — Increased from 104 to 105 files (93 test files)
+- **Test suite** — Expanded from 542 to 628 UI tests (new: LMKNavigationBar 29, LMKSwitch 7, LMKPageIndicator 8, LMKButton styles 5, updated LMKSegmentedControl 10, and additional coverage across components)
+- **LMKNavigationBar back button** — Refined chevron from 20pt semibold to 17pt medium to match system navigation bar
 - **Example app** — Expanded from 33 to 34 interactive pages (new: Navigation Bar). Added `isSelected` checkmark demo to Action Sheet page. Reorganized into subdirectories by section
+
+### Fixed
+
+- **LMKOverscrollFooterHelper** — Fixed footer inset calculation
 
 ## [0.4.0] - 2026-03-22
 

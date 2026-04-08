@@ -2,33 +2,24 @@
 //  ComponentExamples.swift
 //  LumiKitExample
 //
-//  Cards, badges, chips, banners, empty state, gradient, and loading state examples.
+//  Divider, badges, chips, cards, gradient, page indicator, navigation bar,
+//  banners, empty state, loading state, and overscroll footer examples.
 //
 
 import LumiKitUI
 import SnapKit
 import UIKit
 
-// MARK: - Cards
+// MARK: - Divider
 
-final class CardsDetailViewController: DetailViewController {
+final class DividerDetailViewController: DetailViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
 
-        addSectionHeader("LMKCardView")
-        let card = LMKCardView()
-        let label = LMKLabelFactory.body(text: "Card with shadow, corner radius, and content insets. Uses LMKShadow.cellCard() and LMKCornerRadius.medium.")
-        card.contentView.addSubview(label)
-        label.snp.makeConstraints { $0.edges.equalToSuperview().inset(LMKSpacing.large) }
-        stack.addArrangedSubview(card)
-
-        addDivider()
-        addSectionHeader("LMKCardFactory")
-        let factoryCard = LMKCardFactory.cardView()
-        let factoryLabel = LMKLabelFactory.body(text: "Created via LMKCardFactory.cardView() — secondary background with standard shadow.")
-        factoryCard.addSubview(factoryLabel)
-        factoryLabel.snp.makeConstraints { $0.edges.equalToSuperview().inset(LMKSpacing.large) }
-        stack.addArrangedSubview(factoryCard)
+        addSectionHeader("Horizontal")
+        stack.addArrangedSubview(LMKLabelFactory.caption(text: "Pixel-perfect separator between content sections:"))
+        stack.addArrangedSubview(LMKDividerView())
+        stack.addArrangedSubview(LMKLabelFactory.caption(text: "Content continues here"))
     }
 }
 
@@ -134,7 +125,7 @@ final class ChipsDetailViewController: DetailViewController {
         addDivider()
         addSectionHeader("Dismissible")
         let dismissRow = UIStackView(lmk_axis: .horizontal, spacing: LMKSpacing.small)
-        for text in ["Active", "Indoor", "Watering"] {
+        for text in ["Active", "Recent", "Archived"] {
             let chip = LMKChipView(text: text, style: .outlined)
             chip.chipColor = LMKColor.secondary
             chip.dismissHandler = { [weak chip] in chip?.removeFromSuperview() }
@@ -153,6 +144,258 @@ final class ChipsDetailViewController: DetailViewController {
         }
         toggleRow.addArrangedSubview(UIView())
         stack.addArrangedSubview(toggleRow)
+    }
+}
+
+// MARK: - Cards
+
+final class CardsDetailViewController: DetailViewController {
+    override func viewDidLoad() {
+        super.viewDidLoad()
+
+        addSectionHeader("LMKCardView")
+        let card = LMKCardView()
+        let label = LMKLabelFactory.body(text: "Card with shadow, corner radius, and content insets. Uses LMKShadow.cellCard() and LMKCornerRadius.medium.")
+        card.contentView.addSubview(label)
+        label.snp.makeConstraints { $0.edges.equalToSuperview().inset(LMKSpacing.large) }
+        stack.addArrangedSubview(card)
+
+        addDivider()
+        addSectionHeader("LMKCardFactory")
+        let factoryCard = LMKCardFactory.cardView()
+        let factoryLabel = LMKLabelFactory.body(text: "Created via LMKCardFactory.cardView() — secondary background with standard shadow.")
+        factoryCard.addSubview(factoryLabel)
+        factoryLabel.snp.makeConstraints { $0.edges.equalToSuperview().inset(LMKSpacing.large) }
+        stack.addArrangedSubview(factoryCard)
+    }
+}
+
+// MARK: - Gradient
+
+final class GradientDetailViewController: DetailViewController {
+    override func viewDidLoad() {
+        super.viewDidLoad()
+
+        let directions: [(String, LMKGradientDirection)] = [
+            ("Top \u{2192} Bottom", .topToBottom),
+            ("Left \u{2192} Right", .leftToRight),
+            ("Top-Left \u{2192} Bottom-Right", .topLeftToBottomRight),
+            ("Top-Right \u{2192} Bottom-Left", .topRightToBottomLeft),
+        ]
+
+        for (name, direction) in directions {
+            addSectionHeader(name)
+            let gradient = LMKGradientView(
+                colors: [LMKColor.primary, LMKColor.secondary],
+                direction: direction
+            )
+            gradient.layer.cornerRadius = LMKCornerRadius.medium
+            gradient.clipsToBounds = true
+            gradient.snp.makeConstraints { $0.height.equalTo(80) }
+            stack.addArrangedSubview(gradient)
+        }
+
+        addDivider()
+        addSectionHeader("Custom Colors")
+        let sunset = LMKGradientView(
+            colors: [LMKColor.warning, LMKColor.error, LMKColor.primary],
+            direction: .leftToRight
+        )
+        sunset.layer.cornerRadius = LMKCornerRadius.medium
+        sunset.clipsToBounds = true
+        sunset.snp.makeConstraints { $0.height.equalTo(80) }
+        stack.addArrangedSubview(sunset)
+    }
+}
+
+// MARK: - Page Indicator
+
+final class PageIndicatorDetailViewController: DetailViewController {
+    override func viewDidLoad() {
+        super.viewDidLoad()
+
+        addSectionHeader("Basic (dots only)")
+        stack.addArrangedSubview(LMKLabelFactory.caption(text: "Default style — all dots same size, active dot uses primary color."))
+
+        let basicLabel = LMKLabelFactory.body(text: "Page 1 of 5")
+        basicLabel.textAlignment = .center
+
+        let basicIndicator = LMKPageIndicator()
+        basicIndicator.numberOfPages = 5
+        basicIndicator.currentPage = 0
+        basicIndicator.pageChangedHandler = { page in
+            basicLabel.text = "Page \(page + 1) of 5"
+        }
+        basicIndicator.snp.makeConstraints { $0.height.equalTo(20) }
+        stack.addArrangedSubview(basicIndicator)
+        stack.addArrangedSubview(basicLabel)
+
+        addDivider()
+        addSectionHeader("Expanding Pill")
+        stack.addArrangedSubview(LMKLabelFactory.caption(text: "expandsActiveDot = true — active dot grows into a pill shape."))
+
+        let pillLabel = LMKLabelFactory.body(text: "Page 1 of 5")
+        pillLabel.textAlignment = .center
+
+        let pillIndicator = LMKPageIndicator()
+        pillIndicator.numberOfPages = 5
+        pillIndicator.currentPage = 0
+        pillIndicator.expandsActiveDot = true
+        pillIndicator.pageChangedHandler = { page in
+            pillLabel.text = "Page \(page + 1) of 5"
+        }
+        pillIndicator.snp.makeConstraints { $0.height.equalTo(20) }
+        stack.addArrangedSubview(pillIndicator)
+        stack.addArrangedSubview(pillLabel)
+
+        addDivider()
+        addSectionHeader("Many Pages — Windowed (12 pages, max 7 dots)")
+        stack.addArrangedSubview(LMKLabelFactory.caption(text: "When pages > maxVisibleDots, a sliding window shows 7 dots. Edge dots are smaller."))
+
+        let manyLabel = LMKLabelFactory.body(text: "Page 1 of 12")
+        manyLabel.textAlignment = .center
+
+        let manyIndicator = LMKPageIndicator()
+        manyIndicator.numberOfPages = 12
+        manyIndicator.maxVisibleDots = 7
+        manyIndicator.currentPage = 0
+        manyIndicator.pageChangedHandler = { page in
+            manyLabel.text = "Page \(page + 1) of 12"
+        }
+        manyIndicator.snp.makeConstraints { $0.height.equalTo(20) }
+        stack.addArrangedSubview(manyIndicator)
+        stack.addArrangedSubview(manyLabel)
+
+        addDivider()
+        addSectionHeader("Many Pages — Windowed + Expanding Pill")
+
+        let manyPillLabel = LMKLabelFactory.body(text: "Page 1 of 15")
+        manyPillLabel.textAlignment = .center
+
+        let manyPillIndicator = LMKPageIndicator()
+        manyPillIndicator.numberOfPages = 15
+        manyPillIndicator.maxVisibleDots = 7
+        manyPillIndicator.expandsActiveDot = true
+        manyPillIndicator.currentPage = 0
+        manyPillIndicator.pageChangedHandler = { page in
+            manyPillLabel.text = "Page \(page + 1) of 15"
+        }
+        manyPillIndicator.snp.makeConstraints { $0.height.equalTo(20) }
+        stack.addArrangedSubview(manyPillIndicator)
+        stack.addArrangedSubview(manyPillLabel)
+
+        addDivider()
+        addSectionHeader("Programmatic Navigation")
+
+        let navIndicator = LMKPageIndicator()
+        navIndicator.numberOfPages = 4
+        navIndicator.currentPage = 0
+        navIndicator.snp.makeConstraints { $0.height.equalTo(20) }
+        stack.addArrangedSubview(navIndicator)
+
+        let prevBtn = LMKButton(title: "Previous", style: .ghost(LMKColor.primary))
+        prevBtn.tapHandler = { [weak navIndicator] in
+            guard let ind = navIndicator, ind.currentPage > 0 else { return }
+            ind.currentPage -= 1
+        }
+
+        let nextBtn = LMKButton(title: "Next", style: .ghost(LMKColor.primary))
+        nextBtn.tapHandler = { [weak navIndicator] in
+            guard let ind = navIndicator, ind.currentPage < ind.numberOfPages - 1 else { return }
+            ind.currentPage += 1
+        }
+
+        let navRow = UIStackView(lmk_axis: .horizontal)
+        navRow.addArrangedSubview(prevBtn)
+        navRow.addArrangedSubview(UIView())
+        navRow.addArrangedSubview(nextBtn)
+        stack.addArrangedSubview(navRow)
+    }
+}
+
+// MARK: - Navigation Bar
+
+final class NavigationBarDetailViewController: DetailViewController {
+    override func viewDidLoad() {
+        super.viewDidLoad()
+
+        addSectionHeader("Large Title")
+        stack.addArrangedSubview(LMKLabelFactory.caption(text: "Bold left-aligned title with button row above. Used on root screens."))
+
+        let largeBar = LMKNavigationBar()
+        largeBar.title = "My Items"
+        largeBar.largeTitleEnabled = true
+        largeBar.setRightItems([
+            .init(systemName: "plus") {},
+            .init(systemName: "ellipsis.circle") {},
+        ])
+        wrapInContainer(largeBar)
+
+        addDivider()
+        addSectionHeader("Standard (Inline) Title")
+        stack.addArrangedSubview(LMKLabelFactory.caption(text: "Centered title with back button. Used on pushed screens."))
+
+        let standardBar = LMKNavigationBar()
+        standardBar.title = "Item Details"
+        standardBar.showsBackButton = true
+        standardBar.setRightItems([
+            .init(systemName: "square.and.arrow.up") {},
+        ])
+        wrapInContainer(standardBar)
+
+        addDivider()
+        addSectionHeader("Left Items")
+        stack.addArrangedSubview(LMKLabelFactory.caption(text: "Custom left items replace the back button."))
+
+        let leftItemsBar = LMKNavigationBar()
+        leftItemsBar.title = "Calendar"
+        leftItemsBar.setLeftItems([
+            .init(systemName: "sidebar.left") {},
+        ])
+        leftItemsBar.setRightItems([
+            .init(systemName: "plus") {},
+        ])
+        wrapInContainer(leftItemsBar)
+
+        addDivider()
+        addSectionHeader("Custom Colors")
+        stack.addArrangedSubview(LMKLabelFactory.caption(text: "Customizable background, title color, and button tint."))
+
+        let customBar = LMKNavigationBar()
+        customBar.title = "Settings"
+        customBar.largeTitleEnabled = true
+        customBar.barBackgroundColor = LMKColor.primary
+        customBar.largeTitleColor = .white
+        customBar.buttonTintColor = .white
+        customBar.showsSeparator = false
+        customBar.setRightItems([
+            .init(systemName: "gearshape") {},
+        ])
+        wrapInContainer(customBar)
+
+        addDivider()
+        addSectionHeader("No Separator")
+        stack.addArrangedSubview(LMKLabelFactory.caption(text: "showsSeparator = false for clean content-heavy screens."))
+
+        let noSepBar = LMKNavigationBar()
+        noSepBar.title = "Photos"
+        noSepBar.showsSeparator = false
+        noSepBar.setRightItems([
+            .init(systemName: "camera") {},
+        ])
+        wrapInContainer(noSepBar)
+    }
+
+    private func wrapInContainer(_ bar: LMKNavigationBar) {
+        let container = UIView()
+        container.backgroundColor = bar.barBackgroundColor == LMKColor.backgroundPrimary
+            ? LMKColor.backgroundSecondary
+            : bar.barBackgroundColor
+        container.layer.cornerRadius = LMKCornerRadius.medium
+        container.clipsToBounds = true
+        container.addSubview(bar)
+        bar.snp.makeConstraints { $0.edges.equalToSuperview() }
+        stack.addArrangedSubview(container)
     }
 }
 
@@ -242,44 +485,6 @@ final class EmptyStateDetailViewController: DetailViewController {
     }
 }
 
-// MARK: - Gradient
-
-final class GradientDetailViewController: DetailViewController {
-    override func viewDidLoad() {
-        super.viewDidLoad()
-
-        let directions: [(String, LMKGradientDirection)] = [
-            ("Top \u{2192} Bottom", .topToBottom),
-            ("Left \u{2192} Right", .leftToRight),
-            ("Top-Left \u{2192} Bottom-Right", .topLeftToBottomRight),
-            ("Top-Right \u{2192} Bottom-Left", .topRightToBottomLeft),
-        ]
-
-        for (name, direction) in directions {
-            addSectionHeader(name)
-            let gradient = LMKGradientView(
-                colors: [LMKColor.primary, LMKColor.secondary],
-                direction: direction
-            )
-            gradient.layer.cornerRadius = LMKCornerRadius.medium
-            gradient.clipsToBounds = true
-            gradient.snp.makeConstraints { $0.height.equalTo(80) }
-            stack.addArrangedSubview(gradient)
-        }
-
-        addDivider()
-        addSectionHeader("Custom Colors")
-        let sunset = LMKGradientView(
-            colors: [LMKColor.warning, LMKColor.error, LMKColor.primary],
-            direction: .leftToRight
-        )
-        sunset.layer.cornerRadius = LMKCornerRadius.medium
-        sunset.clipsToBounds = true
-        sunset.snp.makeConstraints { $0.height.equalTo(80) }
-        stack.addArrangedSubview(sunset)
-    }
-}
-
 // MARK: - Loading State
 
 final class LoadingStateDetailViewController: DetailViewController {
@@ -311,92 +516,6 @@ final class LoadingStateDetailViewController: DetailViewController {
         let skeletonTable = SkeletonTableView()
         skeletonTable.snp.makeConstraints { $0.height.equalTo(280) }
         stack.addArrangedSubview(skeletonTable)
-    }
-}
-
-// MARK: - Navigation Bar
-
-final class NavigationBarDetailViewController: DetailViewController {
-    override func viewDidLoad() {
-        super.viewDidLoad()
-
-        addSectionHeader("Large Title")
-        stack.addArrangedSubview(LMKLabelFactory.caption(text: "Bold left-aligned title with button row above. Used on root screens."))
-
-        let largeBar = LMKNavigationBar()
-        largeBar.title = "My Plants"
-        largeBar.largeTitleEnabled = true
-        largeBar.setRightItems([
-            .init(systemName: "plus") {},
-            .init(systemName: "ellipsis.circle") {},
-        ])
-        wrapInContainer(largeBar)
-
-        addDivider()
-        addSectionHeader("Standard (Inline) Title")
-        stack.addArrangedSubview(LMKLabelFactory.caption(text: "Centered title with back button. Used on pushed screens."))
-
-        let standardBar = LMKNavigationBar()
-        standardBar.title = "Plant Details"
-        standardBar.showsBackButton = true
-        standardBar.setRightItems([
-            .init(systemName: "square.and.arrow.up") {},
-        ])
-        wrapInContainer(standardBar)
-
-        addDivider()
-        addSectionHeader("Left Items")
-        stack.addArrangedSubview(LMKLabelFactory.caption(text: "Custom left items replace the back button."))
-
-        let leftItemsBar = LMKNavigationBar()
-        leftItemsBar.title = "Calendar"
-        leftItemsBar.setLeftItems([
-            .init(systemName: "sidebar.left") {},
-        ])
-        leftItemsBar.setRightItems([
-            .init(systemName: "plus") {},
-        ])
-        wrapInContainer(leftItemsBar)
-
-        addDivider()
-        addSectionHeader("Custom Colors")
-        stack.addArrangedSubview(LMKLabelFactory.caption(text: "Customizable background, title color, and button tint."))
-
-        let customBar = LMKNavigationBar()
-        customBar.title = "Settings"
-        customBar.largeTitleEnabled = true
-        customBar.barBackgroundColor = LMKColor.primary
-        customBar.largeTitleColor = .white
-        customBar.buttonTintColor = .white
-        customBar.showsSeparator = false
-        customBar.setRightItems([
-            .init(systemName: "gearshape") {},
-        ])
-        wrapInContainer(customBar)
-
-        addDivider()
-        addSectionHeader("No Separator")
-        stack.addArrangedSubview(LMKLabelFactory.caption(text: "showsSeparator = false for clean content-heavy screens."))
-
-        let noSepBar = LMKNavigationBar()
-        noSepBar.title = "Photos"
-        noSepBar.showsSeparator = false
-        noSepBar.setRightItems([
-            .init(systemName: "camera") {},
-        ])
-        wrapInContainer(noSepBar)
-    }
-
-    private func wrapInContainer(_ bar: LMKNavigationBar) {
-        let container = UIView()
-        container.backgroundColor = bar.barBackgroundColor == LMKColor.backgroundPrimary
-            ? LMKColor.backgroundSecondary
-            : bar.barBackgroundColor
-        container.layer.cornerRadius = LMKCornerRadius.medium
-        container.clipsToBounds = true
-        container.addSubview(bar)
-        bar.snp.makeConstraints { $0.edges.equalToSuperview() }
-        stack.addArrangedSubview(container)
     }
 }
 
@@ -447,5 +566,101 @@ private final class SkeletonTableView: UIView, UITableViewDataSource {
         }
         cell.startShimmer(staggerIndex: indexPath.row)
         return cell
+    }
+}
+
+// MARK: - Overscroll Footer
+
+final class OverscrollFooterDetailViewController: UIViewController, UITableViewDataSource, UITableViewDelegate {
+    private static let cellID = "cell"
+    private static let footerHeight: CGFloat = 160
+
+    private let tableView = UITableView(frame: .zero, style: .plain)
+    private let footerView = OverscrollFooterView()
+    private var footerHelper: LMKOverscrollFooterHelper?
+
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        view.backgroundColor = LMKColor.backgroundPrimary
+
+        tableView.dataSource = self
+        tableView.delegate = self
+        tableView.register(UITableViewCell.self, forCellReuseIdentifier: Self.cellID)
+        view.addSubview(tableView)
+        tableView.snp.makeConstraints { $0.edges.equalToSuperview() }
+
+        // Footer revealed on overscroll
+        footerHelper = LMKOverscrollFooterHelper(
+            footerView: footerView,
+            scrollView: tableView,
+            footerHeight: Self.footerHeight
+        )
+    }
+
+    override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        footerHelper?.updatePosition()
+    }
+
+    // MARK: - UIScrollViewDelegate
+
+    func scrollViewDidScroll(_ scrollView: UIScrollView) {
+        footerHelper?.updatePosition()
+        if let helper = footerHelper {
+            footerView.alpha = helper.overscrollProgress
+        }
+    }
+
+    // MARK: - UITableViewDataSource
+
+    func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
+        20
+    }
+
+    func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
+        let cell = tableView.dequeueReusableCell(withIdentifier: Self.cellID, for: indexPath)
+        var config = cell.defaultContentConfiguration()
+        config.text = "Row \(indexPath.row + 1)"
+        config.secondaryText = "Pull past the bottom to reveal the footer"
+        config.image = UIImage(systemName: "\(indexPath.row + 1).circle")
+        config.imageProperties.tintColor = LMKColor.primary
+        cell.contentConfiguration = config
+        return cell
+    }
+
+    // MARK: - UITableViewDelegate
+
+    func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
+        tableView.deselectRow(at: indexPath, animated: true)
+    }
+}
+
+/// Simple footer shown on overscroll.
+private final class OverscrollFooterView: UIView {
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+        alpha = 0
+
+        let stack = UIStackView(lmk_axis: .vertical, spacing: LMKSpacing.small)
+        stack.alignment = .center
+
+        let config = UIImage.SymbolConfiguration(pointSize: 32, weight: .light)
+        let imageView = UIImageView(image: UIImage(systemName: "arrow.down.circle", withConfiguration: config))
+        imageView.tintColor = LMKColor.textTertiary
+        stack.addArrangedSubview(imageView)
+
+        let label = LMKLabelFactory.caption(text: "You've reached the end")
+        label.textAlignment = .center
+        stack.addArrangedSubview(label)
+
+        addSubview(stack)
+        stack.snp.makeConstraints {
+            $0.center.equalToSuperview()
+        }
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
     }
 }

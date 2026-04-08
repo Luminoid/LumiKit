@@ -75,7 +75,7 @@ public struct LMKNavigationBarItem {
 /// navigationController?.setNavigationBarHidden(true, animated: false)
 ///
 /// let navBar = LMKNavigationBar()
-/// navBar.title = "Pets"
+/// navBar.title = "Items"
 /// navBar.largeTitleEnabled = true
 /// navBar.setRightItems([.init(systemName: "plus") { self.addTapped() }])
 /// view.addSubview(navBar)
@@ -158,7 +158,7 @@ public final class LMKNavigationBar: UIView {
 
     private lazy var backButton: UIButton = {
         let button = UIButton(type: .system)
-        let config = UIImage.SymbolConfiguration(pointSize: 20, weight: .semibold)
+        let config = UIImage.SymbolConfiguration(pointSize: 17, weight: .medium)
         button.setImage(UIImage(systemName: "chevron.backward", withConfiguration: config), for: .normal)
         button.tintColor = buttonTintColor
         button.addTarget(self, action: #selector(backTapped), for: .touchUpInside)

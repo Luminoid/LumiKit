@@ -388,3 +388,83 @@ final class QRCodeDetailViewController: DetailViewController {
         textField.resignFirstResponder()
     }
 }
+
+// MARK: - Share Preview
+
+final class ShareDetailViewController: DetailViewController, LMKSharePreviewDelegate {
+    private var sampleImage: UIImage?
+
+    override func viewDidLoad() {
+        super.viewDidLoad()
+
+        sampleImage = createSampleImage()
+
+        addSectionHeader("LMKSharePreviewViewController")
+        stack.addArrangedSubview(LMKLabelFactory.body(text: "Image preview sheet with Share and Save to Photos actions. Uses LMKShareService internally."))
+
+        if let sampleImage {
+            let preview = UIImageView(image: sampleImage)
+            preview.contentMode = .scaleAspectFit
+            preview.clipsToBounds = true
+            preview.layer.cornerRadius = LMKCornerRadius.medium
+            preview.snp.makeConstraints { $0.height.equalTo(200) }
+            stack.addArrangedSubview(preview)
+        }
+
+        let previewButton = LMKButtonFactory.filled(role: .primary, title: "Show Share Preview", target: self, action: #selector(showSharePreview))
+        stack.addArrangedSubview(previewButton)
+
+        addDivider()
+        addSectionHeader("LMKShareService")
+        stack.addArrangedSubview(LMKLabelFactory.caption(text: "Direct share sheet for images and files with iPad popover support."))
+
+        let shareImageButton = LMKButtonFactory.outlined(role: .secondary, title: "Share Image Directly", target: self, action: #selector(shareImageDirectly))
+        stack.addArrangedSubview(shareImageButton)
+    }
+
+    @objc private func showSharePreview() {
+        guard let sampleImage else { return }
+        let previewVC = LMKSharePreviewViewController(image: sampleImage)
+        previewVC.delegate = self
+        present(previewVC, animated: true)
+    }
+
+    @objc private func shareImageDirectly() {
+        guard let sampleImage else { return }
+        LMKShareService.shareImage(sampleImage, from: self) { [weak self] activityType in
+            guard let self else { return }
+            if let activityType {
+                LMKToast.showSuccess(message: "Shared via \(activityType.rawValue)", on: self)
+            }
+        }
+    }
+
+    private func createSampleImage() -> UIImage? {
+        let size = CGSize(width: 400, height: 300)
+        let renderer = UIGraphicsImageRenderer(size: size)
+        return renderer.image { ctx in
+            let colors = [LMKColor.info.cgColor, LMKColor.primary.cgColor]
+            guard let gradient = CGGradient(colorsSpace: CGColorSpaceCreateDeviceRGB(), colors: colors as CFArray, locations: [0, 1]) else { return }
+            ctx.cgContext.drawLinearGradient(gradient, start: .zero, end: CGPoint(x: size.width, y: size.height), options: [])
+
+            let config = UIImage.SymbolConfiguration(pointSize: 64, weight: .regular)
+            if let symbol = UIImage(systemName: "square.and.arrow.up", withConfiguration: config) {
+                let symbolSize = symbol.size
+                let origin = CGPoint(x: (size.width - symbolSize.width) / 2, y: (size.height - symbolSize.height) / 2)
+                symbol.withTintColor(.white.withAlphaComponent(0.8), renderingMode: .alwaysOriginal).draw(at: origin)
+            }
+        }
+    }
+
+    // MARK: - LMKSharePreviewDelegate
+
+    func sharePreview(_ preview: LMKSharePreviewViewController, didShareWith activityType: UIActivity.ActivityType?) {
+        LMKToast.showSuccess(message: "Shared!", on: self)
+    }
+
+    func sharePreviewDidSave(_ preview: LMKSharePreviewViewController) {
+        LMKToast.showSuccess(message: "Saved to Photos!", on: self)
+    }
+
+    func sharePreviewDidDismiss(_ preview: LMKSharePreviewViewController) {}
+}

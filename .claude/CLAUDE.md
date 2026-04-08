@@ -75,20 +75,21 @@ LumiKit/
 │   │                        # LMKImageUtil, LMKMarkdownRenderer
 │   └── LumiKitLottie/       # LMKLottieRefreshControl
 ├── Tests/
-│   ├── LumiKitCoreTests/    # 76 tests, 12 suites — mirrors LumiKitCore/ subfolders
+│   ├── LumiKitCoreTests/    # 76 tests, 11 suites
 │   │   ├── Concurrency/     # LMKConcurrencyHelpersTests
 │   │   ├── Data/            # String+LMK, Collection+LMK, NSAttributedString+LMK, FormatHelper
 │   │   ├── Date/            # DateHelper, DateFormatterHelper
 │   │   ├── File/            # FileUtil
 │   │   ├── Log/             # LMKLogStoreTests (ring buffer, thread safety), LMKLoggerTests (log store integration)
 │   │   └── Validation/      # URLValidator
-│   ├── LumiKitNetworkTests/  # 61 tests, 3 suites
-│   │   ├── LMKNetworkRequestStoreTests.swift  # FIFO, thread safety
-│   │   ├── LMKNetworkRequestRecordTests.swift # Computed properties, display formatting
-│   │   └── LMKNetworkLoggerTests.swift        # Configuration, state transitions
+│   ├── LumiKitNetworkTests/  # 65 tests, 4 suites
+│   │   ├── LMKNetworkRequestStoreTests.swift         # FIFO, thread safety
+│   │   ├── LMKNetworkRequestRecordTests.swift        # Computed properties, display formatting
+│   │   ├── LMKNetworkLoggerTests.swift               # Configuration, state transitions
+│   │   └── URLSessionConfigurationLMKDebugTests.swift # enableNetworkLogging
 │   ├── LumiKitLottieTests/  # 7 tests, 1 suite
 │   │   └── LMKLottieRefreshControlTests.swift
-│   └── LumiKitUITests/      # 599 tests, 96 suites — mirrors LumiKitUI/ subfolders
+│   └── LumiKitUITests/      # 656 tests, 81 suites
 │       ├── Alerts/          # AlertPresenter, ErrorHandler
 │       ├── Animation/       # AnimationHelper
 │       ├── Components/
@@ -96,9 +97,9 @@ LumiKit/
 │       │   │                 # EnumSelectionBottomSheet
 │       │   ├── Pickers/      # DatePickerHelper
 │       │   └── (root)        # Badge, Banner, Card, Chip, Divider, EmptyState,
-│       │                     # FloatingButton, Gradient, LoadingState, SearchBar,
-│       │                     # Skeleton, Toast, TipView, CardPage, CardPanel,
-│       │                     # ScrollStackViewController
+│       │                     # FloatingButton, Gradient, LoadingState, Progress,
+│       │                     # SearchBar, Skeleton, Toast, TipView, CardPage,
+│       │                     # CardPanel, ScrollStackViewController
 │       ├── Controls/        # Button, SegmentedControl, TextField, TextView, ToggleButton
 │       ├── DesignSystem/
 │       │   ├── Tokens/       # Color, Spacing, CornerRadius, Alpha, Typography, Layout, Shadow
@@ -106,12 +107,13 @@ LumiKit/
 │       │   ├── Factories/    # ButtonFactory, CardFactory, LabelFactory
 │       │   └── (root)        # ThemeManager, ComponentToken integration
 │       ├── Extensions/      # UIColor, UIImage, UIStackView,
-│       │                    # UIView (shadow/border/fade/layout)
+│       │                    # UIView (shadow/border/fade/layout),
+│       │                    # UIViewController (TopViewController)
 │       ├── Photo/           # CropAspectRatio, PhotoEXIF
 │       ├── QRCode/          # QRCodeGenerator
 │       ├── Share/           # SharePreview, ShareService
 │       └── Utilities/       # DeviceHelper, ImageUtil, KeyboardObserver,
-│                            # MarkdownRenderer
+│                            # KeyboardInsetHelper, MarkdownRenderer
 ```
 
 ---
@@ -424,4 +426,4 @@ public final class LMKExampleViewController: UIViewController {
 
 ---
 
-*Optimized for Claude Code • Last updated: 2026-04-05*
+*Optimized for Claude Code • Last updated: 2026-04-07*

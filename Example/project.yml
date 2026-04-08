@@ -33,6 +33,9 @@ targets:
         INFOPLIST_KEY_UILaunchScreen_Generation: true
         INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad: "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
         INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone: "UIInterfaceOrientationPortrait"
+        INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription: "Save photos from the share preview to your photo library."
+        INFOPLIST_KEY_NSPhotoLibraryUsageDescription: "Browse and select photos for the photo browser examples."
+        INFOPLIST_KEY_NSCameraUsageDescription: "Capture photos for the camera examples."
       configs:
         debug:
           SWIFT_ACTIVE_COMPILATION_CONDITIONS: DEBUG
