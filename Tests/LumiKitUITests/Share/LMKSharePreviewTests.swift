@@ -25,7 +25,7 @@ struct LMKSharePreviewTests {
         #expect(strings.share == "Share")
         #expect(strings.saveImage == "Save Image")
         #expect(strings.saveError == "Failed to save image")
-        #expect(strings.saveSuccess == "Image saved to Photos")
+        #expect(strings.saveSuccess == nil)
         #expect(!strings.photoPermissionDenied.isEmpty)
     }
 

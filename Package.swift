@@ -89,7 +89,10 @@ let package = Package(
         .testTarget(
             name: "LumiKitNetworkTests",
             dependencies: ["LumiKitNetwork"],
-            path: "Tests/LumiKitNetworkTests"
+            path: "Tests/LumiKitNetworkTests",
+            swiftSettings: [
+                .define("LMK_ENABLE_NETWORK_LOGGING", .when(configuration: .debug)),
+            ]
         ),
     ]
 )

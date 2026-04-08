@@ -19,20 +19,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **LMKMarkdownRenderer.renderFull()** — Long-form markdown rendering with headings (H1–H4), ordered/unordered lists, horizontal rules, and preserved line breaks
 - **LMKActionSheet `isSelected`** — Action items support `isSelected: true` to display a trailing checkmark, with `.selected` accessibility trait
 - **LMKTextView `minimumHeight`** — Configurable minimum height property (default 100pt) that updates the height constraint dynamically
+- **LMKSharePreviewStrings `saveSuccess`** — Optional toast message shown after saving to Photos. When `nil` (default), no toast is shown
+- **LMKKeyboardInsetHelper** — Keyboard-aware scroll view inset management
 
 ### Changed
 
-- **LMKSegmentedControl** — **Breaking**: Fully rewritten as custom `UIControl` (no longer a `UISegmentedControl` subclass). Features sliding pill indicator with spring animation, `LMKColor.primary` fill, haptic feedback, and dark mode support. New properties: `cornerStyle` (`.capsule` default, `.rounded`), `itemPadding`, `makeScrollableContainer()`. API: `init(items: [String])`, `selectedSegmentIndex`, `valueChangedHandler`. Removed `didValueChangeHandler`, `numberOfSegments` (use `items.count`), `apportionsSegmentWidthsByContent`
+- **LMKSegmentedControl** — **Breaking**: Fully rewritten as custom `UIControl` (no longer a `UISegmentedControl` subclass). Features sliding pill indicator with spring animation, `LMKColor.primary` fill, haptic feedback, and dark mode support. New properties: `cornerStyle` (`.capsule` default, `.rounded`), `itemPadding`, `makeScrollableContainer()`. API: `init(items: [String])`, `selectedSegmentIndex`, `valueChangedHandler`. Removed `didValueChangeHandler`, `numberOfSegments` (use `items.count`), `apportionsSegmentWidthsByContent`, `init(items: [Any]?)` compatibility shim
 - **LMKButton** — Filled and outlined styles now use `cornerStyle = .capsule` (pill shape) instead of `LMKCornerRadius.small`
 - **LMKControlScrollView** — Removed. `LMKSegmentedControl.makeScrollableContainer()` now returns `UIScrollView` directly
-- **Source files** — Increased from 104 to 105 files (93 test files)
-- **Test suite** — Expanded from 542 to 628 UI tests (new: LMKNavigationBar 29, LMKSwitch 7, LMKPageIndicator 8, LMKButton styles 5, updated LMKSegmentedControl 10, and additional coverage across components)
+- **Source files** — Increased from 104 to 106 files (97 test files)
+- **Test suite** — Expanded from 686 to 803 tests (76 Core + 65 Network + 655 UI + 7 Lottie). New: LMKNavigationBar 29, LMKSwitch 7, LMKPageIndicator 8, LMKButton styles 5, LMKPhotoGrid 29, LMKKeyboardInsetHelper 6, updated LMKSegmentedControl 10, and additional coverage across components
 - **LMKNavigationBar back button** — Refined chevron from 20pt semibold to 17pt medium to match system navigation bar
-- **Example app** — Expanded from 33 to 34 interactive pages (new: Navigation Bar). Added `isSelected` checkmark demo to Action Sheet page. Reorganized into subdirectories by section
+- **Example app** — Expanded from 33 to 40 interactive pages (new: Navigation Bar, Photo Grid, and others). Added `isSelected` checkmark demo to Action Sheet page. Reorganized into subdirectories by section
+- **Package.swift** — Added `LMK_ENABLE_NETWORK_LOGGING` define to `LumiKitNetworkTests` target so `URLSessionConfiguration+LMKDebug` tests run in debug builds
 
 ### Fixed
 
 - **LMKOverscrollFooterHelper** — Fixed footer inset calculation
+- **LMKSharePreviewTests** — Fixed test expecting non-nil default for optional `saveSuccess` string
 
 ## [0.4.0] - 2026-03-22
 

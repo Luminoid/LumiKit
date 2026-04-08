@@ -104,12 +104,6 @@ open class LMKSegmentedControl: UIControl {
         buildSegments()
     }
 
-    /// Create a segmented control with `[Any]?` for compatibility (only strings are used).
-    public convenience init(items: [Any]?) {
-        let strings = (items ?? []).compactMap { $0 as? String }
-        self.init(items: strings)
-    }
-
     @available(*, unavailable)
     public required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")

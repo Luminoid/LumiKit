@@ -66,12 +66,6 @@ struct LMKSegmentedControlTests {
     }
 
     @Test
-    func `Init with [Any]? converts strings`() {
-        let control = LMKSegmentedControl(items: ["Hello", "World"] as [Any]?)
-        #expect(control.numberOfSegments == 2)
-    }
-
-    @Test
     func `Is a UIControl subclass`() {
         let control = LMKSegmentedControl(items: ["A"])
         #expect(control as Any is UIControl)
