@@ -18,24 +18,16 @@ public nonisolated struct LMKSharePreviewStrings: Sendable {
     public var share: String
     /// Save image button title.
     public var saveImage: String
-    /// Error message shown when saving fails.
-    public var saveError: String
-    /// Optional success message shown as a toast after saving. When `nil` (default), no toast is shown.
-    public var saveSuccess: String?
     /// Message shown when photo library permission is denied.
     public var photoPermissionDenied: String
 
     public init(
         share: String = "Share",
         saveImage: String = "Save Image",
-        saveError: String = "Failed to save image",
-        saveSuccess: String? = nil,
         photoPermissionDenied: String = "Photo library access is required to save images. Please enable it in Settings."
     ) {
         self.share = share
         self.saveImage = saveImage
-        self.saveError = saveError
-        self.saveSuccess = saveSuccess
         self.photoPermissionDenied = photoPermissionDenied
     }
 }
@@ -44,17 +36,23 @@ public nonisolated struct LMKSharePreviewStrings: Sendable {
 
 /// Delegate for share preview actions.
 public protocol LMKSharePreviewDelegate: AnyObject {
-    /// Called after the user shares the image.
+    /// Called after the user successfully shares the image.
     func sharePreview(_ preview: LMKSharePreviewViewController, didShareWith activityType: UIActivity.ActivityType?)
+    /// Called when sharing the image fails.
+    func sharePreview(_ preview: LMKSharePreviewViewController, didFailToShare error: any Error)
     /// Called after the image is saved to the photo library.
     func sharePreviewDidSave(_ preview: LMKSharePreviewViewController)
+    /// Called when saving the image to the photo library fails.
+    func sharePreview(_ preview: LMKSharePreviewViewController, didFailToSave error: any Error)
     /// Called when the preview is dismissed.
     func sharePreviewDidDismiss(_ preview: LMKSharePreviewViewController)
 }
 
 public extension LMKSharePreviewDelegate {
     func sharePreview(_ preview: LMKSharePreviewViewController, didShareWith activityType: UIActivity.ActivityType?) {}
+    func sharePreview(_ preview: LMKSharePreviewViewController, didFailToShare error: any Error) {}
     func sharePreviewDidSave(_ preview: LMKSharePreviewViewController) {}
+    func sharePreview(_ preview: LMKSharePreviewViewController, didFailToSave error: any Error) {}
     func sharePreviewDidDismiss(_ preview: LMKSharePreviewViewController) {}
 }
 
@@ -232,9 +230,16 @@ public final class LMKSharePreviewViewController: UIViewController {
             image,
             from: self,
             sourceView: shareButton
-        ) { [weak self] activityType in
+        ) { [weak self] result in
             guard let self else { return }
-            self.delegate?.sharePreview(self, didShareWith: activityType)
+            switch result {
+            case let .completed(activityType):
+                self.delegate?.sharePreview(self, didShareWith: activityType)
+            case let .failed(error):
+                self.delegate?.sharePreview(self, didFailToShare: error)
+            case .cancelled:
+                break
+            }
         }
     }
 
@@ -270,12 +275,9 @@ public final class LMKSharePreviewViewController: UIViewController {
             guard let self else { return }
             if let error {
                 LMKLogger.error("Failed to save image to photos", error: error, category: .general)
-                LMKToast.showError(message: Self.strings.saveError, on: self)
+                delegate?.sharePreview(self, didFailToSave: error)
             } else if success {
                 LMKLogger.info("Image saved to photos", category: .general)
-                if let message = Self.strings.saveSuccess {
-                    LMKToast.showSuccessOnWindow(message: message)
-                }
                 delegate?.sharePreviewDidSave(self)
                 dismiss(animated: true) { [weak self] in
                     guard let self else { return }

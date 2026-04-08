@@ -283,8 +283,9 @@ LMKThemeManager.shared.apply(spacing: .init(large: 20))
 
 | Component | Type | Purpose |
 |-----------|------|---------|
-| `LMKShareService` | `enum` (static) | Share sheet wrapper — `shareImage`, `shareFile` with popover support |
-| `LMKSharePreviewViewController` | `final class` | Image preview sheet with share + save-to-photos, configurable strings, delegate |
+| `LMKShareResult` | `enum` | Result of share operation: `.completed(ActivityType?)`, `.cancelled`, `.failed(Error)` |
+| `LMKShareService` | `enum` (static) | Share sheet wrapper — `shareImage` (returns `LMKShareResult`), `shareFile` with popover support |
+| `LMKSharePreviewViewController` | `final class` | Image preview sheet with share + save-to-photos. All feedback is delegate-driven via `LMKSharePreviewDelegate` (`didShareWith`, `didFailToShare`, `sharePreviewDidSave`, `didFailToSave`) |
 
 ### QR Code (`QRCode/`)
 

@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-04-07
+
 ### Added
 
 - **LMKNavigationBar** — Custom navigation bar with design-token styling. Supports large title mode (bold, left-aligned, separate row) and standard inline mode (centered title). Configurable back button, left/right bar items (`LMKNavigationBarItem`), separator, and full appearance customization (background, tint, title font/color). Uses `pinToTop(of:)` for easy layout
@@ -19,8 +21,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **LMKMarkdownRenderer.renderFull()** — Long-form markdown rendering with headings (H1–H4), ordered/unordered lists, horizontal rules, and preserved line breaks
 - **LMKActionSheet `isSelected`** — Action items support `isSelected: true` to display a trailing checkmark, with `.selected` accessibility trait
 - **LMKTextView `minimumHeight`** — Configurable minimum height property (default 100pt) that updates the height constraint dynamically
-- **LMKSharePreviewStrings `saveSuccess`** — Optional toast message shown after saving to Photos. When `nil` (default), no toast is shown
 - **LMKKeyboardInsetHelper** — Keyboard-aware scroll view inset management
+- **LMKShareResult** — Result enum for share operations: `.completed(ActivityType?)`, `.cancelled`, `.failed(Error)`
+- **LMKSharePreviewDelegate `didFailToShare` / `didFailToSave`** — New delegate methods for share and save error handling
 
 ### Changed
 
@@ -31,12 +34,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Test suite** — Expanded from 686 to 803 tests (76 Core + 65 Network + 655 UI + 7 Lottie). New: LMKNavigationBar 29, LMKSwitch 7, LMKPageIndicator 8, LMKButton styles 5, LMKPhotoGrid 29, LMKKeyboardInsetHelper 6, updated LMKSegmentedControl 10, and additional coverage across components
 - **LMKNavigationBar back button** — Refined chevron from 20pt semibold to 17pt medium to match system navigation bar
 - **Example app** — Expanded from 33 to 40 interactive pages (new: Navigation Bar, Photo Grid, and others). Added `isSelected` checkmark demo to Action Sheet page. Reorganized into subdirectories by section
+- **LMKShareService.shareImage** — **Breaking**: Completion now receives `LMKShareResult` instead of `UIActivity.ActivityType?`, correctly distinguishing completed/cancelled/failed states
+- **LMKSharePreviewViewController** — **Breaking**: Removed internal toast logic for share and save success/error. All feedback is now entirely delegate-driven via `didShareWith`, `didFailToShare`, `sharePreviewDidSave`, and `didFailToSave`. Removed `saveError` and `saveSuccess` from `LMKSharePreviewStrings`
 - **Package.swift** — Added `LMK_ENABLE_NETWORK_LOGGING` define to `LumiKitNetworkTests` target so `URLSessionConfiguration+LMKDebug` tests run in debug builds
 
 ### Fixed
 
 - **LMKOverscrollFooterHelper** — Fixed footer inset calculation
-- **LMKSharePreviewTests** — Fixed test expecting non-nil default for optional `saveSuccess` string
 
 ## [0.4.0] - 2026-03-22
 
@@ -252,6 +256,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - All configurable strings use module-level `nonisolated(unsafe)` vars for localization
 - MIT License
 
+[0.5.0]: https://github.com/Luminoid/LumiKit/compare/0.4.0...0.5.0
 [0.4.0]: https://github.com/Luminoid/LumiKit/compare/0.3.0...0.4.0
 [0.3.0]: https://github.com/Luminoid/LumiKit/compare/0.2.0...0.3.0
 [0.2.0]: https://github.com/Luminoid/LumiKit/compare/0.1.0...0.2.0

@@ -431,10 +431,15 @@ final class ShareDetailViewController: DetailViewController, LMKSharePreviewDele
 
     @objc private func shareImageDirectly() {
         guard let sampleImage else { return }
-        LMKShareService.shareImage(sampleImage, from: self) { [weak self] activityType in
+        LMKShareService.shareImage(sampleImage, from: self) { [weak self] result in
             guard let self else { return }
-            if let activityType {
-                LMKToast.showSuccess(message: "Shared via \(activityType.rawValue)", on: self)
+            switch result {
+            case let .completed(activityType):
+                LMKToast.showSuccess(message: "Shared via \(activityType?.rawValue ?? "unknown")", on: self)
+            case .failed:
+                LMKToast.showError(message: "Share failed", on: self)
+            case .cancelled:
+                break
             }
         }
     }
@@ -462,8 +467,16 @@ final class ShareDetailViewController: DetailViewController, LMKSharePreviewDele
         LMKToast.showSuccess(message: "Shared!", on: self)
     }
 
+    func sharePreview(_ preview: LMKSharePreviewViewController, didFailToShare error: any Error) {
+        LMKToast.showError(message: "Share failed", on: self)
+    }
+
     func sharePreviewDidSave(_ preview: LMKSharePreviewViewController) {
         LMKToast.showSuccess(message: "Saved to Photos!", on: self)
+    }
+
+    func sharePreview(_ preview: LMKSharePreviewViewController, didFailToSave error: any Error) {
+        LMKToast.showError(message: "Failed to save image", on: self)
     }
 
     func sharePreviewDidDismiss(_ preview: LMKSharePreviewViewController) {}

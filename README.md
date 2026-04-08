@@ -72,7 +72,7 @@ Add LumiKit to your project via Swift Package Manager:
 dependencies: [
     .package(path: "../LumiKit")  // Local package
     // or
-    .package(url: "https://github.com/Luminoid/LumiKit.git", from: "0.4.0")
+    .package(url: "https://github.com/Luminoid/LumiKit.git", from: "0.5.0")
 ]
 ```
 
@@ -214,7 +214,7 @@ LumiKit/
 │   │   ├── LMKNetworkRequestRecordTests.swift        # Computed properties, display formatting
 │   │   ├── LMKNetworkLoggerTests.swift               # Configuration, state transitions
 │   │   └── URLSessionConfigurationLMKDebugTests.swift # enableNetworkLogging
-│   ├── LumiKitUITests/        # 656 tests, 81 suites
+│   ├── LumiKitUITests/        # 655 tests, 81 suites
 │   │   ├── Alerts/            # AlertPresenter, ErrorHandler
 │   │   ├── Animation/         # AnimationHelper
 │   │   ├── Components/
@@ -439,8 +439,9 @@ Both photo view controllers force dark mode (`overrideUserInterfaceStyle = .dark
 
 | Component | Purpose |
 |-----------|---------|
-| `LMKShareService` | Share sheet wrapper with `shareImage`, `shareFile` and popover support |
-| `LMKSharePreviewViewController` | Image preview sheet with share and save-to-photos actions |
+| `LMKShareResult` | Result enum for share operations: `.completed(ActivityType?)`, `.cancelled`, `.failed(Error)` |
+| `LMKShareService` | Share sheet wrapper with `shareImage` (returns `LMKShareResult`), `shareFile`, and popover support |
+| `LMKSharePreviewViewController` | Image preview sheet with share and save-to-photos actions. All feedback is delegate-driven via `LMKSharePreviewDelegate` (`didShareWith`, `didFailToShare`, `sharePreviewDidSave`, `didFailToSave`) |
 
 ---
 

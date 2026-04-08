@@ -24,8 +24,6 @@ struct LMKSharePreviewTests {
         let strings = LMKSharePreviewStrings()
         #expect(strings.share == "Share")
         #expect(strings.saveImage == "Save Image")
-        #expect(strings.saveError == "Failed to save image")
-        #expect(strings.saveSuccess == nil)
         #expect(!strings.photoPermissionDenied.isEmpty)
     }
 
@@ -37,8 +35,6 @@ struct LMKSharePreviewTests {
         LMKSharePreviewViewController.strings = .init(
             share: "Compartir",
             saveImage: "Guardar imagen",
-            saveError: "Error al guardar",
-            saveSuccess: "Imagen guardada",
             photoPermissionDenied: "Se requiere acceso a fotos"
         )
 

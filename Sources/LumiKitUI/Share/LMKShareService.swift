@@ -8,6 +8,16 @@
 import LumiKitCore
 import UIKit
 
+/// Result of a share operation.
+public enum LMKShareResult: Sendable {
+    /// The user completed the share via the given activity type.
+    case completed(UIActivity.ActivityType?)
+    /// The user cancelled without sharing.
+    case cancelled
+    /// The share failed with an error.
+    case failed(any Error)
+}
+
 /// Wrapper for presenting the system share sheet.
 ///
 /// Share images:
@@ -28,14 +38,13 @@ public enum LMKShareService {
     ///   - viewController: Presenting view controller.
     ///   - sourceView: Optional source view for iPad popover positioning.
     ///   - sourceBarButtonItem: Optional bar button item for popover anchor.
-    ///   - completion: Optional callback invoked after sharing completes with the chosen activity type
-    ///     (`nil` if the user cancelled).
+    ///   - completion: Optional callback invoked after the share sheet is dismissed.
     public static func shareImage(
         _ image: UIImage,
         from viewController: UIViewController,
         sourceView: UIView? = nil,
         sourceBarButtonItem: UIBarButtonItem? = nil,
-        completion: ((UIActivity.ActivityType?) -> Void)? = nil
+        completion: ((LMKShareResult) -> Void)? = nil
     ) {
         let activityVC = UIActivityViewController(activityItems: [image], applicationActivities: nil)
         configurePopover(activityVC, viewController: viewController, sourceView: sourceView, sourceBarButtonItem: sourceBarButtonItem)
@@ -43,13 +52,12 @@ public enum LMKShareService {
         activityVC.completionWithItemsHandler = { activityType, completed, _, error in
             if let error {
                 LMKLogger.error("Error sharing image", error: error, category: .general)
+                completion?(.failed(error))
             } else if completed {
                 LMKLogger.info("Image shared successfully via \(activityType?.rawValue ?? "unknown")", category: .general)
-            }
-            if completed {
-                completion?(activityType)
+                completion?(.completed(activityType))
             } else {
-                completion?(nil)
+                completion?(.cancelled)
             }
         }
 
