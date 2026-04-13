@@ -243,25 +243,65 @@ private enum ThemeOption: String, CaseIterable, LMKEnumSelectable {
     }
 }
 
+private enum FilterOption: String, CaseIterable, LMKEnumSelectable {
+    case photos
+    case notes
+    case favorites
+    case archived
+
+    var displayName: String {
+        switch self {
+        case .photos: "Has Photos"
+        case .notes: "Has Notes"
+        case .favorites: "Favorites"
+        case .archived: "Archived"
+        }
+    }
+
+    var iconName: String {
+        switch self {
+        case .photos: "photo"
+        case .notes: "note.text"
+        case .favorites: "star"
+        case .archived: "archivebox"
+        }
+    }
+}
+
 final class EnumSelectionDetailViewController: DetailViewController {
     private var currentSort: SortOption = .name
     private var currentTheme: ThemeOption = .system
+    private var activeFilters: Set<FilterOption> = [.photos, .favorites]
 
     override func viewDidLoad() {
         super.viewDidLoad()
 
-        addSectionHeader("Basic (No Icons)")
+        addSectionHeader("Single Select (No Icons)")
         stack.addArrangedSubview(LMKLabelFactory.caption(text: "Generic bottom sheet for selecting from a list of options. Shows a checkmark on the current selection."))
         let sortButton = LMKButtonFactory.filled(role: .primary, title: "Sort By: Name", target: self, action: #selector(showSortSheet))
         sortButton.tag = 1
         stack.addArrangedSubview(sortButton)
 
         addDivider()
-        addSectionHeader("With Icons")
+        addSectionHeader("Single Select (With Icons)")
         stack.addArrangedSubview(LMKLabelFactory.caption(text: "Set showIcons: true to display SF Symbols or asset images alongside each option."))
         let themeButton = LMKButtonFactory.filled(role: .secondary, title: "Theme: System", target: self, action: #selector(showThemeSheet))
         themeButton.tag = 2
         stack.addArrangedSubview(themeButton)
+
+        addDivider()
+        addSectionHeader("Multi-Select")
+        stack.addArrangedSubview(LMKLabelFactory.caption(text: "Tap rows to toggle selection. Selections are committed via the Done button; Cancel discards changes."))
+        let filterButton = LMKButtonFactory.filled(role: .primary, title: "Filters: 2 active", target: self, action: #selector(showFilterSheet))
+        filterButton.tag = 3
+        stack.addArrangedSubview(filterButton)
+
+        addDivider()
+        addSectionHeader("Multi-Select (With Icons)")
+        stack.addArrangedSubview(LMKLabelFactory.caption(text: "Multi-select with icons and a custom Done button title."))
+        let iconFilterButton = LMKButtonFactory.filled(role: .secondary, title: "Filters (icons): 2 active", target: self, action: #selector(showIconFilterSheet))
+        iconFilterButton.tag = 4
+        stack.addArrangedSubview(iconFilterButton)
     }
 
     @objc private func showSortSheet() {
@@ -294,6 +334,50 @@ final class EnumSelectionDetailViewController: DetailViewController {
                 button.setTitle("Theme: \(option.displayName)", for: .normal)
             }
             LMKToast.showSuccess(message: "Theme: \(option.displayName)", on: self)
+        }
+    }
+
+    @objc private func showFilterSheet() {
+        LMKEnumSelectionBottomSheet.presentMultiSelect(
+            in: self,
+            title: "Filter By",
+            options: FilterOption.allCases,
+            currentSelection: activeFilters
+        ) { [weak self] selection in
+            guard let self else { return }
+            activeFilters = selection
+            let count = selection.count
+            if let button = view.viewWithTag(3) as? LMKButton {
+                button.setTitle("Filters: \(count) active", for: .normal)
+            }
+            if let button = view.viewWithTag(4) as? LMKButton {
+                button.setTitle("Filters (icons): \(count) active", for: .normal)
+            }
+            let names = selection.map(\.displayName).sorted().joined(separator: ", ")
+            LMKToast.showSuccess(message: names.isEmpty ? "No filters" : names, on: self)
+        }
+    }
+
+    @objc private func showIconFilterSheet() {
+        LMKEnumSelectionBottomSheet.presentMultiSelect(
+            in: self,
+            title: "Filter By",
+            options: FilterOption.allCases,
+            currentSelection: activeFilters,
+            showIcons: true,
+            doneTitle: "Apply Filters"
+        ) { [weak self] selection in
+            guard let self else { return }
+            activeFilters = selection
+            let count = selection.count
+            if let button = view.viewWithTag(3) as? LMKButton {
+                button.setTitle("Filters: \(count) active", for: .normal)
+            }
+            if let button = view.viewWithTag(4) as? LMKButton {
+                button.setTitle("Filters (icons): \(count) active", for: .normal)
+            }
+            let names = selection.map(\.displayName).sorted().joined(separator: ", ")
+            LMKToast.showSuccess(message: names.isEmpty ? "No filters" : names, on: self)
         }
     }
 }

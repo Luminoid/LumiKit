@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **LMKCountdownConfirmation** — Confirmation alert with a timed countdown on the destructive button. The confirm button is disabled for a configurable number of seconds (default 3) with a live countdown in the title, preventing accidental taps on critical actions
+- **LMKEnumSelectionBottomSheet `presentMultiSelect(...)`** — New API for multi-value selection. Tapping a row toggles its checkmark without dismissing the sheet; selections are committed via an explicit Done button (cancel/dimming-tap discards). Initial selection passed as `Set<T>`, callback receives final `Set<T>`. Optional `doneTitle` parameter (defaults to `LMKAlertPresenter.strings.ok`). Existing single-select `present(...)` API unchanged
+
 ## [0.5.0] - 2026-04-07
 
 ### Added

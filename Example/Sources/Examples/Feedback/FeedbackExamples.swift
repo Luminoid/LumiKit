@@ -63,6 +63,18 @@ final class AlertsDetailViewController: DetailViewController {
         stack.addArrangedSubview(alertButton)
 
         addDivider()
+        addSectionHeader("LMKCountdownConfirmation")
+        stack
+            .addArrangedSubview(LMKLabelFactory
+                .caption(text: "Destructive confirmation with a timed countdown — the confirm button is disabled for a few seconds to prevent accidental taps."))
+
+        let countdown3Button = LMKButtonFactory.filled(role: .destructive, title: "Delete All (3s countdown)", target: self, action: #selector(showCountdown3))
+        stack.addArrangedSubview(countdown3Button)
+
+        let countdown5Button = LMKButtonFactory.outlined(role: .destructive, title: "Reset Account (5s countdown)", target: self, action: #selector(showCountdown5))
+        stack.addArrangedSubview(countdown5Button)
+
+        addDivider()
         addSectionHeader("LMKErrorHandler")
         stack
             .addArrangedSubview(LMKLabelFactory
@@ -134,6 +146,38 @@ final class AlertsDetailViewController: DetailViewController {
             on: self,
             title: "Update Available",
             message: "A new version of the app is available. Please update to get the latest features."
+        )
+    }
+
+    @objc private func showCountdown3() {
+        LMKCountdownConfirmation.present(
+            on: self,
+            title: "Delete All Data?",
+            message: "This will permanently remove all items. This action cannot be undone.",
+            confirmTitle: "Delete All",
+            countdownSeconds: 3,
+            onConfirm: { [weak self] in
+                guard let self else { return }
+                LMKToast.showSuccess(message: "All data deleted!", on: self)
+            }
+        )
+    }
+
+    @objc private func showCountdown5() {
+        LMKCountdownConfirmation.present(
+            on: self,
+            title: "Reset Account?",
+            message: "This will erase your account and all associated data.",
+            confirmTitle: "Reset",
+            countdownSeconds: 5,
+            onConfirm: { [weak self] in
+                guard let self else { return }
+                LMKToast.showSuccess(message: "Account reset!", on: self)
+            },
+            onCancel: { [weak self] in
+                guard let self else { return }
+                LMKToast.showInfo(message: "Cancelled", on: self)
+            }
         )
     }
 

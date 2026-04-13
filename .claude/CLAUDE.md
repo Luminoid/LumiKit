@@ -37,7 +37,7 @@ LumiKit/
 │   │   ├── LMKNetworkRequestRecord.swift      # Request/response data model
 │   │   └── URLSessionConfiguration+LMKDebug.swift  # .enableNetworkLogging()
 │   ├── LumiKitUI/
-│   │   ├── Alerts/          # LMKAlertPresenter, LMKErrorHandler
+│   │   ├── Alerts/          # LMKAlertPresenter, LMKErrorHandler, LMKCountdownConfirmation
 │   │   ├── Animation/       # LMKAnimationHelper
 │   │   ├── Components/
 │   │   │   ├── BottomSheet/  # LMKBottomSheetController (base), LMKActionSheet,
@@ -89,7 +89,7 @@ LumiKit/
 │   │   └── URLSessionConfigurationLMKDebugTests.swift # enableNetworkLogging
 │   ├── LumiKitLottieTests/  # 7 tests, 1 suite
 │   │   └── LMKLottieRefreshControlTests.swift
-│   └── LumiKitUITests/      # 655 tests, 81 suites
+│   └── LumiKitUITests/      # 660 tests, 81 suites
 │       ├── Alerts/          # AlertPresenter, ErrorHandler
 │       ├── Animation/       # AnimationHelper
 │       ├── Components/
@@ -237,7 +237,7 @@ LMKThemeManager.shared.apply(spacing: .init(large: 20))
 | `LMKChipView` | `final class` | Tag/filter chip (`.filled` / `.outlined`) with optional tap handler |
 | `LMKDividerView` | `final class` | Pixel-perfect separator (horizontal / vertical) |
 | `LMKEmptyStateView` | `final class` | Empty state with icon, title, message, action button |
-| `LMKEnumSelectionBottomSheet` | `final class` | Generic bottom sheet for selecting from an enum's cases |
+| `LMKEnumSelectionBottomSheet` | `final class` | Generic bottom sheet for selecting from an enum's cases. `present(...)` for single-select (auto-commits on tap); `presentMultiSelect(...)` for multi-select (tap toggles, explicit Done button commits) |
 | `LMKGradientView` | `final class` | CAGradientLayer-backed view with 4 direction options |
 | `LMKLoadingStateView` | `final class` | Loading indicator with optional message |
 | `LMKNavigationBar` | `final class` | Custom navigation bar with large title and standard inline modes. Configurable back button, left/right `LMKNavigationBarItem` arrays, separator, appearance (background, tint, title font/color). `pinToTop(of:)` for layout |
@@ -330,6 +330,7 @@ LMKThemeManager.shared.apply(spacing: .init(large: 20))
   - `.critical` -> always alert, retry if available
 - All presentation methods auto-log via `LMKLogger`
 - **`LMKAlertPresenter`** for generic alerts and action sheets
+- **`LMKCountdownConfirmation`** for destructive actions — confirm button disabled for a countdown period (default 3s) with live title countdown, preventing accidental taps
 
 ---
 

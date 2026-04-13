@@ -36,8 +36,10 @@ public final class LMKEnumSelectionBottomSheet: LMKBottomSheetController, UITabl
     private let titleText: String
     private let optionNames: [String]
     private let optionIcons: [String]
-    private let selectedIndex: Int?
-    private let onSelectIndex: (Int) -> Void
+    private var selectedIndices: Set<Int>
+    private let isMultiSelect: Bool
+    private let doneTitle: String
+    private let onCommitIndices: (Set<Int>) -> Void
     private let showIcons: Bool
 
     // MARK: - Lazy Views
@@ -62,15 +64,37 @@ public final class LMKEnumSelectionBottomSheet: LMKBottomSheetController, UITabl
         return tv
     }()
 
+    private lazy var doneButton: UIButton = {
+        let button = UIButton(type: .system)
+        button.setTitle(doneTitle, for: .normal)
+        button.titleLabel?.font = LMKTypography.bodyMedium
+        button.setTitleColor(LMKColor.white, for: .normal)
+        button.backgroundColor = LMKColor.primary
+        button.layer.cornerRadius = LMKCornerRadius.medium
+        button.addTarget(self, action: #selector(doneTapped), for: .touchUpInside)
+        return button
+    }()
+
     // MARK: - Initialization
 
-    private init(title: String, optionNames: [String], optionIcons: [String], selectedIndex: Int?, showIcons: Bool, onSelectIndex: @escaping (Int) -> Void) {
+    private init(
+        title: String,
+        optionNames: [String],
+        optionIcons: [String],
+        selectedIndices: Set<Int>,
+        isMultiSelect: Bool,
+        showIcons: Bool,
+        doneTitle: String,
+        onCommitIndices: @escaping (Set<Int>) -> Void
+    ) {
         self.titleText = title
         self.optionNames = optionNames
         self.optionIcons = optionIcons
-        self.selectedIndex = selectedIndex
+        self.selectedIndices = selectedIndices
+        self.isMultiSelect = isMultiSelect
         self.showIcons = showIcons
-        self.onSelectIndex = onSelectIndex
+        self.doneTitle = doneTitle
+        self.onCommitIndices = onCommitIndices
         super.init()
     }
 
@@ -83,11 +107,24 @@ public final class LMKEnumSelectionBottomSheet: LMKBottomSheetController, UITabl
             make.leading.trailing.equalToSuperview().inset(LMKSpacing.xl)
         }
 
+        if isMultiSelect {
+            containerView.addSubview(doneButton)
+            doneButton.snp.makeConstraints { make in
+                make.leading.trailing.equalToSuperview().inset(LMKSpacing.xl)
+                make.bottom.equalTo(cancelButton.snp.top).offset(-LMKSpacing.medium)
+                make.height.equalTo(LMKBottomSheetLayout.buttonHeight)
+            }
+        }
+
         containerView.addSubview(tableView)
         tableView.snp.makeConstraints { make in
             make.top.equalTo(titleLabel.snp.bottom).offset(LMKSpacing.large)
             make.leading.trailing.equalToSuperview()
-            make.bottom.equalTo(cancelButton.snp.top).offset(-LMKSpacing.large)
+            if isMultiSelect {
+                make.bottom.equalTo(doneButton.snp.top).offset(-LMKSpacing.large)
+            } else {
+                make.bottom.equalTo(cancelButton.snp.top).offset(-LMKSpacing.large)
+            }
         }
 
         // Preferred table height based on content; shrinks if capped by max height.
@@ -101,7 +138,19 @@ public final class LMKEnumSelectionBottomSheet: LMKBottomSheetController, UITabl
 
     override public func refreshSheetColors() {
         titleLabel.textColor = LMKColor.textPrimary
+        if isMultiSelect {
+            doneButton.setTitleColor(LMKColor.white, for: .normal)
+            doneButton.backgroundColor = LMKColor.primary
+        }
         tableView.reloadData()
+    }
+
+    // MARK: - Actions
+
+    @objc private func doneTapped() {
+        let indices = selectedIndices
+        dismissSheet()
+        onCommitIndices(indices)
     }
 
     // MARK: - UITableViewDataSource
@@ -118,7 +167,7 @@ public final class LMKEnumSelectionBottomSheet: LMKBottomSheetController, UITabl
         cell.configure(
             displayName: optionNames[row],
             iconName: optionIcons[row],
-            isSelected: row == selectedIndex,
+            isSelected: selectedIndices.contains(row),
             showIcon: showIcons
         )
         return cell
@@ -132,15 +181,24 @@ public final class LMKEnumSelectionBottomSheet: LMKBottomSheetController, UITabl
 
     public func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         tableView.deselectRow(at: indexPath, animated: true)
-        let handler = onSelectIndex
-        let index = indexPath.row
-        dismissSheet()
-        handler(index)
+        let row = indexPath.row
+        if isMultiSelect {
+            if selectedIndices.contains(row) {
+                selectedIndices.remove(row)
+            } else {
+                selectedIndices.insert(row)
+            }
+            tableView.reloadRows(at: [indexPath], with: .none)
+        } else {
+            let indices: Set<Int> = [row]
+            dismissSheet()
+            onCommitIndices(indices)
+        }
     }
 
     // MARK: - Static Convenience
 
-    /// Present an enum selection bottom sheet.
+    /// Present a single-selection bottom sheet. Tapping a row commits and dismisses immediately.
     public static func present<T: Equatable & LMKEnumSelectable>(
         in viewController: UIViewController,
         title: String,
@@ -151,14 +209,50 @@ public final class LMKEnumSelectionBottomSheet: LMKBottomSheetController, UITabl
     ) {
         let optionNames = options.map(\.displayName)
         let optionIcons = options.map(\.iconName)
-        let selectedIndex = options.firstIndex(of: currentSelection)
+        let initialIndices: Set<Int> = options.firstIndex(of: currentSelection).map { [$0] } ?? []
         let sheet = LMKEnumSelectionBottomSheet(
             title: title,
             optionNames: optionNames,
             optionIcons: optionIcons,
-            selectedIndex: selectedIndex,
+            selectedIndices: initialIndices,
+            isMultiSelect: false,
             showIcons: showIcons,
-            onSelectIndex: { index in onSelect(options[index]) }
+            doneTitle: LMKAlertPresenter.strings.ok,
+            onCommitIndices: { indices in
+                if let first = indices.first {
+                    onSelect(options[first])
+                }
+            }
+        )
+        addAsChild(sheet, in: viewController)
+    }
+
+    /// Present a multi-selection bottom sheet. Tapping a row toggles selection without dismissing.
+    /// Selections are committed via the Done button; Cancel discards them.
+    public static func presentMultiSelect<T: Hashable & LMKEnumSelectable>(
+        in viewController: UIViewController,
+        title: String,
+        options: [T],
+        currentSelection: Set<T>,
+        showIcons: Bool = false,
+        doneTitle: String? = nil,
+        onSelect: @escaping (Set<T>) -> Void
+    ) {
+        let optionNames = options.map(\.displayName)
+        let optionIcons = options.map(\.iconName)
+        let initialIndices: Set<Int> = Set(currentSelection.compactMap { options.firstIndex(of: $0) })
+        let sheet = LMKEnumSelectionBottomSheet(
+            title: title,
+            optionNames: optionNames,
+            optionIcons: optionIcons,
+            selectedIndices: initialIndices,
+            isMultiSelect: true,
+            showIcons: showIcons,
+            doneTitle: doneTitle ?? LMKAlertPresenter.strings.ok,
+            onCommitIndices: { indices in
+                let selected = Set(indices.map { options[$0] })
+                onSelect(selected)
+            }
         )
         addAsChild(sheet, in: viewController)
     }

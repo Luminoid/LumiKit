@@ -48,10 +48,10 @@ LumiKit is organized into four targets so apps can import only what they need:
 | **LumiKitUI** | LumiKitCore + LumiKitNetwork + SnapKit | Design system tokens, theme manager, animation, haptics, alerts, components, controls, photo browser/crop, network debug UI (DEBUG), UIKit extensions |
 | **LumiKitLottie** | LumiKitUI + Lottie | Lottie-powered pull-to-refresh control |
 
-**106 source files** across 4 targets, with **803 tests** across 4 test targets:
+**107 source files** across 4 targets, with **808 tests** across 4 test targets:
 - **LumiKitCoreTests**: 76 tests (11 suites)
 - **LumiKitNetworkTests**: 65 tests (4 suites)
-- **LumiKitUITests**: 655 tests (81 suites)
+- **LumiKitUITests**: 660 tests (81 suites)
 - **LumiKitLottieTests**: 7 tests (1 suite)
 
 ---
@@ -163,7 +163,7 @@ LumiKit/
 │   │   ├── LMKNetworkRequestRecord.swift      # Request/response data
 │   │   └── URLSessionConfiguration+LMKDebug.swift  # .enableNetworkLogging()
 │   ├── LumiKitUI/
-│   │   ├── Alerts/            # LMKAlertPresenter, LMKErrorHandler
+│   │   ├── Alerts/            # LMKAlertPresenter, LMKErrorHandler, LMKCountdownConfirmation
 │   │   ├── Animation/         # LMKAnimationHelper
 │   │   ├── Components/
 │   │   │   ├── BottomSheet/   # LMKBottomSheetController (base), LMKActionSheet,
@@ -214,7 +214,7 @@ LumiKit/
 │   │   ├── LMKNetworkRequestRecordTests.swift        # Computed properties, display formatting
 │   │   ├── LMKNetworkLoggerTests.swift               # Configuration, state transitions
 │   │   └── URLSessionConfigurationLMKDebugTests.swift # enableNetworkLogging
-│   ├── LumiKitUITests/        # 655 tests, 81 suites
+│   ├── LumiKitUITests/        # 660 tests, 81 suites
 │   │   ├── Alerts/            # AlertPresenter, ErrorHandler
 │   │   ├── Animation/         # AnimationHelper
 │   │   ├── Components/
@@ -321,7 +321,7 @@ LMKThemeManager.shared.apply(spacing: .init(large: 20))
 | `LMKChipView` | Tag/filter chip (`.filled` / `.outlined`) with optional tap handler |
 | `LMKDividerView` | Pixel-perfect separator (horizontal / vertical) |
 | `LMKEmptyStateView` | Empty state with icon, title, message, action button |
-| `LMKEnumSelectionBottomSheet` | Bottom sheet for selecting from an enum's cases |
+| `LMKEnumSelectionBottomSheet` | Bottom sheet for selecting from an enum's cases — single-select (`present`) or multi-select with explicit Done button (`presentMultiSelect`) |
 | `LMKGradientView` | `CAGradientLayer`-backed view with 4 direction options |
 | `LMKLoadingStateView` | Loading indicator with optional message |
 | `LMKNavigationBar` | Custom navigation bar with large title and standard inline modes, configurable bar items, back button, and design-token styling |
@@ -465,6 +465,21 @@ Both photo view controllers force dark mode (`overrideUserInterfaceStyle = .dark
 | `.critical` | Always alert, retry if available |
 
 All presentation methods auto-log via `LMKLogger`. Use `LMKAlertPresenter` for generic alerts and action sheets.
+
+### Countdown Confirmation
+
+`LMKCountdownConfirmation` presents a confirmation alert where the destructive button is disabled for a countdown period (default 3 seconds), showing a live countdown in the button title. Useful for irreversible actions like deleting all data.
+
+```swift
+LMKCountdownConfirmation.present(
+    on: self,
+    title: "Delete All Data?",
+    message: "This cannot be undone.",
+    confirmTitle: "Delete",
+    countdownSeconds: 3,
+    onConfirm: { /* perform deletion */ }
+)
+```
 
 ---
 

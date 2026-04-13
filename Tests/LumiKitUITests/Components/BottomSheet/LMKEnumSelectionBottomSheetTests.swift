@@ -12,7 +12,7 @@ import UIKit
 
 // MARK: - Test Enum
 
-private enum TestSortOption: String, CaseIterable, Equatable, LMKEnumSelectable {
+private enum TestSortOption: String, CaseIterable, Hashable, LMKEnumSelectable {
     case name
     case date
     case type
@@ -300,6 +300,142 @@ struct LMKEnumSelectionBottomSheetTests {
         sheet.loadViewIfNeeded()
 
         #expect(findTableView(in: sheet.view) != nil)
+    }
+
+    // MARK: - Multi-Select
+
+    @Test
+    func `presentMultiSelect adds sheet as child of parent VC`() {
+        let parent = UIViewController()
+        let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 375, height: 812))
+        window.rootViewController = parent
+        window.makeKeyAndVisible()
+
+        LMKEnumSelectionBottomSheet.presentMultiSelect(
+            in: parent,
+            title: "Filter By",
+            options: TestSortOption.allCases,
+            currentSelection: [.name, .date],
+            onSelect: { _ in }
+        )
+
+        #expect(parent.children.count == 1)
+        #expect(parent.children.first is LMKEnumSelectionBottomSheet)
+    }
+
+    @Test
+    func `presentMultiSelect with empty initial selection`() {
+        let parent = UIViewController()
+        let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 375, height: 812))
+        window.rootViewController = parent
+        window.makeKeyAndVisible()
+
+        LMKEnumSelectionBottomSheet.presentMultiSelect(
+            in: parent,
+            title: "Filter By",
+            options: TestSortOption.allCases,
+            currentSelection: [],
+            onSelect: { _ in }
+        )
+
+        #expect(parent.children.count == 1)
+    }
+
+    @Test
+    func `Multi-select tap toggles selection without dismissing`() {
+        var committedSelection: Set<TestSortOption>?
+        let parent = UIViewController()
+        let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 375, height: 812))
+        window.rootViewController = parent
+        window.makeKeyAndVisible()
+
+        LMKEnumSelectionBottomSheet.presentMultiSelect(
+            in: parent,
+            title: "Filter By",
+            options: TestSortOption.allCases,
+            currentSelection: [.name],
+            onSelect: { selection in committedSelection = selection }
+        )
+
+        guard let sheet = parent.children.first as? LMKEnumSelectionBottomSheet else {
+            Issue.record("Expected LMKEnumSelectionBottomSheet as child")
+            return
+        }
+        sheet.loadViewIfNeeded()
+
+        if let tableView = findTableView(in: sheet.view) {
+            // Tap "Date" — toggles selection on, no dismissal
+            sheet.tableView(tableView, didSelectRowAt: IndexPath(row: 1, section: 0))
+            #expect(committedSelection == nil) // No commit yet
+            #expect(parent.children.count == 1) // Sheet still present
+
+            // Tap "Name" — toggles selection off
+            sheet.tableView(tableView, didSelectRowAt: IndexPath(row: 0, section: 0))
+            #expect(committedSelection == nil)
+            #expect(parent.children.count == 1)
+        }
+    }
+
+    @Test
+    func `Multi-select cell isSelected reflects current state`() {
+        let parent = UIViewController()
+        let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 375, height: 812))
+        window.rootViewController = parent
+        window.makeKeyAndVisible()
+
+        LMKEnumSelectionBottomSheet.presentMultiSelect(
+            in: parent,
+            title: "Filter By",
+            options: TestSortOption.allCases,
+            currentSelection: [.date, .type],
+            onSelect: { _ in }
+        )
+
+        guard let sheet = parent.children.first as? LMKEnumSelectionBottomSheet else {
+            Issue.record("Expected LMKEnumSelectionBottomSheet as child")
+            return
+        }
+        sheet.loadViewIfNeeded()
+
+        if let tableView = findTableView(in: sheet.view) {
+            let nameCell = sheet.tableView(tableView, cellForRowAt: IndexPath(row: 0, section: 0))
+            let dateCell = sheet.tableView(tableView, cellForRowAt: IndexPath(row: 1, section: 0))
+            let typeCell = sheet.tableView(tableView, cellForRowAt: IndexPath(row: 2, section: 0))
+
+            #expect(!nameCell.accessibilityTraits.contains(.selected))
+            #expect(dateCell.accessibilityTraits.contains(.selected))
+            #expect(typeCell.accessibilityTraits.contains(.selected))
+        }
+    }
+
+    @Test
+    func `Single-select cell isSelected reflects current selection`() {
+        let parent = UIViewController()
+        let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 375, height: 812))
+        window.rootViewController = parent
+        window.makeKeyAndVisible()
+
+        LMKEnumSelectionBottomSheet.present(
+            in: parent,
+            title: "Sort By",
+            options: TestSortOption.allCases,
+            currentSelection: .date,
+            onSelect: { _ in }
+        )
+
+        guard let sheet = parent.children.first as? LMKEnumSelectionBottomSheet else {
+            Issue.record("Expected LMKEnumSelectionBottomSheet as child")
+            return
+        }
+        sheet.loadViewIfNeeded()
+
+        if let tableView = findTableView(in: sheet.view) {
+            let nameCell = sheet.tableView(tableView, cellForRowAt: IndexPath(row: 0, section: 0))
+            let dateCell = sheet.tableView(tableView, cellForRowAt: IndexPath(row: 1, section: 0))
+
+            #expect(!nameCell.accessibilityTraits.contains(.selected))
+            #expect(dateCell.accessibilityTraits.contains(.selected))
+        }
     }
 
     // MARK: - Helpers
