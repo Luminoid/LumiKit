@@ -50,6 +50,12 @@ private let exampleSections: [ExampleSection] = [
         ExampleItem(title: "Gradient", subtitle: "Linear gradients with configurable directions", iconName: "rectangle.fill", makeViewController: { GradientDetailViewController() }),
         ExampleItem(title: "Page Indicator", subtitle: "Animated expanding pill page dots", iconName: "circle.circle", makeViewController: { PageIndicatorDetailViewController() }),
         ExampleItem(title: "Navigation Bar", subtitle: "Large title, inline, back button, bar items", iconName: "menubar.rectangle", makeViewController: { NavigationBarDetailViewController() }),
+        ExampleItem(
+            title: "Navigation Controller",
+            subtitle: "Preserves swipe-to-go-back when system nav bar is hidden",
+            iconName: "arrow.backward.circle",
+            makeViewController: { NavigationControllerDetailViewController() }
+        ),
         ExampleItem(title: "Banners", subtitle: "Persistent info, warning, and error banners", iconName: "exclamationmark.bubble", makeViewController: { BannerDetailViewController() }),
         ExampleItem(title: "Empty State", subtitle: "Full screen, card, and inline styles", iconName: "square.dashed", makeViewController: { EmptyStateDetailViewController() }),
         ExampleItem(title: "Loading State", subtitle: "Inline, overlay, and skeleton loading", iconName: "progress.indicator", makeViewController: { LoadingStateDetailViewController() }),

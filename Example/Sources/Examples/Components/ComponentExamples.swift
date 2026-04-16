@@ -399,6 +399,103 @@ final class NavigationBarDetailViewController: DetailViewController {
     }
 }
 
+// MARK: - Navigation Controller
+
+final class NavigationControllerDetailViewController: DetailViewController {
+    override func viewDidLoad() {
+        super.viewDidLoad()
+
+        addSectionHeader("Swipe-to-go-back with hidden system nav bar")
+        stack.addArrangedSubview(LMKLabelFactory.caption(
+            text: "LMKNavigationController keeps the edge-swipe-to-go-back gesture "
+                + "working when the system navigation bar is hidden — which happens on "
+                + "every screen that uses LMKNavigationBar. Tap the button to present a "
+                + "demo stack: push a few screens, then swipe from the left edge to pop."
+        ))
+
+        let presentButton = LMKButtonFactory.filled(
+            role: .primary,
+            title: "Present Demo Stack",
+            target: self,
+            action: #selector(presentDemoStack)
+        )
+        stack.addArrangedSubview(presentButton)
+    }
+
+    @objc private func presentDemoStack() {
+        let root = SwipeDemoViewController(depth: 1)
+        let nav = LMKNavigationController(rootViewController: root)
+        nav.setNavigationBarHidden(true, animated: false)
+        nav.modalPresentationStyle = .fullScreen
+        present(nav, animated: true)
+    }
+}
+
+private final class SwipeDemoViewController: UIViewController {
+    private let depth: Int
+
+    init(depth: Int) {
+        self.depth = depth
+        super.init(nibName: nil, bundle: nil)
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) {
+        fatalError()
+    }
+
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        view.backgroundColor = LMKColor.backgroundPrimary
+
+        let navBar = LMKNavigationBar()
+        navBar.title = "Screen \(depth)"
+        if depth > 1 {
+            navBar.showsBackButton = true
+            navBar.backAction = { [weak self] in
+                self?.navigationController?.popViewController(animated: true)
+            }
+        } else {
+            navBar.setLeftItems([
+                .init(title: "Close") { [weak self] in
+                    self?.dismiss(animated: true)
+                },
+            ])
+        }
+        view.addSubview(navBar)
+        navBar.pinToTop(of: view)
+
+        let caption = LMKLabelFactory.caption(
+            text: depth > 1
+                ? "Swipe from the left edge to pop back, or tap the chevron."
+                : "Push a screen, then try the edge-swipe gesture to pop."
+        )
+        caption.textAlignment = .center
+        caption.numberOfLines = 0
+
+        let pushButton = LMKButtonFactory.filled(
+            role: .primary,
+            title: "Push Screen \(depth + 1)",
+            target: self,
+            action: #selector(push)
+        )
+
+        let column = UIStackView(arrangedSubviews: [caption, pushButton])
+        column.axis = .vertical
+        column.spacing = LMKSpacing.large
+        column.alignment = .fill
+        view.addSubview(column)
+        column.snp.makeConstraints { make in
+            make.leading.trailing.equalToSuperview().inset(LMKSpacing.large)
+            make.centerY.equalToSuperview()
+        }
+    }
+
+    @objc private func push() {
+        navigationController?.pushViewController(SwipeDemoViewController(depth: depth + 1), animated: true)
+    }
+}
+
 // MARK: - Banner
 
 final class BannerDetailViewController: DetailViewController {

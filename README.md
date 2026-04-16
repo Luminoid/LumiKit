@@ -172,7 +172,8 @@ LumiKit/
 │   │   │   ├── LMKBadgeView, LMKBannerView, LMKCardView, LMKChipView,
 │   │   │   ├── LMKDividerView, LMKEmptyStateView, LMKFloatingButton,
 │   │   │   ├── LMKGradientView, LMKLoadingStateView, LMKNavigationBar,
-│   │   │   ├── LMKPageIndicator, LMKProgressViewController, LMKSearchBar,
+│   │   │   ├── LMKNavigationController, LMKPageIndicator,
+│   │   │   ├── LMKProgressViewController, LMKSearchBar,
 │   │   │   ├── LMKSkeletonCell, LMKToastView, LMKTipView,
 │   │   │   ├── LMKCardPageController, LMKCardPageLayout,
 │   │   │   ├── LMKCardPanelController, LMKCardPanelLayout,
@@ -325,6 +326,7 @@ LMKThemeManager.shared.apply(spacing: .init(large: 20))
 | `LMKGradientView` | `CAGradientLayer`-backed view with 4 direction options |
 | `LMKLoadingStateView` | Loading indicator with optional message |
 | `LMKNavigationBar` | Custom navigation bar with large title and standard inline modes, configurable bar items, back button, and design-token styling |
+| `LMKNavigationController` | `UINavigationController` subclass that preserves the edge-swipe-to-go-back gesture when the system nav bar is hidden. Pairs with `LMKNavigationBar`-based apps |
 | `LMKProgressViewController` | Blocking progress modal (`.determinate` with progress bar, `.indeterminate` spinner-only) |
 | `LMKSearchBar` | Search bar with configurable placeholder and cancel text |
 | `LMKSkeletonCell` | Skeleton loading placeholder cell |

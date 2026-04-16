@@ -45,7 +45,8 @@ LumiKit/
 │   │   │   ├── Pickers/      # LMKDatePickerHelper
 │   │   │   └── (root)        # Badge, Banner, Card, Chip, Divider, EmptyState,
 │   │   │                     # FloatingButton, Gradient, LoadingState,
-│   │   │                     # NavigationBar, PageIndicator, Progress,
+│   │   │                     # NavigationBar, NavigationController,
+│   │   │                     # PageIndicator, Progress,
 │   │   │                     # SearchBar, Skeleton, Toast, TipView,
 │   │   │                     # CardPageController, CardPageLayout,
 │   │   │                     # CardPanelController, CardPanelLayout,
@@ -241,6 +242,7 @@ LMKThemeManager.shared.apply(spacing: .init(large: 20))
 | `LMKGradientView` | `final class` | CAGradientLayer-backed view with 4 direction options |
 | `LMKLoadingStateView` | `final class` | Loading indicator with optional message |
 | `LMKNavigationBar` | `final class` | Custom navigation bar with large title and standard inline modes. Configurable back button, left/right `LMKNavigationBarItem` arrays, separator, appearance (background, tint, title font/color). `pinToTop(of:)` for layout |
+| `LMKNavigationController` | `open class` | `UINavigationController` subclass that keeps the interactive edge-swipe-to-go-back gesture working when the system nav bar is hidden (as it is in apps using `LMKNavigationBar`). Installs itself as the pop-gesture delegate and enables the gesture only when the stack has 2+ VCs |
 | `LMKPageIndicator` | `final class` | Custom page indicator replacing `UIPageControl`. Active dot expands into pill with spring animation. `numberOfPages`, `currentPage`, `pageChangedHandler` |
 | `LMKProgressViewController` | `final class` | Blocking progress modal (`.determinate` with progress bar, `.indeterminate` spinner-only) |
 | `LMKSearchBar` | `final class` | Search bar with configurable strings |
