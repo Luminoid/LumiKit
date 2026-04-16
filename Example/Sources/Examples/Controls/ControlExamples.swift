@@ -183,6 +183,43 @@ final class SegmentedControlDetailViewController: DetailViewController {
         stack.addArrangedSubview(manyLabel)
 
         addDivider()
+        addSectionHeader("Unselected State")
+        stack.addArrangedSubview(LMKLabelFactory.caption(text: "Set selectedSegmentIndex = -1 for no selection — indicator hides, all labels render unselected. Matches UISegmentedControl.noSegment."))
+
+        let ratingLabel = LMKLabelFactory.caption(text: "Rating: (none)")
+        ratingLabel.textAlignment = .center
+        let ratingSegment = LMKSegmentedControl(
+            items: (1 ... 5).map { String(repeating: "\u{2605}", count: $0) }
+        )
+        ratingSegment.fitsSegmentsToContent = true
+        ratingSegment.selectedSegmentIndex = -1
+        ratingSegment.valueChangedHandler = { index in
+            ratingLabel.text = "Rating: \(index + 1) star\(index == 0 ? "" : "s")"
+        }
+
+        // Wrap in a horizontal row with a trailing spacer so the control
+        // sits at its intrinsic width instead of stretching with the parent stack.
+        let ratingRow = UIStackView(
+            lmk_axis: .horizontal,
+            alignment: .center,
+            arrangedSubviews: [ratingSegment, UIView()]
+        )
+        stack.addArrangedSubview(ratingRow)
+        stack.addArrangedSubview(ratingLabel)
+
+        let clearRatingButton = LMKButton(title: "Clear Rating", style: .ghost(LMKColor.primary))
+        clearRatingButton.tapHandler = { [weak ratingSegment, weak ratingLabel] in
+            ratingSegment?.selectedSegmentIndex = -1
+            ratingLabel?.text = "Rating: (none)"
+        }
+        let clearRow = UIStackView(
+            lmk_axis: .horizontal,
+            alignment: .center,
+            arrangedSubviews: [clearRatingButton, UIView()]
+        )
+        stack.addArrangedSubview(clearRow)
+
+        addDivider()
         addSectionHeader("Scrollable")
         stack.addArrangedSubview(LMKLabelFactory.caption(text: "Use makeScrollableContainer() for many segments."))
 

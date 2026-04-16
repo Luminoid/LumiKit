@@ -44,6 +44,10 @@ open class LMKSegmentedControl: UIControl {
     public var numberOfSegments: Int { items.count }
 
     /// The currently selected segment index. Setting this updates the UI without animation.
+    ///
+    /// Set to `-1` (or any out-of-range value) to represent "no selection" —
+    /// the sliding indicator is hidden and every label renders in the
+    /// unselected style. This matches `UISegmentedControl.noSegment` semantics.
     public var selectedSegmentIndex: Int = 0 {
         didSet {
             guard selectedSegmentIndex != oldValue else { return }
@@ -54,11 +58,34 @@ open class LMKSegmentedControl: UIControl {
     }
 
     /// Horizontal padding added to each side of every segment label.
-    /// Increases the overall width of the control. Default is `LMKSpacing.medium` (12pt).
+    /// Increases the overall width of the control. In `fitsSegmentsToContent`
+    /// mode this padding is baked into each segment's pinned width.
+    /// Default is `LMKSpacing.medium` (12pt).
     public var itemPadding: CGFloat = LMKSpacing.medium {
         didSet {
             guard itemPadding != oldValue else { return }
+            applySegmentWidthConstraintsIfNeeded()
             invalidateIntrinsicContentSize()
+        }
+    }
+
+    /// When `true`, each segment sizes to its own content width (measured at the
+    /// wider selected-state font so widths stay stable as labels swap fonts on
+    /// selection) plus `itemPadding` on each side, and the whole control hugs
+    /// its content horizontally (won't stretch inside a `.fill` parent stack).
+    /// Useful when labels have very different widths (e.g. a rating control
+    /// where labels range from "★" to "★★★★★"). Default `false`.
+    public var fitsSegmentsToContent: Bool = false {
+        didSet {
+            guard fitsSegmentsToContent != oldValue else { return }
+            segmentStack.distribution = fitsSegmentsToContent ? .fill : .fillEqually
+            setContentHuggingPriority(
+                fitsSegmentsToContent ? .required : .defaultHigh,
+                for: .horizontal
+            )
+            applySegmentWidthConstraintsIfNeeded()
+            invalidateIntrinsicContentSize()
+            setNeedsLayout()
         }
     }
 
@@ -80,6 +107,12 @@ open class LMKSegmentedControl: UIControl {
     private let segmentStack = UIStackView()
     private let inset: CGFloat = 4
     private let indicatorInset: CGFloat = 2
+
+    /// Per-segment width measured at the wider (selected-state) font so the
+    /// per-item layout stays stable as labels swap fonts on selection change.
+    private var segmentReferenceWidths: [CGFloat] = []
+    /// Width constraints applied per label when `fitsSegmentsToContent == true`.
+    private var segmentWidthConstraints: [Constraint] = []
 
     /// Constraint anchoring the indicator to the selected label.
     private var indicatorLeading: Constraint?
@@ -160,8 +193,12 @@ open class LMKSegmentedControl: UIControl {
     // MARK: - Intrinsic Size
 
     override open var intrinsicContentSize: CGSize {
-        let labelsWidth = segmentLabels.reduce(CGFloat(0)) { total, label in
-            total + label.intrinsicContentSize.width
+        let labelsWidth: CGFloat = if fitsSegmentsToContent, !segmentReferenceWidths.isEmpty {
+            segmentReferenceWidths.reduce(0, +)
+        } else {
+            segmentLabels.reduce(CGFloat(0)) { total, label in
+                total + label.intrinsicContentSize.width
+            }
         }
         let totalItemPadding = itemPadding * 2 * CGFloat(items.count)
         let width = labelsWidth + totalItemPadding + inset * 2
@@ -261,16 +298,64 @@ open class LMKSegmentedControl: UIControl {
             segmentStack.addArrangedSubview(label)
         }
 
+        recomputeReferenceWidths()
+        applySegmentWidthConstraintsIfNeeded()
+
         updateLabelColors()
         invalidateIntrinsicContentSize()
         // Set initial indicator position via constraints
         moveIndicator(animated: false)
     }
 
+    /// Measure each item's rendered width using the wider (selected-state) font.
+    /// These widths are used to pin each label's width and compute intrinsic
+    /// size, so nothing shifts horizontally when selection changes the font.
+    private func recomputeReferenceWidths() {
+        let referenceFont = LMKTypography.bodyMedium
+        segmentReferenceWidths = items.map { title in
+            (title as NSString)
+                .size(withAttributes: [.font: referenceFont])
+                .width
+                .rounded(.up)
+        }
+    }
+
+    /// Apply (or remove) a fixed-width constraint per label so that selection
+    /// font changes do not reflow the stack. Width includes `itemPadding` on
+    /// each side so the label has breathing room around its text and the sum
+    /// of label widths exactly matches the stack's intrinsic width. Only
+    /// active in fit-content mode.
+    private func applySegmentWidthConstraintsIfNeeded() {
+        segmentWidthConstraints.forEach { $0.deactivate() }
+        segmentWidthConstraints.removeAll()
+
+        guard fitsSegmentsToContent else { return }
+        guard segmentLabels.count == segmentReferenceWidths.count else { return }
+
+        for (label, referenceWidth) in zip(segmentLabels, segmentReferenceWidths) {
+            label.snp.makeConstraints { make in
+                let c = make.width.equalTo(referenceWidth + itemPadding * 2).constraint
+                segmentWidthConstraints.append(c)
+            }
+        }
+    }
+
     // MARK: - Indicator Positioning (Constraint-Based)
 
     private func moveIndicator(animated: Bool) {
-        guard !segmentLabels.isEmpty, selectedSegmentIndex < segmentLabels.count else { return }
+        guard !segmentLabels.isEmpty else { return }
+
+        // Out-of-range index (e.g. -1) means "no selection" — hide the indicator.
+        guard selectedSegmentIndex >= 0, selectedSegmentIndex < segmentLabels.count else {
+            indicatorLeading?.deactivate()
+            indicatorTrailing?.deactivate()
+            indicatorLeading = nil
+            indicatorTrailing = nil
+            indicatorView.isHidden = true
+            return
+        }
+
+        indicatorView.isHidden = false
         let targetLabel = segmentLabels[selectedSegmentIndex]
 
         // Remove old horizontal constraints and set new ones
@@ -333,6 +418,12 @@ open class LMKSegmentedControl: UIControl {
 
         switch gesture.state {
         case .began:
+            // Require a current selection before dragging — without it the
+            // indicator is hidden and its frame is undefined.
+            guard selectedSegmentIndex >= 0, selectedSegmentIndex < segmentLabels.count else {
+                gesture.state = .cancelled
+                return
+            }
             // Only start dragging if touch is on or near the indicator
             let hitArea = indicatorView.frame.insetBy(dx: -LMKSpacing.small, dy: -LMKSpacing.small)
             guard hitArea.contains(location) else {

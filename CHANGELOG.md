@@ -11,6 +11,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **LMKCountdownConfirmation** — Confirmation alert with a timed countdown on the destructive button. The confirm button is disabled for a configurable number of seconds (default 3) with a live countdown in the title, preventing accidental taps on critical actions
 - **LMKEnumSelectionBottomSheet `presentMultiSelect(...)`** — New API for multi-value selection. Tapping a row toggles its checkmark without dismissing the sheet; selections are committed via an explicit Done button (cancel/dimming-tap discards). Initial selection passed as `Set<T>`, callback receives final `Set<T>`. Optional `doneTitle` parameter (defaults to `LMKAlertPresenter.strings.ok`). Existing single-select `present(...)` API unchanged
+- **LMKSegmentedControl `fitsSegmentsToContent`** — When `true`, each segment sizes to its own content width (measured at the wider selected-state font so widths stay stable as labels swap fonts on selection) plus `itemPadding` on each side, and the control hugs its content horizontally instead of stretching in a `.fill` parent stack. Useful when labels have very different widths (e.g. a rating control from "★" to "★★★★★"). Default `false`
+
+### Changed
+
+- **LMKSegmentedControl `selectedSegmentIndex`** — Assigning `-1` (or any out-of-range value) now represents "no selection": the sliding indicator is hidden and every label renders in the unselected style, matching `UISegmentedControl.noSegment` semantics. Previously, `-1` crashed with "Index out of range" in `moveIndicator`
+
+### Fixed
+
+- **LMKSegmentedControl** — Guard both bounds of `selectedSegmentIndex` before subscripting `segmentLabels` in `moveIndicator` and the drag gesture handler (cancel the drag if no segment is selected); previously the upper bound was checked but `-1` crashed
 
 ## [0.5.0] - 2026-04-07
 

@@ -70,4 +70,72 @@ struct LMKSegmentedControlTests {
         let control = LMKSegmentedControl(items: ["A"])
         #expect(control as Any is UIControl)
     }
+
+    @Test
+    func `selectedSegmentIndex = -1 does not crash`() {
+        let control = LMKSegmentedControl(items: ["★", "★★", "★★★"])
+        control.selectedSegmentIndex = -1
+        #expect(control.selectedSegmentIndex == -1)
+    }
+
+    @Test
+    func `selectedSegmentIndex out of upper bound does not crash`() {
+        let control = LMKSegmentedControl(items: ["A", "B"])
+        control.selectedSegmentIndex = 99
+        #expect(control.selectedSegmentIndex == 99)
+    }
+
+    @Test
+    func `Recovering from -1 to a valid index selects that segment`() {
+        let control = LMKSegmentedControl(items: ["A", "B", "C"])
+        control.selectedSegmentIndex = -1
+        control.selectedSegmentIndex = 2
+        #expect(control.selectedSegmentIndex == 2)
+    }
+
+    @Test
+    func `fitsSegmentsToContent intrinsic width stays stable across selection changes`() {
+        let control = LMKSegmentedControl(
+            items: (1 ... 5).map { String(repeating: "\u{2605}", count: $0) }
+        )
+        control.fitsSegmentsToContent = true
+
+        control.selectedSegmentIndex = -1
+        let unselected = control.intrinsicContentSize.width
+
+        control.selectedSegmentIndex = 0
+        let firstSelected = control.intrinsicContentSize.width
+
+        control.selectedSegmentIndex = 4
+        let lastSelected = control.intrinsicContentSize.width
+
+        #expect(unselected == firstSelected)
+        #expect(firstSelected == lastSelected)
+    }
+
+    @Test
+    func `fitsSegmentsToContent hugs content horizontally`() {
+        let control = LMKSegmentedControl(items: ["A", "B"])
+        #expect(control.contentHuggingPriority(for: .horizontal) == .defaultHigh)
+
+        control.fitsSegmentsToContent = true
+        #expect(control.contentHuggingPriority(for: .horizontal) == .required)
+
+        control.fitsSegmentsToContent = false
+        #expect(control.contentHuggingPriority(for: .horizontal) == .defaultHigh)
+    }
+
+    @Test
+    func `itemPadding widens intrinsic width in fit-content mode`() {
+        let control = LMKSegmentedControl(items: ["A", "B", "C"])
+        control.fitsSegmentsToContent = true
+        let basePadding = control.itemPadding
+        let baseWidth = control.intrinsicContentSize.width
+
+        control.itemPadding = basePadding + 10
+        let widerWidth = control.intrinsicContentSize.width
+
+        // Three segments: +10 padding on each side of each segment => +60 total.
+        #expect(widerWidth == baseWidth + 60)
+    }
 }
