@@ -275,6 +275,62 @@ struct LMKNavigationBarTests {
         // No crash, items cleared
     }
 
+    // MARK: - Item Enabled State
+
+    @Test
+    func `disable right item lowers alpha and stops firing action`() {
+        let bar = LMKNavigationBar()
+        var called = false
+        bar.setRightItems([.init(systemName: "plus", accessibilityLabel: "Add") { called = true }])
+
+        bar.setRightItemEnabled(at: 0, false)
+
+        guard let button = findButton(in: bar, accessibilityLabel: "Add") else {
+            Issue.record("Expected right item button to exist")
+            return
+        }
+        #expect(!button.isEnabled)
+        #expect(abs(button.alpha - LMKAlpha.disabled) < 0.001)
+        button.sendActions(for: .touchUpInside)
+        #expect(!called, "Disabled button should not fire its action")
+    }
+
+    @Test
+    func `re-enable right item restores full alpha`() {
+        let bar = LMKNavigationBar()
+        bar.setRightItems([.init(systemName: "plus", accessibilityLabel: "Add") {}])
+
+        bar.setRightItemEnabled(at: 0, false)
+        bar.setRightItemEnabled(at: 0, true)
+
+        let button = findButton(in: bar, accessibilityLabel: "Add")
+        #expect(button?.isEnabled == true)
+        #expect(button?.alpha == 1.0)
+    }
+
+    @Test
+    func `disable left item lowers alpha`() {
+        let bar = LMKNavigationBar()
+        bar.setLeftItems([.init(title: "Edit") {}])
+
+        bar.setLeftItemEnabled(at: 0, false)
+
+        let button = findButton(in: bar, accessibilityLabel: "Edit")
+        #expect(button?.isEnabled == false)
+        #expect(abs((button?.alpha ?? 1.0) - LMKAlpha.disabled) < 0.001)
+    }
+
+    @Test
+    func `out-of-range index is a no-op`() {
+        let bar = LMKNavigationBar()
+        bar.setRightItems([.init(systemName: "plus") {}])
+
+        // Should not crash
+        bar.setRightItemEnabled(at: 5, false)
+        bar.setRightItemEnabled(at: -1, false)
+        bar.setLeftItemEnabled(at: 0, false) // No left items configured
+    }
+
     // MARK: - Pin to Top
 
     @Test
@@ -318,5 +374,19 @@ struct LMKNavigationBarTests {
         #expect(bar.title == "Pet Details")
         #expect(bar.showsBackButton == true)
         #expect(bar.largeTitleEnabled == false)
+    }
+
+    // MARK: - Helpers
+
+    private func findButton(in root: UIView, accessibilityLabel: String) -> UIButton? {
+        if let button = root as? UIButton, button.accessibilityLabel == accessibilityLabel {
+            return button
+        }
+        for subview in root.subviews {
+            if let match = findButton(in: subview, accessibilityLabel: accessibilityLabel) {
+                return match
+            }
+        }
+        return nil
     }
 }

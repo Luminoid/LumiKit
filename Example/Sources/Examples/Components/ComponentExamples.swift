@@ -147,6 +147,51 @@ final class ChipsDetailViewController: DetailViewController {
     }
 }
 
+// MARK: - Filter Chip Bar
+
+final class FilterChipBarDetailViewController: DetailViewController {
+    private let selectionLabel = LMKLabelFactory.body(text: "Selected: All")
+
+    override func viewDidLoad() {
+        super.viewDidLoad()
+
+        addSectionHeader("With All Chip")
+        stack.addArrangedSubview(LMKLabelFactory.caption(text: "An 'All' chip is prepended; tapping it clears the filter and fires with nil."))
+
+        let withAll = LMKFilterChipBar()
+        withAll.configure(allTitle: "All", filterTitles: ["Photos", "Notes", "Tasks", "Links", "Files"])
+        withAll.selectionChangedHandler = { [weak self] index in
+            if let index {
+                self?.selectionLabel.text = "Selected: filter index \(index)"
+            } else {
+                self?.selectionLabel.text = "Selected: All"
+            }
+        }
+        withAll.snp.makeConstraints { $0.height.equalTo(44) }
+        stack.addArrangedSubview(withAll)
+        stack.addArrangedSubview(selectionLabel)
+
+        addDivider()
+        addSectionHeader("Without All Chip")
+        stack.addArrangedSubview(LMKLabelFactory.caption(text: "Omit `allTitle` for a pure filter row — initial state has no selection."))
+
+        let withoutAll = LMKFilterChipBar()
+        withoutAll.configure(filterTitles: ["Today", "Week", "Month", "Year"])
+        withoutAll.snp.makeConstraints { $0.height.equalTo(44) }
+        stack.addArrangedSubview(withoutAll)
+
+        addDivider()
+        addSectionHeader("Filled Style + Preselected")
+        stack.addArrangedSubview(LMKLabelFactory.caption(text: "`style: .filled` and `setSelectedIndex(_:)` to seed the selection silently."))
+
+        let filled = LMKFilterChipBar()
+        filled.configure(allTitle: "All", filterTitles: ["Draft", "In Review", "Published"], style: .filled)
+        filled.setSelectedIndex(1)
+        filled.snp.makeConstraints { $0.height.equalTo(44) }
+        stack.addArrangedSubview(filled)
+    }
+}
+
 // MARK: - Cards
 
 final class CardsDetailViewController: DetailViewController {

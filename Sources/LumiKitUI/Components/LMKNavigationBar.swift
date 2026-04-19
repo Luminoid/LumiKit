@@ -287,6 +287,25 @@ public final class LMKNavigationBar: UIView {
         }
     }
 
+    /// Toggle the enabled state of the right bar button at the given index.
+    /// Disabled items render at reduced opacity and stop firing their action.
+    public func setRightItemEnabled(at index: Int, _ enabled: Bool) {
+        guard index >= 0, index < rightItemsStack.arrangedSubviews.count,
+              let button = rightItemsStack.arrangedSubviews[index] as? UIButton
+        else { return }
+        button.isEnabled = enabled
+        button.alpha = enabled ? 1.0 : LMKAlpha.disabled
+    }
+
+    /// Toggle the enabled state of the left bar button at the given index.
+    public func setLeftItemEnabled(at index: Int, _ enabled: Bool) {
+        guard index >= 0, index < leftItemsStack.arrangedSubviews.count,
+              let button = leftItemsStack.arrangedSubviews[index] as? UIButton
+        else { return }
+        button.isEnabled = enabled
+        button.alpha = enabled ? 1.0 : LMKAlpha.disabled
+    }
+
     // MARK: - Setup
 
     private func setupUI() {

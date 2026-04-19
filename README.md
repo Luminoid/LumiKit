@@ -48,10 +48,10 @@ LumiKit is organized into four targets so apps can import only what they need:
 | **LumiKitUI** | LumiKitCore + LumiKitNetwork + SnapKit | Design system tokens, theme manager, animation, haptics, alerts, components, controls, photo browser/crop, network debug UI (DEBUG), UIKit extensions |
 | **LumiKitLottie** | LumiKitUI + Lottie | Lottie-powered pull-to-refresh control |
 
-**107 source files** across 4 targets, with **808 tests** across 4 test targets:
+**108 source files** across 4 targets, with **818 tests** across 4 test targets:
 - **LumiKitCoreTests**: 76 tests (11 suites)
 - **LumiKitNetworkTests**: 65 tests (4 suites)
-- **LumiKitUITests**: 660 tests (81 suites)
+- **LumiKitUITests**: 670 tests (82 suites)
 - **LumiKitLottieTests**: 7 tests (1 suite)
 
 ---
@@ -130,11 +130,11 @@ xcodegen generate
 open LumiKitExample.xcodeproj
 ```
 
-The example includes **40 interactive pages** across 7 sections:
+The example includes **41 interactive pages** across 7 sections:
 
 - **Design System**: Colors, Typography, Markdown
 - **Controls**: Buttons, Segmented Control, Switch, Toggle Button, Text Field, Text View, Search Bar
-- **Components**: Divider, Badges, Chips, Cards, Gradient, Page Indicator, Navigation Bar, Banners, Empty State, Loading State, Overscroll Footer
+- **Components**: Divider, Badges, Chips, Filter Chip Bar, Cards, Gradient, Page Indicator, Navigation Bar, Banners, Empty State, Loading State, Overscroll Footer
 - **Feedback**: Toast, Alerts & Errors, Progress, Haptics
 - **Overlays**: Action Sheet, Enum Selection, Date Picker, Tip View, Card Page, Card Panel, Floating Button
 - **Media**: Photo Grid, Photo Browser, Photo Crop, QR Code, Share
@@ -170,7 +170,8 @@ LumiKit/
 │   │   │   │                  # LMKEnumSelectionBottomSheet, LMKBottomSheetLayout
 │   │   │   ├── Pickers/       # LMKDatePickerHelper
 │   │   │   ├── LMKBadgeView, LMKBannerView, LMKCardView, LMKChipView,
-│   │   │   ├── LMKDividerView, LMKEmptyStateView, LMKFloatingButton,
+│   │   │   ├── LMKDividerView, LMKEmptyStateView, LMKFilterChipBar,
+│   │   │   ├── LMKFloatingButton,
 │   │   │   ├── LMKGradientView, LMKLoadingStateView, LMKNavigationBar,
 │   │   │   ├── LMKNavigationController, LMKPageIndicator,
 │   │   │   ├── LMKProgressViewController, LMKSearchBar,
@@ -215,7 +216,7 @@ LumiKit/
 │   │   ├── LMKNetworkRequestRecordTests.swift        # Computed properties, display formatting
 │   │   ├── LMKNetworkLoggerTests.swift               # Configuration, state transitions
 │   │   └── URLSessionConfigurationLMKDebugTests.swift # enableNetworkLogging
-│   ├── LumiKitUITests/        # 660 tests, 81 suites
+│   ├── LumiKitUITests/        # 670 tests, 82 suites
 │   │   ├── Alerts/            # AlertPresenter, ErrorHandler
 │   │   ├── Animation/         # AnimationHelper
 │   │   ├── Components/
@@ -320,12 +321,13 @@ LMKThemeManager.shared.apply(spacing: .init(large: 20))
 | `LMKBannerView` | Persistent notification bar with optional action and dismiss |
 | `LMKCardView` | Card container with shadow, corner radius, content insets |
 | `LMKChipView` | Tag/filter chip (`.filled` / `.outlined`) with optional tap handler |
+| `LMKFilterChipBar` | Horizontal scrolling single-select chip row built on `LMKChipView`. Optional "All" chip clears the filter. `selectionChangedHandler` fires with the filter index or `nil` for "All" / no selection |
 | `LMKDividerView` | Pixel-perfect separator (horizontal / vertical) |
 | `LMKEmptyStateView` | Empty state with icon, title, message, action button |
 | `LMKEnumSelectionBottomSheet` | Bottom sheet for selecting from an enum's cases — single-select (`present`) or multi-select with explicit Done button (`presentMultiSelect`) |
 | `LMKGradientView` | `CAGradientLayer`-backed view with 4 direction options |
 | `LMKLoadingStateView` | Loading indicator with optional message |
-| `LMKNavigationBar` | Custom navigation bar with large title and standard inline modes, configurable bar items, back button, and design-token styling |
+| `LMKNavigationBar` | Custom navigation bar with large title and standard inline modes, configurable bar items, back button, and design-token styling. `setLeftItemEnabled(at:_:)` / `setRightItemEnabled(at:_:)` toggle per-item enabled state |
 | `LMKNavigationController` | `UINavigationController` subclass that preserves the edge-swipe-to-go-back gesture when the system nav bar is hidden. Pairs with `LMKNavigationBar`-based apps |
 | `LMKProgressViewController` | Blocking progress modal (`.determinate` with progress bar, `.indeterminate` spinner-only) |
 | `LMKSearchBar` | Search bar with configurable placeholder and cancel text |

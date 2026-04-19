@@ -46,6 +46,12 @@ private let exampleSections: [ExampleSection] = [
         ExampleItem(title: "Divider", subtitle: "Pixel-perfect horizontal separator", iconName: "minus", makeViewController: { DividerDetailViewController() }),
         ExampleItem(title: "Badges", subtitle: "Count, text, and dot badges", iconName: "app.badge", makeViewController: { BadgesDetailViewController() }),
         ExampleItem(title: "Chips", subtitle: "Filled, outlined, dismissible, and toggle", iconName: "tag", makeViewController: { ChipsDetailViewController() }),
+        ExampleItem(
+            title: "Filter Chip Bar",
+            subtitle: "Horizontal scrolling chip row with single-select state",
+            iconName: "line.3.horizontal.decrease.circle",
+            makeViewController: { FilterChipBarDetailViewController() }
+        ),
         ExampleItem(title: "Cards", subtitle: "Card view and card factory", iconName: "rectangle.on.rectangle", makeViewController: { CardsDetailViewController() }),
         ExampleItem(title: "Gradient", subtitle: "Linear gradients with configurable directions", iconName: "rectangle.fill", makeViewController: { GradientDetailViewController() }),
         ExampleItem(title: "Page Indicator", subtitle: "Animated expanding pill page dots", iconName: "circle.circle", makeViewController: { PageIndicatorDetailViewController() }),

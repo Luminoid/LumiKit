@@ -44,7 +44,7 @@ LumiKit/
 │   │   │   │                 # LMKEnumSelectionBottomSheet, LMKBottomSheetLayout
 │   │   │   ├── Pickers/      # LMKDatePickerHelper
 │   │   │   └── (root)        # Badge, Banner, Card, Chip, Divider, EmptyState,
-│   │   │                     # FloatingButton, Gradient, LoadingState,
+│   │   │                     # FilterChipBar, FloatingButton, Gradient, LoadingState,
 │   │   │                     # NavigationBar, NavigationController,
 │   │   │                     # PageIndicator, Progress,
 │   │   │                     # SearchBar, Skeleton, Toast, TipView,
@@ -90,7 +90,7 @@ LumiKit/
 │   │   └── URLSessionConfigurationLMKDebugTests.swift # enableNetworkLogging
 │   ├── LumiKitLottieTests/  # 7 tests, 1 suite
 │   │   └── LMKLottieRefreshControlTests.swift
-│   └── LumiKitUITests/      # 660 tests, 81 suites
+│   └── LumiKitUITests/      # 670 tests, 82 suites
 │       ├── Alerts/          # AlertPresenter, ErrorHandler
 │       ├── Animation/       # AnimationHelper
 │       ├── Components/
@@ -98,7 +98,7 @@ LumiKit/
 │       │   │                 # EnumSelectionBottomSheet
 │       │   ├── Pickers/      # DatePickerHelper
 │       │   └── (root)        # Badge, Banner, Card, Chip, Divider, EmptyState,
-│       │                     # FloatingButton, Gradient, LoadingState, Progress,
+│       │                     # FilterChipBar, FloatingButton, Gradient, LoadingState, Progress,
 │       │                     # SearchBar, Skeleton, Toast, TipView, CardPage,
 │       │                     # CardPanel, ScrollStackViewController
 │       ├── Controls/        # Button, SegmentedControl, TextField, TextView, ToggleButton
@@ -236,12 +236,13 @@ LMKThemeManager.shared.apply(spacing: .init(large: 20))
 | `LMKBannerView` | `final class` | Persistent notification bar with optional action & dismiss |
 | `LMKCardView` | `final class` | Card container with shadow, corner radius, content insets |
 | `LMKChipView` | `final class` | Tag/filter chip (`.filled` / `.outlined`) with optional tap handler |
+| `LMKFilterChipBar` | `final class` | Horizontal scrolling single-select chip bar built on `LMKChipView`. Optional "All" chip clears the filter. `configure(allTitle:filterTitles:style:)`, `setSelectedIndex(_:)` (silent), `selectionChangedHandler: ((Int?) -> Void)` — `nil` index = "All" / no selection |
 | `LMKDividerView` | `final class` | Pixel-perfect separator (horizontal / vertical) |
 | `LMKEmptyStateView` | `final class` | Empty state with icon, title, message, action button |
 | `LMKEnumSelectionBottomSheet` | `final class` | Generic bottom sheet for selecting from an enum's cases. `present(...)` for single-select (auto-commits on tap); `presentMultiSelect(...)` for multi-select (tap toggles, explicit Done button commits) |
 | `LMKGradientView` | `final class` | CAGradientLayer-backed view with 4 direction options |
 | `LMKLoadingStateView` | `final class` | Loading indicator with optional message |
-| `LMKNavigationBar` | `final class` | Custom navigation bar with large title and standard inline modes. Configurable back button, left/right `LMKNavigationBarItem` arrays, separator, appearance (background, tint, title font/color). `pinToTop(of:)` for layout |
+| `LMKNavigationBar` | `final class` | Custom navigation bar with large title and standard inline modes. Configurable back button, left/right `LMKNavigationBarItem` arrays, separator, appearance (background, tint, title font/color). `pinToTop(of:)` for layout. `setLeftItemEnabled(at:_:)` / `setRightItemEnabled(at:_:)` toggle per-item enabled state (disabled items render at `LMKAlpha.disabled` and stop firing their action) |
 | `LMKNavigationController` | `open class` | `UINavigationController` subclass that keeps the interactive edge-swipe-to-go-back gesture working when the system nav bar is hidden (as it is in apps using `LMKNavigationBar`). Installs itself as the pop-gesture delegate and enables the gesture only when the stack has 2+ VCs |
 | `LMKPageIndicator` | `final class` | Custom page indicator replacing `UIPageControl`. Active dot expands into pill with spring animation. `numberOfPages`, `currentPage`, `pageChangedHandler` |
 | `LMKProgressViewController` | `final class` | Blocking progress modal (`.determinate` with progress bar, `.indeterminate` spinner-only) |
