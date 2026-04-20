@@ -32,25 +32,40 @@ public enum LMKCountdownConfirmation {
     ) {
         let alert = UIAlertController(title: title, message: message, preferredStyle: .alert)
 
+        // Holder lets action handlers cancel the countdown task without
+        // a forward reference (the task is created after the actions).
+        final class TaskHolder {
+            var task: Task<Void, Never>?
+        }
+        let holder = TaskHolder()
+
         let cancelAction = UIAlertAction(
             title: LMKAlertPresenter.strings.cancel,
             style: .cancel
-        ) { _ in onCancel?() }
+        ) { _ in
+            holder.task?.cancel()
+            onCancel?()
+        }
         alert.addAction(cancelAction)
 
         let confirmAction = UIAlertAction(
             title: "\(confirmTitle) (\(countdownSeconds))",
             style: .destructive
-        ) { _ in onConfirm() }
+        ) { _ in
+            holder.task?.cancel()
+            onConfirm()
+        }
         confirmAction.isEnabled = false
         alert.addAction(confirmAction)
 
         viewController.present(alert, animated: true)
 
-        // Countdown using Task for MainActor safety
-        Task {
+        // Countdown ticks down once per second. Weakly captures confirmAction so
+        // the task exits if the alert is dismissed before the countdown finishes.
+        holder.task = Task { [weak confirmAction] in
             for tick in stride(from: countdownSeconds - 1, through: 0, by: -1) {
                 try? await Task.sleep(for: .seconds(1))
+                guard !Task.isCancelled, let confirmAction else { return }
                 if tick > 0 {
                     confirmAction.setValue("\(confirmTitle) (\(tick))", forKey: "title")
                 } else {

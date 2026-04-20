@@ -90,7 +90,7 @@ LumiKit/
 │   │   └── URLSessionConfigurationLMKDebugTests.swift # enableNetworkLogging
 │   ├── LumiKitLottieTests/  # 7 tests, 1 suite
 │   │   └── LMKLottieRefreshControlTests.swift
-│   └── LumiKitUITests/      # 670 tests, 82 suites
+│   └── LumiKitUITests/      # 689 tests, 83 suites
 │       ├── Alerts/          # AlertPresenter, ErrorHandler
 │       ├── Animation/       # AnimationHelper
 │       ├── Components/
@@ -431,4 +431,4 @@ public final class LMKExampleViewController: UIViewController {
 
 ---
 
-*Optimized for Claude Code • Last updated: 2026-04-07*
+*Optimized for Claude Code • Last updated: 2026-04-19*
