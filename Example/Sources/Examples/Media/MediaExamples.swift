@@ -15,12 +15,25 @@ final class PhotoGridDetailViewController: UIViewController, LMKPhotoGridDataSou
     private var sampleImages: [UIImage] = []
     private var sampleDates: [Date] = []
     private var gridVC: LMKPhotoGridViewController?
+    private var showsEmptyState = false
 
     override func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = LMKColor.backgroundPrimary
         generateSampleData()
         setupGrid()
+        navigationItem.rightBarButtonItem = UIBarButtonItem(
+            title: "Empty",
+            style: .plain,
+            target: self,
+            action: #selector(toggleEmptyState)
+        )
+    }
+
+    @objc private func toggleEmptyState() {
+        showsEmptyState.toggle()
+        navigationItem.rightBarButtonItem?.title = showsEmptyState ? "Populate" : "Empty"
+        gridVC?.reloadData()
     }
 
     private static let sampleSymbols = [
@@ -97,7 +110,7 @@ final class PhotoGridDetailViewController: UIViewController, LMKPhotoGridDataSou
 
     // MARK: - LMKPhotoGridDataSource
 
-    var numberOfPhotos: Int { sampleImages.count }
+    var numberOfPhotos: Int { showsEmptyState ? 0 : sampleImages.count }
 
     func photoGridImage(at index: Int) -> UIImage? {
         guard index >= 0, index < sampleImages.count else { return nil }

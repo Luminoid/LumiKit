@@ -69,6 +69,7 @@ public protocol LMKPhotoGridDelegate: AnyObject {
 /// Configurable strings for the photo grid, allowing localization.
 public nonisolated struct LMKPhotoGridStrings: Sendable {
     public var emptyText: String
+    public var emptyIcon: String?
     public var sortAscendingLabel: String
     public var sortDescendingLabel: String
     public var aspectFitLabel: String
@@ -76,12 +77,14 @@ public nonisolated struct LMKPhotoGridStrings: Sendable {
 
     public init(
         emptyText: String = "No Photos",
+        emptyIcon: String? = "photo.on.rectangle.angled",
         sortAscendingLabel: String = "Oldest First",
         sortDescendingLabel: String = "Newest First",
         aspectFitLabel: String = "Fit",
         aspectFillLabel: String = "Fill"
     ) {
         self.emptyText = emptyText
+        self.emptyIcon = emptyIcon
         self.sortAscendingLabel = sortAscendingLabel
         self.sortDescendingLabel = sortDescendingLabel
         self.aspectFitLabel = aspectFitLabel
@@ -139,14 +142,15 @@ public final class LMKPhotoGridViewController: UIViewController {
         return cv
     }()
 
-    private lazy var emptyStateLabel: UILabel = {
-        let label = UILabel()
-        label.text = strings.emptyText
-        label.textColor = LMKColor.textSecondary
-        label.font = LMKTypography.bodyMedium
-        label.textAlignment = .center
-        label.isHidden = true
-        return label
+    private lazy var emptyStateView: LMKEmptyStateView = {
+        let view = LMKEmptyStateView()
+        view.configure(
+            message: strings.emptyText,
+            icon: strings.emptyIcon,
+            style: .fullScreen
+        )
+        view.isHidden = true
+        return view
     }()
 
     private lazy var toolbar: UIVisualEffectView = {
@@ -228,9 +232,10 @@ public final class LMKPhotoGridViewController: UIViewController {
             make.edges.equalToSuperview()
         }
 
-        view.addSubview(emptyStateLabel)
-        emptyStateLabel.snp.makeConstraints { make in
+        view.addSubview(emptyStateView)
+        emptyStateView.snp.makeConstraints { make in
             make.center.equalToSuperview()
+            make.leading.trailing.equalTo(view.safeAreaLayoutGuide).inset(LMKSpacing.large)
         }
 
         // Toolbar
@@ -388,8 +393,12 @@ public final class LMKPhotoGridViewController: UIViewController {
 
     private func updateEmptyState() {
         let isEmpty = sortedIndices.isEmpty
-        emptyStateLabel.text = strings.emptyText
-        emptyStateLabel.isHidden = !isEmpty
+        emptyStateView.configure(
+            message: strings.emptyText,
+            icon: strings.emptyIcon,
+            style: .fullScreen
+        )
+        emptyStateView.isHidden = !isEmpty
         toolbar.isHidden = isEmpty
     }
 
