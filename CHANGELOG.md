@@ -7,18 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-04-19
+
 ### Added
 
 - **LMKFilterChipBar** — Horizontal scrolling single-select chip row built on `LMKChipView`. Optional "All" chip (via `allTitle`) is prepended and clears the filter. `configure(allTitle:filterTitles:style:)` rebuilds the chips, `setSelectedIndex(_:)` seeds selection silently, and `selectionChangedHandler: ((Int?) -> Void)` fires with the filter index or `nil` for "All" / no selection
-- **LMKNavigationBar item enabled state** — New `setLeftItemEnabled(at:_:)` and `setRightItemEnabled(at:_:)` toggle per-item enabled state. Disabled items render at `LMKAlpha.disabled` and stop firing their action. Out-of-range indices are a no-op
 - **LMKCountdownConfirmation** — Confirmation alert with a timed countdown on the destructive button. The confirm button is disabled for a configurable number of seconds (default 3) with a live countdown in the title, preventing accidental taps on critical actions
-- **LMKEnumSelectionBottomSheet `presentMultiSelect(...)`** — New API for multi-value selection. Tapping a row toggles its checkmark without dismissing the sheet; selections are committed via an explicit Done button (cancel/dimming-tap discards). Initial selection passed as `Set<T>`, callback receives final `Set<T>`. Optional `doneTitle` parameter (defaults to `LMKAlertPresenter.strings.ok`). Existing single-select `present(...)` API unchanged
 - **LMKNavigationController** — `UINavigationController` subclass that keeps the interactive edge-swipe-to-go-back gesture working when the system navigation bar is hidden. Installs itself as the pop gesture's delegate and enables the gesture whenever the stack has 2+ view controllers (disabled on root to avoid UIKit's stuck-stack state). Pairs with `LMKNavigationBar`-based apps that hide the system nav bar
+- **LMKEnumSelectionBottomSheet `presentMultiSelect(...)`** — New API for multi-value selection. Tapping a row toggles its checkmark without dismissing the sheet; selections are committed via an explicit Done button (cancel/dimming-tap discards). Initial selection passed as `Set<T>`, callback receives final `Set<T>`. Optional `doneTitle` parameter (defaults to `LMKAlertPresenter.strings.ok`). Existing single-select `present(...)` API unchanged
+- **LMKNavigationBar item enabled state** — New `setLeftItemEnabled(at:_:)` and `setRightItemEnabled(at:_:)` toggle per-item enabled state. Disabled items render at `LMKAlpha.disabled` and stop firing their action. Out-of-range indices are a no-op
 - **LMKSegmentedControl `fitsSegmentsToContent`** — When `true`, each segment sizes to its own content width (measured at the wider selected-state font so widths stay stable as labels swap fonts on selection) plus `itemPadding` on each side, and the control hugs its content horizontally instead of stretching in a `.fill` parent stack. Useful when labels have very different widths (e.g. a rating control from "★" to "★★★★★"). Default `false`
+- **LMKPhotoGridViewController empty state icon** — New `emptyIcon: String?` parameter on `LMKPhotoGridStrings` (default `"photo.on.rectangle.angled"`) for the SF Symbol shown alongside the empty message
 
 ### Changed
 
 - **LMKSegmentedControl `selectedSegmentIndex`** — Assigning `-1` (or any out-of-range value) now represents "no selection": the sliding indicator is hidden and every label renders in the unselected style, matching `UISegmentedControl.noSegment` semantics. Previously, `-1` crashed with "Index out of range" in `moveIndicator`
+- **LMKPhotoGridViewController empty state** — Replaced plain label with `LMKEmptyStateView` (`.fullScreen` style) so the empty grid shows an icon + message instead of a bare centered label
 
 ### Fixed
 
