@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **LMKSegmentedControl `fitsSegmentsToContent` + `makeScrollableContainer()` compose** — The two modes now work together. Previously each label got both a fit-mode exact-width constraint (`==`) and a scrollable min-width floor (`>=`), which was unsatisfiable for short labels. In combined mode the exact-width wins (using `itemPadding`), and `scrollableItemPadding` is suppressed. Setters for `isScrollable` and `scrollableItemPadding` now reapply constraints on change, and distribution stays `.fill` whenever segments have individual widths
+- **LMKSegmentedControl `scrollableItemPadding`** — Now triggers a constraint refresh when mutated (previously the initial value baked into `makeScrollableContainer()` was never revisited)
+
 ## [0.6.0] - 2026-04-19
 
 ### Added

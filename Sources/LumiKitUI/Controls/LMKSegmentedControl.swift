@@ -75,10 +75,14 @@ open class LMKSegmentedControl: UIControl {
     /// its content horizontally (won't stretch inside a `.fill` parent stack).
     /// Useful when labels have very different widths (e.g. a rating control
     /// where labels range from "★" to "★★★★★"). Default `false`.
+    ///
+    /// Composes with `makeScrollableContainer()`: when both are enabled the
+    /// fit-mode exact-width per segment wins, and `scrollableItemPadding` is
+    /// ignored (use `itemPadding` to tune breathing room).
     public var fitsSegmentsToContent: Bool = false {
         didSet {
             guard fitsSegmentsToContent != oldValue else { return }
-            segmentStack.distribution = fitsSegmentsToContent ? .fill : .fillEqually
+            updateSegmentDistribution()
             setContentHuggingPriority(
                 fitsSegmentsToContent ? .required : .defaultHigh,
                 for: .horizontal
@@ -90,12 +94,27 @@ open class LMKSegmentedControl: UIControl {
     }
 
     /// When `true`, yields gesture priority to a parent scroll view so horizontal
-    /// panning scrolls instead of switching segments.
-    public var isScrollable: Bool = false
+    /// panning scrolls instead of switching segments. Setting this directly
+    /// does not install a parent scroll view — prefer `makeScrollableContainer()`
+    /// when you need horizontal scrolling.
+    public var isScrollable: Bool = false {
+        didSet {
+            guard isScrollable != oldValue else { return }
+            updateSegmentDistribution()
+            applySegmentWidthConstraintsIfNeeded()
+        }
+    }
 
-    /// Horizontal padding inside each segment when scrollable.
-    /// Only used after calling `makeScrollableContainer()`. Default is `LMKSpacing.large` (16pt).
-    public var scrollableItemPadding: CGFloat = LMKSpacing.large
+    /// Horizontal padding inside each segment when scrollable and
+    /// `fitsSegmentsToContent == false`. Only used after calling
+    /// `makeScrollableContainer()`. Default is `LMKSpacing.large` (16pt).
+    public var scrollableItemPadding: CGFloat = LMKSpacing.large {
+        didSet {
+            guard scrollableItemPadding != oldValue else { return }
+            applySegmentWidthConstraintsIfNeeded()
+            invalidateIntrinsicContentSize()
+        }
+    }
 
     // MARK: - Private
 
@@ -113,6 +132,10 @@ open class LMKSegmentedControl: UIControl {
     private var segmentReferenceWidths: [CGFloat] = []
     /// Width constraints applied per label when `fitsSegmentsToContent == true`.
     private var segmentWidthConstraints: [Constraint] = []
+    /// Minimum-width constraints applied per label in scrollable non-fit mode so
+    /// short labels still meet the minimum touch target. Suppressed when
+    /// `fitsSegmentsToContent == true` since the exact-width constraint wins.
+    private var segmentMinWidthConstraints: [Constraint] = []
 
     /// Constraint anchoring the indicator to the selected label.
     private var indicatorLeading: Constraint?
@@ -155,22 +178,19 @@ open class LMKSegmentedControl: UIControl {
 
     /// Returns a scroll view container configured for horizontal scrolling of this control.
     ///
-    /// When scrollable, segments use their natural text width plus padding
-    /// instead of equal-width distribution.
+    /// In scrollable mode, segments use their natural text width plus padding
+    /// instead of equal-width distribution. Combine with
+    /// `fitsSegmentsToContent = true` for exact per-segment sizing (uses
+    /// `itemPadding`); otherwise each segment gets a `minimumTouchTarget +
+    /// scrollableItemPadding*2` floor so short labels stay tappable.
     public func makeScrollableContainer() -> UIScrollView {
-        isScrollable = true
         panGesture?.isEnabled = false
-
-        // Switch to natural sizing so content can exceed the visible width
-        segmentStack.distribution = .fill
         segmentStack.spacing = LMKSpacing.medium
 
-        // Give each label horizontal padding for breathing room
-        for label in segmentLabels {
-            label.snp.makeConstraints { make in
-                make.width.greaterThanOrEqualTo(LMKLayout.minimumTouchTarget + scrollableItemPadding * 2)
-            }
-        }
+        // Triggers `isScrollable.didSet`, which switches distribution to `.fill`
+        // and reapplies per-label width constraints (min-width floor in
+        // non-fit mode, nothing extra in fit mode).
+        isScrollable = true
 
         let scrollView = UIScrollView()
         scrollView.showsHorizontalScrollIndicator = false
@@ -320,24 +340,49 @@ open class LMKSegmentedControl: UIControl {
         }
     }
 
-    /// Apply (or remove) a fixed-width constraint per label so that selection
-    /// font changes do not reflow the stack. Width includes `itemPadding` on
-    /// each side so the label has breathing room around its text and the sum
-    /// of label widths exactly matches the stack's intrinsic width. Only
-    /// active in fit-content mode.
+    /// Apply (or remove) per-label width constraints. Two exclusive modes:
+    ///
+    /// - `fitsSegmentsToContent == true` (including while scrollable): pin each
+    ///   label to an exact width of `referenceWidth + itemPadding*2` so
+    ///   selection font changes don't reflow the stack and sum-of-widths
+    ///   matches the stack's intrinsic width.
+    /// - `fitsSegmentsToContent == false` and `isScrollable == true`: apply a
+    ///   `minimumTouchTarget + scrollableItemPadding*2` floor per label so
+    ///   short labels still meet the touch target without constraining to an
+    ///   exact width (lets the stack size naturally from text).
+    ///
+    /// In plain (non-fit, non-scrollable) mode, no per-label width constraint
+    /// is installed — `distribution = .fillEqually` handles layout.
     private func applySegmentWidthConstraintsIfNeeded() {
         segmentWidthConstraints.forEach { $0.deactivate() }
         segmentWidthConstraints.removeAll()
+        segmentMinWidthConstraints.forEach { $0.deactivate() }
+        segmentMinWidthConstraints.removeAll()
 
-        guard fitsSegmentsToContent else { return }
         guard segmentLabels.count == segmentReferenceWidths.count else { return }
 
-        for (label, referenceWidth) in zip(segmentLabels, segmentReferenceWidths) {
-            label.snp.makeConstraints { make in
-                let c = make.width.equalTo(referenceWidth + itemPadding * 2).constraint
-                segmentWidthConstraints.append(c)
+        if fitsSegmentsToContent {
+            for (label, referenceWidth) in zip(segmentLabels, segmentReferenceWidths) {
+                label.snp.makeConstraints { make in
+                    let c = make.width.equalTo(referenceWidth + itemPadding * 2).constraint
+                    segmentWidthConstraints.append(c)
+                }
+            }
+        } else if isScrollable {
+            let minWidth = LMKLayout.minimumTouchTarget + scrollableItemPadding * 2
+            for label in segmentLabels {
+                label.snp.makeConstraints { make in
+                    let c = make.width.greaterThanOrEqualTo(minWidth).constraint
+                    segmentMinWidthConstraints.append(c)
+                }
             }
         }
+    }
+
+    /// `.fill` whenever segments have individual widths (fit mode or scrollable);
+    /// `.fillEqually` only in plain mode.
+    private func updateSegmentDistribution() {
+        segmentStack.distribution = (fitsSegmentsToContent || isScrollable) ? .fill : .fillEqually
     }
 
     // MARK: - Indicator Positioning (Constraint-Based)

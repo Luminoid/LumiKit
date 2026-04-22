@@ -152,22 +152,6 @@ final class SegmentedControlDetailViewController: DetailViewController {
         stack.addArrangedSubview(roundedLabel)
 
         addDivider()
-        addSectionHeader("Custom Item Padding")
-        stack.addArrangedSubview(LMKLabelFactory.caption(text: "itemPadding = 24pt for extra breathing room."))
-
-        let paddedLabel = LMKLabelFactory.caption(text: "Selected: Photos")
-        paddedLabel.textAlignment = .center
-        let padded = LMKSegmentedControl(items: ["Photos", "Videos"])
-        padded.itemPadding = LMKSpacing.xxl
-        padded.selectedSegmentIndex = 0
-        let paddedItems = ["Photos", "Videos"]
-        padded.valueChangedHandler = { index in
-            paddedLabel.text = "Selected: \(paddedItems[index])"
-        }
-        stack.addArrangedSubview(padded)
-        stack.addArrangedSubview(paddedLabel)
-
-        addDivider()
         addSectionHeader("Many Segments")
         stack.addArrangedSubview(LMKLabelFactory.caption(text: "Five segments — width adapts to content."))
 
@@ -183,8 +167,14 @@ final class SegmentedControlDetailViewController: DetailViewController {
         stack.addArrangedSubview(manyLabel)
 
         addDivider()
-        addSectionHeader("Unselected State")
-        stack.addArrangedSubview(LMKLabelFactory.caption(text: "Set selectedSegmentIndex = -1 for no selection — indicator hides, all labels render unselected. Matches UISegmentedControl.noSegment."))
+        addSectionHeader("Fit Content + Unselected")
+        stack
+            .addArrangedSubview(LMKLabelFactory
+                .caption(
+                    text: "fitsSegmentsToContent = true sizes each segment to its own text width. "
+                        + "selectedSegmentIndex = -1 hides the indicator and renders every label unselected "
+                        + "(matches UISegmentedControl.noSegment)."
+                ))
 
         let ratingLabel = LMKLabelFactory.caption(text: "Rating: (none)")
         ratingLabel.textAlignment = .center
@@ -237,6 +227,36 @@ final class SegmentedControlDetailViewController: DetailViewController {
         }
         stack.addArrangedSubview(scrollContainer)
         stack.addArrangedSubview(scrollLabel)
+
+        addDivider()
+        addSectionHeader("Scrollable + Fit Content")
+        stack.addArrangedSubview(LMKLabelFactory.caption(
+            text: "Combine makeScrollableContainer() with fitsSegmentsToContent = true to let each segment "
+                + "size exactly to its text (plus itemPadding). Good for tag/filter bars where labels vary a lot. "
+                + "itemPadding = 24pt here for extra breathing room."
+        ))
+
+        let filters = [
+            "All", "New", "Favorites", "Recently Updated",
+            "Needs Attention", "Overdue", "Under Care",
+            "Outdoor", "Indoor",
+        ]
+        let fitScrollSegmented = LMKSegmentedControl(items: filters)
+        fitScrollSegmented.fitsSegmentsToContent = true
+        fitScrollSegmented.itemPadding = LMKSpacing.xxl
+        fitScrollSegmented.selectedSegmentIndex = 0
+        let fitScrollContainer = fitScrollSegmented.makeScrollableContainer()
+        fitScrollContainer.snp.makeConstraints { make in
+            make.height.equalTo(40)
+        }
+
+        let fitScrollLabel = LMKLabelFactory.caption(text: "Selected: All")
+        fitScrollLabel.textAlignment = .center
+        fitScrollSegmented.valueChangedHandler = { index in
+            fitScrollLabel.text = "Selected: \(filters[index])"
+        }
+        stack.addArrangedSubview(fitScrollContainer)
+        stack.addArrangedSubview(fitScrollLabel)
     }
 }
 

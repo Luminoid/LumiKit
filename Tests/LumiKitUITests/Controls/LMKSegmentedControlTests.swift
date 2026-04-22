@@ -138,4 +138,58 @@ struct LMKSegmentedControlTests {
         // Three segments: +10 padding on each side of each segment => +60 total.
         #expect(widerWidth == baseWidth + 60)
     }
+
+    @Test
+    func `fitsSegmentsToContent + scrollable lays out without constraint conflict`() {
+        // Labels of wildly different widths inside a scroll view. If fit mode
+        // and the scrollable min-width floor both installed constraints on the
+        // same label, short labels ("A") would break the "== refWidth + pad"
+        // constraint (unsatisfiable vs ">= 44 + scrollablePad*2"). This test
+        // triggers a layout pass and asserts no ambiguity/unsatisfiability.
+        let control = LMKSegmentedControl(items: ["A", "BB", "CCC", "Long Label Here"])
+        control.fitsSegmentsToContent = true
+        let scroll = control.makeScrollableContainer()
+
+        scroll.frame = CGRect(x: 0, y: 0, width: 200, height: 40)
+        scroll.layoutIfNeeded()
+
+        #expect(!control.hasAmbiguousLayout)
+        #expect(control.isScrollable == true)
+        // Content must exceed the scroll view viewport so scrolling makes sense.
+        #expect(scroll.contentSize.width >= control.intrinsicContentSize.width)
+    }
+
+    @Test
+    func `fitsSegmentsToContent + scrollable uses itemPadding not scrollableItemPadding`() {
+        // In combined mode each label is pinned exactly to refWidth + itemPadding*2.
+        // Changing `scrollableItemPadding` must not alter the intrinsic width.
+        let control = LMKSegmentedControl(items: ["A", "BB", "CCC"])
+        control.fitsSegmentsToContent = true
+        _ = control.makeScrollableContainer()
+
+        let baseline = control.intrinsicContentSize.width
+        control.scrollableItemPadding += 100
+        #expect(control.intrinsicContentSize.width == baseline)
+
+        // But changing itemPadding should still widen it.
+        control.itemPadding += 10
+        #expect(control.intrinsicContentSize.width == baseline + 60)
+    }
+
+    @Test
+    func `toggling fitsSegmentsToContent after scrollable does not conflict`() {
+        // Reversed order vs the test above: scrollable first, then fit=true,
+        // then fit=false. The min-width floor must reappear when fit is
+        // turned off, and disappear when turned on.
+        let control = LMKSegmentedControl(items: ["A", "BB"])
+        _ = control.makeScrollableContainer()
+        control.fitsSegmentsToContent = true
+        control.fitsSegmentsToContent = false
+        control.fitsSegmentsToContent = true
+
+        control.frame = CGRect(x: 0, y: 0, width: 300, height: 40)
+        control.layoutIfNeeded()
+
+        #expect(!control.hasAmbiguousLayout)
+    }
 }

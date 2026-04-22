@@ -90,7 +90,7 @@ LumiKit/
 │   │   └── URLSessionConfigurationLMKDebugTests.swift # enableNetworkLogging
 │   ├── LumiKitLottieTests/  # 7 tests, 1 suite
 │   │   └── LMKLottieRefreshControlTests.swift
-│   └── LumiKitUITests/      # 689 tests, 83 suites
+│   └── LumiKitUITests/      # 692 tests, 83 suites
 │       ├── Alerts/          # AlertPresenter, ErrorHandler
 │       ├── Animation/       # AnimationHelper
 │       ├── Components/
@@ -264,7 +264,7 @@ LMKThemeManager.shared.apply(spacing: .init(large: 20))
 | Control | Type | Purpose |
 |---------|------|---------|
 | `LMKButton` | `open class` | UIButton subclass with 4 styles: `.filled`, `.outlined`, `.ghost` (text-only), `.iconOnly` (circular). Capsule corners, press animation, `isLoading` state. `tapHandler`/`didTapHandler` closures |
-| `LMKSegmentedControl` | `open class` | Custom `UIControl` (NOT `UISegmentedControl`) with sliding pill indicator, spring animation, haptic. `init(items:)`, `selectedSegmentIndex` (`-1` = no selection, hides indicator — matches `UISegmentedControl.noSegment`), `valueChangedHandler`, `fitsSegmentsToContent` (per-segment natural width), `makeScrollableContainer()` |
+| `LMKSegmentedControl` | `open class` | Custom `UIControl` (NOT `UISegmentedControl`) with sliding pill indicator, spring animation, haptic. `init(items:)`, `selectedSegmentIndex` (`-1` = no selection, hides indicator — matches `UISegmentedControl.noSegment`), `valueChangedHandler`, `fitsSegmentsToContent` (per-segment natural width), `makeScrollableContainer()`. `fitsSegmentsToContent` and `makeScrollableContainer()` compose — combined mode uses fit-mode exact widths (`itemPadding`) and ignores `scrollableItemPadding` |
 | `LMKSwitch` | `final class` | Custom toggle replacing `UISwitch`. Rounded track + sliding thumb, spring animation, haptic. `isOn`, `setOn(_:animated:)`, `valueChangedHandler`. Sends `.valueChanged` |
 | `LMKTextField` | `open class` | Text field with validation states, helper text, leading icon |
 | `LMKTextView` | `open class` | Multi-line text input with placeholder, character limit |

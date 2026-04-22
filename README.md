@@ -48,10 +48,10 @@ LumiKit is organized into four targets so apps can import only what they need:
 | **LumiKitUI** | LumiKitCore + LumiKitNetwork + SnapKit | Design system tokens, theme manager, animation, haptics, alerts, components, controls, photo browser/crop, network debug UI (DEBUG), UIKit extensions |
 | **LumiKitLottie** | LumiKitUI + Lottie | Lottie-powered pull-to-refresh control |
 
-**109 source files** across 4 targets, with **837 tests** across 4 test targets:
+**109 source files** across 4 targets, with **840 tests** across 4 test targets:
 - **LumiKitCoreTests**: 76 tests (11 suites)
 - **LumiKitNetworkTests**: 65 tests (4 suites)
-- **LumiKitUITests**: 689 tests (83 suites)
+- **LumiKitUITests**: 692 tests (83 suites)
 - **LumiKitLottieTests**: 7 tests (1 suite)
 
 ---
@@ -216,7 +216,7 @@ LumiKit/
 │   │   ├── LMKNetworkRequestRecordTests.swift        # Computed properties, display formatting
 │   │   ├── LMKNetworkLoggerTests.swift               # Configuration, state transitions
 │   │   └── URLSessionConfigurationLMKDebugTests.swift # enableNetworkLogging
-│   ├── LumiKitUITests/        # 689 tests, 83 suites
+│   ├── LumiKitUITests/        # 692 tests, 83 suites
 │   │   ├── Alerts/            # AlertPresenter, ErrorHandler
 │   │   ├── Animation/         # AnimationHelper
 │   │   ├── Components/
@@ -352,7 +352,7 @@ LMKThemeManager.shared.apply(spacing: .init(large: 20))
 | Control | Purpose |
 |---------|---------|
 | `LMKButton` | Configurable button with tap handler, pill shape, and 4 styles: `.filled`, `.outlined`, `.ghost` (text-only), `.iconOnly` (circular icon). Supports `isLoading` state |
-| `LMKSegmentedControl` | Custom segmented control with sliding pill indicator, spring animation, and haptic feedback. Not a `UISegmentedControl` subclass |
+| `LMKSegmentedControl` | Custom segmented control with sliding pill indicator, spring animation, and haptic feedback. Not a `UISegmentedControl` subclass. `fitsSegmentsToContent` (per-segment natural width) composes with `makeScrollableContainer()` for scrollable tag/filter bars |
 | `LMKSwitch` | Custom toggle switch replacing `UISwitch`. Rounded track with sliding thumb, spring animation, haptic feedback. `isOn`, `setOn(_:animated:)`, `valueChangedHandler` |
 | `LMKTextField` | Text field with validation states, helper text, leading icon |
 | `LMKTextView` | Multi-line text input with placeholder and character limit |
