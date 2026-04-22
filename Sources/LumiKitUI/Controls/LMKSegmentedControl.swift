@@ -116,6 +116,18 @@ open class LMKSegmentedControl: UIControl {
         }
     }
 
+    /// Gap between adjacent segments when scrollable. Only takes effect after
+    /// calling `makeScrollableContainer()`; non-scrollable mode always uses 0
+    /// spacing since the sliding pill spans full segment bounds.
+    /// Default is `LMKSpacing.medium` (12pt).
+    public var itemSpacing: CGFloat = LMKSpacing.medium {
+        didSet {
+            guard itemSpacing != oldValue, isScrollable else { return }
+            segmentStack.spacing = itemSpacing
+            invalidateIntrinsicContentSize()
+        }
+    }
+
     // MARK: - Private
 
     private var items: [String] = []
@@ -185,7 +197,7 @@ open class LMKSegmentedControl: UIControl {
     /// scrollableItemPadding*2` floor so short labels stay tappable.
     public func makeScrollableContainer() -> UIScrollView {
         panGesture?.isEnabled = false
-        segmentStack.spacing = LMKSpacing.medium
+        segmentStack.spacing = itemSpacing
 
         // Triggers `isScrollable.didSet`, which switches distribution to `.fill`
         // and reapplies per-label width constraints (min-width floor in
@@ -213,15 +225,24 @@ open class LMKSegmentedControl: UIControl {
     // MARK: - Intrinsic Size
 
     override open var intrinsicContentSize: CGSize {
-        let labelsWidth: CGFloat = if fitsSegmentsToContent, !segmentReferenceWidths.isEmpty {
-            segmentReferenceWidths.reduce(0, +)
+        let count = items.count
+        let totalSpacing = isScrollable ? itemSpacing * CGFloat(max(count - 1, 0)) : 0
+        let pinnedWidth: CGFloat = if fitsSegmentsToContent, !segmentReferenceWidths.isEmpty {
+            // Fit mode: each label == refWidth + itemPadding*2 (exact).
+            segmentReferenceWidths.reduce(0, +) + itemPadding * 2 * CGFloat(count)
+        } else if isScrollable, !segmentReferenceWidths.isEmpty {
+            // Scrollable non-fit: each label == max(refWidth, minTouchTarget) + scrollableItemPadding*2 (exact).
+            // Uses the wider selected-state refWidth so selection font swap doesn't resize segments.
+            segmentReferenceWidths
+                .reduce(0) { total, ref in total + max(ref, LMKLayout.minimumTouchTarget) }
+                + scrollableItemPadding * 2 * CGFloat(count)
         } else {
+            // Plain mode: no per-label width constraint; estimate from live intrinsic widths + itemPadding.
             segmentLabels.reduce(CGFloat(0)) { total, label in
                 total + label.intrinsicContentSize.width
-            }
+            } + itemPadding * 2 * CGFloat(count)
         }
-        let totalItemPadding = itemPadding * 2 * CGFloat(items.count)
-        let width = labelsWidth + totalItemPadding + inset * 2
+        let width = pinnedWidth + totalSpacing + inset * 2
         return CGSize(width: width, height: LMKLayout.minimumTouchTarget)
     }
 
@@ -346,10 +367,11 @@ open class LMKSegmentedControl: UIControl {
     ///   label to an exact width of `referenceWidth + itemPadding*2` so
     ///   selection font changes don't reflow the stack and sum-of-widths
     ///   matches the stack's intrinsic width.
-    /// - `fitsSegmentsToContent == false` and `isScrollable == true`: apply a
-    ///   `minimumTouchTarget + scrollableItemPadding*2` floor per label so
-    ///   short labels still meet the touch target without constraining to an
-    ///   exact width (lets the stack size naturally from text).
+    /// - `fitsSegmentsToContent == false` and `isScrollable == true`: pin each
+    ///   label to `max(refWidth, minimumTouchTarget) + scrollableItemPadding*2`
+    ///   (exact). Using the wider selected-state refWidth keeps segment widths
+    ///   stable as labels swap fonts on selection; the `minimumTouchTarget`
+    ///   floor keeps short labels tappable.
     ///
     /// In plain (non-fit, non-scrollable) mode, no per-label width constraint
     /// is installed — `distribution = .fillEqually` handles layout.
@@ -369,10 +391,10 @@ open class LMKSegmentedControl: UIControl {
                 }
             }
         } else if isScrollable {
-            let minWidth = LMKLayout.minimumTouchTarget + scrollableItemPadding * 2
-            for label in segmentLabels {
+            for (label, referenceWidth) in zip(segmentLabels, segmentReferenceWidths) {
+                let pinned = max(referenceWidth, LMKLayout.minimumTouchTarget) + scrollableItemPadding * 2
                 label.snp.makeConstraints { make in
-                    let c = make.width.greaterThanOrEqualTo(minWidth).constraint
+                    let c = make.width.equalTo(pinned).constraint
                     segmentMinWidthConstraints.append(c)
                 }
             }

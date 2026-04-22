@@ -233,7 +233,7 @@ final class SegmentedControlDetailViewController: DetailViewController {
         stack.addArrangedSubview(LMKLabelFactory.caption(
             text: "Combine makeScrollableContainer() with fitsSegmentsToContent = true to let each segment "
                 + "size exactly to its text (plus itemPadding). Good for tag/filter bars where labels vary a lot. "
-                + "itemPadding = 24pt here for extra breathing room."
+                + "itemPadding = 24pt for breathing room, itemSpacing = 4pt for a tight chip-style gap."
         ))
 
         let filters = [
@@ -244,6 +244,7 @@ final class SegmentedControlDetailViewController: DetailViewController {
         let fitScrollSegmented = LMKSegmentedControl(items: filters)
         fitScrollSegmented.fitsSegmentsToContent = true
         fitScrollSegmented.itemPadding = LMKSpacing.xxl
+        fitScrollSegmented.itemSpacing = LMKSpacing.xs
         fitScrollSegmented.selectedSegmentIndex = 0
         let fitScrollContainer = fitScrollSegmented.makeScrollableContainer()
         fitScrollContainer.snp.makeConstraints { make in

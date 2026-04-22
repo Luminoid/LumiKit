@@ -192,4 +192,51 @@ struct LMKSegmentedControlTests {
 
         #expect(!control.hasAmbiguousLayout)
     }
+
+    @Test
+    func `itemSpacing widens intrinsic width only when scrollable`() {
+        // Non-scrollable mode always uses 0 stack spacing, so itemSpacing
+        // changes must not affect intrinsic width there.
+        let control = LMKSegmentedControl(items: ["A", "B", "C"])
+        let nonScrollBase = control.intrinsicContentSize.width
+        control.itemSpacing += 10
+        #expect(control.intrinsicContentSize.width == nonScrollBase)
+
+        // After entering scrollable mode, the gap between adjacent segments
+        // is added (items.count - 1) times to the intrinsic width.
+        _ = control.makeScrollableContainer()
+        let scrollableBase = control.intrinsicContentSize.width
+        control.itemSpacing += 5
+        #expect(control.intrinsicContentSize.width == scrollableBase + 5 * 2)
+    }
+
+    @Test
+    func `itemSpacing default matches previous hardcoded value`() {
+        // Callers that relied on the old hardcoded LMKSpacing.medium gap in
+        // scrollable mode should see the same intrinsic width out of the box.
+        let control = LMKSegmentedControl(items: ["A", "B"])
+        #expect(control.itemSpacing == LMKSpacing.medium)
+    }
+
+    @Test
+    func `scrollable non-fit intrinsic width stays stable across selection changes`() {
+        // Previously non-fit scrollable sized each segment from its live label
+        // intrinsicContentSize, which differs between the selected (bodyMedium)
+        // and unselected (subbodyMedium) fonts — the selected segment rendered
+        // visibly wider. Per-label widths are now pinned at the wider
+        // selected-state refWidth (+ scrollableItemPadding), so changing
+        // selection must not shift intrinsic width.
+        let control = LMKSegmentedControl(items: ["Month 1", "Month 2", "Month 12"])
+        _ = control.makeScrollableContainer()
+
+        control.selectedSegmentIndex = 0
+        let firstSelected = control.intrinsicContentSize.width
+        control.selectedSegmentIndex = 1
+        let middleSelected = control.intrinsicContentSize.width
+        control.selectedSegmentIndex = 2
+        let lastSelected = control.intrinsicContentSize.width
+
+        #expect(firstSelected == middleSelected)
+        #expect(middleSelected == lastSelected)
+    }
 }
