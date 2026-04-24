@@ -7,6 +7,7 @@
 //
 
 import LumiKitCore
+import PhotosUI
 import SnapKit
 import UIKit
 
@@ -55,6 +56,23 @@ public protocol LMKPhotoGridDataSource: AnyObject {
     func photoGridImage(at index: Int) -> UIImage?
     /// Date for the photo at the given data source index. Used for sorting.
     func photoGridDate(at index: Int) -> Date?
+    /// Whether the item at the given index is a Live Photo. Drives the LIVE
+    /// badge overlay on the grid cell. Default implementation returns `false`.
+    func photoGridIsLivePhoto(at index: Int) -> Bool
+    /// Async fetch of the paired `PHLivePhoto` at the given index. Returns nil
+    /// for stills or when the paired video can't be loaded. Default impl
+    /// returns nil so that non-live data sources don't need to implement it.
+    func photoGridLivePhoto(at index: Int) async -> PHLivePhoto?
+}
+
+public extension LMKPhotoGridDataSource {
+    func photoGridIsLivePhoto(at _: Int) -> Bool {
+        false
+    }
+
+    func photoGridLivePhoto(at _: Int) async -> PHLivePhoto? {
+        nil
+    }
 }
 
 /// Delegate for photo grid actions.
@@ -331,7 +349,8 @@ public final class LMKPhotoGridViewController: UIViewController {
             if let gridCell = cell as? LMKPhotoGridCell {
                 gridCell.configure(
                     with: nil,
-                    contentMode: mode.uiContentMode
+                    contentMode: mode.uiContentMode,
+                    isLive: false
                 )
             }
         }
@@ -482,7 +501,8 @@ extension LMKPhotoGridViewController: UICollectionViewDataSource {
         }
 
         let image = dataSource?.photoGridImage(at: dsIndex)
-        cell.configure(with: image, contentMode: photoContentMode.uiContentMode)
+        let isLive = dataSource?.photoGridIsLivePhoto(at: dsIndex) ?? false
+        cell.configure(with: image, contentMode: photoContentMode.uiContentMode, isLive: isLive)
         return cell
     }
 }
@@ -529,6 +549,16 @@ extension LMKPhotoGridViewController: LMKPhotoBrowserDataSource {
 
     public func photoSubtitle(at index: Int) -> String? {
         nil
+    }
+
+    public func photoIsLivePhoto(at index: Int) -> Bool {
+        guard let dsIndex = dataSourceIndex(forDisplayIndex: index) else { return false }
+        return dataSource?.photoGridIsLivePhoto(at: dsIndex) ?? false
+    }
+
+    public func photoLivePhoto(at index: Int) async -> PHLivePhoto? {
+        guard let dsIndex = dataSourceIndex(forDisplayIndex: index) else { return nil }
+        return await dataSource?.photoGridLivePhoto(at: dsIndex)
     }
 }
 

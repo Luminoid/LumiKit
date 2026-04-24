@@ -6,6 +6,7 @@
 //
 
 import LumiKitCore
+import PhotosUI
 import SnapKit
 import UIKit
 
@@ -17,6 +18,24 @@ public protocol LMKPhotoBrowserDataSource: AnyObject {
     func photo(at index: Int) -> UIImage?
     func photoDate(at index: Int) -> Date?
     func photoSubtitle(at index: Int) -> String?
+    /// Whether the item at the given index is a Live Photo. Drives the LIVE
+    /// capsule badge immediately on cell configure — independent of whether
+    /// the paired `PHLivePhoto` has loaded yet. Default returns `false`.
+    func photoIsLivePhoto(at index: Int) -> Bool
+    /// Async load of a paired Live Photo for the given index. Default returns
+    /// nil. When non-nil, the browser upgrades the cell to show a playable
+    /// `PHLivePhotoView` on top of the still image.
+    func photoLivePhoto(at index: Int) async -> PHLivePhoto?
+}
+
+public extension LMKPhotoBrowserDataSource {
+    func photoIsLivePhoto(at _: Int) -> Bool {
+        false
+    }
+
+    func photoLivePhoto(at _: Int) async -> PHLivePhoto? {
+        nil
+    }
 }
 
 /// Delegate for photo browser actions and dismissal.
@@ -703,6 +722,21 @@ public final class LMKPhotoBrowserViewController: UIViewController {
     public var currentPhotoIndex: Int {
         currentIndex
     }
+
+    /// Pulls the paired `PHLivePhoto` from the data source and upgrades the cell
+    /// once loaded. Guarded against cell reuse — if the cell has moved to a
+    /// different index by the time the load finishes, we skip the upgrade.
+    private func loadLivePhotoIfAvailable(at index: Int, into cell: LMKPhotoBrowserCell) {
+        guard let dataSource else { return }
+        Task { [weak self, weak cell] in
+            guard let livePhoto = await dataSource.photoLivePhoto(at: index) else { return }
+            guard let self, let cell else { return }
+            guard let currentIndexPath = collectionView.indexPath(for: cell),
+                  currentIndexPath.item == index
+            else { return }
+            cell.configureLivePhoto(livePhoto)
+        }
+    }
 }
 
 // MARK: - UICollectionViewDataSource
@@ -724,7 +758,9 @@ extension LMKPhotoBrowserViewController: UICollectionViewDataSource {
         }
 
         let screenSize = view.bounds.size
-        cell.configure(with: image, screenSize: screenSize)
+        let isLive = dataSource?.photoIsLivePhoto(at: indexPath.item) ?? false
+        cell.configure(with: image, screenSize: screenSize, isLive: isLive)
+        loadLivePhotoIfAvailable(at: indexPath.item, into: cell)
         cell.onVerticalSwipeToDismiss = { [weak self] in
             self?.performDismissWithSnapTiming()
         }

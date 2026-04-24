@@ -6,8 +6,10 @@
 //
 
 import LumiKitUI
+import PhotosUI
 import SnapKit
 import UIKit
+import UniformTypeIdentifiers
 
 // MARK: - Photo Grid
 
@@ -122,6 +124,13 @@ final class PhotoGridDetailViewController: UIViewController, LMKPhotoGridDataSou
         return sampleDates[index]
     }
 
+    /// Demo: mark every 5th cell as a Live Photo so the LIVE badge overlay is
+    /// visible in the example. Real hosts would check whichever paired-file
+    /// metadata they track alongside the still image.
+    func photoGridIsLivePhoto(at index: Int) -> Bool {
+        index >= 0 && index < sampleImages.count && index.isMultiple(of: 5)
+    }
+
     // MARK: - LMKPhotoGridDelegate
 
     func photoGrid(_ grid: LMKPhotoGridViewController, didRequestActionForPhotoAt index: Int) {
@@ -133,6 +142,12 @@ final class PhotoGridDetailViewController: UIViewController, LMKPhotoGridDataSou
 
 final class PhotoBrowserDetailViewController: DetailViewController, LMKPhotoBrowserDataSource, LMKPhotoBrowserDelegate {
     private var sampleImages: [UIImage] = []
+
+    // Live Photo demo state. When `livePhotoMode` is true, the data source
+    // serves just the single picked Live Photo instead of the sample grid.
+    private var pickedLivePhoto: PHLivePhoto?
+    private var pickedStill: UIImage?
+    private var livePhotoMode = false
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -176,6 +191,19 @@ final class PhotoBrowserDetailViewController: DetailViewController, LMKPhotoBrow
         stack.addArrangedSubview(openButton)
 
         addDivider()
+        addSectionHeader("Live Photo")
+        stack.addArrangedSubview(LMKLabelFactory.body(
+            text: "Pick a Live Photo from your library, then long-press inside the browser to play the paired video."
+        ))
+        let pickLiveButton = LMKButtonFactory.filled(
+            role: .primary,
+            title: "Pick a Live Photo",
+            target: self,
+            action: #selector(pickLivePhoto)
+        )
+        stack.addArrangedSubview(pickLiveButton)
+
+        addDivider()
         addSectionHeader("Features")
         let features = [
             "Swipe left/right to navigate",
@@ -193,11 +221,22 @@ final class PhotoBrowserDetailViewController: DetailViewController, LMKPhotoBrow
 
     @objc private func imageTapped(_ gesture: UITapGestureRecognizer) {
         guard let view = gesture.view else { return }
+        livePhotoMode = false
         presentBrowser(at: view.tag)
     }
 
     @objc private func openBrowser() {
+        livePhotoMode = false
         presentBrowser(at: 0)
+    }
+
+    @objc private func pickLivePhoto() {
+        var config = PHPickerConfiguration()
+        config.selectionLimit = 1
+        config.filter = .livePhotos
+        let picker = PHPickerViewController(configuration: config)
+        picker.delegate = self
+        present(picker, animated: true)
     }
 
     private func presentBrowser(at index: Int) {
@@ -210,9 +249,14 @@ final class PhotoBrowserDetailViewController: DetailViewController, LMKPhotoBrow
 
     // MARK: - LMKPhotoBrowserDataSource
 
-    var numberOfPhotos: Int { sampleImages.count }
+    var numberOfPhotos: Int {
+        livePhotoMode ? 1 : sampleImages.count
+    }
 
     func photo(at index: Int) -> UIImage? {
+        if livePhotoMode {
+            return pickedStill
+        }
         guard index >= 0, index < sampleImages.count else { return nil }
         return sampleImages[index]
     }
@@ -222,7 +266,11 @@ final class PhotoBrowserDetailViewController: DetailViewController, LMKPhotoBrow
     }
 
     func photoSubtitle(at index: Int) -> String? {
-        nil
+        livePhotoMode ? "Long-press to play" : nil
+    }
+
+    func photoLivePhoto(at _: Int) async -> PHLivePhoto? {
+        livePhotoMode ? pickedLivePhoto : nil
     }
 
     // MARK: - LMKPhotoBrowserDelegate
@@ -232,6 +280,61 @@ final class PhotoBrowserDetailViewController: DetailViewController, LMKPhotoBrow
     }
 
     func photoBrowserDidDismiss(_ browser: LMKPhotoBrowserViewController) {}
+}
+
+// MARK: - PHPickerViewControllerDelegate
+
+extension PhotoBrowserDetailViewController: PHPickerViewControllerDelegate {
+    func picker(_ picker: PHPickerViewController, didFinishPicking results: [PHPickerResult]) {
+        picker.dismiss(animated: true)
+        guard let result = results.first,
+              result.itemProvider.canLoadObject(ofClass: PHLivePhoto.self)
+        else {
+            LMKToast.showInfo(message: "Not a Live Photo — try another", on: self)
+            return
+        }
+
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            let livePhoto = await Self.loadPickedLivePhoto(from: result.itemProvider)
+            let still = await Self.loadPickedStill(from: result.itemProvider)
+            guard let livePhoto, let still else {
+                LMKToast.showInfo(message: "Couldn't load the Live Photo", on: self)
+                return
+            }
+            pickedLivePhoto = livePhoto
+            pickedStill = still
+            livePhotoMode = true
+            presentBrowser(at: 0)
+        }
+    }
+
+    /// `PHLivePhoto` conforms to `NSItemProviderReading`, so the picker can vend
+    /// it directly via `loadObject(ofClass:)`. The completion may fire multiple
+    /// times with progressive loads; we resolve once the continuation permits.
+    private static func loadPickedLivePhoto(
+        from provider: sending NSItemProvider
+    ) async -> PHLivePhoto? {
+        await withCheckedContinuation { continuation in
+            _ = provider.loadObject(ofClass: PHLivePhoto.self) { obj, _ in
+                continuation.resume(returning: obj as? PHLivePhoto)
+            }
+        }
+    }
+
+    /// Still image extracted from the same item provider so the browser can
+    /// show it immediately while the live photo loads.
+    private static func loadPickedStill(
+        from provider: sending NSItemProvider
+    ) async -> UIImage? {
+        let data: Data? = await withCheckedContinuation { continuation in
+            provider.loadDataRepresentation(forTypeIdentifier: UTType.image.identifier) { data, _ in
+                continuation.resume(returning: data)
+            }
+        }
+        guard let data else { return nil }
+        return UIImage(data: data)
+    }
 }
 
 // MARK: - Photo Crop

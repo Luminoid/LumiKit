@@ -430,12 +430,25 @@ LumiKitUI includes device-aware helpers and system observers:
 
 | Component | Purpose |
 |-----------|---------|
-| `LMKPhotoBrowserViewController` | Full-screen photo browser with zoom and swipe navigation |
+| `LMKPhotoBrowserViewController` | Full-screen photo browser with zoom, swipe navigation, and optional Live Photo playback (`PHLivePhotoView` swaps in when the data source returns a paired `PHLivePhoto` — long-press to play, with a `livephoto` + "LIVE" indicator under the action button that fades during playback) |
 | `LMKPhotoCropViewController` | Photo cropping with aspect ratio support |
-| `LMKPhotoGridViewController` | Photo grid with pinch-to-zoom column control, sort by date, content mode toggle, and photo browser integration |
+| `LMKPhotoGridViewController` | Photo grid with pinch-to-zoom column control, sort by date, content mode toggle, photo browser integration, and a LIVE badge on Live Photo cells |
 | `LMKPhotoEXIFService` | EXIF date and GPS extraction from UIImage or PHPickerResult |
 
 Both photo view controllers force dark mode (`overrideUserInterfaceStyle = .dark`) and set `preferredStatusBarStyle = .lightContent`. They handle `modalPresentationCapturesStatusBarAppearance` automatically, so the status bar is correct when presented modally. If you embed them in a `UINavigationController`, override `childForStatusBarStyle` on the nav controller to return `topViewController`.
+
+**Live Photo support** is opt-in via two optional data source methods (both default to no-op):
+
+```swift
+// LMKPhotoGridDataSource
+func photoGridIsLivePhoto(at index: Int) -> Bool             // drives LIVE badge
+func photoGridLivePhoto(at index: Int) async -> PHLivePhoto? // drives browser playback
+
+// LMKPhotoBrowserDataSource
+func photoLivePhoto(at index: Int) async -> PHLivePhoto?     // drives browser playback
+```
+
+The browser shows the still image immediately and upgrades the cell to a playable `PHLivePhotoView` once the async load resolves. The cell guards against reuse, so stale loads on paged-away cells are dropped. Paired storage (JPG + MOV) is the caller's concern — LumiKit takes a ready-made `PHLivePhoto`.
 
 ---
 

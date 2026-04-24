@@ -125,7 +125,7 @@ LumiKit/
 - **Extension methods**: `lmk_` prefix (e.g. `view.lmk_addSubviews(...)`)
 - **Theme configs**: `LMK*Theme` structs (e.g. `LMKTypographyTheme`, `LMKSpacingTheme`)
 - **Configurable strings**: Module-level `nonisolated(unsafe)` variable + `Sendable` struct
-- **Protocols for data/delegates**: `LMKPhotoBrowserDataSource`, `LMKPhotoCropDelegate`, `LMKSharePreviewDelegate`
+- **Protocols for data/delegates**: `LMKPhotoBrowserDataSource`, `LMKPhotoGridDataSource`, `LMKPhotoCropDelegate`, `LMKSharePreviewDelegate`
 
 ---
 
@@ -300,11 +300,21 @@ LMKThemeManager.shared.apply(spacing: .init(large: 20))
 
 | Component | Type | Purpose |
 |-----------|------|---------|
-| `LMKPhotoBrowserViewController` | `final class` | Full-screen photo browser with zoom, swipe, delete |
+| `LMKPhotoBrowserViewController` | `final class` | Full-screen photo browser with zoom, swipe, delete. Upgrades a cell from `UIImageView` to `PHLivePhotoView` when `photoLivePhoto(at:)` resolves to a non-nil `PHLivePhoto` — still image shows immediately; long-press plays the paired video. Live cells render a `livephoto` + "LIVE" capsule under the action ("…") button that fades during playback. Cell reuse guarded |
 | `LMKPhotoBrowserConfig` | `enum` | Shared configuration constants (e.g. `interPageSpacing`) |
 | `LMKPhotoCropViewController` | `final class` | Square crop editor with pan/zoom |
-| `LMKPhotoGridViewController` | `final class` | Photo grid with pinch-to-zoom columns, sort, content mode toggle, browser integration |
+| `LMKPhotoGridViewController` | `final class` | Photo grid with pinch-to-zoom columns, sort, content mode toggle, browser integration. Cells show a small `livephoto` SF Symbol badge when `photoGridIsLivePhoto(at:)` returns true; paired `PHLivePhoto` is forwarded to the browser via `photoGridLivePhoto(at:) async` |
 | `LMKPhotoEXIFService` | `nonisolated enum` (static) | EXIF date + GPS extraction from UIImage or PHPickerResult |
+
+**Live Photo data-source methods** (all optional, default to no-op):
+
+| Protocol | Method | Role |
+|----------|--------|------|
+| `LMKPhotoGridDataSource` | `photoGridIsLivePhoto(at:) -> Bool` | Show LIVE badge on grid cell |
+| `LMKPhotoGridDataSource` | `photoGridLivePhoto(at:) async -> PHLivePhoto?` | Forwarded to the browser when the grid presents it |
+| `LMKPhotoBrowserDataSource` | `photoLivePhoto(at:) async -> PHLivePhoto?` | Swap the browser cell to `PHLivePhotoView` |
+
+Paired-file storage (still JPG + video MOV) is the caller's responsibility — LumiKit takes a pre-assembled `PHLivePhoto`. Hosts typically use `PHLivePhoto.request(withResourceFileURLs:)` to build one from disk.
 
 ### Pickers (`Components/Pickers/`)
 

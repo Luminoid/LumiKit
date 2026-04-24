@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Live Photo support in `LMKPhotoGrid*` + `LMKPhotoBrowser*`** — Grid cells render a small `livephoto`-symbol LIVE badge when `photoGridIsLivePhoto(at:)` returns true. The browser upgrades a cell from `UIImageView` to `PHLivePhotoView` (same constraints, still visible first) when `photoLivePhoto(at:)` (or the grid-forwarded `photoGridLivePhoto(at:)`) resolves to a non-nil `PHLivePhoto`. Live browser cells show a `livephoto` + "LIVE" capsule stacked directly below the action ("…") button (matching the iOS Photos indicator placement) — the badge fades out during active playback and returns on end, driven by `PHLivePhotoViewDelegate`. All new data-source methods have default implementations returning `false`/`nil`, so existing conformers don't need changes. Long-press playback is delegated to `PHLivePhotoView`'s built-in recognizer. Cell reuse is guarded — loads that resolve after the cell has paged away are dropped
 - **LMKSegmentedControl `itemSpacing`** — New public property controlling the gap between adjacent segments when scrollable. Default is `LMKSpacing.medium` (12pt), matching the previous hardcoded value. Takes effect after `makeScrollableContainer()` is called; non-scrollable mode always uses 0 spacing since the sliding pill spans full segment bounds. `intrinsicContentSize` accounts for `itemSpacing` in scrollable mode
 
 ### Changed

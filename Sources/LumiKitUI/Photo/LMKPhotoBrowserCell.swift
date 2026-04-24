@@ -5,6 +5,7 @@
 //  Full-screen photo browser cell with zoom, pinch, and swipe-to-dismiss support.
 //
 
+import PhotosUI
 import SnapKit
 import UIKit
 
@@ -48,6 +49,53 @@ public final class LMKPhotoBrowserCell: UICollectionViewCell {
 
     private let scrollView = UIScrollView()
     private let imageView = UIImageView()
+    private lazy var livePhotoView: PHLivePhotoView = {
+        let view = PHLivePhotoView()
+        view.contentMode = .scaleAspectFit
+        view.isHidden = true
+        view.isAccessibilityElement = true
+        view.accessibilityLabel = "Live Photo"
+        view.delegate = self
+        return view
+    }()
+
+    /// Capsule shown in the top-leading corner when the cell is displaying a
+    /// Live Photo, mirroring the iOS Photos app indicator. Sits to the right
+    /// of the browser's action button so it doesn't overlap the existing
+    /// overlay. Fades out during active playback to match the system behavior.
+    private lazy var liveBadge: UIView = {
+        let container = UIView()
+        container.backgroundColor = UIColor.black.withAlphaComponent(LMKAlpha.overlayStrong)
+        container.layer.cornerRadius = 11
+        container.clipsToBounds = true
+        container.isHidden = true
+        container.isUserInteractionEnabled = false
+
+        let symbolConfig = UIImage.SymbolConfiguration(pointSize: 12, weight: .semibold)
+        let icon = UIImageView(image: UIImage(systemName: "livephoto", withConfiguration: symbolConfig))
+        icon.tintColor = LMKColor.white
+        icon.contentMode = .scaleAspectFit
+
+        let label = UILabel()
+        label.text = "LIVE"
+        label.textColor = LMKColor.white
+        label.font = UIFont.systemFont(ofSize: 11, weight: .semibold)
+
+        let stack = UIStackView(arrangedSubviews: [icon, label])
+        stack.axis = .horizontal
+        stack.spacing = LMKSpacing.xs
+        stack.alignment = .center
+        stack.isUserInteractionEnabled = false
+
+        container.addSubview(stack)
+        stack.snp.makeConstraints { make in
+            make.edges.equalToSuperview().inset(
+                UIEdgeInsets(top: 4, left: 8, bottom: 4, right: 8)
+            )
+        }
+        return container
+    }()
+
     private var widthConstraint: Constraint?
     private var heightConstraint: Constraint?
 
@@ -124,6 +172,26 @@ public final class LMKPhotoBrowserCell: UICollectionViewCell {
             heightConstraint = make.height.equalTo(Self.initialImageViewSize).priority(.high).constraint
         }
 
+        // Live photo view mirrors imageView's frame so the still → live swap
+        // lines up pixel-perfectly. Hidden until a PHLivePhoto is configured.
+        scrollView.addSubview(livePhotoView)
+        livePhotoView.snp.makeConstraints { make in
+            make.edges.equalTo(imageView)
+        }
+
+        // Live badge sits on the contentView (above the scroll view) so it
+        // stays anchored to the corner regardless of zoom. Stacked directly
+        // below the browser VC's action button, same leading edge so they
+        // align vertically.
+        contentView.addSubview(liveBadge)
+        liveBadge.snp.makeConstraints { make in
+            make.top.equalTo(safeAreaLayoutGuide.snp.top).offset(
+                LMKSpacing.large + LMKPhotoBrowserConfig.overlayButtonSize + LMKSpacing.small
+            )
+            make.leading.equalToSuperview().offset(LMKSpacing.large)
+            make.height.equalTo(22)
+        }
+
         // Pinch gesture to track zoom anchor (center of pinch); zoom is still done by scroll view
         let pinchGesture = UIPinchGestureRecognizer(target: self, action: #selector(handlePinch(_:)))
         pinchGesture.delegate = self
@@ -197,10 +265,32 @@ public final class LMKPhotoBrowserCell: UICollectionViewCell {
         }
     }
 
-    public func configure(with image: UIImage, screenSize: CGSize) {
+    public func configure(with image: UIImage, screenSize: CGSize, isLive: Bool = false) {
         imageView.image = image
+        livePhotoView.livePhoto = nil
+        livePhotoView.isHidden = true
+        imageView.isHidden = false
+        // Badge visibility is driven by the synchronous `isLive` flag so it
+        // appears immediately on grid-to-browser transitions, independent of
+        // the async `PHLivePhoto` load that drives playback.
+        liveBadge.isHidden = !isLive
+        liveBadge.alpha = 1
         updateImageSize(image: image, screenSize: screenSize)
         resetZoom()
+    }
+
+    /// Upgrades a cell already showing the still image to a playable Live Photo.
+    /// Keeps the same layout — the PHLivePhotoView is positioned on top of the
+    /// imageView with identical constraints. PHLivePhotoView has its own
+    /// long-press recognizer, so no extra gesture wiring is required. The
+    /// badge is already visible from `configure(... isLive: true)` — this just
+    /// enables playback.
+    public func configureLivePhoto(_ livePhoto: PHLivePhoto) {
+        livePhotoView.livePhoto = livePhoto
+        livePhotoView.isHidden = false
+        imageView.isHidden = true
+        liveBadge.isHidden = false
+        liveBadge.alpha = 1
     }
 
     public func updateImageSize(image: UIImage, screenSize: CGSize) {
@@ -382,6 +472,11 @@ public final class LMKPhotoBrowserCell: UICollectionViewCell {
         resetZoom()
         isDismissing = false
         isDismissDragActive = false
+        livePhotoView.livePhoto = nil
+        livePhotoView.isHidden = true
+        imageView.isHidden = false
+        liveBadge.isHidden = true
+        liveBadge.alpha = 1
         onVerticalSwipeToDismiss = nil
         onVerticalPanProgressForDismiss = nil
         onZoomStateChanged = nil
@@ -516,6 +611,24 @@ extension LMKPhotoBrowserCell: UIScrollViewDelegate {
             if scrollView.transform.isIdentity {
                 onZoomStateChanged?(false)
             }
+        }
+    }
+}
+
+// MARK: - PHLivePhotoViewDelegate
+
+extension LMKPhotoBrowserCell: PHLivePhotoViewDelegate {
+    public func livePhotoView(_: PHLivePhotoView, willBeginPlaybackWith _: PHLivePhotoViewPlaybackStyle) {
+        let duration = LMKAnimationHelper.shouldAnimate ? LMKAnimationHelper.Duration.uiShort : 0
+        UIView.animate(withDuration: duration) { [weak self] in
+            self?.liveBadge.alpha = 0
+        }
+    }
+
+    public func livePhotoView(_: PHLivePhotoView, didEndPlaybackWith _: PHLivePhotoViewPlaybackStyle) {
+        let duration = LMKAnimationHelper.shouldAnimate ? LMKAnimationHelper.Duration.uiShort : 0
+        UIView.animate(withDuration: duration) { [weak self] in
+            self?.liveBadge.alpha = 1
         }
     }
 }
