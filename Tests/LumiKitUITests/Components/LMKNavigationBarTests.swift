@@ -331,6 +331,85 @@ struct LMKNavigationBarTests {
         bar.setLeftItemEnabled(at: 0, false) // No left items configured
     }
 
+    // MARK: - Accessory Views
+
+    @Test
+    func `right accessory view is added as a subview of the bar`() {
+        let bar = LMKNavigationBar()
+        bar.setRightItems([.init(systemName: "plus") {}])
+        let indicator = UIActivityIndicatorView()
+
+        bar.setRightAccessoryView(indicator)
+
+        #expect(indicator.superview === bar)
+    }
+
+    @Test
+    func `right accessory view replaces a previous accessory`() {
+        let bar = LMKNavigationBar()
+        bar.setRightItems([.init(systemName: "plus") {}])
+        let first = UIView()
+        let second = UIView()
+
+        bar.setRightAccessoryView(first)
+        bar.setRightAccessoryView(second)
+
+        #expect(first.superview == nil)
+        #expect(second.superview === bar)
+    }
+
+    @Test
+    func `right accessory view nil removes the existing accessory`() {
+        let bar = LMKNavigationBar()
+        let view = UIView()
+        bar.setRightAccessoryView(view)
+
+        bar.setRightAccessoryView(nil)
+
+        #expect(view.superview == nil)
+    }
+
+    @Test
+    func `large title accessory view is added under the large title row`() {
+        let bar = LMKNavigationBar()
+        bar.title = "Pets"
+        bar.largeTitleEnabled = true
+        let badge = UIView()
+
+        bar.setLargeTitleAccessoryView(badge)
+
+        // Lives inside the large title row, not the bar's direct subviews
+        #expect(badge.superview != nil)
+        #expect(badge.superview !== bar)
+    }
+
+    @Test
+    func `large title accessory view nil removes the existing accessory`() {
+        let bar = LMKNavigationBar()
+        bar.title = "Pets"
+        bar.largeTitleEnabled = true
+        let badge = UIView()
+        bar.setLargeTitleAccessoryView(badge)
+
+        bar.setLargeTitleAccessoryView(nil)
+
+        #expect(badge.superview == nil)
+    }
+
+    @Test
+    func `right accessory view survives setRightItems`() {
+        let bar = LMKNavigationBar()
+        let indicator = UIActivityIndicatorView()
+        bar.setRightAccessoryView(indicator)
+
+        bar.setRightItems([
+            .init(systemName: "plus") {},
+            .init(systemName: "ellipsis") {},
+        ])
+
+        #expect(indicator.superview === bar)
+    }
+
     // MARK: - Pin to Top
 
     @Test

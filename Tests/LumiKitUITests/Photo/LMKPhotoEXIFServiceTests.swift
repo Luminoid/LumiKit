@@ -90,6 +90,57 @@ struct LMKPhotoEXIFServiceTests {
         #expect(extractedDate == nil)
     }
 
+    @Test
+    func `extractDate falls back to EXIF DateTimeDigitized when DateTimeOriginal is absent`() {
+        let image = UIImage.lmk_solidColor(.yellow, size: CGSize(width: 10, height: 10))
+        let digitized = "2023:11:09 08:15:00"
+        let imageData = createImageDataWithEXIF(image: image, dateTimeDigitized: digitized)
+
+        let extractedDate = LMKPhotoEXIFService.extractDate(from: image, imageData: imageData)
+
+        #expect(extractedDate != nil)
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy:MM:dd HH:mm:ss"
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        #expect(extractedDate == formatter.date(from: digitized))
+    }
+
+    @Test
+    func `extractDate falls back to TIFF DateTime when no EXIF dates`() {
+        let image = UIImage.lmk_solidColor(.gray, size: CGSize(width: 10, height: 10))
+        let tiffDate = "2024:07:20 11:00:00"
+        let imageData = createImageDataWithTIFF(image: image, dateTime: tiffDate)
+
+        let extractedDate = LMKPhotoEXIFService.extractDate(from: image, imageData: imageData)
+
+        #expect(extractedDate != nil)
+    }
+
+    @Test
+    func `extractDate falls back to IPTC DateCreated + TimeCreated when EXIF and TIFF are absent`() {
+        let image = UIImage.lmk_solidColor(.systemPink, size: CGSize(width: 10, height: 10))
+        // 2024-06-15 14:30:00, IPTC date YYYYMMDD + time HHMMSS
+        let imageData = createImageDataWithIPTC(
+            image: image,
+            dateCreated: "20240615",
+            timeCreated: "143000"
+        )
+
+        let extractedDate = LMKPhotoEXIFService.extractDate(from: image, imageData: imageData)
+
+        #expect(extractedDate != nil)
+    }
+
+    @Test
+    func `extractDate falls back to IPTC date-only when time is missing`() {
+        let image = UIImage.lmk_solidColor(.systemTeal, size: CGSize(width: 10, height: 10))
+        let imageData = createImageDataWithIPTC(image: image, dateCreated: "20240615", timeCreated: nil)
+
+        let extractedDate = LMKPhotoEXIFService.extractDate(from: image, imageData: imageData)
+
+        #expect(extractedDate != nil)
+    }
+
     // MARK: - GPS Location Extraction
 
     @Test
@@ -173,23 +224,50 @@ struct LMKPhotoEXIFServiceTests {
 
 /// Create image data with EXIF DateTimeOriginal metadata.
 private func createImageDataWithEXIF(image: UIImage, dateTimeOriginal: String) -> Data? {
-    guard let cgImage = image.cgImage else { return nil }
+    encodeJPEGWithMetadata(image: image, metadata: [
+        kCGImagePropertyExifDictionary as String: [
+            kCGImagePropertyExifDateTimeOriginal as String: dateTimeOriginal,
+        ],
+    ])
+}
 
-    let mutableData = NSMutableData()
-    guard let destination = CGImageDestinationCreateWithData(mutableData, UTType.jpeg.identifier as CFString, 1, nil) else {
-        return nil
+/// Create image data with only EXIF DateTimeDigitized (no DateTimeOriginal).
+private func createImageDataWithEXIF(image: UIImage, dateTimeDigitized: String) -> Data? {
+    encodeJPEGWithMetadata(image: image, metadata: [
+        kCGImagePropertyExifDictionary as String: [
+            kCGImagePropertyExifDateTimeDigitized as String: dateTimeDigitized,
+        ],
+    ])
+}
+
+/// Create image data with only the TIFF DateTime field.
+private func createImageDataWithTIFF(image: UIImage, dateTime: String) -> Data? {
+    encodeJPEGWithMetadata(image: image, metadata: [
+        kCGImagePropertyTIFFDictionary as String: [
+            kCGImagePropertyTIFFDateTime as String: dateTime,
+        ],
+    ])
+}
+
+/// Create image data with IPTC DateCreated (and optional TimeCreated) only.
+private func createImageDataWithIPTC(image: UIImage, dateCreated: String, timeCreated: String?) -> Data? {
+    var iptc: [String: Any] = [kCGImagePropertyIPTCDateCreated as String: dateCreated]
+    if let timeCreated {
+        iptc[kCGImagePropertyIPTCTimeCreated as String] = timeCreated
     }
+    return encodeJPEGWithMetadata(image: image, metadata: [
+        kCGImagePropertyIPTCDictionary as String: iptc,
+    ])
+}
 
-    let exifDict: [String: Any] = [
-        kCGImagePropertyExifDateTimeOriginal as String: dateTimeOriginal,
-    ]
-    let metadata: [String: Any] = [
-        kCGImagePropertyExifDictionary as String: exifDict,
-    ]
-
+private func encodeJPEGWithMetadata(image: UIImage, metadata: [String: Any]) -> Data? {
+    guard let cgImage = image.cgImage else { return nil }
+    let mutableData = NSMutableData()
+    guard let destination = CGImageDestinationCreateWithData(
+        mutableData, UTType.jpeg.identifier as CFString, 1, nil
+    ) else { return nil }
     CGImageDestinationAddImage(destination, cgImage, metadata as CFDictionary)
     CGImageDestinationFinalize(destination)
-
     return mutableData as Data
 }
 
@@ -201,25 +279,12 @@ private func createImageDataWithGPS(
     latRef: String,
     lonRef: String
 ) -> Data? {
-    guard let cgImage = image.cgImage else { return nil }
-
-    let mutableData = NSMutableData()
-    guard let destination = CGImageDestinationCreateWithData(mutableData, UTType.jpeg.identifier as CFString, 1, nil) else {
-        return nil
-    }
-
-    let gpsDict: [String: Any] = [
-        kCGImagePropertyGPSLatitude as String: latitude,
-        kCGImagePropertyGPSLongitude as String: longitude,
-        kCGImagePropertyGPSLatitudeRef as String: latRef,
-        kCGImagePropertyGPSLongitudeRef as String: lonRef,
-    ]
-    let metadata: [String: Any] = [
-        kCGImagePropertyGPSDictionary as String: gpsDict,
-    ]
-
-    CGImageDestinationAddImage(destination, cgImage, metadata as CFDictionary)
-    CGImageDestinationFinalize(destination)
-
-    return mutableData as Data
+    encodeJPEGWithMetadata(image: image, metadata: [
+        kCGImagePropertyGPSDictionary as String: [
+            kCGImagePropertyGPSLatitude as String: latitude,
+            kCGImagePropertyGPSLongitude as String: longitude,
+            kCGImagePropertyGPSLatitudeRef as String: latRef,
+            kCGImagePropertyGPSLongitudeRef as String: lonRef,
+        ],
+    ])
 }

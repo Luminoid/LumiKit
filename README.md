@@ -327,7 +327,7 @@ LMKThemeManager.shared.apply(spacing: .init(large: 20))
 | `LMKEnumSelectionBottomSheet` | Bottom sheet for selecting from an enum's cases — single-select (`present`) or multi-select with explicit Done button (`presentMultiSelect`) |
 | `LMKGradientView` | `CAGradientLayer`-backed view with 4 direction options |
 | `LMKLoadingStateView` | Loading indicator with optional message |
-| `LMKNavigationBar` | Custom navigation bar with large title and standard inline modes, configurable bar items, back button, and design-token styling. `setLeftItemEnabled(at:_:)` / `setRightItemEnabled(at:_:)` toggle per-item enabled state |
+| `LMKNavigationBar` | Custom navigation bar with large title and standard inline modes, configurable bar items, back button, and design-token styling. `setLeftItemEnabled(at:_:)` / `setRightItemEnabled(at:_:)` toggle per-item enabled state. `setRightAccessoryView(_:)` parks a non-tappable view (sync indicator, status icon) to the left of the right items; `setLargeTitleAccessoryView(_:)` hangs an accessory off the trailing edge of the large title text (iOS Mail / Notes pattern) |
 | `LMKNavigationController` | `UINavigationController` subclass that preserves the edge-swipe-to-go-back gesture when the system nav bar is hidden. Pairs with `LMKNavigationBar`-based apps |
 | `LMKProgressViewController` | Blocking progress modal (`.determinate` with progress bar, `.indeterminate` spinner-only) |
 | `LMKSearchBar` | Search bar with configurable placeholder and cancel text |
@@ -433,7 +433,7 @@ LumiKitUI includes device-aware helpers and system observers:
 | `LMKPhotoBrowserViewController` | Full-screen photo browser with zoom, swipe navigation, and optional Live Photo playback (`PHLivePhotoView` swaps in when the data source returns a paired `PHLivePhoto` — long-press to play, with a `livephoto` + "LIVE" indicator under the action button that fades during playback) |
 | `LMKPhotoCropViewController` | Photo cropping with aspect ratio support |
 | `LMKPhotoGridViewController` | Photo grid with pinch-to-zoom column control, sort by date, content mode toggle, photo browser integration, and a LIVE badge on Live Photo cells |
-| `LMKPhotoEXIFService` | EXIF date and GPS extraction from UIImage or PHPickerResult |
+| `LMKPhotoEXIFService` | Date and GPS extraction from UIImage or PHPickerResult. Date lookup walks EXIF (`DateTimeOriginal` / `DateTimeDigitized`), TIFF (`DateTime`), IPTC (`DateCreated` + `TimeCreated`, `DigitalCreationDate` + `DigitalCreationTime`), and the XMP packet (`xmp:CreateDate`, `xmp:DateCreated`, `xmp:ModifyDate`, `photoshop:DateCreated`) — surfaces a date for screenshots and edited / re-encoded photos where one container has been stripped |
 
 Both photo view controllers force dark mode (`overrideUserInterfaceStyle = .dark`) and set `preferredStatusBarStyle = .lightContent`. They handle `modalPresentationCapturesStatusBarAppearance` automatically, so the status bar is correct when presented modally. If you embed them in a `UINavigationController`, override `childForStatusBarStyle` on the nav controller to return `topViewController`.
 

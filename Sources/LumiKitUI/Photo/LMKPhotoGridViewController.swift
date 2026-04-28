@@ -344,15 +344,21 @@ public final class LMKPhotoGridViewController: UIViewController {
         photoContentMode = mode
         updateContentModeButton()
 
-        // Update visible cells
+        // Update visible cells. `configure(with: nil, ...)` clears the image so
+        // the reload picks up the new content mode cleanly; `isLive` must come
+        // from the data source so the LIVE badge doesn't flicker off on cells
+        // backing Live Photos.
         for cell in collectionView.visibleCells {
-            if let gridCell = cell as? LMKPhotoGridCell {
-                gridCell.configure(
-                    with: nil,
-                    contentMode: mode.uiContentMode,
-                    isLive: false
-                )
-            }
+            guard let gridCell = cell as? LMKPhotoGridCell,
+                  let indexPath = collectionView.indexPath(for: gridCell)
+            else { continue }
+            let isLive = dataSourceIndex(forDisplayIndex: indexPath.item)
+                .flatMap { dataSource?.photoGridIsLivePhoto(at: $0) } ?? false
+            gridCell.configure(
+                with: nil,
+                contentMode: mode.uiContentMode,
+                isLive: isLive
+            )
         }
         // Reload to update all cells including off-screen
         collectionView.reloadData()

@@ -215,6 +215,8 @@ public final class LMKNavigationBar: UIView {
 
     private var leftItemActions: [() -> Void] = []
     private var rightItemActions: [() -> Void] = []
+    private weak var rightAccessoryView: UIView?
+    private weak var largeTitleAccessoryView: UIView?
 
     // MARK: - Initialization
 
@@ -306,6 +308,40 @@ public final class LMKNavigationBar: UIView {
         button.alpha = enabled ? 1.0 : LMKAlpha.disabled
     }
 
+    /// Place a non-tappable accessory view (e.g. activity indicator, sync
+    /// status icon) immediately to the left of the right bar items, vertically
+    /// centered with the button row. Pass `nil` to remove the existing
+    /// accessory. The accessory lives outside `rightItemsStack` so calling
+    /// `setRightItems(_:)` afterward does not disturb it.
+    public func setRightAccessoryView(_ view: UIView?) {
+        rightAccessoryView?.removeFromSuperview()
+        rightAccessoryView = view
+        guard let view else { return }
+        addSubview(view)
+        view.snp.makeConstraints { make in
+            make.centerY.equalTo(rightItemsStack)
+            make.trailing.equalTo(rightItemsStack.snp.leading).offset(-LMKSpacing.small)
+        }
+    }
+
+    /// Place a non-tappable accessory view immediately to the right of the
+    /// large title text — the iOS Mail / Notes pattern for surfacing
+    /// background activity (sync, refresh) inline with the section title.
+    /// Only meaningful when `largeTitleEnabled = true`. Pass `nil` to remove.
+    /// The label's `.required` content-hugging priority means the accessory
+    /// hangs off the actual text trailing, not the full row width.
+    public func setLargeTitleAccessoryView(_ view: UIView?) {
+        largeTitleAccessoryView?.removeFromSuperview()
+        largeTitleAccessoryView = view
+        guard let view else { return }
+        largeTitleRow.addSubview(view)
+        view.snp.makeConstraints { make in
+            make.leading.equalTo(largeTitleLabel.snp.trailing).offset(LMKSpacing.small)
+            make.centerY.equalTo(largeTitleLabel)
+            make.trailing.lessThanOrEqualToSuperview().offset(-Self.contentMargin)
+        }
+    }
+
     // MARK: - Setup
 
     private func setupUI() {
@@ -360,9 +396,13 @@ public final class LMKNavigationBar: UIView {
         }
 
         largeTitleLabel.snp.makeConstraints { make in
-            make.leading.trailing.equalToSuperview().inset(Self.contentMargin)
+            make.leading.equalToSuperview().offset(Self.contentMargin)
+            // Allow shrink when an accessory view is present, but still
+            // bound by the row's trailing edge for long titles.
+            make.trailing.lessThanOrEqualToSuperview().offset(-Self.contentMargin)
             make.centerY.equalToSuperview()
         }
+        largeTitleLabel.setContentHuggingPriority(.required, for: .horizontal)
 
         // Separator
         addSubview(separatorView)

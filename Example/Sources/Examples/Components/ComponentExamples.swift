@@ -429,6 +429,45 @@ final class NavigationBarDetailViewController: DetailViewController {
             .init(systemName: "camera") {},
         ])
         wrapInContainer(noSepBar)
+
+        addDivider()
+        addSectionHeader("Right Accessory View")
+        stack.addArrangedSubview(LMKLabelFactory.caption(
+            text: "Place a non-tappable view (sync indicator, status icon) "
+                + "to the left of the right items via setRightAccessoryView(_:). "
+                + "It survives later setRightItems(_:) calls."
+        ))
+
+        let accessoryBar = LMKNavigationBar()
+        accessoryBar.title = "Inbox"
+        let spinner = UIActivityIndicatorView(style: .medium)
+        spinner.color = LMKColor.textSecondary
+        spinner.startAnimating()
+        accessoryBar.setRightAccessoryView(spinner)
+        accessoryBar.setRightItems([
+            .init(systemName: "square.and.pencil") {},
+        ])
+        wrapInContainer(accessoryBar)
+
+        addDivider()
+        addSectionHeader("Large Title Accessory")
+        stack.addArrangedSubview(LMKLabelFactory.caption(
+            text: "iOS Mail / Notes pattern: hang an inline accessory off the "
+                + "trailing edge of the large title via setLargeTitleAccessoryView(_:). "
+                + "Useful for sync state next to a section title."
+        ))
+
+        let titleAccessoryBar = LMKNavigationBar()
+        titleAccessoryBar.title = "Pets"
+        titleAccessoryBar.largeTitleEnabled = true
+        let cloudIcon = UIImageView(image: UIImage(systemName: "icloud"))
+        cloudIcon.tintColor = LMKColor.textSecondary
+        cloudIcon.contentMode = .scaleAspectFit
+        cloudIcon.snp.makeConstraints { make in
+            make.width.height.equalTo(LMKLayout.iconMedium)
+        }
+        titleAccessoryBar.setLargeTitleAccessoryView(cloudIcon)
+        wrapInContainer(titleAccessoryBar)
     }
 
     private func wrapInContainer(_ bar: LMKNavigationBar) {
