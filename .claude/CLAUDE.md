@@ -76,7 +76,7 @@ LumiKit/
 │   │                        # LMKImageUtil, LMKDominantColorExtractor, LMKMarkdownRenderer
 │   └── LumiKitLottie/       # LMKLottieRefreshControl
 ├── Tests/
-│   ├── LumiKitCoreTests/    # 76 tests, 11 suites
+│   ├── LumiKitCoreTests/    # 76 tests, 12 suites
 │   │   ├── Concurrency/     # LMKConcurrencyHelpersTests
 │   │   ├── Data/            # String+LMK, Collection+LMK, NSAttributedString+LMK, FormatHelper
 │   │   ├── Date/            # DateHelper, DateFormatterHelper
@@ -90,7 +90,7 @@ LumiKit/
 │   │   └── URLSessionConfigurationLMKDebugTests.swift # enableNetworkLogging
 │   ├── LumiKitLottieTests/  # 7 tests, 1 suite
 │   │   └── LMKLottieRefreshControlTests.swift
-│   └── LumiKitUITests/      # 695 tests, 83 suites
+│   └── LumiKitUITests/      # 721 tests, 105 suites
 │       ├── Alerts/          # AlertPresenter, ErrorHandler
 │       ├── Animation/       # AnimationHelper
 │       ├── Components/
