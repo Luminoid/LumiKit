@@ -130,7 +130,7 @@ xcodegen generate
 open LumiKitExample.xcodeproj
 ```
 
-The example includes **41 interactive pages** across 7 sections:
+The example includes **42 interactive pages** across 7 sections:
 
 - **Design System**: Colors, Typography, Markdown
 - **Controls**: Buttons, Segmented Control, Switch, Toggle Button, Text Field, Text View, Search Bar

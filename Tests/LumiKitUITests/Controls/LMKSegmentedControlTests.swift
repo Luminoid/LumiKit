@@ -10,9 +10,10 @@ import UIKit
 @MainActor
 struct LMKSegmentedControlTests {
     @Test
-    func `Creates with correct number of segments`() {
+    func `Selecting last in-range index does not crash`() {
         let control = LMKSegmentedControl(items: ["A", "B", "C"])
-        #expect(control.numberOfSegments == 3)
+        control.selectedSegmentIndex = 2
+        #expect(control.selectedSegmentIndex == 2)
     }
 
     @Test

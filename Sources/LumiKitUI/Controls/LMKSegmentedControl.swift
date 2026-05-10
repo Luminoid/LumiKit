@@ -40,9 +40,6 @@ open class LMKSegmentedControl: UIControl {
     /// Called when the selected segment changes. Receives the new selected index.
     public var valueChangedHandler: ((Int) -> Void)?
 
-    /// The number of segments.
-    public var numberOfSegments: Int { items.count }
-
     /// The currently selected segment index. Setting this updates the UI without animation.
     ///
     /// Set to `-1` (or any out-of-range value) to represent "no selection" —

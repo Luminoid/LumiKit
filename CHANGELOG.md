@@ -23,6 +23,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **LMKSegmentedControl non-fit scrollable segment widths** — Each scrollable segment is now pinned to `max(selectedFontRefWidth, minimumTouchTarget) + scrollableItemPadding*2` (exact) instead of the live label intrinsic width with a touch-target floor. Previously the selected segment rendered visibly wider than its neighbors because the selected-state font (`bodyMedium`, 16pt) produced a larger intrinsic width than the unselected-state font (`subbodyMedium`, 14pt). Widths now stay stable as selection moves between labels
 
+### Removed
+
+- **LMKSegmentedControl `numberOfSegments`** — The CHANGELOG for v0.5.0 had announced removal of this UISegmentedControl-compat shim, but the property was still present as a passthrough to `items.count`. Now actually removed.
+
 ## [0.6.0] - 2026-04-19
 
 ### Added
@@ -293,6 +297,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - All configurable strings use module-level `nonisolated(unsafe)` vars for localization
 - MIT License
 
+[Unreleased]: https://github.com/Luminoid/LumiKit/compare/0.6.0...HEAD
+[0.6.0]: https://github.com/Luminoid/LumiKit/compare/0.5.0...0.6.0
 [0.5.0]: https://github.com/Luminoid/LumiKit/compare/0.4.0...0.5.0
 [0.4.0]: https://github.com/Luminoid/LumiKit/compare/0.3.0...0.4.0
 [0.3.0]: https://github.com/Luminoid/LumiKit/compare/0.2.0...0.3.0
