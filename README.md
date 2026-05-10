@@ -130,14 +130,14 @@ xcodegen generate
 open LumiKitExample.xcodeproj
 ```
 
-The example includes **42 interactive pages** across 7 sections:
+The example includes **43 interactive pages** across 7 sections:
 
 - **Design System**: Colors, Typography, Markdown
 - **Controls**: Buttons, Segmented Control, Switch, Toggle Button, Text Field, Text View, Search Bar
 - **Components**: Divider, Badges, Chips, Filter Chip Bar, Cards, Gradient, Page Indicator, Navigation Bar, Banners, Empty State, Loading State, Overscroll Footer
 - **Feedback**: Toast, Alerts & Errors, Progress, Haptics
 - **Overlays**: Action Sheet, Enum Selection, Date Picker, Tip View, Card Page, Card Panel, Floating Button
-- **Media**: Photo Grid, Photo Browser, Photo Crop, QR Code, Share
+- **Media**: Photo Grid, Photo Browser, Photo Crop, QR Code, Share, Dominant Color
 - **Extensions**: Shadows, Borders & Radius, Fade Animations
 
 ---
@@ -199,8 +199,8 @@ LumiKit/
 │   │   │                      # LMKPhotoGridCell, LMKPhotoEXIFService, LMKPhotoBrowserConfig
 │   │   ├── QRCode/            # LMKQRCodeGenerator
 │   │   ├── Share/             # LMKShareService, LMKSharePreviewViewController
-│   │   └── Utilities/         # LMKDeviceHelper, LMKKeyboardObserver,
-│   │                          # LMKSceneUtil, LMKImageUtil, LMKMarkdownRenderer
+│   │   └── Utilities/         # LMKDeviceHelper, LMKKeyboardObserver, LMKSceneUtil,
+│   │                          # LMKImageUtil, LMKDominantColorExtractor, LMKMarkdownRenderer
 │   └── LumiKitLottie/         # LMKLottieRefreshControl
 ├── Tests/
 │   ├── LumiKitCoreTests/      # 76 tests, 11 suites — mirrors LumiKitCore/ subfolders
@@ -421,6 +421,7 @@ LumiKitUI includes device-aware helpers and system observers:
 | `LMKDeviceHelper` | Device type detection (`.iPhone`, `.iPad`, `.macCatalyst`), screen size classification, notch detection |
 | `LMKKeyboardObserver` | Keyboard show/hide observer with height and animation duration info |
 | `LMKImageUtil` | SF Symbol creation (`makeSymbolImage` with background), `CVPixelBuffer` to JPEG conversion |
+| `LMKDominantColorExtractor` | RGB-histogram dominant color extraction. `dominantColor(from:ignoringTransparent:strategy:)` returns one color: `.modal` (default, densest bucket = subject identity), `.average` (mean = overall vibe), `.vibrant` (most saturated = accent color). `dominantColors(from:count:ignoringTransparent:)` returns a top-N palette ordered by frequency. Pass a subject-lifted PNG with `ignoringTransparent: true` for hard-edge accuracy |
 | `LMKMarkdownRenderer` | Markdown-to-attributed-string rendering: `render()` for inline (bold/italic), `renderFull()` for long-form content (headings, lists, line breaks preserved) |
 | `LMKSceneUtil` | Key window and connected scene retrieval |
 

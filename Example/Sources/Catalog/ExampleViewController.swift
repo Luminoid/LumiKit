@@ -91,6 +91,12 @@ private let exampleSections: [ExampleSection] = [
         ExampleItem(title: "Photo Crop", subtitle: "Crop with aspect ratios and zoom", iconName: "crop", makeViewController: { PhotoCropDetailViewController() }),
         ExampleItem(title: "QR Code", subtitle: "Generate QR codes from text", iconName: "qrcode", makeViewController: { QRCodeDetailViewController() }),
         ExampleItem(title: "Share", subtitle: "Share preview sheet and share service", iconName: "square.and.arrow.up", makeViewController: { ShareDetailViewController() }),
+        ExampleItem(
+            title: "Dominant Color",
+            subtitle: "Modal RGB-histogram color extraction with subject-lifted mode",
+            iconName: "eyedropper.halffull",
+            makeViewController: { DominantColorDetailViewController() }
+        ),
     ]),
     // UIKit extension demos
     ExampleSection(title: "Extensions", items: [
