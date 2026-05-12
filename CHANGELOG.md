@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.1] - 2026-05-11
+
+### Added
+
+- **Swift Package Index integration** — Added `.spi.yml` enabling SPI-hosted DocC at `https://swiftpackageindex.com/Luminoid/LumiKit/documentation` for `LumiKitCore`, `LumiKitUI`, `LumiKitNetwork`, and `LumiKitLottie`. README now shows SPI Swift-versions + platforms badges.
+
 ## [0.7.0] - 2026-05-10
 
 ### Added
@@ -306,7 +312,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - All configurable strings use module-level `nonisolated(unsafe)` vars for localization
 - MIT License
 
-[Unreleased]: https://github.com/Luminoid/LumiKit/compare/0.7.0...HEAD
+[Unreleased]: https://github.com/Luminoid/LumiKit/compare/0.7.1...HEAD
+[0.7.1]: https://github.com/Luminoid/LumiKit/compare/0.7.0...0.7.1
 [0.7.0]: https://github.com/Luminoid/LumiKit/compare/0.6.0...0.7.0
 [0.6.0]: https://github.com/Luminoid/LumiKit/compare/0.5.0...0.6.0
 [0.5.0]: https://github.com/Luminoid/LumiKit/compare/0.4.0...0.5.0

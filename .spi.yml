@@ -1,0 +1,12 @@
+version: 1
+builder:
+  configs:
+    - documentation_targets:
+        - LumiKitCore
+        - LumiKitUI
+        - LumiKitNetwork
+        - LumiKitLottie
+      platform: ios
+      scheme: LumiKit-Package
+    - platform: macos-xcodebuild
+      scheme: LumiKit-Package
