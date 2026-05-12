@@ -103,6 +103,7 @@ private let exampleSections: [ExampleSection] = [
         ExampleItem(title: "Shadows", subtitle: "Shadow presets and lmk_applyShadow", iconName: "shadow", makeViewController: { ShadowDetailViewController() }),
         ExampleItem(title: "Borders & Radius", subtitle: "Borders, corner radius, and circular views", iconName: "square.dashed", makeViewController: { BorderDetailViewController() }),
         ExampleItem(title: "Fade Animations", subtitle: "lmk_fadeIn and lmk_fadeOut", iconName: "circle.lefthalf.filled", makeViewController: { FadeDetailViewController() }),
+        ExampleItem(title: "Cell Highlight", subtitle: "lmk_applyCustomHighlight and lmk_configureCustomHighlight", iconName: "hand.tap.fill", makeViewController: { HighlightDetailViewController() }),
     ]),
 ]
 
