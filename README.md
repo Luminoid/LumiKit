@@ -641,8 +641,8 @@ LumiKitCore has no default isolation and is safe to use from any concurrency con
 
 | App | Description |
 |-----|-------------|
-| [Plantfolio Plus](https://luminoid.github.io/plantfolio-site) | Plant care, watering schedules, collections, and photos for iOS, iPadOS, and Mac |
-| Petfolio | Pet care, health tracking, vet visits, food inventory for iOS, iPadOS, and Mac |
+| [Plantfolio Plus](https://plantfolio.luminoid.dev) | Plant care, watering schedules, collections, and photos for iOS, iPadOS, and Mac |
+| [Petfolio](https://petfolio.luminoid.dev) | Pet care, health tracking, vet visits, food inventory for iOS, iPadOS, and Mac |
 
 ---
 
@@ -653,7 +653,6 @@ LumiKitCore has no default isolation and is safe to use from any concurrency con
 - [ ] Set up GitHub Actions CI (test on push/PR — iOS Simulator + Mac Catalyst)
 - [ ] Add SECURITY.md
 - [ ] Add DocC API reference documentation
-- [ ] Register on [Swift Package Index](https://swiftpackageindex.com)
 
 ---
 
