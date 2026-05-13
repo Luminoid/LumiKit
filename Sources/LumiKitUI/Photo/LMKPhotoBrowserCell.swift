@@ -69,7 +69,6 @@ public final class LMKPhotoBrowserCell: UICollectionViewCell {
         container.layer.cornerRadius = 11
         container.clipsToBounds = true
         container.isHidden = true
-        container.isUserInteractionEnabled = false
 
         let symbolConfig = UIImage.SymbolConfiguration(pointSize: 12, weight: .semibold)
         let icon = UIImageView(image: UIImage(systemName: "livephoto", withConfiguration: symbolConfig))
@@ -93,6 +92,18 @@ public final class LMKPhotoBrowserCell: UICollectionViewCell {
                 UIEdgeInsets(top: 4, left: 8, bottom: 4, right: 8)
             )
         }
+
+        #if targetEnvironment(macCatalyst)
+            // On Mac there's no long-press to trigger PHLivePhotoView playback;
+            // hover the LIVE badge to play, exit to stop. Matches the cursor-
+            // discoverable toggle pattern on macOS Photos.
+            container.isUserInteractionEnabled = true
+            let hover = UIHoverGestureRecognizer(target: self, action: #selector(handleLiveBadgeHover(_:)))
+            container.addGestureRecognizer(hover)
+            container.addInteraction(UIPointerInteraction(delegate: self))
+        #else
+            container.isUserInteractionEnabled = false
+        #endif
         return container
     }()
 
@@ -192,10 +203,16 @@ public final class LMKPhotoBrowserCell: UICollectionViewCell {
             make.height.equalTo(22)
         }
 
-        // Pinch gesture to track zoom anchor (center of pinch); zoom is still done by scroll view
-        let pinchGesture = UIPinchGestureRecognizer(target: self, action: #selector(handlePinch(_:)))
-        pinchGesture.delegate = self
-        scrollView.addGestureRecognizer(pinchGesture)
+        // Pinch gesture to track zoom anchor (center of pinch); zoom is still done by scroll view.
+        // Mac Catalyst: trackpad pinch wasn't reaching the scroll view's native zoom while this
+        // custom recognizer was attached (zoom-in stayed at 1x). The custom recognizer only adds
+        // sub-1x / over-3x rubber-band, which trackpad users don't expect anyway, so it's
+        // dropped on Mac to let the scroll view's built-in pinch handle zoom unimpeded.
+        #if !targetEnvironment(macCatalyst)
+            let pinchGesture = UIPinchGestureRecognizer(target: self, action: #selector(handlePinch(_:)))
+            pinchGesture.delegate = self
+            scrollView.addGestureRecognizer(pinchGesture)
+        #endif
     }
 
     @objc private func handlePinch(_ gesture: UIPinchGestureRecognizer) {
@@ -291,6 +308,10 @@ public final class LMKPhotoBrowserCell: UICollectionViewCell {
         imageView.isHidden = true
         liveBadge.isHidden = false
         liveBadge.alpha = 1
+        // Active content view just changed (imageView → livePhotoView), so reset zoom
+        // to drop any transform on the previous viewForZooming and let the scroll view
+        // re-query for the new active view on the next pinch.
+        resetZoom()
     }
 
     public func updateImageSize(image: UIImage, screenSize: CGSize) {
@@ -308,12 +329,26 @@ public final class LMKPhotoBrowserCell: UICollectionViewCell {
         scrollView.setZoomScale(Self.minimumZoomScale, animated: false)
         scrollView.transform = .identity
         scrollView.contentOffset = .zero
+        // setZoomScale only clears the current viewForZooming's transform; clear both
+        // explicitly so a reused cell that switches between still and live state doesn't
+        // leak a transform from the previous active view.
+        imageView.transform = .identity
+        livePhotoView.transform = .identity
         setNeedsLayout()
         layoutIfNeeded()
     }
 
     public var isZoomed: Bool {
         scrollView.zoomScale > Self.zoomThreshold
+    }
+
+    /// The currently visible content view — `livePhotoView` when displaying a Live Photo,
+    /// otherwise `imageView`. UIScrollView zooms whatever this returns from `viewForZooming`,
+    /// so swapping it lets the scroll view's native zoom anchor track the actually-visible
+    /// view (PHLivePhotoView's internal layers don't render correctly under a manually
+    /// mirrored transform on a sibling view).
+    private var activeContentView: UIView {
+        livePhotoView.isHidden ? imageView : livePhotoView
     }
 
     /// Double-tap to zoom: zoom to 2x centered on point (in cell coordinates), or reset to 1x if already zoomed.
@@ -362,24 +397,26 @@ public final class LMKPhotoBrowserCell: UICollectionViewCell {
 
     private func centerImageView() {
         let scrollViewSize = scrollView.bounds.size
-        let imageViewSize = imageView.frame.size
+        // Use the active content view so the inset reflects the actually-zoomed view
+        // (livePhotoView for live photos — imageView is un-transformed in that case
+        // since viewForZooming returns livePhotoView).
+        let imageViewSize = activeContentView.frame.size
 
         guard scrollViewSize.width > 0, scrollViewSize.height > 0,
               imageViewSize.width > 0, imageViewSize.height > 0 else {
             return
         }
 
-        // Calculate insets to center the image when it's smaller than scroll view
-        var horizontalInset: CGFloat = 0
-        var verticalInset: CGFloat = 0
-
-        if imageViewSize.width < scrollViewSize.width {
-            horizontalInset = (scrollViewSize.width - imageViewSize.width) / 2
-        }
-
-        if imageViewSize.height < scrollViewSize.height {
-            verticalInset = (scrollViewSize.height - imageViewSize.height) / 2
-        }
+        // contentInset serves two roles, and `abs` covers both:
+        //   * image smaller than scroll view → inset = (scrollSize - imageSize)/2 centers it.
+        //   * image larger than scroll view (zoomed in) → inset = (imageSize - scrollSize)/2
+        //     enables negative contentOffset so the user can pan to the image edges.
+        // The image view is centered in the scroll view via Auto Layout, so a zoomed-in
+        // image overflows symmetrically into negative content space — without this inset,
+        // contentOffset is clamped at 0 and the top/leading edges become unreachable.
+        // Most visible on vertical live photos at 2x+: both dimensions overflow.
+        let horizontalInset = abs(scrollViewSize.width - imageViewSize.width) / 2
+        let verticalInset = abs(scrollViewSize.height - imageViewSize.height) / 2
 
         scrollView.contentInset = UIEdgeInsets(
             top: verticalInset,
@@ -488,7 +525,7 @@ public final class LMKPhotoBrowserCell: UICollectionViewCell {
 
 extension LMKPhotoBrowserCell: UIScrollViewDelegate {
     public func viewForZooming(in scrollView: UIScrollView) -> UIView? {
-        imageView
+        activeContentView
     }
 
     public func scrollViewWillBeginDragging(_ scrollView: UIScrollView) {
@@ -641,3 +678,31 @@ extension LMKPhotoBrowserCell: UIGestureRecognizerDelegate {
         true
     }
 }
+
+#if targetEnvironment(macCatalyst)
+
+    // MARK: - Mac Catalyst Live Photo Hover
+
+    fileprivate extension LMKPhotoBrowserCell {
+        @objc func handleLiveBadgeHover(_ recognizer: UIHoverGestureRecognizer) {
+            guard livePhotoView.livePhoto != nil, !livePhotoView.isHidden else { return }
+            switch recognizer.state {
+            case .began:
+                livePhotoView.startPlayback(with: .full)
+            case .ended, .cancelled, .failed:
+                livePhotoView.stopPlayback()
+            default:
+                break
+            }
+        }
+    }
+
+    // MARK: - UIPointerInteractionDelegate
+
+    extension LMKPhotoBrowserCell: UIPointerInteractionDelegate {
+        public func pointerInteraction(_ interaction: UIPointerInteraction, styleFor _: UIPointerRegion) -> UIPointerStyle? {
+            guard let view = interaction.view else { return nil }
+            return UIPointerStyle(effect: .highlight(UITargetedPreview(view: view)))
+        }
+    }
+#endif
