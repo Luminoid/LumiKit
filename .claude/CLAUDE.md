@@ -1,7 +1,7 @@
 # LumiKit — Claude Code Guide
 
 > Shared Swift Package providing design tokens, UI components, and utilities for Lumi apps.
-> **Inherits general Swift/UIKit standards from [workspace CLAUDE.md](../../.claude/CLAUDE.md).** This file contains LumiKit-specific rules only.
+> Swift 6.2, UIKit, SnapKit, iOS 18+ / Mac Catalyst 18+ / macOS 15+.
 
 ---
 
@@ -410,13 +410,11 @@ public final class LMKExampleViewController: UIViewController {
 ```
 
 **Why all three?**
-- `overrideUserInterfaceStyle = .dark` — forces dark appearance for colors, materials, and vibrancy
-- `preferredStatusBarStyle = .lightContent` — explicit is safer than relying on system inference from interface style
-- `modalPresentationCapturesStatusBarAppearance = true` — required for modally presented VCs to control the status bar; without this, the **presenting** VC's status bar style is used
+- `overrideUserInterfaceStyle = .dark` forces dark appearance for colors, materials, and vibrancy
+- `preferredStatusBarStyle = .lightContent` is explicit (safer than relying on system inference from interface style)
+- `modalPresentationCapturesStatusBarAppearance = true` is required for modally presented VCs to control the status bar; without it, the **presenting** VC's status bar style is used
 
-**UINavigationController gotcha**: UIKit asks the **container** (not the child) for `preferredStatusBarStyle`. If a forced-dark VC is embedded in a navigation controller, either:
-- Subclass the nav controller and override `childForStatusBarStyle` to return `topViewController`
-- Or set `navigationBar.barStyle = .black` to force light status bar content
+**UINavigationController gotcha**: UIKit asks the **container** (not the child) for `preferredStatusBarStyle`. If a forced-dark VC is embedded in a navigation controller, either subclass the nav controller and override `childForStatusBarStyle` to return `topViewController`, or set `navigationBar.barStyle = .black` to force light status bar content.
 
 ---
 
@@ -442,4 +440,4 @@ public final class LMKExampleViewController: UIViewController {
 
 ---
 
-*Optimized for Claude Code • Last updated: 2026-04-19*
+*Optimized for Claude Code. Run `/doc-sync` to refresh file counts and stats.*
