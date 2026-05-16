@@ -59,6 +59,8 @@ public final class LMKCountdownConfirmationViewController: UIViewController {
         static let cardWidth: CGFloat = 340
         static let cardHorizontalInset: CGFloat = 32
         static let dimmingAlpha: CGFloat = 0.5
+        static let buttonHeight: CGFloat = 48
+        static let borderWidth: CGFloat = 1
     }
 
     // MARK: - Public State (read-only, for tests + accessibility)
@@ -101,12 +103,25 @@ public final class LMKCountdownConfirmationViewController: UIViewController {
         return view
     }()
 
+    /// Outer wrapper that paints the hairline border. `CALayer.borderColor`
+    /// + `borderWidth` always traces a circular-arc path even when
+    /// `cornerCurve = .continuous`, breaking the squircle silhouette at
+    /// large radii. Nesting an inset inner card over a filled outer view
+    /// makes the visible 1pt edge follow the same continuous corner path
+    /// as the fill, and uses a dynamic `UIColor` so light/dark adapts
+    /// automatically (no `registerForTraitChanges` needed).
+    private lazy var cardBorder: UIView = {
+        let view = UIView()
+        view.backgroundColor = LMKColor.divider
+        view.layer.cornerRadius = LMKCornerRadius.xxl
+        view.lmk_applyShadow(LMKShadow.card())
+        return view
+    }()
+
     private lazy var cardView: UIView = {
         let view = UIView()
         view.backgroundColor = LMKColor.backgroundPrimary
-        view.layer.cornerRadius = LMKCornerRadius.large
-        view.layer.cornerCurve = .continuous
-        view.lmk_applyShadow(LMKShadow.card())
+        view.layer.cornerRadius = LMKCornerRadius.xxl - Constants.borderWidth
         return view
     }()
 
@@ -223,8 +238,8 @@ public final class LMKCountdownConfirmationViewController: UIViewController {
             make.edges.equalToSuperview()
         }
 
-        view.addSubview(cardView)
-        cardView.snp.makeConstraints { make in
+        view.addSubview(cardBorder)
+        cardBorder.snp.makeConstraints { make in
             make.center.equalToSuperview()
             // High-priority preferred width; on narrow screens the required
             // horizontal-inset constraints below override it so the card
@@ -232,6 +247,11 @@ public final class LMKCountdownConfirmationViewController: UIViewController {
             make.width.equalTo(Constants.cardWidth).priority(.high)
             make.leading.greaterThanOrEqualToSuperview().inset(Constants.cardHorizontalInset)
             make.trailing.lessThanOrEqualToSuperview().inset(Constants.cardHorizontalInset)
+        }
+
+        cardBorder.addSubview(cardView)
+        cardView.snp.makeConstraints { make in
+            make.edges.equalToSuperview().inset(Constants.borderWidth)
         }
 
         let textStack = UIStackView(arrangedSubviews: [titleLabel, messageLabel])
@@ -244,6 +264,9 @@ public final class LMKCountdownConfirmationViewController: UIViewController {
         buttonStack.spacing = LMKSpacing.medium
         buttonStack.distribution = .fillEqually
         buttonStack.alignment = .fill
+        buttonStack.snp.makeConstraints { make in
+            make.height.equalTo(Constants.buttonHeight)
+        }
 
         let containerStack = UIStackView(arrangedSubviews: [textStack, buttonStack])
         containerStack.axis = .vertical

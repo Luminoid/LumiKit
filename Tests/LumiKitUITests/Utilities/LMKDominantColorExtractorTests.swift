@@ -101,7 +101,7 @@ struct LMKDominantColorExtractorTests {
         )
         let modal = LMKDominantColorExtractor.dominantColor(from: image, strategy: .modal)
         let average = LMKDominantColorExtractor.dominantColor(from: image, strategy: .average)
-        let (mr, mg, mb) = rgb(modal)
+        let (mr, _, mb) = rgb(modal)
         let (ar, ag, ab) = rgb(average)
         // Modal picks one cluster (either red-ish or blue-ish dominates a single bucket)
         let modalIsRedOrBlue = (mr > 0.7 && mb < 0.3) || (mb > 0.7 && mr < 0.3)

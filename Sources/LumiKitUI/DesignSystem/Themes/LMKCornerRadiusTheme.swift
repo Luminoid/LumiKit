@@ -19,18 +19,21 @@ public nonisolated struct LMKCornerRadiusTheme: Sendable {
     public var medium: CGFloat
     public var large: CGFloat
     public var xl: CGFloat
+    public var xxl: CGFloat
 
     public init(
         xs: CGFloat = 4,
         small: CGFloat = 8,
         medium: CGFloat = 12,
         large: CGFloat = 16,
-        xl: CGFloat = 20
+        xl: CGFloat = 20,
+        xxl: CGFloat = 40
     ) {
         self.xs = max(0, xs)
         self.small = max(0, small)
         self.medium = max(0, medium)
         self.large = max(0, large)
         self.xl = max(0, xl)
+        self.xxl = max(0, xxl)
     }
 }

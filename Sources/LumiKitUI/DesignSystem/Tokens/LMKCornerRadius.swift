@@ -24,4 +24,5 @@ public enum LMKCornerRadius {
     public static var medium: CGFloat { config.medium }
     public static var large: CGFloat { config.large }
     public static var xl: CGFloat { config.xl }
+    public static var xxl: CGFloat { config.xxl }
 }

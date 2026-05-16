@@ -18,6 +18,7 @@ struct LMKCornerRadiusTests {
         #expect(LMKCornerRadius.medium > LMKCornerRadius.small)
         #expect(LMKCornerRadius.large > LMKCornerRadius.medium)
         #expect(LMKCornerRadius.xl > LMKCornerRadius.large)
+        #expect(LMKCornerRadius.xxl > LMKCornerRadius.xl)
     }
 }
 
@@ -33,6 +34,7 @@ struct LMKCornerRadiusConfigurationTests {
         #expect(config.medium == 12)
         #expect(config.large == 16)
         #expect(config.xl == 20)
+        #expect(config.xxl == 40)
     }
 
     @Test
