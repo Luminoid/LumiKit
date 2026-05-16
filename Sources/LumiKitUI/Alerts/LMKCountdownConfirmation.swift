@@ -103,13 +103,11 @@ public final class LMKCountdownConfirmationViewController: UIViewController {
         return view
     }()
 
-    /// Outer wrapper that paints the hairline border. `CALayer.borderColor`
-    /// + `borderWidth` always traces a circular-arc path even when
-    /// `cornerCurve = .continuous`, breaking the squircle silhouette at
-    /// large radii. Nesting an inset inner card over a filled outer view
-    /// makes the visible 1pt edge follow the same continuous corner path
-    /// as the fill, and uses a dynamic `UIColor` so light/dark adapts
-    /// automatically (no `registerForTraitChanges` needed).
+    /// Outer wrapper that paints the hairline border. A filled outer view
+    /// with the inner card inset by `borderWidth` produces a uniform 1pt
+    /// ring along the same corner-radius profile as the fill, and uses a
+    /// dynamic `UIColor` so light/dark adapts automatically (no
+    /// `registerForTraitChanges` needed).
     private lazy var cardBorder: UIView = {
         let view = UIView()
         view.backgroundColor = LMKColor.divider

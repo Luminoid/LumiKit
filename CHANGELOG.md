@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-05-15
+
+### Added
+
+- **`LMKCornerRadius.xxl`** — 40pt corner-radius token for modal-card surfaces.
+- **LMKHighlightable** — Public protocol unifying `lmk_applyCustomHighlight(highlighted:animated:)` across `UITableViewCell` and `UICollectionViewCell` (both conform retroactively). Route from `setHighlighted` / `setSelected` on table cells, `isHighlighted` / `isSelected` `didSet` on collection cells.
+- **LMKCountdownConfirmationViewController** — Custom modal dialog VC backing `LMKCountdownConfirmation.present(...)`; public for testing only.
+
+### Changed
+
+- **LMKCountdownConfirmation** — Rebuilt on a custom `UIViewController` (no `UIAlertController`) so the live countdown title renders identically on iOS and Mac Catalyst. `LMKCornerRadius.xxl` card, capsule buttons in a 48pt-height stack, hairline edge via a `LMKColor.divider` outer view inset by 1pt.
+- **Cell highlight overlay** — Dark mode uses translucent white (was black-on-dark, invisible on already-dark cards). Overlay is installed pre-animation so corner radius resolves on the first frame, fixing a one-frame square flicker.
+
+### Fixed
+
+- **LMKPhotoBrowserCell** — Pinch-to-zoom anchors at the gesture focal point (was view center); edge pans at zoom > 1 hand off to the paging scroll view by swapping `viewForZooming`. LIVE badge plays on Mac Catalyst pointer hover.
+
 ## [0.7.1] - 2026-05-11
 
 ### Added
@@ -312,7 +329,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - All configurable strings use module-level `nonisolated(unsafe)` vars for localization
 - MIT License
 
-[Unreleased]: https://github.com/Luminoid/LumiKit/compare/0.7.1...HEAD
+[Unreleased]: https://github.com/Luminoid/LumiKit/compare/0.8.0...HEAD
+[0.8.0]: https://github.com/Luminoid/LumiKit/compare/0.7.1...0.8.0
 [0.7.1]: https://github.com/Luminoid/LumiKit/compare/0.7.0...0.7.1
 [0.7.0]: https://github.com/Luminoid/LumiKit/compare/0.6.0...0.7.0
 [0.6.0]: https://github.com/Luminoid/LumiKit/compare/0.5.0...0.6.0
