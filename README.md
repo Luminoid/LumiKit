@@ -14,29 +14,30 @@ Shared Swift Package providing **design tokens**, **UI components**, and **utili
 ## Table of Contents
 
 1. [Overview](#overview)
-2. [Requirements](#requirements)
-3. [Installation](#installation)
-4. [Quick Start](#quick-start)
-5. [Package Structure](#package-structure)
-6. [Design System](#design-system)
-7. [Components](#components)
-8. [Controls](#controls)
-9. [Extensions](#extensions)
-10. [Animation & Haptics](#animation--haptics)
-11. [Core Utilities](#core-utilities)
-12. [UI Utilities](#ui-utilities)
-13. [Photo](#photo)
-14. [Share](#share)
-15. [QR Code](#qr-code)
-16. [Error Handling](#error-handling)
-17. [Debug Tools](#debug-tools-debug-builds-only)
-18. [Build & Test](#build--test)
-19. [Release](#release)
-20. [Dependencies](#dependencies)
-21. [Built with LumiKit](#built-with-lumikit)
-22. [TODO](#todo)
-23. [License](#license)
-24. [Changelog](#changelog)
+2. [Screenshots](#screenshots)
+3. [Requirements](#requirements)
+4. [Installation](#installation)
+5. [Quick Start](#quick-start)
+6. [Package Structure](#package-structure)
+7. [Design System](#design-system)
+8. [Components](#components)
+9. [Controls](#controls)
+10. [Extensions](#extensions)
+11. [Animation & Haptics](#animation--haptics)
+12. [Core Utilities](#core-utilities)
+13. [UI Utilities](#ui-utilities)
+14. [Photo](#photo)
+15. [Share](#share)
+16. [QR Code](#qr-code)
+17. [Error Handling](#error-handling)
+18. [Debug Tools](#debug-tools-debug-builds-only)
+19. [Build & Test](#build--test)
+20. [Release](#release)
+21. [Dependencies](#dependencies)
+22. [Built with LumiKit](#built-with-lumikit)
+23. [TODO](#todo)
+24. [License](#license)
+25. [Changelog](#changelog)
 
 ---
 
@@ -56,6 +57,24 @@ LumiKit is organized into four targets so apps can import only what they need:
 - **LumiKitNetworkTests**: 65 tests (4 suites)
 - **LumiKitUITests**: 725 tests (106 suites)
 - **LumiKitLottieTests**: 7 tests (1 suite)
+
+---
+
+## Screenshots
+
+From the Example app (`Example/LumiKitExample.xcodeproj`):
+
+### Example app sections
+
+| Design System & Controls | Components | Feedback & Overlays | Media & Extensions |
+|---|---|---|---|
+| <img src="docs/images/lumikit_1.png" alt="Design System & Controls" width="200"> | <img src="docs/images/lumikit_2.png" alt="Components" width="200"> | <img src="docs/images/lumikit_3.png" alt="Feedback & Overlays" width="200"> | <img src="docs/images/lumikit_4.png" alt="Media & Extensions" width="200"> |
+
+### Highlights
+
+| Segmented Control | Photo Grid | Dominant Color |
+|---|---|---|
+| <img src="docs/images/lumikit_5.png" alt="Segmented Control" width="200"> | <img src="docs/images/lumikit_6.png" alt="Photo Grid" width="200"> | <img src="docs/images/lumikit_7.png" alt="Dominant Color" width="200"> |
 
 ---
 
