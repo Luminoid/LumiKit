@@ -4,8 +4,9 @@
 
 # LumiKit
 
-[![](https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2FLuminoid%2FLumiKit%2Fbadge%3Ftype%3Dswift-versions)](https://swiftpackageindex.com/Luminoid/LumiKit)
-[![](https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2FLuminoid%2FLumiKit%2Fbadge%3Ftype%3Dplatforms)](https://swiftpackageindex.com/Luminoid/LumiKit)
+[![Swift Versions](https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2FLuminoid%2FLumiKit%2Fbadge%3Ftype%3Dswift-versions)](https://swiftpackageindex.com/Luminoid/LumiKit)
+[![Platforms](https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2FLuminoid%2FLumiKit%2Fbadge%3Ftype%3Dplatforms)](https://swiftpackageindex.com/Luminoid/LumiKit)
+[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
 Shared Swift Package providing **design tokens**, **UI components**, and **utilities** for Lumi apps. Built with Swift 6.2 strict concurrency, UIKit + SnapKit, and a fully configurable theming system.
 
