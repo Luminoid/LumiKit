@@ -66,45 +66,6 @@ final class ColorsDetailViewController: DetailViewController {
             ("Secondary", LMKColor.backgroundSecondary),
             ("Tertiary", LMKColor.backgroundTertiary),
         ])
-
-        addDivider()
-        addSectionHeader("Hex Utilities")
-        let hexColor = UIColor(lmk_hex: "#4CAF7D") ?? .clear
-        let hexRow = UIStackView(lmk_axis: .horizontal, spacing: LMKSpacing.small)
-        hexRow.alignment = .center
-
-        let swatch = UIView()
-        swatch.backgroundColor = hexColor
-        swatch.layer.cornerRadius = LMKCornerRadius.small
-        swatch.snp.makeConstraints { $0.width.height.equalTo(40) }
-
-        let hexLabel = LMKLabelFactory.caption(text: "UIColor(lmk_hex: \"#4CAF7D\") \u{2192} \(hexColor.lmk_hexString)")
-        hexRow.addArrangedSubview(swatch)
-        hexRow.addArrangedSubview(hexLabel)
-        stack.addArrangedSubview(hexRow)
-
-        let contrastRow = UIStackView(lmk_axis: .horizontal, spacing: LMKSpacing.small)
-        contrastRow.distribution = .fillEqually
-        for (name, color) in [("Light bg", UIColor.white), ("Dark bg", UIColor.black)] {
-            let box = UIView()
-            box.backgroundColor = color
-            box.layer.cornerRadius = LMKCornerRadius.small
-            box.clipsToBounds = true
-            let label = UILabel()
-            label.text = "Auto contrast"
-            label.textColor = color.lmk_contrastingTextColor
-            label.font = LMKTypography.caption
-            label.textAlignment = .center
-            box.addSubview(label)
-            label.snp.makeConstraints { $0.edges.equalToSuperview().inset(LMKSpacing.small) }
-            box.snp.makeConstraints { $0.height.equalTo(40) }
-
-            let col = UIStackView(lmk_axis: .vertical, spacing: LMKSpacing.xs)
-            col.addArrangedSubview(box)
-            col.addArrangedSubview(LMKLabelFactory.small(text: name))
-            contrastRow.addArrangedSubview(col)
-        }
-        stack.addArrangedSubview(contrastRow)
     }
 
     private func addColorRow(_ title: String, _ colors: [(String, UIColor)]) {

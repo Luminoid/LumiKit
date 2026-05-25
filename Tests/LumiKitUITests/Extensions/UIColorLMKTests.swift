@@ -12,6 +12,46 @@ import UIKit
 @MainActor
 struct UIColorLMKTests {
     @Test
+    func `UInt32 hex init produces matching RGB`() {
+        let color = UIColor(lmk_hex: 0x7C5CFF)
+        var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
+        color.getRed(&r, green: &g, blue: &b, alpha: &a)
+        #expect(abs(r - 0x7C / 255.0) < 0.01)
+        #expect(abs(g - 0x5C / 255.0) < 0.01)
+        #expect(abs(b - 0xFF / 255.0) < 0.01)
+        #expect(abs(a - 1.0) < 0.01)
+    }
+
+    @Test
+    func `UInt32 hex init with alpha`() {
+        let color = UIColor(lmk_hex: 0x7C5CFF, alpha: 0.5)
+        var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
+        color.getRed(&r, green: &g, blue: &b, alpha: &a)
+        #expect(abs(a - 0.5) < 0.01)
+    }
+
+    @Test
+    func `UInt32 hex init ignores bits above 24`() {
+        // 0xFF7C5CFF should produce the same RGB as 0x7C5CFF (alpha byte ignored).
+        let masked = UIColor(lmk_hex: 0xFF7C_5CFF)
+        let bare = UIColor(lmk_hex: 0x7C5CFF)
+        #expect(masked.lmk_hexString == bare.lmk_hexString)
+    }
+
+    @Test
+    func `Dynamic light dark resolves correctly`() {
+        let color = UIColor.lmk_dynamic(lightHex: 0x694ED9, darkHex: 0x553BBF)
+        let lightTraits = UITraitCollection(userInterfaceStyle: .light)
+        let darkTraits = UITraitCollection(userInterfaceStyle: .dark)
+
+        let lightVariant = color.resolvedColor(with: lightTraits)
+        let darkVariant = color.resolvedColor(with: darkTraits)
+
+        #expect(lightVariant.lmk_hexString == "694ED9")
+        #expect(darkVariant.lmk_hexString == "553BBF")
+    }
+
+    @Test
     func `Hex init with # prefix`() {
         let color = UIColor(lmk_hex: "#FF0000")
         #expect(color != nil)

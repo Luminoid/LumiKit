@@ -292,6 +292,97 @@ final class SwitchDetailViewController: DetailViewController {
     }
 }
 
+// MARK: - Slider
+
+final class SliderDetailViewController: DetailViewController {
+    override func viewDidLoad() {
+        super.viewDidLoad()
+
+        addSectionHeader("Basic (continuous)")
+        stack.addArrangedSubview(LMKLabelFactory.caption(
+            text: "Bare slider — no caption, no readout. Range 0…1, continuous."
+        ))
+        let basicLabel = LMKLabelFactory.body(text: "Value: 0.00")
+        basicLabel.textAlignment = .center
+        let basic = LMKSlider()
+        basic.valueChangedHandler = { value in
+            basicLabel.text = String(format: "Value: %.2f", value)
+        }
+        stack.addArrangedSubview(basic)
+        stack.addArrangedSubview(basicLabel)
+
+        addDivider()
+        addSectionHeader("Caption + Live Readout")
+        stack.addArrangedSubview(LMKLabelFactory.caption(
+            text: "caption + valueFormatter render a header row above the track. Range 0…100, continuous."
+        ))
+        let withCaption = LMKSlider()
+        withCaption.caption = "Brightness"
+        withCaption.minimumValue = 0
+        withCaption.maximumValue = 100
+        withCaption.value = 40
+        withCaption.valueFormatter = { "\(Int($0))%" }
+        stack.addArrangedSubview(withCaption)
+
+        addDivider()
+        addSectionHeader("Stepped (snap to multiples)")
+        stack.addArrangedSubview(LMKLabelFactory.caption(
+            text: "step = 10 snaps to 0, 10, 20, …, 100. The slider thumb glides during drag and "
+                + "lands on exact multiples on release. Useful for indexed parameters (severity, "
+                + "zoom levels, quantized intensity)."
+        ))
+        let stepped = LMKSlider()
+        stepped.caption = "Severity"
+        stepped.minimumValue = 0
+        stepped.maximumValue = 100
+        stepped.step = 10
+        stepped.value = 50
+        stepped.valueFormatter = { "\(Int($0))" }
+        stack.addArrangedSubview(stepped)
+
+        addDivider()
+        addSectionHeader("Negative Range")
+        stack.addArrangedSubview(LMKLabelFactory.caption(
+            text: "Range −2…+2 (EV stops). step = 0.5. Formatter shows signed value."
+        ))
+        let ev = LMKSlider()
+        ev.caption = "Exposure"
+        ev.minimumValue = -2
+        ev.maximumValue = 2
+        ev.step = 0.5
+        ev.value = 0
+        ev.valueFormatter = { value in
+            value > 0 ? String(format: "+%.1f EV", value) : String(format: "%.1f EV", value)
+        }
+        stack.addArrangedSubview(ev)
+
+        addDivider()
+        addSectionHeader("Programmatic Reset")
+        stack.addArrangedSubview(LMKLabelFactory.caption(
+            text: "Programmatic value changes are silent — valueChangedHandler only fires on user drag. "
+                + "Tap Reset to see the slider animate without re-firing the handler."
+        ))
+        let resetSlider = LMKSlider()
+        resetSlider.caption = "Volume"
+        resetSlider.minimumValue = 0
+        resetSlider.maximumValue = 1
+        resetSlider.value = 0.75
+        resetSlider.valueFormatter = { String(format: "%.0f%%", $0 * 100) }
+        stack.addArrangedSubview(resetSlider)
+
+        let resetButton = LMKButton(title: "Reset to 50%", style: .ghost(LMKColor.primary))
+        resetButton.tapHandler = { [weak resetSlider] in
+            resetSlider?.setValue(0.5, animated: true)
+        }
+        let resetRow = UIStackView(
+            lmk_axis: .horizontal,
+            alignment: .center,
+            arrangedSubviews: [resetButton, UIView()]
+        )
+        stack.addArrangedSubview(resetRow)
+    }
+}
+
 // MARK: - Toggle Button
 
 final class ToggleButtonDetailViewController: DetailViewController {

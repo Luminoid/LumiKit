@@ -8,6 +8,54 @@
 import UIKit
 
 public extension UIColor {
+    /// Initialize from a 24-bit hex literal in `0xRRGGBB` form.
+    ///
+    /// Compile-time validated (no Optional, no force-unwrap) and avoids the
+    /// string-parsing overhead of the `lmk_hex: String` initializer. Use for
+    /// hardcoded color literals in code — design tokens, theme constants,
+    /// generated themes:
+    ///
+    /// ```swift
+    /// let violet = UIColor(lmk_hex: 0x7C5CFF)
+    /// let withAlpha = UIColor(lmk_hex: 0x7C5CFF, alpha: 0.5)
+    /// ```
+    ///
+    /// `lmk_hex` is the lowest 24 bits (`0x000000`...`0xFFFFFF`). Bits above
+    /// the 24-bit window are ignored, so passing `0xFF7C5CFF` is the same as
+    /// `0x7C5CFF` — pass `alpha` separately rather than packing it into the
+    /// hex.
+    convenience init(lmk_hex: UInt32, alpha: CGFloat = 1.0) {
+        self.init(
+            red: CGFloat((lmk_hex & 0xFF0000) >> 16) / 255.0,
+            green: CGFloat((lmk_hex & 0x00FF00) >> 8) / 255.0,
+            blue: CGFloat(lmk_hex & 0x0000FF) / 255.0,
+            alpha: alpha
+        )
+    }
+
+    /// Initialize a dynamic light/dark color from two 24-bit hex literals.
+    ///
+    /// Trait-aware color that auto-resolves to the appropriate variant. The
+    /// returned `UIColor` uses `UIColor { traitCollection in ... }` under the
+    /// hood, so it tracks user interface style changes automatically.
+    ///
+    /// ```swift
+    /// var primary: UIColor {
+    ///     UIColor(lmk_lightHex: 0x694ED9, darkHex: 0x553BBF)
+    /// }
+    /// ```
+    ///
+    /// Designed for theme files where every color has both a light and dark
+    /// variant. Generated theme code uses this convenience to shrink each
+    /// color declaration from ~5 lines of arithmetic to one line.
+    static func lmk_dynamic(lightHex: UInt32, darkHex: UInt32, alpha: CGFloat = 1.0) -> UIColor {
+        UIColor { traitCollection in
+            traitCollection.userInterfaceStyle == .dark
+                ? UIColor(lmk_hex: darkHex, alpha: alpha)
+                : UIColor(lmk_hex: lightHex, alpha: alpha)
+        }
+    }
+
     /// Initialize from hex string. Supports "#RRGGBB", "RRGGBB", "#RRGGBBAA", "RRGGBBAA".
     ///
     /// ```swift

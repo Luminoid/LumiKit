@@ -27,7 +27,7 @@ private struct ExampleSection {
 private let exampleSections: [ExampleSection] = [
     // Foundation tokens — understand the design system first
     ExampleSection(title: "Design System", items: [
-        ExampleItem(title: "Colors", subtitle: "Primary, semantic, text, and background colors", iconName: "paintpalette", makeViewController: { ColorsDetailViewController() }),
+        ExampleItem(title: "Colors", subtitle: "LMKColor tokens — primary, semantic, text, background", iconName: "paintpalette", makeViewController: { ColorsDetailViewController() }),
         ExampleItem(title: "Typography", subtitle: "Headings, body, caption, scientific name", iconName: "textformat", makeViewController: { TypographyDetailViewController() }),
         ExampleItem(title: "Markdown", subtitle: "Render markdown as attributed strings", iconName: "text.badge.checkmark", makeViewController: { MarkdownDetailViewController() }),
     ]),
@@ -36,6 +36,7 @@ private let exampleSections: [ExampleSection] = [
         ExampleItem(title: "Buttons", subtitle: "Filled, outlined, ghost, icon-only, loading", iconName: "rectangle.and.hand.point.up.left", makeViewController: { ButtonsDetailViewController() }),
         ExampleItem(title: "Segmented Control", subtitle: "Draggable pill indicator, corner styles", iconName: "rectangle.split.3x1", makeViewController: { SegmentedControlDetailViewController() }),
         ExampleItem(title: "Switch", subtitle: "Custom toggle with spring animation", iconName: "switch.2", makeViewController: { SwitchDetailViewController() }),
+        ExampleItem(title: "Slider", subtitle: "Caption, live readout, step-snap, negative range", iconName: "slider.horizontal.3", makeViewController: { SliderDetailViewController() }),
         ExampleItem(title: "Toggle Button", subtitle: "Text button with on/off states", iconName: "togglepower", makeViewController: { ToggleButtonDetailViewController() }),
         ExampleItem(title: "Text Field", subtitle: "Validation states, icons, helper text", iconName: "character.cursor.ibeam", makeViewController: { TextFieldDetailViewController() }),
         ExampleItem(title: "Text View", subtitle: "Multi-line input with character limit", iconName: "text.alignleft", makeViewController: { TextViewDetailViewController() }),
@@ -100,6 +101,7 @@ private let exampleSections: [ExampleSection] = [
     ]),
     // UIKit extension demos
     ExampleSection(title: "Extensions", items: [
+        ExampleItem(title: "UIColor", subtitle: "UIColor+LMK — hex init, dynamic, brightness, contrast", iconName: "swatchpalette", makeViewController: { UIColorDetailViewController() }),
         ExampleItem(title: "Shadows", subtitle: "Shadow presets and lmk_applyShadow", iconName: "shadow", makeViewController: { ShadowDetailViewController() }),
         ExampleItem(title: "Borders & Radius", subtitle: "Borders, corner radius, and circular views", iconName: "square.dashed", makeViewController: { BorderDetailViewController() }),
         ExampleItem(title: "Fade Animations", subtitle: "lmk_fadeIn and lmk_fadeOut", iconName: "circle.lefthalf.filled", makeViewController: { FadeDetailViewController() }),
