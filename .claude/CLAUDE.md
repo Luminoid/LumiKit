@@ -52,7 +52,7 @@ LumiKit/
 │   │   │                     # CardPanelController, CardPanelLayout,
 │   │   │                     # NavigationDirection, OverscrollFooterHelper,
 │   │   │                     # ScrollStackViewController
-│   │   ├── Controls/        # LMKButton, LMKSegmentedControl, LMKSwitch,
+│   │   ├── Controls/        # LMKButton, LMKSegmentedControl, LMKSlider, LMKSwitch,
 │   │   │                    # LMKToggleButton, LMKTextField, LMKTextView
 │   │   ├── DesignSystem/
 │   │   │   ├── Tokens/       # LMKColor, LMKSpacing, LMKCornerRadius, LMKAlpha,
@@ -90,7 +90,7 @@ LumiKit/
 │   │   └── URLSessionConfigurationLMKDebugTests.swift # enableNetworkLogging
 │   ├── LumiKitLottieTests/  # 7 tests, 1 suite
 │   │   └── LMKLottieRefreshControlTests.swift
-│   └── LumiKitUITests/      # 725 tests, 106 suites
+│   └── LumiKitUITests/      # 743 tests, 107 suites
 │       ├── Alerts/          # AlertPresenter, ErrorHandler
 │       ├── Animation/       # AnimationHelper
 │       ├── Components/
@@ -101,7 +101,7 @@ LumiKit/
 │       │                     # FilterChipBar, FloatingButton, Gradient, LoadingState, Progress,
 │       │                     # SearchBar, Skeleton, Toast, TipView, CardPage,
 │       │                     # CardPanel, ScrollStackViewController
-│       ├── Controls/        # Button, SegmentedControl, TextField, TextView, ToggleButton
+│       ├── Controls/        # Button, SegmentedControl, Slider, TextField, TextView, ToggleButton
 │       ├── DesignSystem/
 │       │   ├── Tokens/       # Color, Spacing, CornerRadius, Alpha, Typography, Layout, Shadow
 │       │   ├── Themes/       # AnimationTheme, BadgeTheme, SendableCompliance
@@ -265,6 +265,7 @@ LMKThemeManager.shared.apply(spacing: .init(large: 20))
 |---------|------|---------|
 | `LMKButton` | `open class` | UIButton subclass with 4 styles: `.filled`, `.outlined`, `.ghost` (text-only), `.iconOnly` (circular). Capsule corners, press animation, `isLoading` state. `tapHandler`/`didTapHandler` closures |
 | `LMKSegmentedControl` | `open class` | Custom `UIControl` (NOT `UISegmentedControl`) with sliding pill indicator, spring animation, haptic. `init(items:)`, `selectedSegmentIndex` (`-1` = no selection, hides indicator — matches `UISegmentedControl.noSegment`), `valueChangedHandler`, `fitsSegmentsToContent` (per-segment natural width), `makeScrollableContainer()`. `fitsSegmentsToContent` and `makeScrollableContainer()` compose — combined mode uses fit-mode exact widths (`itemPadding`) and ignores `scrollableItemPadding`. `itemSpacing` tunes the gap between segments in scrollable mode (default `LMKSpacing.medium`; non-scrollable mode always uses 0) |
+| `LMKSlider` | `final class` | Tokenized continuous or step-snapped slider with optional caption (leading) + live value readout (trailing) row above the track. `value` / `setValue(_:animated:)` are silent; user drags fire `.valueChanged` + `valueChangedHandler`. `step > 0` snaps to `minimumValue + n * step` (cached snapped value bypasses `UISlider`'s float drift). `valueFormatter: ((Float) -> String)?` drives the readout; both caption and readout auto-hide when nil. Uses `LMKTypography.captionMedium` + design-token tints. Adjustable accessibility trait with live `accessibilityValue` |
 | `LMKSwitch` | `final class` | Custom toggle replacing `UISwitch`. Rounded track + sliding thumb, spring animation, haptic. `isOn`, `setOn(_:animated:)`, `valueChangedHandler`. Sends `.valueChanged` |
 | `LMKTextField` | `open class` | Text field with validation states, helper text, leading icon |
 | `LMKTextView` | `open class` | Multi-line text input with placeholder, character limit |
@@ -274,7 +275,7 @@ LMKThemeManager.shared.apply(spacing: .init(large: 20))
 
 | Extension | Key Methods |
 |-----------|-------------|
-| `UIColor+LMK` | `init(lmk_hex:)`, `lmk_hexString`, `lmk_isLight`, `lmk_adjustedBrightness(by:)`, `lmk_contrastingTextColor` |
+| `UIColor+LMK` | `init(lmk_hex:)`, `lmk_dynamic(lightHex:darkHex:alpha:)`, `lmk_hexString`, `lmk_isLight`, `lmk_adjustedBrightness(by:)`, `lmk_contrastingTextColor` |
 | `UIImage+LMK` | `lmk_resized(maxDimension:)`, `lmk_resized(to:)`, `lmk_solidColor(_:size:)`, `lmk_rounded(cornerRadius:)` |
 | `UIView+LMKShadow` | `lmk_applyShadow(_:)`, `lmk_removeShadow()` |
 | `UIView+LMKBorder` | `lmk_applyBorder(...)`, `lmk_removeBorder()`, `lmk_applyCornerRadius(_:)`, `lmk_makeCircular()` |

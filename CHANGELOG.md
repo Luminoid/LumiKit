@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **LMKSlider** — Tokenized continuous or step-snapped slider with optional caption (leading) + live value readout (trailing) row above the track. `value` / `setValue(_:animated:)` are silent; user drags fire `valueChangedHandler` and `.valueChanged`. `step > 0` snaps to `minimumValue + n * step` and round-trips through a cached snapped value (bypassing `UISlider`'s float drift). `valueFormatter: ((Float) -> String)?` controls the readout; both caption and readout auto-hide when nil. Adopts design tokens for tints and `LMKTypography.captionMedium`. Adjustable accessibility trait with live `accessibilityValue`.
+
+### Fixed
+
+- **LMKPhotoBrowserCell / LMKPhotoGridCell** — Replaced hardcoded LIVE-badge styling (`UIFont.systemFont(ofSize: 11)`, `UIEdgeInsets(top: 4, left: 8, ...)`, `cornerRadius = 11`) with design-system tokens (`LMKTypography.captionMedium`, `LMKSpacing.xs` / `LMKSpacing.small`, `LMKCornerRadius.small`).
+- **LMKSharePreviewViewController** — The save-to-Photos `Task` is now stored and cancelled in `deinit`, so dismissing the preview mid-save no longer leaks the in-flight save.
+
 ## [0.9.0] - 2026-05-25
 
 ### Added

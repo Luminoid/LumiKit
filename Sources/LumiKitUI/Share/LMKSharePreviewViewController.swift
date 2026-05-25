@@ -81,6 +81,13 @@ public final class LMKSharePreviewViewController: UIViewController {
     private let image: UIImage
     public weak var delegate: (any LMKSharePreviewDelegate)?
 
+    /// Stored so dismissing the preview mid-save cancels the in-flight Task.
+    private var saveTask: Task<Void, Never>?
+
+    deinit {
+        saveTask?.cancel()
+    }
+
     // MARK: - UI Components
 
     private lazy var scrollView: UIScrollView = {
@@ -270,9 +277,10 @@ public final class LMKSharePreviewViewController: UIViewController {
 
     private func performSaveImage() {
         let imageToSave = image
-        Task { [weak self] in
+        saveTask?.cancel()
+        saveTask = Task { [weak self] in
             let (success, error) = await Self.saveImageToPhotoLibrary(imageToSave)
-            guard let self else { return }
+            guard let self, !Task.isCancelled else { return }
             if let error {
                 LMKLogger.error("Failed to save image to photos", error: error, category: .general)
                 delegate?.sharePreview(self, didFailToSave: error)

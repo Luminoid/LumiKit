@@ -12,6 +12,7 @@ import UIKit
 
 final class LMKPhotoGridCell: UICollectionViewCell {
     static let identifier = "LMKPhotoGridCell"
+    private static let liveBadgeSize: CGFloat = 22
 
     // MARK: - Properties
 
@@ -31,7 +32,10 @@ final class LMKPhotoGridCell: UICollectionViewCell {
         // size, so the explicit 22×22 constraints fully determine the frame.
         let container = UIView()
         container.backgroundColor = UIColor.black.withAlphaComponent(LMKAlpha.overlayStrong)
-        container.layer.cornerRadius = 11
+        // Circular at the fixed 22×22 size set below; set directly because the
+        // cell's layoutSubviews can fire before the badge's own bounds resolve,
+        // leaving a deferred bounds.height/2 stuck at 0 on some passes.
+        container.layer.cornerRadius = Self.liveBadgeSize / 2
         container.clipsToBounds = true
         container.isHidden = true
         container.isAccessibilityElement = true
@@ -71,8 +75,8 @@ final class LMKPhotoGridCell: UICollectionViewCell {
 
         contentView.addSubview(liveBadge)
         liveBadge.snp.makeConstraints { make in
-            make.top.leading.equalToSuperview().inset(4)
-            make.width.height.equalTo(22)
+            make.top.leading.equalToSuperview().inset(LMKSpacing.xs)
+            make.width.height.equalTo(Self.liveBadgeSize)
         }
     }
 

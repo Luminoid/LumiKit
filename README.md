@@ -53,10 +53,10 @@ LumiKit is organized into four targets so apps can import only what they need:
 | **LumiKitUI** | LumiKitCore + LumiKitNetwork + SnapKit | Design system tokens, theme manager, animation, haptics, alerts, components, controls, photo browser/crop, network debug UI (DEBUG), UIKit extensions |
 | **LumiKitLottie** | LumiKitUI + Lottie | Lottie-powered pull-to-refresh control |
 
-**111 source files** across 4 targets, with **873 tests** across 4 test targets:
+**112 source files** across 4 targets, with **891 tests** across 4 test targets:
 - **LumiKitCoreTests**: 76 tests (12 suites)
 - **LumiKitNetworkTests**: 65 tests (4 suites)
-- **LumiKitUITests**: 725 tests (106 suites)
+- **LumiKitUITests**: 743 tests (107 suites)
 - **LumiKitLottieTests**: 7 tests (1 suite)
 
 ---
@@ -239,7 +239,7 @@ LumiKit/
 │   │   ├── LMKNetworkRequestRecordTests.swift        # Computed properties, display formatting
 │   │   ├── LMKNetworkLoggerTests.swift               # Configuration, state transitions
 │   │   └── URLSessionConfigurationLMKDebugTests.swift # enableNetworkLogging
-│   ├── LumiKitUITests/        # 725 tests, 106 suites
+│   ├── LumiKitUITests/        # 743 tests, 107 suites
 │   │   ├── Alerts/            # AlertPresenter, ErrorHandler
 │   │   ├── Animation/         # AnimationHelper
 │   │   ├── Components/
@@ -376,6 +376,7 @@ LMKThemeManager.shared.apply(spacing: .init(large: 20))
 |---------|---------|
 | `LMKButton` | Configurable button with tap handler, pill shape, and 4 styles: `.filled`, `.outlined`, `.ghost` (text-only), `.iconOnly` (circular icon). Supports `isLoading` state |
 | `LMKSegmentedControl` | Custom segmented control with sliding pill indicator, spring animation, and haptic feedback. Not a `UISegmentedControl` subclass. `fitsSegmentsToContent` (per-segment natural width) composes with `makeScrollableContainer()`; `itemPadding` / `itemSpacing` tune per-segment padding and inter-segment gap for scrollable tag/filter bars |
+| `LMKSlider` | Tokenized continuous or step-snapped slider with optional caption + live value readout row above the track. `step > 0` snaps to `minimumValue + n * step` (cached snapped value bypasses `UISlider`'s float drift). `valueFormatter` drives the readout; both caption and readout auto-hide when nil. User drags fire `.valueChanged` + `valueChangedHandler`; programmatic `value` / `setValue(_:animated:)` are silent |
 | `LMKSwitch` | Custom toggle switch replacing `UISwitch`. Rounded track with sliding thumb, spring animation, haptic feedback. `isOn`, `setOn(_:animated:)`, `valueChangedHandler` |
 | `LMKTextField` | Text field with validation states, helper text, leading icon |
 | `LMKTextView` | Multi-line text input with placeholder and character limit |
@@ -389,7 +390,7 @@ All UIKit extensions use the `lmk_` prefix to avoid naming conflicts.
 
 | Extension | Key Methods |
 |-----------|-------------|
-| `UIColor+LMK` | `init(lmk_hex:)`, `lmk_hexString`, `lmk_isLight`, `lmk_adjustedBrightness(by:)`, `lmk_contrastingTextColor` |
+| `UIColor+LMK` | `init(lmk_hex:)`, `lmk_dynamic(lightHex:darkHex:alpha:)`, `lmk_hexString`, `lmk_isLight`, `lmk_adjustedBrightness(by:)`, `lmk_contrastingTextColor` |
 | `UIImage+LMK` | `lmk_resized(maxDimension:)`, `lmk_resized(to:)`, `lmk_solidColor(_:size:)`, `lmk_rounded(cornerRadius:)` |
 | `UIView+LMKShadow` | `lmk_applyShadow(_:)`, `lmk_removeShadow()` |
 | `UIView+LMKBorder` | `lmk_applyBorder(...)`, `lmk_removeBorder()`, `lmk_applyCornerRadius(_:)`, `lmk_makeCircular()` |

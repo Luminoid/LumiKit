@@ -18,13 +18,13 @@ public final class LMKPhotoBrowserCell: UICollectionViewCell {
 
     /// Minimum zoom scale for photo preview
     private static let minimumZoomScale: CGFloat = 1.0
-
     /// Maximum zoom scale for photo preview
     private static let maximumZoomScale: CGFloat = 3.0
 
     /// Initial image view size (will be updated based on actual image size)
     private static let initialImageViewSize: CGFloat = 100
-
+    /// Fixed height of the LIVE capsule badge; corner radius is half this.
+    private static let liveBadgeHeight: CGFloat = 22
     /// Zoom threshold to check if image is zoomed
     private static let zoomThreshold: CGFloat = 1.0
 
@@ -66,7 +66,10 @@ public final class LMKPhotoBrowserCell: UICollectionViewCell {
     private lazy var liveBadge: UIView = {
         let container = UIView()
         container.backgroundColor = UIColor.black.withAlphaComponent(LMKAlpha.overlayStrong)
-        container.layer.cornerRadius = 11
+        // Capsule shape, set directly because layoutSubviews on the cell can fire
+        // before the badge's own bounds resolve, leaving a deferred bounds.height/2
+        // stuck at 0 on the first pass.
+        container.layer.cornerRadius = Self.liveBadgeHeight / 2
         container.clipsToBounds = true
         container.isHidden = true
 
@@ -78,7 +81,7 @@ public final class LMKPhotoBrowserCell: UICollectionViewCell {
         let label = UILabel()
         label.text = "LIVE"
         label.textColor = LMKColor.white
-        label.font = UIFont.systemFont(ofSize: 11, weight: .semibold)
+        label.font = LMKTypography.extraSmallSemibold
 
         let stack = UIStackView(arrangedSubviews: [icon, label])
         stack.axis = .horizontal
@@ -89,7 +92,7 @@ public final class LMKPhotoBrowserCell: UICollectionViewCell {
         container.addSubview(stack)
         stack.snp.makeConstraints { make in
             make.edges.equalToSuperview().inset(
-                UIEdgeInsets(top: 4, left: 8, bottom: 4, right: 8)
+                UIEdgeInsets(top: LMKSpacing.xs, left: LMKSpacing.small, bottom: LMKSpacing.xs, right: LMKSpacing.small)
             )
         }
 
@@ -200,7 +203,7 @@ public final class LMKPhotoBrowserCell: UICollectionViewCell {
                 LMKSpacing.large + LMKPhotoBrowserConfig.overlayButtonSize + LMKSpacing.small
             )
             make.leading.equalToSuperview().offset(LMKSpacing.large)
-            make.height.equalTo(22)
+            make.height.equalTo(Self.liveBadgeHeight)
         }
 
         // Pinch gesture to track zoom anchor (center of pinch); zoom is still done by scroll view.
