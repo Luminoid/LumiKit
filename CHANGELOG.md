@@ -7,25 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Added
-
-- **LMKSlider** — Tokenized continuous or step-snapped slider with optional caption (leading) + live value readout (trailing) row above the track. `value` / `setValue(_:animated:)` are silent; user drags fire `valueChangedHandler` and `.valueChanged`. `step > 0` snaps to `minimumValue + n * step` and round-trips through a cached snapped value (bypassing `UISlider`'s float drift). `valueFormatter: ((Float) -> String)?` controls the readout; both caption and readout auto-hide when nil. Adopts design tokens for tints and `LMKTypography.captionMedium`. Adjustable accessibility trait with live `accessibilityValue`.
-
-### Fixed
-
-- **LMKPhotoBrowserCell / LMKPhotoGridCell** — Replaced hardcoded LIVE-badge styling (`UIFont.systemFont(ofSize: 11)`, `UIEdgeInsets(top: 4, left: 8, ...)`, `cornerRadius = 11`) with design-system tokens (`LMKTypography.captionMedium`, `LMKSpacing.xs` / `LMKSpacing.small`, `LMKCornerRadius.small`).
-- **LMKSharePreviewViewController** — The save-to-Photos `Task` is now stored and cancelled in `deinit`, so dismissing the preview mid-save no longer leaks the in-flight save.
-
 ## [0.9.0] - 2026-05-25
 
 ### Added
 
-- **`UIColor(lmk_hex: UInt32)`** — Compile-time-validated initializer from a 24-bit hex literal (`UIColor(lmk_hex: 0x7C5CFF)`). No optional, no force-unwrap, no string-parsing overhead. Optional `alpha:` parameter.
-- **`UIColor.lmk_dynamic(lightHex:darkHex:alpha:)`** — Returns a trait-aware `UIColor` that auto-resolves to the appropriate light/dark variant. Designed for theme files where every color has both variants; shrinks a per-color declaration from ~5 lines of `UIColor { traitCollection in ... }` arithmetic to one line. Used by Monolith 0.4.0+'s `ThemeGenerator` to emit compact theme files.
+- **LMKSlider** — Tokenized continuous or step-snapped slider with optional caption + live value readout.
+- **`UIColor(lmk_hex: UInt32)`** — Compile-time-validated 24-bit hex literal initializer.
+- **`UIColor.lmk_dynamic(lightHex:darkHex:alpha:)`** — One-line trait-aware light/dark color, used by Monolith 0.4.0+'s `ThemeGenerator`.
 
 ### Changed
 
-- No `LMKTheme` protocol changes. The existing `photoBrowserBackground` default (`UIColor(white: 0.1, alpha: 1)`) is now relied upon by Monolith-generated themes — they omit the override entirely. Apps that already provide their own `photoBrowserBackground` continue to override.
+- **LMKPhotoBrowserCell / LMKPhotoGridCell** — LIVE-badge styling moved to design-system tokens.
+
+### Fixed
+
+- **LMKPhotoBrowserCell / LMKPhotoGridCell** — LIVE-badge corner radius pinned to a fixed-height constant, fixing a one-frame square flash when the cell's `layoutSubviews` ran before the badge's bounds resolved.
+- **LMKSharePreviewViewController** — Save-to-Photos `Task` stored and cancelled in `deinit`, preventing an in-flight save leak on dismiss.
+
+### Infrastructure
+
+- 873 → 891 tests; 111 → 112 source files.
 
 ## [0.8.0] - 2026-05-15
 
@@ -349,7 +350,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - All configurable strings use module-level `nonisolated(unsafe)` vars for localization
 - MIT License
 
-[Unreleased]: https://github.com/Luminoid/LumiKit/compare/0.8.0...HEAD
+[Unreleased]: https://github.com/Luminoid/LumiKit/compare/0.9.0...HEAD
+[0.9.0]: https://github.com/Luminoid/LumiKit/compare/0.8.0...0.9.0
 [0.8.0]: https://github.com/Luminoid/LumiKit/compare/0.7.1...0.8.0
 [0.7.1]: https://github.com/Luminoid/LumiKit/compare/0.7.0...0.7.1
 [0.7.0]: https://github.com/Luminoid/LumiKit/compare/0.6.0...0.7.0

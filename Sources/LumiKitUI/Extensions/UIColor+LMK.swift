@@ -41,7 +41,7 @@ public extension UIColor {
     ///
     /// ```swift
     /// var primary: UIColor {
-    ///     UIColor(lmk_lightHex: 0x694ED9, darkHex: 0x553BBF)
+    ///     .lmk_dynamic(lightHex: 0x694ED9, darkHex: 0x553BBF)
     /// }
     /// ```
     ///
