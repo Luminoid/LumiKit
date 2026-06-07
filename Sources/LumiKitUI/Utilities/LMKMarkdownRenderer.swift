@@ -12,9 +12,9 @@ import UIKit
 ///
 /// Supports two modes:
 /// - **Inline** (default): Bold, italic, code — suitable for labels and single-line text.
-/// - **Full**: Headings, lists, bold, italic — suitable for long-form content.
-///   Uses inline parsing to guarantee every `\n` is a visible line break, then applies
-///   heading styles by detecting `#` prefixes.
+/// - **Full**: Headings, lists, bold, italic, fenced code blocks, and GFM tables — suitable for
+///   long-form content such as AI chat responses. Prose uses inline parsing so every `\n` is a
+///   visible line break; code and tables render in a monospaced font.
 ///
 /// ```swift
 /// // Inline (labels, short text)
@@ -54,16 +54,68 @@ public enum LMKMarkdownRenderer {
         return applyBaseFont(to: attributedString, font: font, color: color)
     }
 
-    /// Render long-form markdown as an attributed string with heading styles.
+    /// Render long-form markdown as an attributed string.
     ///
-    /// Uses `.inlineOnlyPreservingWhitespace` to guarantee every `\n` renders as a
-    /// visible line break (CommonMark `.full` collapses single `\n`). Headings
-    /// (`# ` through `###### `) are stripped from the text and rendered as bold
-    /// scaled fonts. `•` and `*` list markers are normalized to `- `.
+    /// Block-aware: the text is split into fenced code blocks (```` ``` ````), GitHub-style tables
+    /// (`| a | b |` + `|---|`), and normal prose. Code and tables render in a monospaced font (code
+    /// gets a subtle background; tables get space-aligned columns with a header rule) so an AI
+    /// response that emits them stays readable instead of collapsing to a run-on line. Normal prose
+    /// keeps the inline pipeline: headings (`# ` through `###### `) become bold scaled fonts, `•` / `*`
+    /// markers normalize to `- `, and `.inlineOnlyPreservingWhitespace` preserves every `\n`. Input
+    /// with no code/table blocks renders identically to the prose-only path.
     public static func renderFull(
         _ markdown: String,
         font: UIFont = LMKTypography.body,
         color: UIColor = LMKColor.textPrimary
+    ) -> NSAttributedString {
+        let result = NSMutableAttributedString()
+        let lines = markdown.components(separatedBy: "\n")
+        var index = 0
+        var prose: [String] = []
+
+        func flushProse() {
+            guard !prose.isEmpty else { return }
+            appendBlock(result, renderInlineBlock(prose.joined(separator: "\n"), font: font, color: color))
+            prose.removeAll()
+        }
+
+        while index < lines.count {
+            let line = lines[index]
+            if isCodeFence(line) {
+                flushProse()
+                var code: [String] = []
+                index += 1
+                while index < lines.count, !isCodeFence(lines[index]) {
+                    code.append(lines[index])
+                    index += 1
+                }
+                if index < lines.count { index += 1 } // consume the closing fence
+                appendBlock(result, renderCodeBlock(code.joined(separator: "\n"), font: font, color: color))
+                continue
+            }
+            if isTableHeader(lines, at: index) {
+                flushProse()
+                var table: [String] = []
+                while index < lines.count, isTableRow(lines[index]) {
+                    table.append(lines[index])
+                    index += 1
+                }
+                appendBlock(result, renderTable(table, font: font, color: color))
+                continue
+            }
+            prose.append(line)
+            index += 1
+        }
+        flushProse()
+        return result
+    }
+
+    /// Inline pipeline for a prose-only span: headings, list-marker normalization, bold/italic, with
+    /// every `\n` preserved. This is the historical `renderFull` body, now one block kind among several.
+    private static func renderInlineBlock(
+        _ markdown: String,
+        font: UIFont,
+        color: UIColor
     ) -> NSAttributedString {
         let (processed, headingRanges) = preprocessForInline(markdown)
 
@@ -111,6 +163,119 @@ public enum LMKMarkdownRenderer {
         textView.linkTextAttributes = [.foregroundColor: LMKColor.primary]
         textView.attributedText = render(markdown, font: font, color: color)
         return textView
+    }
+
+    // MARK: - Block assembly
+
+    /// Append a rendered block, inserting a single newline separator when the previous block didn't
+    /// already end in one. Keeps code/table blocks visually separated from surrounding prose.
+    private static func appendBlock(_ result: NSMutableAttributedString, _ block: NSAttributedString) {
+        if result.length > 0, !result.string.hasSuffix("\n") {
+            result.append(NSAttributedString(string: "\n"))
+        }
+        result.append(block)
+    }
+
+    private static func isCodeFence(_ line: String) -> Bool {
+        let trimmed = line.trimmingCharacters(in: .whitespaces)
+        return trimmed.hasPrefix("```") || trimmed.hasPrefix("~~~")
+    }
+
+    /// Monospaced block with a subtle backing color. `.backgroundColor` paints behind the glyphs only
+    /// (a UILabel can't host a full-width rounded box), which still reads clearly as code.
+    private static func renderCodeBlock(
+        _ code: String,
+        font: UIFont,
+        color: UIColor
+    ) -> NSAttributedString {
+        let mono = UIFont.monospacedSystemFont(ofSize: font.pointSize, weight: .regular)
+        let paragraph = NSMutableParagraphStyle()
+        paragraph.firstLineHeadIndent = 4
+        paragraph.headIndent = 4
+        paragraph.paragraphSpacingBefore = 2
+        paragraph.paragraphSpacing = 2
+        return NSAttributedString(string: code, attributes: [
+            .font: mono,
+            .foregroundColor: color,
+            .backgroundColor: LMKColor.backgroundTertiary,
+            .paragraphStyle: paragraph,
+        ])
+    }
+
+    // MARK: - Tables
+
+    /// A header row plus a delimiter row (`|---|:--:|`) immediately below marks a GFM table.
+    private static func isTableHeader(_ lines: [String], at index: Int) -> Bool {
+        guard index + 1 < lines.count else { return false }
+        return isTableRow(lines[index]) && isTableDelimiter(lines[index + 1])
+    }
+
+    private static func isTableRow(_ line: String) -> Bool {
+        let trimmed = line.trimmingCharacters(in: .whitespaces)
+        return !trimmed.isEmpty && trimmed.contains("|")
+    }
+
+    private static func isTableDelimiter(_ line: String) -> Bool {
+        let trimmed = line.trimmingCharacters(in: .whitespaces)
+        guard trimmed.contains("-"), trimmed.contains("|") else { return false }
+        let allowed = CharacterSet(charactersIn: "-:| \t")
+        return trimmed.unicodeScalars.allSatisfy { allowed.contains($0) }
+    }
+
+    private static func parseRowCells(_ line: String) -> [String] {
+        var trimmed = line.trimmingCharacters(in: .whitespaces)
+        if trimmed.hasPrefix("|") { trimmed.removeFirst() }
+        if trimmed.hasSuffix("|") { trimmed.removeLast() }
+        return trimmed.components(separatedBy: "|").map { $0.trimmingCharacters(in: .whitespaces) }
+    }
+
+    /// Render the collected table lines as space-aligned monospaced columns: bold header, a `─` rule,
+    /// then the body rows. Column widths use character counts, so CJK (double-width) columns align
+    /// approximately rather than exactly — acceptable for an at-a-glance table in a chat bubble.
+    private static func renderTable(
+        _ lines: [String],
+        font: UIFont,
+        color: UIColor
+    ) -> NSAttributedString {
+        let rows = lines.filter { !isTableDelimiter($0) }.map(parseRowCells)
+        guard !rows.isEmpty else {
+            return renderCodeBlock(lines.joined(separator: "\n"), font: font, color: color)
+        }
+        let columnCount = rows.map(\.count).max() ?? 0
+        var widths = [Int](repeating: 0, count: columnCount)
+        for row in rows {
+            for (column, cell) in row.enumerated() {
+                widths[column] = max(widths[column], cell.count)
+            }
+        }
+
+        let mono = UIFont.monospacedSystemFont(ofSize: font.pointSize, weight: .regular)
+        let bold = UIFont.monospacedSystemFont(ofSize: font.pointSize, weight: .semibold)
+        let result = NSMutableAttributedString()
+        for (rowIndex, row) in rows.enumerated() {
+            let padded = (0 ..< columnCount).map { column -> String in
+                let cell = column < row.count ? row[column] : ""
+                return cell.padding(toLength: widths[column], withPad: " ", startingAt: 0)
+            }
+            let lineFont = rowIndex == 0 ? bold : mono
+            result.append(NSAttributedString(
+                string: padded.joined(separator: "  "),
+                attributes: [.font: lineFont, .foregroundColor: color]
+            ))
+            result.append(NSAttributedString(string: "\n"))
+            if rowIndex == 0 {
+                let rule = widths.map { String(repeating: "─", count: $0) }.joined(separator: "  ")
+                result.append(NSAttributedString(
+                    string: rule,
+                    attributes: [.font: mono, .foregroundColor: color.withAlphaComponent(0.5)]
+                ))
+                result.append(NSAttributedString(string: "\n"))
+            }
+        }
+        if result.string.hasSuffix("\n") {
+            result.deleteCharacters(in: NSRange(location: result.length - 1, length: 1))
+        }
+        return result
     }
 
     // MARK: - Private

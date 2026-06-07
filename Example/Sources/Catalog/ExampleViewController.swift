@@ -63,6 +63,12 @@ private let exampleSections: [ExampleSection] = [
             iconName: "arrow.backward.circle",
             makeViewController: { NavigationControllerDetailViewController() }
         ),
+        ExampleItem(
+            title: "Segmented Pages",
+            subtitle: "Tab container with interactive finger-tracking swipe paging",
+            iconName: "rectangle.split.2x1",
+            makeViewController: { SegmentedPagesDetailViewController() }
+        ),
         ExampleItem(title: "Banners", subtitle: "Persistent info, warning, and error banners", iconName: "exclamationmark.bubble", makeViewController: { BannerDetailViewController() }),
         ExampleItem(title: "Empty State", subtitle: "Full screen, card, and inline styles", iconName: "square.dashed", makeViewController: { EmptyStateDetailViewController() }),
         ExampleItem(title: "Loading State", subtitle: "Inline, overlay, and skeleton loading", iconName: "progress.indicator", makeViewController: { LoadingStateDetailViewController() }),

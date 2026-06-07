@@ -51,7 +51,7 @@ LumiKit/
 │   │   │                     # CardPageController, CardPageLayout,
 │   │   │                     # CardPanelController, CardPanelLayout,
 │   │   │                     # NavigationDirection, OverscrollFooterHelper,
-│   │   │                     # ScrollStackViewController
+│   │   │                     # ScrollStackViewController, SegmentedPageController
 │   │   ├── Controls/        # LMKButton, LMKSegmentedControl, LMKSlider, LMKSwitch,
 │   │   │                    # LMKToggleButton, LMKTextField, LMKTextView
 │   │   ├── DesignSystem/
@@ -256,6 +256,7 @@ LMKThemeManager.shared.apply(spacing: .init(large: 20))
 | `LMKCardPageLayout` | `enum` (static) | Shared layout constants for card pages (header height, symbol sizes) |
 | `LMKCardPanelLayout` | `enum` (static) | Shared layout constants for card panels (max width, insets, height ratio) |
 | `LMKScrollStackViewController` | `open class` | Base class for scrollable vertical stack layout — configurable spacing, insets, keyboard dismiss, safe area, bounce. Subclasses override `setupStackContent()` |
+| `LMKSegmentedPageController` | `open class` | Base class for a segmented tab container that pages between child VCs with an interactive finger-tracking pan. Subclasses override `makePages()`, `usesFullWidthSwipe(forPageAt:)` (full-width vs edge-only pan, for pages that own interior horizontal drags such as a map or month grid), `didChangePage(to:)`. Top `LMKSegmentedControl` installed via overridable `installSegmentedControl()` (default: nav title view); `setPage(_:animated:)` slides for taps / deep links. `edgePanBandWidth` / `commitVelocityThreshold` are tunable open vars |
 | `LMKNavigationDirection` | `enum` | Shared navigation direction (`.forward`, `.backward`, `.none`) used by CardPageController and ActionSheet |
 | `LMKOverscrollFooterHelper` | `final class` | Positions footer below scroll content, revealed on overscroll |
 
