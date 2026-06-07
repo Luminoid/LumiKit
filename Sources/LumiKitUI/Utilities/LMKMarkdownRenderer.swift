@@ -58,8 +58,8 @@ public enum LMKMarkdownRenderer {
     ///
     /// Block-aware: the text is split into fenced code blocks (```` ``` ````), GitHub-style tables
     /// (`| a | b |` + `|---|`), and normal prose. Code and tables render in a monospaced font (code
-    /// gets a subtle background; tables get space-aligned columns with a header rule) so an AI
-    /// response that emits them stays readable instead of collapsing to a run-on line. Normal prose
+    /// gets a subtle background; tables get tab-stop-aligned columns with a full-width header rule)
+    /// so an AI response that emits them stays readable instead of collapsing to a run-on line. Normal prose
     /// keeps the inline pipeline: headings (`# ` through `###### `) become bold scaled fonts, `•` / `*`
     /// markers normalize to `- `, and `.inlineOnlyPreservingWhitespace` preserves every `\n`. Input
     /// with no code/table blocks renders identically to the prose-only path.
@@ -229,9 +229,12 @@ public enum LMKMarkdownRenderer {
         return trimmed.components(separatedBy: "|").map { $0.trimmingCharacters(in: .whitespaces) }
     }
 
-    /// Render the collected table lines as space-aligned monospaced columns: bold header, a `─` rule,
-    /// then the body rows. Column widths use character counts, so CJK (double-width) columns align
-    /// approximately rather than exactly — acceptable for an at-a-glance table in a chat bubble.
+    /// Render the collected table lines as tab-stop-aligned monospaced columns: a bold header, a
+    /// full-width `─` rule, then the body rows. Column positions are `NSTextTab` stops measured in
+    /// points from the rendered cell widths, so wide glyphs (CJK) and any per-glyph spacing align
+    /// exactly instead of drifting the way character-count padding does. Rows clip rather than wrap
+    /// (`.byClipping`) so the grid never breaks mid-row; a table wider than its container is the
+    /// caller's cue to host it in a horizontally scrollable text view.
     private static func renderTable(
         _ lines: [String],
         font: UIFont,
@@ -242,33 +245,57 @@ public enum LMKMarkdownRenderer {
             return renderCodeBlock(lines.joined(separator: "\n"), font: font, color: color)
         }
         let columnCount = rows.map(\.count).max() ?? 0
-        var widths = [Int](repeating: 0, count: columnCount)
-        for row in rows {
+        let mono = UIFont.monospacedSystemFont(ofSize: font.pointSize, weight: .regular)
+        let bold = UIFont.monospacedSystemFont(ofSize: font.pointSize, weight: .semibold)
+
+        // Per-column width in points, measured against the font each row will use (header is bold).
+        var columnWidths = [CGFloat](repeating: 0, count: columnCount)
+        for (rowIndex, row) in rows.enumerated() {
+            let rowFont = rowIndex == 0 ? bold : mono
             for (column, cell) in row.enumerated() {
-                widths[column] = max(widths[column], cell.count)
+                let width = (cell as NSString).size(withAttributes: [.font: rowFont]).width
+                columnWidths[column] = max(columnWidths[column], width)
             }
         }
 
-        let mono = UIFont.monospacedSystemFont(ofSize: font.pointSize, weight: .regular)
-        let bold = UIFont.monospacedSystemFont(ofSize: font.pointSize, weight: .semibold)
+        // A two-space gap between columns; tab stops sit at the start of columns 1...n-1.
+        let gap = ("  " as NSString).size(withAttributes: [.font: mono]).width
+        var tabStops: [NSTextTab] = []
+        var position: CGFloat = 0
+        for column in 0 ..< max(0, columnCount - 1) {
+            position += ceil(columnWidths[column]) + gap
+            tabStops.append(NSTextTab(textAlignment: .left, location: position, options: [:]))
+        }
+        let totalWidth = position + ceil(columnWidths.last ?? 0)
+
+        func tableParagraph() -> NSMutableParagraphStyle {
+            let paragraph = NSMutableParagraphStyle()
+            paragraph.tabStops = tabStops
+            paragraph.lineBreakMode = .byClipping
+            return paragraph
+        }
+
         let result = NSMutableAttributedString()
         for (rowIndex, row) in rows.enumerated() {
-            let padded = (0 ..< columnCount).map { column -> String in
-                let cell = column < row.count ? row[column] : ""
-                return cell.padding(toLength: widths[column], withPad: " ", startingAt: 0)
-            }
-            let lineFont = rowIndex == 0 ? bold : mono
-            result.append(NSAttributedString(
-                string: padded.joined(separator: "  "),
-                attributes: [.font: lineFont, .foregroundColor: color]
-            ))
+            let line = (0 ..< columnCount)
+                .map { column in column < row.count ? row[column] : "" }
+                .joined(separator: "\t")
+            result.append(NSAttributedString(string: line, attributes: [
+                .font: rowIndex == 0 ? bold : mono,
+                .foregroundColor: color,
+                .paragraphStyle: tableParagraph(),
+            ]))
             result.append(NSAttributedString(string: "\n"))
             if rowIndex == 0 {
-                let rule = widths.map { String(repeating: "─", count: $0) }.joined(separator: "  ")
-                result.append(NSAttributedString(
-                    string: rule,
-                    attributes: [.font: mono, .foregroundColor: color.withAlphaComponent(0.5)]
-                ))
+                let dashWidth = ("─" as NSString).size(withAttributes: [.font: mono]).width
+                let dashCount = max(1, Int((totalWidth / dashWidth).rounded()))
+                let rulePara = NSMutableParagraphStyle()
+                rulePara.lineBreakMode = .byClipping
+                result.append(NSAttributedString(string: String(repeating: "─", count: dashCount), attributes: [
+                    .font: mono,
+                    .foregroundColor: color.withAlphaComponent(0.4),
+                    .paragraphStyle: rulePara,
+                ]))
                 result.append(NSAttributedString(string: "\n"))
             }
         }
@@ -298,7 +325,7 @@ public enum LMKMarkdownRenderer {
 
     /// Pre-processes markdown for inline parsing:
     /// - Strips `# ` prefixes from headings (records their line indices and levels)
-    /// - Converts `•` bullets to `-`
+    /// - Normalizes unordered bullets (`•`, `*`, `+`, `-`) + trailing whitespace to `- `
     /// - Leaves all `\n` intact so `.inlineOnlyPreservingWhitespace` preserves them
     private static func preprocessForInline(_ markdown: String) -> (String, [HeadingInfo]) {
         let lines = markdown.components(separatedBy: "\n")
@@ -317,15 +344,13 @@ public enum LMKMarkdownRenderer {
                 continue
             }
 
-            // Replace • and * list markers with - to avoid * being parsed as italic
-            if trimmed.hasPrefix("•") {
+            // Normalize unordered list markers (•, *, +, -) and their trailing whitespace to a
+            // single "- " so every bullet renders with the same marker and gap regardless of the
+            // source style. Without collapsing the gap, "*   item" and "- item" would render with
+            // different bullet-to-text spacing.
+            if let content = unorderedListContent(trimmed) {
                 let indent = line.prefix(while: { $0 == " " || $0 == "\t" })
-                result.append(indent + "-" + trimmed.dropFirst())
-                continue
-            }
-            if trimmed.hasPrefix("* ") || trimmed.hasPrefix("*\t") {
-                let indent = line.prefix(while: { $0 == " " || $0 == "\t" })
-                result.append(indent + "-" + trimmed.dropFirst())
+                result.append(indent + "- " + content)
                 continue
             }
 
@@ -333,6 +358,21 @@ public enum LMKMarkdownRenderer {
         }
 
         return (result.joined(separator: "\n"), headings)
+    }
+
+    /// If `trimmed` is an unordered list item, returns the content after the marker and its
+    /// trailing whitespace; otherwise `nil`. `•` is treated as a bullet even without a following
+    /// space (it's never an inline-formatting character); `*`, `+`, and `-` require following
+    /// whitespace so `**bold**`, `*italic*`, and `---` are not mistaken for bullets.
+    private static func unorderedListContent(_ trimmed: String) -> String? {
+        guard let first = trimmed.first else { return nil }
+        if first == "•" {
+            return String(trimmed.dropFirst().drop(while: { $0 == " " || $0 == "\t" }))
+        }
+        guard first == "*" || first == "+" || first == "-" else { return nil }
+        let afterMarker = trimmed.dropFirst()
+        guard let next = afterMarker.first, next == " " || next == "\t" else { return nil }
+        return String(afterMarker.drop(while: { $0 == " " || $0 == "\t" }))
     }
 
     /// Returns the heading level (1-6) if the line starts with `# `, or nil.

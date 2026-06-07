@@ -213,6 +213,35 @@ final class MarkdownDetailViewController: DetailViewController {
 
         The team made **significant progress** on reliability and performance. The remaining gaps in observability and regional redundancy are the top priorities for Q2.
         """)
+
+        addDivider()
+        addSectionHeader("Full Markdown — Code & Tables")
+        addFullMarkdownTextView("""
+        Here's how to **debounce** a Swift `Task` so only the *final* call runs:
+
+        ```swift
+        func schedule() {
+            task?.cancel()
+            task = Task {
+                try? await Task.sleep(for: .seconds(1))
+                guard !Task.isCancelled else { return }
+                await refresh()
+            }
+        }
+        ```
+
+        The three rate-limiting strategies at a glance:
+
+        | Strategy  | Latency | Use case  |
+        |-----------|---------|-----------|
+        | Debounce  | Medium  | Typeahead |
+        | Throttle  | Low     | Scrolling |
+        | Immediate | None    | Live taps |
+
+        Columns are aligned with tab stops, so even CJK and uneven cells stay lined up. Fenced \
+        code blocks and GFM tables render in a **monospaced** font, so an AI chat response that \
+        emits them stays readable instead of collapsing to a run-on line.
+        """)
     }
 
     private func addMarkdownLabel(

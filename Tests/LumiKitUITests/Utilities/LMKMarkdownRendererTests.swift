@@ -119,6 +119,59 @@ struct LMKMarkdownRendererFullBlockTests {
     }
 
     @Test
+    func `table columns are aligned with tab stops`() {
+        // Cells are tab-separated and positioned by NSTextTab stops (one per column boundary),
+        // so wide glyphs align by measured width rather than character count.
+        let markdown = "| Name | Age |\n| --- | --- |\n| Ann | 30 |"
+        let result = LMKMarkdownRenderer.renderFull(markdown)
+        #expect(result.string.contains("\t"))
+        let index = (result.string as NSString).range(of: "Name").location
+        let paragraph = result.attribute(.paragraphStyle, at: index, effectiveRange: nil) as? NSParagraphStyle
+        #expect(paragraph?.tabStops.isEmpty == false)
+    }
+
+    @Test
+    func `table has a full-width rule under the header`() {
+        let markdown = "| Name | Age |\n| --- | --- |\n| Ann | 30 |"
+        let result = LMKMarkdownRenderer.renderFull(markdown)
+        // The header rule is a run of box-drawing dashes, not the literal "---" delimiter.
+        #expect(result.string.contains("─"))
+    }
+
+    @Test
+    func `table rows clip rather than wrap`() {
+        let markdown = "| Name | Age |\n| --- | --- |\n| Ann | 30 |"
+        let result = LMKMarkdownRenderer.renderFull(markdown)
+        let index = (result.string as NSString).range(of: "Ann").location
+        let paragraph = result.attribute(.paragraphStyle, at: index, effectiveRange: nil) as? NSParagraphStyle
+        #expect(paragraph?.lineBreakMode == .byClipping)
+    }
+
+    @Test
+    func `bullet markers normalize to a single-space hyphen`() {
+        // *, +, •, and any extra gap collapse to "- " so every list renders with a uniform
+        // bullet-to-text spacing regardless of the source marker style.
+        #expect(LMKMarkdownRenderer.renderFull("* Item").string == "- Item")
+        #expect(LMKMarkdownRenderer.renderFull("*   Item").string == "- Item")
+        #expect(LMKMarkdownRenderer.renderFull("+   Item").string == "- Item")
+        #expect(LMKMarkdownRenderer.renderFull("• Item").string == "- Item")
+        #expect(LMKMarkdownRenderer.renderFull("-   Item").string == "- Item")
+    }
+
+    @Test
+    func `nested bullet preserves indent and normalizes marker`() {
+        #expect(LMKMarkdownRenderer.renderFull("    *   Nested").string == "    - Nested")
+    }
+
+    @Test
+    func `non-bullet leading punctuation is not treated as a list`() {
+        // "**bold**", "*italic*", and "---" must not be mistaken for bullets (no following space).
+        #expect(LMKMarkdownRenderer.renderFull("**bold**").string == "bold")
+        #expect(LMKMarkdownRenderer.renderFull("*italic*").string == "italic")
+        #expect(LMKMarkdownRenderer.renderFull("---").string == "---")
+    }
+
+    @Test
     func `prose around a code block is still parsed`() {
         let markdown = "Intro **bold**\n```\ncode\n```\nOutro"
         let result = LMKMarkdownRenderer.renderFull(markdown)
