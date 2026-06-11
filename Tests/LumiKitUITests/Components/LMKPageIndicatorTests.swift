@@ -63,9 +63,41 @@ struct LMKPageIndicatorTests {
     }
 
     @Test
-    func `Accessibility traits include adjustable`() {
+    func `Accessibility traits are adjustable only with a handler`() {
         let indicator = LMKPageIndicator()
+        #expect(!indicator.accessibilityTraits.contains(.adjustable))
+        indicator.pageChangedHandler = { _ in }
         #expect(indicator.accessibilityTraits.contains(.adjustable))
+        indicator.pageChangedHandler = nil
+        #expect(!indicator.accessibilityTraits.contains(.adjustable))
+    }
+
+    @Test
+    func `Accessibility increment is ignored without a handler`() {
+        let indicator = LMKPageIndicator()
+        indicator.numberOfPages = 3
+        indicator.accessibilityIncrement()
+        #expect(indicator.currentPage == 0)
+    }
+
+    @Test
+    func `Accessibility decrement is ignored without a handler`() {
+        let indicator = LMKPageIndicator()
+        indicator.numberOfPages = 3
+        indicator.currentPage = 2
+        indicator.accessibilityDecrement()
+        #expect(indicator.currentPage == 2)
+    }
+
+    @Test
+    func `Accessibility increment fires handler when set`() {
+        let indicator = LMKPageIndicator()
+        indicator.numberOfPages = 3
+        var reported: Int?
+        indicator.pageChangedHandler = { reported = $0 }
+        indicator.accessibilityIncrement()
+        #expect(indicator.currentPage == 1)
+        #expect(reported == 1)
     }
 
     // MARK: - expandsActiveDot

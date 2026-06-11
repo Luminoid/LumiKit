@@ -17,6 +17,12 @@ import UIKit
 /// `maxVisibleDots` dots at a time. The leftmost and rightmost visible dots
 /// are drawn smaller to hint at more pages beyond.
 ///
+/// Tap-to-navigate and the VoiceOver adjustable gestures are active only while
+/// `pageChangedHandler` is set. With no handler the indicator is display-only:
+/// taps and accessibility increments leave `currentPage` alone, so the highlight
+/// can never drift out of sync with a host that drives pages itself (e.g. a
+/// gated onboarding flow where the controller owns all transitions).
+///
 /// ```swift
 /// let indicator = LMKPageIndicator()
 /// indicator.numberOfPages = 12
@@ -71,8 +77,12 @@ public final class LMKPageIndicator: UIView {
         }
     }
 
-    /// Closure called when page changes via user tap.
-    public var pageChangedHandler: ((Int) -> Void)?
+    /// Closure called when page changes via user tap. While `nil`, user input is
+    /// ignored entirely (no tap navigation, no VoiceOver adjustment): a self-moving
+    /// highlight with nobody listening would desync from the actual page.
+    public var pageChangedHandler: ((Int) -> Void)? {
+        didSet { accessibilityTraits = pageChangedHandler == nil ? [] : .adjustable }
+    }
 
     // MARK: - Private
 
@@ -137,7 +147,8 @@ public final class LMKPageIndicator: UIView {
         addGestureRecognizer(tap)
 
         isAccessibilityElement = true
-        accessibilityTraits = .adjustable
+        // `.adjustable` arrives with `pageChangedHandler` (see its `didSet`); until then
+        // the element only reads its value.
 
         _ = registerForTraitChanges([UITraitUserInterfaceStyle.self]) { (self: Self, _: UITraitCollection) in
             self.refreshColors()
@@ -239,6 +250,7 @@ public final class LMKPageIndicator: UIView {
     // MARK: - Actions
 
     @objc private func handleTap(_ gesture: UITapGestureRecognizer) {
+        guard pageChangedHandler != nil else { return }
         let location = gesture.location(in: self)
         let range = visibleRange
 
@@ -258,14 +270,14 @@ public final class LMKPageIndicator: UIView {
     // MARK: - Accessibility
 
     override public func accessibilityIncrement() {
-        guard currentPage < numberOfPages - 1 else { return }
+        guard pageChangedHandler != nil, currentPage < numberOfPages - 1 else { return }
         currentPage += 1
         LMKHapticFeedbackHelper.selection()
         pageChangedHandler?(currentPage)
     }
 
     override public func accessibilityDecrement() {
-        guard currentPage > 0 else { return }
+        guard pageChangedHandler != nil, currentPage > 0 else { return }
         currentPage -= 1
         LMKHapticFeedbackHelper.selection()
         pageChangedHandler?(currentPage)

@@ -365,7 +365,7 @@ LMKThemeManager.shared.apply(spacing: .init(large: 20))
 | `LMKCardPanelLayout` | Shared layout constants for card panel controllers (max width, insets, height ratio) |
 | `LMKScrollStackViewController` | Base class for scrollable vertical stack layout — configurable spacing, insets, keyboard dismiss, safe area. Subclasses override `setupStackContent()` |
 | `LMKNavigationDirection` | Shared navigation direction enum (`.forward`, `.backward`, `.none`) used by CardPageController and ActionSheet |
-| `LMKPageIndicator` | Custom page indicator replacing `UIPageControl`. Active dot expands into pill shape with spring animation. `numberOfPages`, `currentPage`, `pageChangedHandler` |
+| `LMKPageIndicator` | Custom page indicator replacing `UIPageControl`. Active dot expands into pill shape with spring animation. `numberOfPages`, `currentPage`, `pageChangedHandler`. Display-only while `pageChangedHandler` is nil (taps / VoiceOver adjustments ignored) |
 | `LMKOverscrollFooterHelper` | Positions a footer view below scroll content, revealed only on overscroll |
 
 ---

@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **LMKPageIndicator** — Display-only when no `pageChangedHandler` is set: taps and VoiceOver increment/decrement no longer move `currentPage` (and the `.adjustable` trait is only advertised while a handler is wired). Previously a tap moved the highlighted dot even with nobody listening, silently desyncing the indicator from the page a controller-driven host was actually showing (e.g. Plantfolio's onboarding; Metamer hit the same trap and has since dropped its dots entirely). Hosts that wire a handler (Petfolio, Example app) are unaffected. 891 → 894 tests.
+
 ## [0.9.0] - 2026-05-25
 
 ### Added
