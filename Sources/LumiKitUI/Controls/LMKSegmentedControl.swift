@@ -219,6 +219,18 @@ open class LMKSegmentedControl: UIControl {
         isScrollable ? true : super.gestureRecognizerShouldBegin(gestureRecognizer)
     }
 
+    // MARK: - Touch Target
+
+    /// Keeps the HIG 44pt minimum touch target when a host constrains the
+    /// control shorter or narrower: touches in the inflated band still land on
+    /// the control (the tap and indicator-pan recognizers both route through
+    /// this hit test).
+    override open func point(inside point: CGPoint, with event: UIEvent?) -> Bool {
+        let dx = min(0, (bounds.width - LMKLayout.minimumTouchTarget) / 2)
+        let dy = min(0, (bounds.height - LMKLayout.minimumTouchTarget) / 2)
+        return bounds.insetBy(dx: dx, dy: dy).contains(point)
+    }
+
     // MARK: - Intrinsic Size
 
     override open var intrinsicContentSize: CGSize {
@@ -292,8 +304,12 @@ open class LMKSegmentedControl: UIControl {
             make.top.bottom.equalTo(segmentStack).inset(indicatorInset)
         }
 
+        // High, not required: hosts may pin a shorter height (compact
+        // toolbars), and a required default would conflict with theirs and
+        // force UIKit to break one side at random. point(inside:) keeps the
+        // effective touch target at the 44pt minimum regardless.
         snp.makeConstraints { make in
-            make.height.equalTo(LMKLayout.minimumTouchTarget)
+            make.height.equalTo(LMKLayout.minimumTouchTarget).priority(.high)
         }
 
         setContentHuggingPriority(.defaultHigh, for: .horizontal)

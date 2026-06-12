@@ -44,6 +44,33 @@ struct LMKSegmentedControlTests {
     }
 
     @Test
+    func `default height constraint yields to a host override`() {
+        // The built-in 44pt height is high priority, not required: a host
+        // pinning its own required height (e.g. a 36pt toolbar) must win
+        // without an unsatisfiable-constraints break.
+        let control = LMKSegmentedControl(items: ["A", "B"])
+        let heightConstraints = control.constraints.filter {
+            $0.firstAttribute == .height && $0.firstItem === control && $0.secondItem == nil
+        }
+        #expect(!heightConstraints.isEmpty)
+        #expect(heightConstraints.allSatisfy { $0.priority.rawValue < UILayoutPriority.required.rawValue })
+    }
+
+    @Test
+    func `hit area inflates to the minimum touch target when constrained shorter`() {
+        let control = LMKSegmentedControl(items: ["A", "B"])
+        control.frame = CGRect(x: 0, y: 0, width: 200, height: 36)
+        // 36pt tall leaves a 4pt band above and below inside the 44pt target.
+        #expect(control.point(inside: CGPoint(x: 100, y: -3), with: nil))
+        #expect(control.point(inside: CGPoint(x: 100, y: 38), with: nil))
+        #expect(!control.point(inside: CGPoint(x: 100, y: -5), with: nil))
+        // At full height the hit area is the bounds, no inflation.
+        control.frame = CGRect(x: 0, y: 0, width: 200, height: 44)
+        #expect(!control.point(inside: CGPoint(x: 100, y: -1), with: nil))
+        #expect(control.point(inside: CGPoint(x: 100, y: 1), with: nil))
+    }
+
+    @Test
     func `isScrollable defaults to false`() {
         let control = LMKSegmentedControl(items: ["A", "B"])
         #expect(control.isScrollable == false)
