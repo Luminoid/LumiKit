@@ -31,17 +31,21 @@ public enum LMKDatePickerHelper {
         public var fromLabel: String
         public var toLabel: String
         public var textFieldPlaceholder: String
+        /// Summary shown by the calendar range picker before anything is tapped.
+        public var selectDatesPrompt: String
 
         public init(
             confirm: String = "OK",
             fromLabel: String = "From",
             toLabel: String = "To",
-            textFieldPlaceholder: String = "Add notes..."
+            textFieldPlaceholder: String = "Add notes...",
+            selectDatesPrompt: String = "Select dates"
         ) {
             self.confirm = confirm
             self.fromLabel = fromLabel
             self.toLabel = toLabel
             self.textFieldPlaceholder = textFieldPlaceholder
+            self.selectDatesPrompt = selectDatesPrompt
         }
     }
 
@@ -269,6 +273,45 @@ public enum LMKDatePickerHelper {
         )
     }
 
+    // MARK: - Calendar Range Picker
+
+    private static let calendarRangeContentHeight: CGFloat = 440
+
+    /// Present a single calendar (UICalendarView) for selecting a date range.
+    ///
+    /// Nothing is selected until the user taps, unless `defaultStartDate` /
+    /// `defaultEndDate` seed an existing range. The first tap sets the start, a
+    /// later tap sets the end, an earlier tap re-anchors the start, and any tap
+    /// once a full range exists resets and begins a new selection. `onConfirm`
+    /// fires only when a selection exists — confirming an empty calendar is a
+    /// no-op, leaving the caller's dates unchanged.
+    public static func presentCalendarRangePicker(
+        on viewController: UIViewController,
+        title: String,
+        message: String? = nil,
+        defaultStartDate: Date? = nil,
+        defaultEndDate: Date? = nil,
+        onConfirm: @escaping (Date, Date) -> Void
+    ) {
+        let rangeView = LMKCalendarRangeSelectionView(
+            startDate: defaultStartDate,
+            endDate: defaultEndDate
+        )
+        LMKActionSheet.present(
+            in: viewController,
+            title: title,
+            message: message,
+            contentView: rangeView,
+            contentHeight: calendarRangeContentHeight,
+            confirmTitle: strings.confirm,
+            onConfirm: {
+                if let range = rangeView.selectedRange {
+                    onConfirm(range.start, range.end)
+                }
+            }
+        )
+    }
+
     // MARK: - Date Picker with Text Field
 
     private static let textFieldHeight: CGFloat = LMKLayout.minimumTouchTarget
@@ -328,5 +371,184 @@ public enum LMKDatePickerHelper {
                 onConfirm(datePicker.date, finalNotes)
             }
         )
+    }
+}
+
+// MARK: - Calendar range selection view
+
+/// Single-calendar range selection backing `presentCalendarRangePicker`: a live
+/// range summary over a `UICalendarView` whose multi-date selection renders every
+/// day of the range. Selection is a pure state machine (`next(after:tapping:)`):
+/// nothing is selected until the first tap, the second tap closes the range, and
+/// any tap once a full range exists resets and starts over.
+final class LMKCalendarRangeSelectionView: UIView {
+    /// Reduced selection state. A `.range` is always normalized so `start <= end`
+    /// (a single-day range has `start == end`).
+    enum Selection: Equatable {
+        case empty
+        case start(Date)
+        case range(Date, Date)
+    }
+
+    private(set) var selection: Selection
+
+    /// The chosen range, or nil when nothing is selected. A lone start resolves
+    /// to a single day; callers confirm against this.
+    var selectedRange: (start: Date, end: Date)? {
+        switch selection {
+        case .empty: nil
+        case let .start(day): (day, day)
+        case let .range(start, end): (start, end)
+        }
+    }
+
+    private let calendar = LMKDateHelper.calendar
+    private var multiDateSelection: UICalendarSelectionMultiDate?
+
+    /// Display cap: a selection is rebuilt date-by-date, so an absurd range
+    /// (a typo'd year) must not enumerate thousands of components.
+    private static let maxSelectedDays = 366
+
+    private static let intervalFormatter: DateIntervalFormatter = {
+        let formatter = DateIntervalFormatter()
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .none
+        return formatter
+    }()
+
+    private let summaryLabel = UILabel()
+    private let calendarView = UICalendarView()
+
+    init(startDate: Date?, endDate: Date?) {
+        let calendar = LMKDateHelper.calendar
+        selection = Self.initialSelection(startDate: startDate, endDate: endDate, calendar: calendar)
+        super.init(frame: .zero)
+        setupUI()
+        refreshSelection()
+        refreshSummary()
+    }
+
+    @available(*, unavailable)
+    required init?(coder _: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    // MARK: - Tap reduction
+
+    /// Seeds the initial state from caller-provided defaults: nil/nil stays
+    /// empty (nothing pre-selected), a start alone shows one day, both show the
+    /// normalized range.
+    nonisolated static func initialSelection(startDate: Date?, endDate: Date?, calendar: Calendar) -> Selection {
+        guard let startDate else { return .empty }
+        let start = calendar.startOfDay(for: startDate)
+        guard let endDate else { return .start(start) }
+        let end = calendar.startOfDay(for: endDate)
+        return end <= start ? .range(start, start) : .range(start, end)
+    }
+
+    /// The next state after tapping `day`: the first tap starts the range, a
+    /// later tap closes it (an earlier tap re-anchors), and any tap once a full
+    /// range exists resets and begins a new selection.
+    nonisolated static func next(after selection: Selection, tapping day: Date, calendar: Calendar) -> Selection {
+        let day = calendar.startOfDay(for: day)
+        switch selection {
+        case .empty:
+            return .start(day)
+        case let .start(anchor):
+            let anchor = calendar.startOfDay(for: anchor)
+            return day < anchor ? .start(day) : .range(anchor, day)
+        case .range:
+            return .start(day)
+        }
+    }
+
+    // MARK: - Setup
+
+    private func setupUI() {
+        summaryLabel.font = LMKTypography.bodyMedium
+        summaryLabel.textColor = LMKColor.textPrimary
+        summaryLabel.textAlignment = .center
+        summaryLabel.adjustsFontForContentSizeCategory = true
+
+        let selectionBehavior = UICalendarSelectionMultiDate(delegate: self)
+        multiDateSelection = selectionBehavior
+        calendarView.selectionBehavior = selectionBehavior
+        calendarView.calendar = calendar
+        calendarView.locale = .current
+        calendarView.tintColor = LMKColor.primary
+        let visibleAnchor = selectedRange?.start ?? LMKDateHelper.today
+        calendarView.visibleDateComponents = calendar.dateComponents([.year, .month], from: visibleAnchor)
+
+        addSubview(summaryLabel)
+        addSubview(calendarView)
+        summaryLabel.snp.makeConstraints { make in
+            make.top.leading.trailing.equalToSuperview()
+        }
+        calendarView.snp.makeConstraints { make in
+            make.top.equalTo(summaryLabel.snp.bottom).offset(LMKSpacing.xs)
+            make.leading.trailing.bottom.equalToSuperview()
+        }
+    }
+
+    // MARK: - State
+
+    private func apply(_ next: Selection) {
+        selection = next
+        refreshSelection()
+        refreshSummary()
+    }
+
+    private func refreshSelection() {
+        guard let multiDateSelection else { return }
+        var components: [DateComponents] = []
+        if let range = selectedRange {
+            var day = range.start
+            while day <= range.end, components.count < Self.maxSelectedDays {
+                components.append(calendar.dateComponents([.year, .month, .day], from: day))
+                guard let next = calendar.date(byAdding: .day, value: 1, to: day) else { break }
+                day = next
+            }
+        }
+        multiDateSelection.setSelectedDates(components, animated: false)
+    }
+
+    private func refreshSummary() {
+        if let range = selectedRange {
+            summaryLabel.text = Self.intervalFormatter.string(from: range.start, to: range.end)
+        } else {
+            summaryLabel.text = LMKDatePickerHelper.strings.selectDatesPrompt
+        }
+        summaryLabel.accessibilityLabel = summaryLabel.text
+    }
+}
+
+// MARK: - UICalendarSelectionMultiDateDelegate
+
+extension LMKCalendarRangeSelectionView: UICalendarSelectionMultiDateDelegate {
+    /// Selecting and deselecting are the same gesture here: any tapped day runs
+    /// through the reducer (a tap inside the current range arrives as a deselect,
+    /// but still means "reset and start a new selection here").
+    func multiDateSelection(_: UICalendarSelectionMultiDate, didSelectDate dateComponents: DateComponents) {
+        handleTap(dateComponents)
+    }
+
+    func multiDateSelection(_: UICalendarSelectionMultiDate, didDeselectDate dateComponents: DateComponents) {
+        handleTap(dateComponents)
+    }
+
+    func multiDateSelection(_: UICalendarSelectionMultiDate, canSelectDate _: DateComponents) -> Bool {
+        true
+    }
+
+    func multiDateSelection(_: UICalendarSelectionMultiDate, canDeselectDate _: DateComponents) -> Bool {
+        true
+    }
+
+    private func handleTap(_ dateComponents: DateComponents) {
+        guard let day = calendar.date(from: dateComponents) else {
+            refreshSelection()
+            return
+        }
+        apply(Self.next(after: selection, tapping: day, calendar: calendar))
     }
 }

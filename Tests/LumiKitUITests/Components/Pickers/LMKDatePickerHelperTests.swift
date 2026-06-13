@@ -403,3 +403,123 @@ struct LMKDatePickerHelperTests {
         let _: any Sendable = s
     }
 }
+
+// MARK: - Calendar range picker
+
+@MainActor
+struct LMKCalendarRangeSelectionTests {
+    private let calendar = LMKDateHelper.calendar
+
+    private func day(_ offset: Int) -> Date {
+        calendar.date(byAdding: .day, value: offset, to: LMKDateHelper.today) ?? LMKDateHelper.today
+    }
+
+    // MARK: - Tap reduction
+
+    @Test
+    func `the first tap starts the range`() {
+        let next = LMKCalendarRangeSelectionView.next(after: .empty, tapping: day(4), calendar: calendar)
+        #expect(next == .start(day(4)))
+    }
+
+    @Test
+    func `a tap after the start closes the range`() {
+        let next = LMKCalendarRangeSelectionView.next(after: .start(day(0)), tapping: day(4), calendar: calendar)
+        #expect(next == .range(day(0), day(4)))
+    }
+
+    @Test
+    func `a tap before the start re-anchors`() {
+        let next = LMKCalendarRangeSelectionView.next(after: .start(day(0)), tapping: day(-3), calendar: calendar)
+        #expect(next == .start(day(-3)))
+    }
+
+    @Test
+    func `tapping the start again makes a one-day range`() {
+        let next = LMKCalendarRangeSelectionView.next(after: .start(day(2)), tapping: day(2), calendar: calendar)
+        #expect(next == .range(day(2), day(2)))
+    }
+
+    @Test
+    func `any tap on a full range resets to a new start`() {
+        // Tapping inside, before, or after a completed range all begin again.
+        for offset in [-5, 3, 9] {
+            let next = LMKCalendarRangeSelectionView.next(after: .range(day(0), day(6)), tapping: day(offset), calendar: calendar)
+            #expect(next == .start(day(offset)))
+        }
+    }
+
+    // MARK: - Initial selection
+
+    @Test
+    func `nil dates select nothing`() {
+        #expect(LMKCalendarRangeSelectionView.initialSelection(startDate: nil, endDate: nil, calendar: calendar) == .empty)
+    }
+
+    @Test
+    func `a start alone seeds a single-day start`() {
+        let selection = LMKCalendarRangeSelectionView.initialSelection(startDate: day(10), endDate: nil, calendar: calendar)
+        #expect(selection == .start(day(10)))
+    }
+
+    @Test
+    func `both dates seed the range`() {
+        let selection = LMKCalendarRangeSelectionView.initialSelection(startDate: day(10), endDate: day(12), calendar: calendar)
+        #expect(selection == .range(day(10), day(12)))
+    }
+
+    @Test
+    func `an end before the start collapses to one day`() {
+        let selection = LMKCalendarRangeSelectionView.initialSelection(startDate: day(10), endDate: day(5), calendar: calendar)
+        #expect(selection == .range(day(10), day(10)))
+    }
+
+    // MARK: - selectedRange derivation
+
+    @Test
+    func `selectedRange is nil while empty and a single day for a lone start`() {
+        let empty = LMKCalendarRangeSelectionView(startDate: nil, endDate: nil)
+        #expect(empty.selectedRange == nil)
+
+        let started = LMKCalendarRangeSelectionView(startDate: day(3), endDate: nil)
+        #expect(started.selectedRange?.start == day(3))
+        #expect(started.selectedRange?.end == day(3))
+    }
+
+    // MARK: - Tap handling through the delegate
+
+    @Test
+    func `a delegate tap on a full range resets to that single day`() {
+        let view = LMKCalendarRangeSelectionView(startDate: day(0), endDate: day(6))
+        let selection = UICalendarSelectionMultiDate(delegate: nil)
+        let tapped = calendar.dateComponents([.year, .month, .day], from: day(2))
+        // A tap inside the current range arrives as a deselect; it must reset
+        // the selection and begin a new one at the tapped day.
+        view.multiDateSelection(selection, didDeselectDate: tapped)
+        #expect(view.selection == .start(day(2)))
+        #expect(view.selectedRange?.start == day(2))
+        #expect(view.selectedRange?.end == day(2))
+    }
+
+    @Test
+    func `presentCalendarRangePicker shows a calendar in an action sheet`() {
+        let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 375, height: 812))
+        let hostVC = UIViewController()
+        window.rootViewController = hostVC
+        window.makeKeyAndVisible()
+        objc_setAssociatedObject(hostVC, "testWindow", window, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
+
+        LMKDatePickerHelper.presentCalendarRangePicker(on: hostVC, title: "Dates") { _, _ in }
+        let sheet = hostVC.children.first { $0 is LMKActionSheet }
+        #expect(sheet != nil)
+
+        func findCalendar(in view: UIView) -> UICalendarView? {
+            if let calendar = view as? UICalendarView { return calendar }
+            for subview in view.subviews {
+                if let found = findCalendar(in: subview) { return found }
+            }
+            return nil
+        }
+        #expect(sheet.flatMap { findCalendar(in: $0.view) } != nil)
+    }
+}

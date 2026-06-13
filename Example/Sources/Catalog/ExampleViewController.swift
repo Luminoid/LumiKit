@@ -85,7 +85,7 @@ private let exampleSections: [ExampleSection] = [
     ExampleSection(title: "Overlays", items: [
         ExampleItem(title: "Action Sheet", subtitle: "Action sheets with icons and sub-pages", iconName: "list.bullet", makeViewController: { ActionSheetDetailViewController() }),
         ExampleItem(title: "Enum Selection", subtitle: "Generic enum picker bottom sheet", iconName: "checklist", makeViewController: { EnumSelectionDetailViewController() }),
-        ExampleItem(title: "Date Picker", subtitle: "Single date, range, and date with notes", iconName: "calendar", makeViewController: { DatePickerDetailViewController() }),
+        ExampleItem(title: "Date Picker", subtitle: "Single date, range, calendar range, and notes", iconName: "calendar", makeViewController: { DatePickerDetailViewController() }),
         ExampleItem(title: "Tip View", subtitle: "Centered and pointed onboarding tips", iconName: "lightbulb", makeViewController: { TipViewDetailViewController() }),
         ExampleItem(title: "Card Page", subtitle: "Card page with multi-page navigation", iconName: "square.stack", makeViewController: { CardPageDetailViewController() }),
         ExampleItem(title: "Card Panel", subtitle: "Floating card panel in overlay window", iconName: "rectangle.inset.filled", makeViewController: { CardPanelDetailViewController() }),

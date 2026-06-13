@@ -412,6 +412,13 @@ final class DatePickerDetailViewController: DetailViewController {
         stack.addArrangedSubview(rangeButton)
 
         addDivider()
+        addSectionHeader("Calendar Range")
+        stack
+            .addArrangedSubview(LMKLabelFactory.caption(text: "One calendar for the whole range. Tap to set the start, tap again to set the end; once a range exists, any tap resets and starts over."))
+        let calendarRangeButton = LMKButtonFactory.filled(role: .primary, title: "Pick Calendar Range", target: self, action: #selector(showCalendarRangePicker))
+        stack.addArrangedSubview(calendarRangeButton)
+
+        addDivider()
         addSectionHeader("Date with Notes")
         stack.addArrangedSubview(LMKLabelFactory.caption(text: "Date picker with an embedded text field for adding context."))
         let notesButton = LMKButtonFactory.filled(role: .secondary, title: "Pick Date with Notes", target: self, action: #selector(showDateWithNotes))
@@ -464,6 +471,19 @@ final class DatePickerDetailViewController: DetailViewController {
             on: self,
             title: "Date Range",
             message: "Select a start and end date"
+        ) { [weak self] start, end in
+            guard let self else { return }
+            let formatter = DateFormatter()
+            formatter.dateStyle = .medium
+            LMKToast.showSuccess(message: "\(formatter.string(from: start)) \u{2192} \(formatter.string(from: end))", on: self)
+        }
+    }
+
+    @objc private func showCalendarRangePicker() {
+        LMKDatePickerHelper.presentCalendarRangePicker(
+            on: self,
+            title: "Calendar Range",
+            message: "Tap to choose a start and end date"
         ) { [weak self] start, end in
             guard let self else { return }
             let formatter = DateFormatter()

@@ -42,7 +42,7 @@ LumiKit/
 │   │   ├── Components/
 │   │   │   ├── BottomSheet/  # LMKBottomSheetController (base), LMKActionSheet,
 │   │   │   │                 # LMKEnumSelectionBottomSheet, LMKBottomSheetLayout
-│   │   │   ├── Pickers/      # LMKDatePickerHelper
+│   │   │   ├── Pickers/      # LMKDatePickerHelper (+ calendar range selection view)
 │   │   │   └── (root)        # Badge, Banner, Card, Chip, Divider, EmptyState,
 │   │   │                     # FilterChipBar, FloatingButton, Gradient, LoadingState,
 │   │   │                     # NavigationBar, NavigationController,
@@ -322,7 +322,7 @@ Paired-file storage (still JPG + video MOV) is the caller's responsibility — L
 
 | Component | Type | Purpose |
 |-----------|------|---------|
-| `LMKDatePickerHelper` | `enum` (static) | Date picker presentation via `LMKActionSheet` — single date (past/future), date range with live enforcement, date with text field. Configurable strings, auto-clamping |
+| `LMKDatePickerHelper` | `enum` (static) | Date picker presentation via `LMKActionSheet` — single date (past/future), date range with live enforcement, single-calendar range picker (`presentCalendarRangePicker`: UICalendarView multi-date selection renders the whole range; nothing is selected until the first tap sets the start, a later tap sets the end, an earlier tap re-anchors, and any tap once a full range exists resets to begin a new selection; `onConfirm` fires only when something is selected), date with text field. Configurable strings, auto-clamping |
 
 ### Utilities (`Utilities/`)
 
