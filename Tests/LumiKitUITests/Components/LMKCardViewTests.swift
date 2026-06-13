@@ -35,6 +35,8 @@ struct LMKCardViewTests {
         let card = LMKCardView()
         card.cardCornerRadius = 20
         #expect(card.layer.cornerRadius == 20)
-        #expect(card.contentView.layer.cornerRadius == 20)
+        // The inset content view intentionally stays square; only the outer
+        // layer rounds, so a child filling the content never double-rounds.
+        #expect(card.contentView.layer.cornerRadius == 0)
     }
 }

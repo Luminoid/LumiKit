@@ -19,8 +19,9 @@ import UIKit
 public final class LMKCardView: UIView {
     // MARK: - Properties
 
-    /// Content container where child views should be added.
-    /// Has `masksToBounds = true` for corner radius clipping.
+    /// Content container where child views should be added. Inset from the card
+    /// edge by `contentInsets`, so it clips to a plain rect via `masksToBounds`
+    /// and does not re-round. The outer card layer owns the corner radius.
     public let contentView = UIView()
 
     /// Card background color.
@@ -31,10 +32,11 @@ public final class LMKCardView: UIView {
         }
     }
 
-    /// Card corner radius.
+    /// Card corner radius. Applied to the outer layer only; the inset
+    /// `contentView` stays square (re-rounding it just floats a smaller radius
+    /// inside the card).
     public var cardCornerRadius: CGFloat = LMKCornerRadius.medium {
         didSet {
-            contentView.layer.cornerRadius = cardCornerRadius
             layer.cornerRadius = cardCornerRadius
         }
     }
@@ -70,7 +72,8 @@ public final class LMKCardView: UIView {
         lmk_applyShadow(LMKShadow.card())
 
         contentView.backgroundColor = cardBackgroundColor
-        contentView.layer.cornerRadius = cardCornerRadius
+        // Inset content clips to a rect; the outer layer owns the rounding, so
+        // re-rounding here would only float a smaller radius inside the card.
         contentView.layer.masksToBounds = true
         addSubview(contentView)
         contentView.snp.makeConstraints { make in
