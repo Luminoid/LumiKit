@@ -664,6 +664,7 @@ LumiKitCore has no default isolation and is safe to use from any concurrency con
 |-----|-------------|
 | [Plantfolio Plus](https://plantfolio.luminoid.dev) | Plant care, watering schedules, collections, and photos for iOS, iPadOS, and Mac |
 | [Petfolio](https://petfolio.luminoid.dev) | Pet care, health tracking, vet visits, food inventory for iOS, iPadOS, and Mac |
+| [Metamer](https://metamer.luminoid.dev) | Color-vision camera for iOS: CVD simulation, daltonize filters, true-color naming, and an Ishihara plate generator |
 
 ---
 
