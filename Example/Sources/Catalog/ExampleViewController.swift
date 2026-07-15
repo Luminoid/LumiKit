@@ -51,7 +51,7 @@ private let exampleSections: [ExampleSection] = [
         ExampleItem(title: "Chips", subtitle: "Filled, outlined, dismissible, and toggle", iconName: "tag", makeViewController: { ChipsDetailViewController() }),
         ExampleItem(
             title: "Filter Chip Bar",
-            subtitle: "Horizontal scrolling chip row with single-select state",
+            subtitle: "Single/multi-select chip row with optional All chip and icons",
             iconName: "line.3.horizontal.decrease.circle",
             makeViewController: { FilterChipBarDetailViewController() }
         ),

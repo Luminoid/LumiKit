@@ -53,10 +53,10 @@ LumiKit is organized into four targets so apps can import only what they need:
 | **LumiKitUI** | LumiKitCore + LumiKitNetwork + SnapKit | Design system tokens, theme manager, animation, haptics, alerts, components, controls, photo browser/crop, network debug UI (DEBUG), UIKit extensions |
 | **LumiKitLottie** | LumiKitUI + Lottie | Lottie-powered pull-to-refresh control |
 
-**112 source files** across 4 targets, with **891 tests** across 4 test targets:
+**120 source files** across 4 targets, with **1002 tests** across 4 test targets:
 - **LumiKitCoreTests**: 76 tests (12 suites)
 - **LumiKitNetworkTests**: 65 tests (4 suites)
-- **LumiKitUITests**: 743 tests (107 suites)
+- **LumiKitUITests**: 854 tests (123 suites)
 - **LumiKitLottieTests**: 7 tests (1 suite)
 
 ---
@@ -225,8 +225,9 @@ LumiKit/
 │   │   │                      # LMKPhotoPickCropCoordinator, LMKSinglePhotoViewer
 │   │   ├── QRCode/            # LMKQRCodeGenerator
 │   │   ├── Share/             # LMKShareService, LMKSharePreviewViewController
-│   │   └── Utilities/         # LMKDeviceHelper, LMKKeyboardObserver, LMKSceneUtil,
-│   │                          # LMKImageUtil, LMKDominantColorExtractor, LMKMarkdownRenderer
+│   │   └── Utilities/         # LMKDeviceHelper, LMKKeyboardObserver, LMKKeyboardInsetHelper,
+│   │                          # LMKKeyboardAdjustment, LMKSceneUtil, LMKImageUtil,
+│   │                          # LMKDominantColorExtractor, LMKMarkdownRenderer
 │   └── LumiKitLottie/         # LMKLottieRefreshControl
 ├── Tests/
 │   ├── LumiKitCoreTests/      # 76 tests, 12 suites — mirrors LumiKitCore/ subfolders
@@ -242,7 +243,7 @@ LumiKit/
 │   │   ├── LMKNetworkRequestRecordTests.swift        # Computed properties, display formatting
 │   │   ├── LMKNetworkLoggerTests.swift               # Configuration, state transitions
 │   │   └── URLSessionConfigurationLMKDebugTests.swift # enableNetworkLogging
-│   ├── LumiKitUITests/        # 836 tests, 122 suites
+│   ├── LumiKitUITests/        # 854 tests, 123 suites
 │   │   ├── Alerts/            # AlertPresenter, ErrorHandler
 │   │   ├── Animation/         # AnimationHelper
 │   │   ├── Components/
@@ -268,7 +269,7 @@ LumiKit/
 │   │   ├── QRCode/            # QRCodeGenerator
 │   │   ├── Share/             # SharePreview, ShareService
 │   │   └── Utilities/         # DeviceHelper, ImageUtil, KeyboardObserver,
-│   │                          # KeyboardInsetHelper, MarkdownRenderer
+│   │                          # KeyboardInsetHelper, KeyboardAdjustment, MarkdownRenderer
 │   └── LumiKitLottieTests/    # 7 tests, 1 suite
 │       └── LMKLottieRefreshControlTests.swift
 ```
@@ -349,13 +350,13 @@ LMKThemeManager.shared.apply(spacing: .init(large: 20))
 | `LMKBannerView` | Persistent notification bar with optional action and dismiss |
 | `LMKCardView` | Card container with shadow, corner radius, content insets |
 | `LMKChipView` | Tag/filter chip (`.filled` / `.outlined`) with optional tap handler |
-| `LMKFilterChipBar` | Horizontal scrolling chip row built on `LMKChipView`. Single-select by default: optional "All" chip clears the filter, `selectionChangedHandler` fires with the filter index or `nil` for "All" / no selection. `allowsMultipleSelection` switches to additive toggling reported through `multiSelectionChangedHandler` as a `Set<Int>` (empty set allowed; the "All" chip clears it) |
+| `LMKFilterChipBar` | Horizontal scrolling chip row built on `LMKChipView`. Single-select by default: optional "All" chip clears the filter, `selectionChangedHandler` fires with the filter index or `nil` for "All" / no selection. `allowsMultipleSelection` switches to additive toggling reported through `multiSelectionChangedHandler` as a `Set<Int>` (empty set allowed; the "All" chip clears it). `filterIcons` adds optional leading icons, positionally matched to titles (nil/missing entries render text-only; the "All" chip never carries an icon) |
 | `LMKDividerView` | Pixel-perfect separator (horizontal / vertical) |
 | `LMKEmptyStateView` | Empty state with icon, title, message, action button |
 | `LMKEnumSelectionBottomSheet` | Bottom sheet for selecting from an enum's cases — single-select (`present`) or multi-select with explicit Done button (`presentMultiSelect`) |
 | `LMKGradientView` | `CAGradientLayer`-backed view with 4 direction options |
 | `LMKLoadingStateView` | Loading indicator with optional message |
-| `LMKNavigationBar` | Custom navigation bar with large title and standard inline modes, configurable bar items, back button, and design-token styling. `setLeftItemEnabled(at:_:)` / `setRightItemEnabled(at:_:)` toggle per-item enabled state. `setRightAccessoryView(_:)` parks a non-tappable view (sync indicator, status icon) to the left of the right items; `setLargeTitleAccessoryView(_:)` hangs an accessory off the trailing edge of the large title text (iOS Mail / Notes pattern) |
+| `LMKNavigationBar` | Custom navigation bar with large title and standard inline modes, configurable bar items, back button, and design-token styling. `setLeftItemEnabled(at:_:)` / `setRightItemEnabled(at:_:)` toggle per-item enabled state. `setRightAccessoryView(_:)` parks a non-tappable view (sync indicator, status icon) to the left of the right items; `setLargeTitleAccessoryView(_:)` hangs an accessory off the trailing edge of the large title text (iOS Mail / Notes pattern). Bar buttons enable pointer hover feedback on iPad / Mac Catalyst |
 | `LMKNavigationController` | `UINavigationController` subclass that preserves the edge-swipe-to-go-back gesture when the system nav bar is hidden. Pairs with `LMKNavigationBar`-based apps |
 | `LMKProgressViewController` | Blocking progress modal (`.determinate` with progress bar, `.indeterminate` spinner-only) |
 | `LMKSearchBar` | Search bar with configurable placeholder and cancel text |
@@ -381,7 +382,7 @@ LMKThemeManager.shared.apply(spacing: .init(large: 20))
 
 | Control | Purpose |
 |---------|---------|
-| `LMKButton` | Configurable button with tap handler, pill shape, and 4 styles: `.filled`, `.outlined`, `.ghost` (text-only), `.iconOnly` (circular icon). Supports `isLoading` state |
+| `LMKButton` | Configurable button with tap handler, pill shape, and 4 styles: `.filled`, `.outlined`, `.ghost` (text-only), `.iconOnly` (circular icon). Supports `isLoading` state; pointer hover feedback on iPad / Mac Catalyst |
 | `LMKSegmentedControl` | Custom segmented control with sliding pill indicator, spring animation, and haptic feedback. Not a `UISegmentedControl` subclass. `fitsSegmentsToContent` (per-segment natural width) composes with `makeScrollableContainer()`; `itemPadding` / `itemSpacing` tune per-segment padding and inter-segment gap for scrollable tag/filter bars |
 | `LMKSlider` | Tokenized continuous or step-snapped slider with optional caption + live value readout row above the track. `step > 0` snaps to `minimumValue + n * step` (cached snapped value bypasses `UISlider`'s float drift). `valueFormatter` drives the readout; both caption and readout auto-hide when nil. User drags fire `.valueChanged` + `valueChangedHandler`; programmatic `value` / `setValue(_:animated:)` are silent |
 | `LMKSwitch` | Custom toggle switch replacing `UISwitch`. Rounded track with sliding thumb, spring animation, haptic feedback. `isOn`, `setOn(_:animated:)`, `valueChangedHandler` |
@@ -421,7 +422,7 @@ All UIKit extensions use the `lmk_` prefix to avoid naming conflicts.
 
 | Utility | Purpose |
 |---------|---------|
-| `LMKAnimationHelper` | Centralized animation timing with Reduce Motion support (`shouldAnimate`), spring damping, and duration presets |
+| `LMKAnimationHelper` | Centralized animation timing with Reduce Motion support (`shouldAnimate`), spring damping, and duration presets. Button-press spring animation (`animateButtonPressDown/Up/Press`) accepts any `UIControl`, so custom controls can reuse it |
 | `LMKAnimationTheme` | Configurable animation token struct (durations including `shimmer` for skeleton loading, spring parameters) via `LMKThemeManager` |
 | `LMKHapticFeedbackHelper` | Haptic feedback helpers — light, medium, heavy, soft, rigid impact and success/error notification feedback |
 
@@ -454,6 +455,7 @@ LumiKitUI includes device-aware helpers and system observers:
 |---------|---------|
 | `LMKDeviceHelper` | Device type detection (`.iPhone`, `.iPad`, `.macCatalyst`), screen size classification, notch detection |
 | `LMKKeyboardObserver` | Keyboard show/hide observer with height and animation duration info |
+| `LMKKeyboardAdjustment` | One-call keyboard avoidance: `scrollView.lmk_enableKeyboardAdjustment()` installs an associated-object adjuster that grows the bottom content and scroll indicator insets to the keyboard overlap and scrolls the focused field into view; restores on hide. No-op on Mac Catalyst |
 | `LMKImageUtil` | SF Symbol creation (`makeSymbolImage` with background), `CVPixelBuffer` to JPEG conversion, `encodeJPEG(_:maxDimension:quality:)` — nonisolated downsample + opaque RGBX re-render so encodes stay 3-channel (avoids ImageIO's "AlphaPremulLast" double-memory path) and EXIF orientation is baked in |
 | `LMKDominantColorExtractor` | RGB-histogram dominant color extraction. `dominantColor(from:ignoringTransparent:strategy:)` returns one color: `.modal` (default, densest bucket = subject identity), `.average` (mean = overall vibe), `.vibrant` (most saturated = accent color). `dominantColors(from:count:ignoringTransparent:)` returns a top-N palette ordered by frequency. Pass a subject-lifted PNG with `ignoringTransparent: true` for hard-edge accuracy |
 | `LMKMarkdownRenderer` | Markdown-to-attributed-string rendering: `render()` for inline (bold/italic), `renderFull()` for long-form content (headings, lists, fenced code blocks, GFM tables, line breaks preserved). Code and tables render in a monospaced font so AI chat responses stay readable |

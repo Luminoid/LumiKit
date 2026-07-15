@@ -68,7 +68,8 @@ public enum LMKAnimationHelper {
     private static let buttonPressSpringDamping: CGFloat = 0.6
 
     /// Animate the press-down phase (scale down). Call on `.touchDown`.
-    public static func animateButtonPressDown(_ button: UIButton) {
+    /// Accepts any `UIControl`, so custom controls (tiles, photo buttons) can reuse the press animation.
+    public static func animateButtonPressDown(_ control: UIControl) {
         guard shouldAnimate else { return }
         UIView.animate(
             withDuration: Duration.buttonPress,
@@ -77,13 +78,13 @@ public enum LMKAnimationHelper {
             initialSpringVelocity: 0,
             options: [.allowUserInteraction, .beginFromCurrentState],
             animations: {
-                button.transform = CGAffineTransform(scaleX: buttonPressScale, y: buttonPressScale)
+                control.transform = CGAffineTransform(scaleX: buttonPressScale, y: buttonPressScale)
             }
         )
     }
 
     /// Animate the release phase (spring back). Call on `.touchUpInside` / `.touchUpOutside` / `.touchCancel`.
-    public static func animateButtonPressUp(_ button: UIButton, completion: (() -> Void)? = nil) {
+    public static func animateButtonPressUp(_ control: UIControl, completion: (() -> Void)? = nil) {
         guard shouldAnimate else {
             completion?()
             return
@@ -95,19 +96,19 @@ public enum LMKAnimationHelper {
             initialSpringVelocity: 0,
             options: [.allowUserInteraction, .beginFromCurrentState],
             animations: {
-                button.transform = .identity
+                control.transform = .identity
             },
             completion: { _ in completion?() }
         )
     }
 
     /// Convenience that chains press-down then release. Used by `lmk_animatePress`.
-    public static func animateButtonPress(_ button: UIButton, completion: (() -> Void)? = nil) {
+    public static func animateButtonPress(_ control: UIControl, completion: (() -> Void)? = nil) {
         guard shouldAnimate else {
             completion?()
             return
         }
-        animateButtonPressDown(button)
+        animateButtonPressDown(control)
         UIView.animate(
             withDuration: Duration.buttonPress,
             delay: Duration.buttonPress,
@@ -115,7 +116,7 @@ public enum LMKAnimationHelper {
             initialSpringVelocity: 0,
             options: [.allowUserInteraction, .beginFromCurrentState],
             animations: {
-                button.transform = .identity
+                control.transform = .identity
             },
             completion: { _ in completion?() }
         )

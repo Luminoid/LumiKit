@@ -11,6 +11,11 @@ import UIKit
 /// Observes keyboard show/hide notifications and adjusts a scroll view's bottom
 /// content inset so the focused input stays visible above the keyboard.
 ///
+/// > Note: Prefer `UIScrollView.lmk_enableKeyboardAdjustment()` for new code. It
+/// > installs once as an associated object, requires no start/stop lifecycle
+/// > wiring, and also tracks keyboard frame changes. This class remains supported
+/// > for call sites that want explicit observation control.
+///
 /// ```swift
 /// class MyViewController: UIViewController {
 ///     private lazy var keyboardHelper = LMKKeyboardInsetHelper(

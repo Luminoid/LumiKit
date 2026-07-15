@@ -106,6 +106,16 @@ struct LMKAnimationHelperTests {
         // Test completes without crashing
     }
 
+    @Test
+    func `Press animation accepts plain UIControl`() {
+        let control = UIControl(frame: CGRect(x: 0, y: 0, width: 100, height: 44))
+
+        LMKAnimationHelper.animateButtonPressDown(control)
+        LMKAnimationHelper.animateButtonPressUp(control)
+        LMKAnimationHelper.animateButtonPress(control)
+        // Test completes without crashing
+    }
+
     // MARK: - Success Feedback Tests
 
     @Test

@@ -104,10 +104,14 @@ public final class LMKFilterChipBar: UIView {
     ///   - allTitle: Title for the "All" chip. When non-nil, an "All" chip is prepended and
     ///     selecting it clears the filter (`selectionChangedHandler(nil)`).
     ///   - filterTitles: Titles for each filter chip, in display order.
+    ///   - filterIcons: Optional leading icons, positionally matched to `filterTitles`.
+    ///     Entries beyond the array's length (or `nil` entries) render text-only chips.
+    ///     The "All" chip never carries an icon.
     ///   - style: Chip style applied to every chip. Defaults to `.outlined`.
     public func configure(
         allTitle: String? = nil,
         filterTitles: [String],
+        filterIcons: [UIImage?]? = nil,
         style: LMKChipStyle = .outlined
     ) {
         chipStack.arrangedSubviews.forEach { $0.removeFromSuperview() }
@@ -124,7 +128,8 @@ public final class LMKFilterChipBar: UIView {
         }
 
         for (index, title) in filterTitles.enumerated() {
-            let chip = LMKChipView(text: title, style: style)
+            let icon = filterIcons.flatMap { index < $0.count ? $0[index] : nil }
+            let chip = LMKChipView(text: title, icon: icon, style: style)
             chip.tapHandler = { [weak self] in
                 self?.selectFilter(at: index)
             }

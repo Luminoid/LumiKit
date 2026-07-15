@@ -205,4 +205,54 @@ struct LMKFilterChipBarTests {
         #expect(!multiFired)
         #expect(bar.selectedIndex == 1)
     }
+
+    // MARK: - Icons
+
+    private func iconImageView(in chip: LMKChipView) -> UIImageView? {
+        func search(_ view: UIView) -> UIImageView? {
+            if let imageView = view as? UIImageView { return imageView }
+            for subview in view.subviews {
+                if let found = search(subview) { return found }
+            }
+            return nil
+        }
+        return search(chip)
+    }
+
+    @Test
+    func `configure with filterIcons puts icons on the matching chips`() {
+        let bar = LMKFilterChipBar()
+        let icon = UIImage(systemName: "drop")
+        bar.configure(filterTitles: ["A", "B"], filterIcons: [icon, nil])
+
+        let barChips = chips(in: bar)
+        let firstIcon = iconImageView(in: barChips[0])
+        #expect(firstIcon?.image != nil)
+        #expect(firstIcon?.isHidden == false)
+        let secondIcon = iconImageView(in: barChips[1])
+        #expect(secondIcon?.isHidden == true, "nil entry renders a text-only chip")
+    }
+
+    @Test
+    func `filterIcons shorter than titles leaves trailing chips text-only`() {
+        let bar = LMKFilterChipBar()
+        bar.configure(filterTitles: ["A", "B", "C"], filterIcons: [UIImage(systemName: "leaf")])
+
+        let barChips = chips(in: bar)
+        #expect(barChips.count == 3)
+        #expect(iconImageView(in: barChips[2])?.isHidden == true)
+    }
+
+    @Test
+    func `All chip never carries an icon and icon chips still toggle in multi-select`() {
+        let bar = LMKFilterChipBar()
+        bar.allowsMultipleSelection = true
+        bar.configure(allTitle: "All", filterTitles: ["A"], filterIcons: [UIImage(systemName: "drop")])
+
+        let barChips = chips(in: bar)
+        #expect(iconImageView(in: barChips[0])?.isHidden == true, "All chip is text-only")
+
+        barChips[1].tapHandler?()
+        #expect(bar.selectedIndices == [0], "icon chips keep multi-select toggling")
+    }
 }

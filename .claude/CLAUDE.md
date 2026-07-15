@@ -73,8 +73,9 @@ LumiKit/
 │   │   │                    # LMKPhotoPickCropCoordinator, LMKSinglePhotoViewer
 │   │   ├── QRCode/          # LMKQRCodeGenerator
 │   │   ├── Share/           # LMKShareService, LMKSharePreviewViewController
-│   │   └── Utilities/       # LMKDeviceHelper, LMKKeyboardObserver, LMKSceneUtil,
-│   │                        # LMKImageUtil, LMKDominantColorExtractor, LMKMarkdownRenderer
+│   │   └── Utilities/       # LMKDeviceHelper, LMKKeyboardObserver, LMKKeyboardInsetHelper,
+│   │                        # LMKKeyboardAdjustment, LMKSceneUtil, LMKImageUtil,
+│   │                        # LMKDominantColorExtractor, LMKMarkdownRenderer
 │   └── LumiKitLottie/       # LMKLottieRefreshControl
 ├── Tests/
 │   ├── LumiKitCoreTests/    # 76 tests, 12 suites
@@ -91,7 +92,7 @@ LumiKit/
 │   │   └── URLSessionConfigurationLMKDebugTests.swift # enableNetworkLogging
 │   ├── LumiKitLottieTests/  # 7 tests, 1 suite
 │   │   └── LMKLottieRefreshControlTests.swift
-│   └── LumiKitUITests/      # 844 tests, 122 suites
+│   └── LumiKitUITests/      # 854 tests, 123 suites
 │       ├── Alerts/          # AlertPresenter, ErrorHandler
 │       ├── Animation/       # AnimationHelper
 │       ├── Components/
@@ -118,7 +119,8 @@ LumiKit/
 │       ├── QRCode/          # QRCodeGenerator
 │       ├── Share/           # SharePreview, ShareService
 │       └── Utilities/       # DeviceHelper, ImageUtil, DominantColorExtractor,
-│                            # KeyboardObserver, KeyboardInsetHelper, MarkdownRenderer
+│                            # KeyboardObserver, KeyboardInsetHelper, KeyboardAdjustment,
+│                            # MarkdownRenderer
 ```
 
 ---
@@ -240,13 +242,13 @@ LMKThemeManager.shared.apply(spacing: .init(large: 20))
 | `LMKBannerView` | `final class` | Persistent notification bar with optional action & dismiss |
 | `LMKCardView` | `final class` | Card container with shadow, corner radius, content insets |
 | `LMKChipView` | `final class` | Tag/filter chip (`.filled` / `.outlined`) with optional tap handler |
-| `LMKFilterChipBar` | `final class` | Horizontal scrolling chip bar built on `LMKChipView`. Single-select by default: optional "All" chip clears the filter, `configure(allTitle:filterTitles:style:)`, `setSelectedIndex(_:)` (silent), `selectionChangedHandler: ((Int?) -> Void)` — `nil` index = "All" / no selection. `allowsMultipleSelection` (set before `configure`) switches to additive toggling: `multiSelectionChangedHandler: ((Set<Int>) -> Void)`, `selectedIndices`, silent `setSelectedIndices(_:)`; empty set allowed (consumer decides, typically "show all"), the "All" chip clears the set and highlights while it's empty |
+| `LMKFilterChipBar` | `final class` | Horizontal scrolling chip bar built on `LMKChipView`. Single-select by default: optional "All" chip clears the filter, `configure(allTitle:filterTitles:filterIcons:style:)` (`filterIcons` are optional leading icons positionally matched to titles; nil/missing entries render text-only, the "All" chip never carries an icon), `setSelectedIndex(_:)` (silent), `selectionChangedHandler: ((Int?) -> Void)` — `nil` index = "All" / no selection. `allowsMultipleSelection` (set before `configure`) switches to additive toggling: `multiSelectionChangedHandler: ((Set<Int>) -> Void)`, `selectedIndices`, silent `setSelectedIndices(_:)`; empty set allowed (consumer decides, typically "show all"), the "All" chip clears the set and highlights while it's empty |
 | `LMKDividerView` | `final class` | Pixel-perfect separator (horizontal / vertical) |
 | `LMKEmptyStateView` | `final class` | Empty state with icon, title, message, action button |
 | `LMKEnumSelectionBottomSheet` | `final class` | Generic bottom sheet for selecting from an enum's cases. `present(...)` for single-select (auto-commits on tap); `presentMultiSelect(...)` for multi-select (tap toggles, explicit Done button commits) |
 | `LMKGradientView` | `final class` | CAGradientLayer-backed view with 4 direction options |
 | `LMKLoadingStateView` | `final class` | Loading indicator with optional message |
-| `LMKNavigationBar` | `final class` | Custom navigation bar with large title and standard inline modes. Configurable back button, left/right `LMKNavigationBarItem` arrays, separator, appearance (background, tint, title font/color). `pinToTop(of:)` for layout. `setLeftItemEnabled(at:_:)` / `setRightItemEnabled(at:_:)` toggle per-item enabled state (disabled items render at `LMKAlpha.disabled` and stop firing their action). `setRightAccessoryView(_:)` parks a non-tappable view (sync indicator, status icon) immediately to the left of the right items — lives outside the items stack, so `setRightItems(_:)` doesn't disturb it. `setLargeTitleAccessoryView(_:)` hangs a view off the trailing edge of the large title text (iOS Mail / Notes pattern) — the title's content-hugging priority is `.required`, so the accessory tracks the actual text width |
+| `LMKNavigationBar` | `final class` | Custom navigation bar with large title and standard inline modes. Configurable back button, left/right `LMKNavigationBarItem` arrays, separator, appearance (background, tint, title font/color). `pinToTop(of:)` for layout. `setLeftItemEnabled(at:_:)` / `setRightItemEnabled(at:_:)` toggle per-item enabled state (disabled items render at `LMKAlpha.disabled` and stop firing their action). `setRightAccessoryView(_:)` parks a non-tappable view (sync indicator, status icon) immediately to the left of the right items — lives outside the items stack, so `setRightItems(_:)` doesn't disturb it. `setLargeTitleAccessoryView(_:)` hangs a view off the trailing edge of the large title text (iOS Mail / Notes pattern) — the title's content-hugging priority is `.required`, so the accessory tracks the actual text width. Bar buttons enable pointer hover feedback on iPad / Mac Catalyst |
 | `LMKNavigationController` | `open class` | `UINavigationController` subclass that keeps the interactive edge-swipe-to-go-back gesture working when the system nav bar is hidden (as it is in apps using `LMKNavigationBar`). Installs itself as the pop-gesture delegate and enables the gesture only when the stack has 2+ VCs |
 | `LMKPageIndicator` | `final class` | Custom page indicator replacing `UIPageControl`. Active dot expands into pill with spring animation. `numberOfPages`, `currentPage`, `pageChangedHandler`. Display-only while `pageChangedHandler` is nil (taps / VoiceOver adjustments are ignored, so the highlight can't desync from a controller-driven host) |
 | `LMKProgressViewController` | `final class` | Blocking progress modal (`.determinate` with progress bar, `.indeterminate` spinner-only) |
@@ -269,7 +271,7 @@ LMKThemeManager.shared.apply(spacing: .init(large: 20))
 
 | Control | Type | Purpose |
 |---------|------|---------|
-| `LMKButton` | `open class` | UIButton subclass with 4 styles: `.filled`, `.outlined`, `.ghost` (text-only), `.iconOnly` (circular). Capsule corners, press animation, `isLoading` state. `tapHandler`/`didTapHandler` closures |
+| `LMKButton` | `open class` | UIButton subclass with 4 styles: `.filled`, `.outlined`, `.ghost` (text-only), `.iconOnly` (circular). Capsule corners, press animation, `isLoading` state, pointer hover feedback (iPad / Mac Catalyst). `tapHandler`/`didTapHandler` closures |
 | `LMKSegmentedControl` | `open class` | Custom `UIControl` (NOT `UISegmentedControl`) with sliding pill indicator, spring animation, haptic. `init(items:)`, `selectedSegmentIndex` (`-1` = no selection, hides indicator — matches `UISegmentedControl.noSegment`), `valueChangedHandler`, `fitsSegmentsToContent` (per-segment natural width), `makeScrollableContainer()`. `fitsSegmentsToContent` and `makeScrollableContainer()` compose — combined mode uses fit-mode exact widths (`itemPadding`) and ignores `scrollableItemPadding`. `itemSpacing` tunes the gap between segments in scrollable mode (default `LMKSpacing.medium`; non-scrollable mode always uses 0) |
 | `LMKSlider` | `final class` | Tokenized continuous or step-snapped slider with optional caption (leading) + live value readout (trailing) row above the track. `value` / `setValue(_:animated:)` are silent; user drags fire `.valueChanged` + `valueChangedHandler`. `step > 0` snaps to `minimumValue + n * step` (cached snapped value bypasses `UISlider`'s float drift). `valueFormatter: ((Float) -> String)?` drives the readout; both caption and readout auto-hide when nil. Uses `LMKTypography.captionMedium` + design-token tints. Adjustable accessibility trait with live `accessibilityValue` |
 | `LMKSwitch` | `final class` | Custom toggle replacing `UISwitch`. Rounded track + sliding thumb, spring animation, haptic. `isOn`, `setOn(_:animated:)`, `valueChangedHandler`. Sends `.valueChanged` |
@@ -340,6 +342,7 @@ Paired-file storage (still JPG + video MOV) is the caller's responsibility — L
 |---------|---------|
 | `LMKDeviceHelper` | Device type (`.iPhone`, `.iPad`, `.macCatalyst`), screen size classification, notch detection |
 | `LMKKeyboardObserver` | Keyboard show/hide observer with height + animation info |
+| `LMKKeyboardAdjustment` | One-call keyboard avoidance: `scrollView.lmk_enableKeyboardAdjustment()` installs an associated-object adjuster that grows the bottom content + scroll indicator insets to the keyboard overlap on `keyboardWillChangeFrame` and scrolls the focused field into view; restores on hide. No-op on Mac Catalyst. Prefer over `LMKKeyboardInsetHelper` (start/stop lifecycle) for new form screens |
 | `LMKImageUtil` | SF Symbol creation (`makeSymbolImage` with background), `CVPixelBuffer` to JPEG conversion, `encodeJPEG(_:maxDimension:quality:)` — `nonisolated` downsample + opaque RGBX (`.noneSkipLast`) re-render + `CGImageDestination` encode, so JPEGs stay 3-channel (no ImageIO "AlphaPremulLast" double-memory path) and EXIF orientation is baked into the pixels |
 | `LMKDominantColorExtractor` | RGB-histogram color extraction. `dominantColor(from:ignoringTransparent:strategy:)` returns one color: `.modal` (default, densest bucket = subject identity), `.average` (mean = gradient vibe, muddy for subjects), `.vibrant` (most saturated bucket with population tie-breaker = accent color, drops < 0.5% buckets, falls through to modal for grayscale). `dominantColors(from:count:ignoringTransparent:)` returns a top-N palette by frequency. Pass a subject-lifted PNG with `ignoringTransparent: true` (alpha threshold drops semi-transparent edges); raw photos use the default and a 20% border-ring crop. Always uses `kCGImageAlphaPremultipliedLast` — `.last` (unpremultiplied) is rejected by `CGBitmapContext` on iOS |
 | `LMKMarkdownRenderer` | Markdown-to-attributed-string: `render()` for inline (bold/italic), `renderFull()` for long-form content (headings, lists, fenced code blocks, GFM tables, `\n` preserved; code and tables in a monospaced font), `makeInlineTextView` |

@@ -5,6 +5,18 @@ All notable changes to LumiKit will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- **UIScrollView.lmk_enableKeyboardAdjustment()**: One-call keyboard avoidance, ported from Petfolio's `KeyboardScrollAdjuster`. Installs an adjuster as an associated object that listens to `keyboardWillChangeFrame`, grows the bottom content and scroll indicator insets to the keyboard overlap, and scrolls the focused field into the visible area (restoring on hide). Safe to call multiple times; no-op on Mac Catalyst. `LMKKeyboardInsetHelper` remains supported for call sites that want explicit start/stop observation control.
+- **Pointer interaction**: `LMKButton` and `LMKNavigationBar`'s bar buttons (back button, left and right items) now set `isPointerInteractionEnabled = true`, giving iPad pointer and Mac Catalyst users hover feedback.
+- **LMKFilterChipBar icons**: `configure(allTitle:filterTitles:filterIcons:style:)` accepts optional leading icons, positionally matched to `filterTitles` (`nil` or missing entries render text-only chips; the "All" chip never carries an icon). Backward compatible; `LMKChipView` already supported icons, the bar just never passed them.
+
+### Changed
+
+- **LMKAnimationHelper press animation accepts any UIControl**: `animateButtonPressDown` / `animateButtonPressUp` / `animateButtonPress` parameters widened from `UIButton` to `UIControl` (source-compatible), so custom controls such as tiles and photo buttons can reuse the press animation. Scale, alpha, and Reduce Motion behavior unchanged.
+
 ## [0.10.0] - 2026-07-15
 
 ### Added

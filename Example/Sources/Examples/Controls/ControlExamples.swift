@@ -109,6 +109,77 @@ final class ButtonsDetailViewController: DetailViewController {
             }
         }
         stack.addArrangedSubview(typedBtn)
+
+        addDivider()
+        addSectionHeader("Press Animation on Any UIControl")
+        stack
+            .addArrangedSubview(LMKLabelFactory
+                .caption(
+                    text: "`LMKAnimationHelper.animateButtonPressDown/Up` accept any UIControl, so custom tiles reuse the spring press effect. LMKButton adds pointer hover feedback on iPad and Mac."
+                ))
+
+        let tile = PressableTileControl()
+        tile.tapHandler = { [weak self] in
+            guard let self else { return }
+            LMKToast.showSuccess(message: "Custom UIControl tapped", on: self)
+        }
+        tile.snp.makeConstraints { $0.height.equalTo(64) }
+        stack.addArrangedSubview(tile)
+    }
+}
+
+/// Plain `UIControl` tile that reuses `LMKAnimationHelper`'s button press animation.
+private final class PressableTileControl: UIControl {
+    var tapHandler: (() -> Void)?
+
+    private lazy var iconView: UIImageView = {
+        let imageView = UIImageView(image: UIImage(systemName: "square.grid.2x2"))
+        imageView.tintColor = LMKColor.primary
+        imageView.contentMode = .scaleAspectFit
+        return imageView
+    }()
+
+    private lazy var titleLabel = LMKLabelFactory.body(text: "Custom Tile Control")
+
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+        backgroundColor = LMKColor.backgroundSecondary
+        layer.cornerRadius = LMKCornerRadius.medium
+
+        addSubview(iconView)
+        addSubview(titleLabel)
+        iconView.snp.makeConstraints { make in
+            make.leading.equalToSuperview().inset(LMKSpacing.large)
+            make.centerY.equalToSuperview()
+            make.size.equalTo(LMKLayout.iconMedium)
+        }
+        titleLabel.snp.makeConstraints { make in
+            make.leading.equalTo(iconView.snp.trailing).offset(LMKSpacing.medium)
+            make.trailing.lessThanOrEqualToSuperview().inset(LMKSpacing.large)
+            make.centerY.equalToSuperview()
+        }
+
+        addTarget(self, action: #selector(pressDown), for: [.touchDown, .touchDragEnter])
+        addTarget(self, action: #selector(pressUp), for: [.touchUpOutside, .touchCancel, .touchDragExit])
+        addTarget(self, action: #selector(tapped), for: .touchUpInside)
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    @objc private func pressDown() {
+        LMKAnimationHelper.animateButtonPressDown(self)
+    }
+
+    @objc private func pressUp() {
+        LMKAnimationHelper.animateButtonPressUp(self)
+    }
+
+    @objc private func tapped() {
+        LMKAnimationHelper.animateButtonPressUp(self)
+        tapHandler?()
     }
 }
 
@@ -406,22 +477,20 @@ final class ToggleButtonDetailViewController: DetailViewController {
 // MARK: - Text Field
 
 final class TextFieldDetailViewController: DetailViewController {
-    private lazy var keyboardHelper = LMKKeyboardInsetHelper(scrollView: scrollView, rootView: view)
     private var liveValidationField: LMKTextField?
-
-    override func viewWillAppear(_ animated: Bool) {
-        super.viewWillAppear(animated)
-        keyboardHelper.startObserving()
-    }
-
-    override func viewWillDisappear(_ animated: Bool) {
-        super.viewWillDisappear(animated)
-        keyboardHelper.stopObserving()
-    }
 
     override func viewDidLoad() {
         super.viewDidLoad()
+        scrollView.lmk_enableKeyboardAdjustment()
 
+        addSectionHeader("Keyboard Avoidance")
+        stack
+            .addArrangedSubview(LMKLabelFactory
+                .caption(
+                    text: "Calls `scrollView.lmk_enableKeyboardAdjustment()` once in viewDidLoad: insets grow to the keyboard overlap and the focused field scrolls into view."
+                ))
+
+        addDivider()
         addSectionHeader("Basic")
         let basic = LMKTextField()
         basic.placeholder = "Enter your name"
@@ -498,6 +567,14 @@ final class TextViewDetailViewController: DetailViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
 
+        addSectionHeader("Keyboard Avoidance")
+        stack
+            .addArrangedSubview(LMKLabelFactory
+                .caption(
+                    text: "Uses `LMKKeyboardInsetHelper` with explicit startObserving()/stopObserving(). New screens should prefer `lmk_enableKeyboardAdjustment()` (see Text Field)."
+                ))
+
+        addDivider()
         addSectionHeader("Basic")
         let basic = LMKTextView()
         basic.placeholder = "Enter your notes here..."

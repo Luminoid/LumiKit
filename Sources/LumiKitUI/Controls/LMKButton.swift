@@ -58,6 +58,8 @@ open class LMKButton: UIButton {
 
     open func initialize() {
         imageView?.contentMode = imageContentMode
+        // Hover feedback for iPad pointer / Mac Catalyst.
+        isPointerInteractionEnabled = true
         addTarget(self, action: #selector(didTap), for: .touchUpInside)
         addTarget(self, action: #selector(handleTouchDown), for: .touchDown)
         addTarget(self, action: #selector(handleTouchUp), for: [.touchUpInside, .touchUpOutside, .touchCancel])

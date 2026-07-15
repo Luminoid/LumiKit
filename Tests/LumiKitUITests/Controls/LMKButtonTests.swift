@@ -30,6 +30,12 @@ struct LMKButtonTests {
     }
 
     @Test
+    func `Pointer interaction is enabled by default`() {
+        let button = LMKButton()
+        #expect(button.isPointerInteractionEnabled)
+    }
+
+    @Test
     func `Both handlers fire on single tap`() {
         let button = LMKButton()
         var tapCalled = false

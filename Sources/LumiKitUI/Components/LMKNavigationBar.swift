@@ -161,6 +161,7 @@ public final class LMKNavigationBar: UIView {
         let config = UIImage.SymbolConfiguration(pointSize: 17, weight: .medium)
         button.setImage(UIImage(systemName: "chevron.backward", withConfiguration: config), for: .normal)
         button.tintColor = buttonTintColor
+        button.isPointerInteractionEnabled = true
         button.addTarget(self, action: #selector(backTapped), for: .touchUpInside)
         button.isHidden = true
         button.accessibilityLabel = "Back"
@@ -252,6 +253,7 @@ public final class LMKNavigationBar: UIView {
                 button.titleLabel?.font = LMKTypography.body
             }
             button.tintColor = buttonTintColor
+            button.isPointerInteractionEnabled = true
             button.tag = index
             button.addTarget(self, action: #selector(leftItemTapped(_:)), for: .touchUpInside)
             button.accessibilityLabel = item.accessibilityLabel ?? item.title
@@ -274,6 +276,7 @@ public final class LMKNavigationBar: UIView {
                 button.titleLabel?.font = LMKTypography.body
             }
             button.tintColor = buttonTintColor
+            button.isPointerInteractionEnabled = true
             button.tag = index
             button.addTarget(self, action: #selector(rightItemTapped(_:)), for: .touchUpInside)
             button.accessibilityLabel = item.accessibilityLabel ?? item.title

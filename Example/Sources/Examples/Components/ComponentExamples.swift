@@ -192,6 +192,28 @@ final class FilterChipBarDetailViewController: DetailViewController {
         stack.addArrangedSubview(filled)
 
         addDivider()
+        addSectionHeader("With Icons")
+        stack
+            .addArrangedSubview(LMKLabelFactory
+                .caption(
+                    text: "`filterIcons` adds optional leading icons, positionally matched to `filterTitles`. A nil or missing entry renders a text-only chip; the 'All' chip never carries an icon."
+                ))
+
+        let icons = LMKFilterChipBar()
+        icons.configure(
+            allTitle: "All",
+            filterTitles: ["Photos", "Notes", "Tasks", "Links"],
+            filterIcons: [
+                UIImage(systemName: "photo"),
+                UIImage(systemName: "note.text"),
+                UIImage(systemName: "checkmark.circle"),
+                nil,
+            ]
+        )
+        icons.snp.makeConstraints { $0.height.equalTo(44) }
+        stack.addArrangedSubview(icons)
+
+        addDivider()
         addSectionHeader("Multi-Select")
         stack
             .addArrangedSubview(LMKLabelFactory
