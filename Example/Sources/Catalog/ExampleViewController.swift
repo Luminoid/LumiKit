@@ -3,7 +3,8 @@
 //  LumiKitExample
 //
 //  Catalog list that navigates to detail pages for each component group.
-//  Organized into sections: Design System, Controls, Components, Feedback, Overlays, Media, Extensions.
+//  Organized into sections: Design System, Controls, Components, Lists & Cells,
+//  Navigation & Paging, Feedback, Overlays, Media, Extensions.
 //
 
 import LumiKitUI
@@ -31,20 +32,21 @@ private let exampleSections: [ExampleSection] = [
         ExampleItem(title: "Typography", subtitle: "Headings, body, caption, scientific name", iconName: "textformat", makeViewController: { TypographyDetailViewController() }),
         ExampleItem(title: "Markdown", subtitle: "Render markdown as attributed strings", iconName: "text.badge.checkmark", makeViewController: { MarkdownDetailViewController() }),
     ]),
-    // Interactive inputs — action → selection → text input
+    // Interactive inputs — action → toggle → selection → text input
     ExampleSection(title: "Controls", items: [
         ExampleItem(title: "Buttons", subtitle: "Filled, outlined, ghost, icon-only, loading", iconName: "rectangle.and.hand.point.up.left", makeViewController: { ButtonsDetailViewController() }),
-        ExampleItem(title: "Segmented Control", subtitle: "Draggable pill indicator, corner styles", iconName: "rectangle.split.3x1", makeViewController: { SegmentedControlDetailViewController() }),
-        ExampleItem(title: "Switch", subtitle: "Custom toggle with spring animation", iconName: "switch.2", makeViewController: { SwitchDetailViewController() }),
-        ExampleItem(title: "Slider", subtitle: "Caption, live readout, step-snap, negative range", iconName: "slider.horizontal.3", makeViewController: { SliderDetailViewController() }),
         ExampleItem(title: "Toggle Button", subtitle: "Text button with on/off states", iconName: "togglepower", makeViewController: { ToggleButtonDetailViewController() }),
+        ExampleItem(title: "Switch", subtitle: "Custom toggle with spring animation", iconName: "switch.2", makeViewController: { SwitchDetailViewController() }),
+        ExampleItem(title: "Segmented Control", subtitle: "Draggable pill indicator, corner styles", iconName: "rectangle.split.3x1", makeViewController: { SegmentedControlDetailViewController() }),
+        ExampleItem(title: "Slider", subtitle: "Caption, live readout, step-snap, negative range", iconName: "slider.horizontal.3", makeViewController: { SliderDetailViewController() }),
         ExampleItem(title: "Text Field", subtitle: "Validation states, icons, helper text", iconName: "character.cursor.ibeam", makeViewController: { TextFieldDetailViewController() }),
         ExampleItem(title: "Text View", subtitle: "Multi-line input with character limit", iconName: "text.alignleft", makeViewController: { TextViewDetailViewController() }),
         ExampleItem(title: "Search Bar", subtitle: "Search input with cancel button", iconName: "magnifyingglass", makeViewController: { SearchBarDetailViewController() }),
     ]),
-    // Static/display elements — simple → complex
+    // Static/display elements — simple → composite
     ExampleSection(title: "Components", items: [
         ExampleItem(title: "Divider", subtitle: "Pixel-perfect horizontal separator", iconName: "minus", makeViewController: { DividerDetailViewController() }),
+        ExampleItem(title: "Gradient", subtitle: "Linear gradients with configurable directions", iconName: "rectangle.fill", makeViewController: { GradientDetailViewController() }),
         ExampleItem(title: "Badges", subtitle: "Count, text, and dot badges", iconName: "app.badge", makeViewController: { BadgesDetailViewController() }),
         ExampleItem(title: "Chips", subtitle: "Filled, outlined, dismissible, and toggle", iconName: "tag", makeViewController: { ChipsDetailViewController() }),
         ExampleItem(
@@ -54,8 +56,24 @@ private let exampleSections: [ExampleSection] = [
             makeViewController: { FilterChipBarDetailViewController() }
         ),
         ExampleItem(title: "Cards", subtitle: "Card view and card factory", iconName: "rectangle.on.rectangle", makeViewController: { CardsDetailViewController() }),
-        ExampleItem(title: "Gradient", subtitle: "Linear gradients with configurable directions", iconName: "rectangle.fill", makeViewController: { GradientDetailViewController() }),
-        ExampleItem(title: "Page Indicator", subtitle: "Animated expanding pill page dots", iconName: "circle.circle", makeViewController: { PageIndicatorDetailViewController() }),
+        ExampleItem(title: "Banners", subtitle: "Persistent info, warning, and error banners", iconName: "exclamationmark.bubble", makeViewController: { BannerDetailViewController() }),
+        ExampleItem(title: "Empty State", subtitle: "Full screen, card, and inline styles", iconName: "square.dashed", makeViewController: { EmptyStateDetailViewController() }),
+        ExampleItem(title: "Loading State", subtitle: "Inline, overlay, and skeleton loading", iconName: "progress.indicator", makeViewController: { LoadingStateDetailViewController() }),
+    ]),
+    // Table and list rows — cells and row helpers
+    ExampleSection(title: "Lists & Cells", items: [
+        ExampleItem(title: "Checkbox Cell", subtitle: "Check-off row with strike-through title", iconName: "checkmark.circle", makeViewController: { CheckboxCellDetailViewController() }),
+        ExampleItem(
+            title: "Icon List Row",
+            subtitle: "lmk_configureIconListRow — symbol in a tinted circle",
+            iconName: "list.bullet.circle",
+            makeViewController: { IconListRowDetailViewController() }
+        ),
+        ExampleItem(title: "Cell Highlight", subtitle: "lmk_applyCustomHighlight and lmk_configureCustomHighlight", iconName: "hand.tap.fill", makeViewController: { HighlightDetailViewController() }),
+        ExampleItem(title: "Overscroll Footer", subtitle: "Footer revealed on overscroll", iconName: "arrow.down.to.line", makeViewController: { OverscrollFooterDetailViewController() }),
+    ]),
+    // Screen structure — bars, stacks, and paging
+    ExampleSection(title: "Navigation & Paging", items: [
         ExampleItem(title: "Navigation Bar", subtitle: "Large title, inline, back button, bar items", iconName: "menubar.rectangle", makeViewController: { NavigationBarDetailViewController() }),
         ExampleItem(
             title: "Navigation Controller",
@@ -63,17 +81,13 @@ private let exampleSections: [ExampleSection] = [
             iconName: "arrow.backward.circle",
             makeViewController: { NavigationControllerDetailViewController() }
         ),
+        ExampleItem(title: "Page Indicator", subtitle: "Animated expanding pill page dots", iconName: "circle.circle", makeViewController: { PageIndicatorDetailViewController() }),
         ExampleItem(
             title: "Segmented Pages",
             subtitle: "Tab container with interactive finger-tracking swipe paging",
             iconName: "rectangle.split.2x1",
             makeViewController: { SegmentedPagesDetailViewController() }
         ),
-        ExampleItem(title: "Banners", subtitle: "Persistent info, warning, and error banners", iconName: "exclamationmark.bubble", makeViewController: { BannerDetailViewController() }),
-        ExampleItem(title: "Empty State", subtitle: "Full screen, card, and inline styles", iconName: "square.dashed", makeViewController: { EmptyStateDetailViewController() }),
-        ExampleItem(title: "Loading State", subtitle: "Inline, overlay, and skeleton loading", iconName: "progress.indicator", makeViewController: { LoadingStateDetailViewController() }),
-        ExampleItem(title: "Checkbox Cell", subtitle: "Check-off row with strike-through title", iconName: "checkmark.circle", makeViewController: { CheckboxCellDetailViewController() }),
-        ExampleItem(title: "Overscroll Footer", subtitle: "Footer revealed on overscroll", iconName: "arrow.down.to.line", makeViewController: { OverscrollFooterDetailViewController() }),
     ]),
     // Transient notifications and user feedback
     ExampleSection(title: "Feedback", items: [
@@ -97,7 +111,7 @@ private let exampleSections: [ExampleSection] = [
         ExampleItem(title: "Card Panel", subtitle: "Floating card panel in overlay window", iconName: "rectangle.inset.filled", makeViewController: { CardPanelDetailViewController() }),
         ExampleItem(title: "Floating Button", subtitle: "Draggable floating action button", iconName: "circle.circle", makeViewController: { FloatingButtonDetailViewController() }),
     ]),
-    // Photo and generation
+    // Photo pipeline (browse → view → crop → pick), then sharing, generation, analysis
     ExampleSection(title: "Media", items: [
         ExampleItem(title: "Photo Grid", subtitle: "Square grid with pinch zoom and sort", iconName: "square.grid.2x2", makeViewController: { PhotoGridDetailViewController() }),
         ExampleItem(title: "Photo Browser", subtitle: "Full-screen photo viewer with zoom", iconName: "photo.on.rectangle", makeViewController: { PhotoBrowserDetailViewController() }),
@@ -108,8 +122,8 @@ private let exampleSections: [ExampleSection] = [
             iconName: "photo.badge.plus",
             makeViewController: { PickCropDetailViewController() }
         ),
-        ExampleItem(title: "QR Code", subtitle: "Generate QR codes from text", iconName: "qrcode", makeViewController: { QRCodeDetailViewController() }),
         ExampleItem(title: "Share", subtitle: "Share preview sheet and share service", iconName: "square.and.arrow.up", makeViewController: { ShareDetailViewController() }),
+        ExampleItem(title: "QR Code", subtitle: "Generate QR codes from text", iconName: "qrcode", makeViewController: { QRCodeDetailViewController() }),
         ExampleItem(
             title: "Dominant Color",
             subtitle: "Modal RGB-histogram color extraction with subject-lifted mode",
@@ -117,19 +131,12 @@ private let exampleSections: [ExampleSection] = [
             makeViewController: { DominantColorDetailViewController() }
         ),
     ]),
-    // UIKit extension demos
+    // UIKit extension utilities — color, styling, animation, keyboard
     ExampleSection(title: "Extensions", items: [
         ExampleItem(title: "UIColor", subtitle: "UIColor+LMK — hex init, dynamic, brightness, contrast", iconName: "swatchpalette", makeViewController: { UIColorDetailViewController() }),
         ExampleItem(title: "Shadows", subtitle: "Shadow presets and lmk_applyShadow", iconName: "shadow", makeViewController: { ShadowDetailViewController() }),
         ExampleItem(title: "Borders & Radius", subtitle: "Borders, corner radius, and circular views", iconName: "square.dashed", makeViewController: { BorderDetailViewController() }),
         ExampleItem(title: "Fade Animations", subtitle: "lmk_fadeIn and lmk_fadeOut", iconName: "circle.lefthalf.filled", makeViewController: { FadeDetailViewController() }),
-        ExampleItem(title: "Cell Highlight", subtitle: "lmk_applyCustomHighlight and lmk_configureCustomHighlight", iconName: "hand.tap.fill", makeViewController: { HighlightDetailViewController() }),
-        ExampleItem(
-            title: "Icon List Row",
-            subtitle: "lmk_configureIconListRow — symbol in a tinted circle",
-            iconName: "list.bullet.circle",
-            makeViewController: { IconListRowDetailViewController() }
-        ),
         ExampleItem(
             title: "Keyboard Dismiss",
             subtitle: "Dismiss on Return and on tap outside a field",

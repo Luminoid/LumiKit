@@ -30,7 +30,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Infrastructure
 
 - 891 → 984 tests; 112 → 119 source files.
-- Example app: new pages for Segmented Pages, Checkbox Cell, Pick & Crop (pick-crop coordinator + single photo viewer), Icon List Row, and Keyboard Dismiss; calendar range picker, markdown code/table, and text-input alert demos added to existing pages. 43 → 51 interactive pages.
+- Example app: new pages for Segmented Pages, Checkbox Cell, Pick & Crop (pick-crop coordinator + single photo viewer), Icon List Row, and Keyboard Dismiss; calendar range picker, markdown code/table, and text-input alert demos added to existing pages. 43 → 51 interactive pages; catalog reorganized from 7 into 9 sections (Lists & Cells and Navigation & Paging split out of Components and Extensions).
 
 ## [0.9.0] - 2026-05-25
 

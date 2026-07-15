@@ -153,15 +153,17 @@ xcodegen generate
 open LumiKitExample.xcodeproj
 ```
 
-The example includes **51 interactive pages** across 7 sections:
+The example includes **51 interactive pages** across 9 sections:
 
 - **Design System**: Colors, Typography, Markdown
-- **Controls**: Buttons, Segmented Control, Switch, Slider, Toggle Button, Text Field, Text View, Search Bar
-- **Components**: Divider, Badges, Chips, Filter Chip Bar, Cards, Gradient, Page Indicator, Navigation Bar, Navigation Controller, Segmented Pages, Banners, Empty State, Loading State, Checkbox Cell, Overscroll Footer
+- **Controls**: Buttons, Toggle Button, Switch, Segmented Control, Slider, Text Field, Text View, Search Bar
+- **Components**: Divider, Gradient, Badges, Chips, Filter Chip Bar, Cards, Banners, Empty State, Loading State
+- **Lists & Cells**: Checkbox Cell, Icon List Row, Cell Highlight, Overscroll Footer
+- **Navigation & Paging**: Navigation Bar, Navigation Controller, Page Indicator, Segmented Pages
 - **Feedback**: Toast, Alerts & Errors, Progress, Haptics
 - **Overlays**: Action Sheet, Enum Selection, Date Picker, Tip View, Card Page, Card Panel, Floating Button
-- **Media**: Photo Grid, Photo Browser, Photo Crop, Pick & Crop, QR Code, Share, Dominant Color
-- **Extensions**: UIColor, Shadows, Borders & Radius, Fade Animations, Cell Highlight, Icon List Row, Keyboard Dismiss
+- **Media**: Photo Grid, Photo Browser, Photo Crop, Pick & Crop, Share, QR Code, Dominant Color
+- **Extensions**: UIColor, Shadows, Borders & Radius, Fade Animations, Keyboard Dismiss
 
 ---
 
