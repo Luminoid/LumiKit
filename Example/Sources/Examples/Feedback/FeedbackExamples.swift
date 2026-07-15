@@ -65,6 +65,9 @@ final class AlertsDetailViewController: DetailViewController {
         let textInputButton = LMKButtonFactory.outlined(role: .primary, title: "Show Text Input", target: self, action: #selector(showTextInput))
         stack.addArrangedSubview(textInputButton)
 
+        let secureInputButton = LMKButtonFactory.outlined(role: .secondary, title: "Show Secure Text Input", target: self, action: #selector(showSecureTextInput))
+        stack.addArrangedSubview(secureInputButton)
+
         addDivider()
         addSectionHeader("LMKCountdownConfirmation")
         stack
@@ -169,6 +172,23 @@ final class AlertsDetailViewController: DetailViewController {
                 } else {
                     LMKToast.showSuccess(message: "Renamed to \u{201C}\(name)\u{201D}", on: self)
                 }
+            }
+        )
+    }
+
+    @objc private func showSecureTextInput() {
+        LMKAlertPresenter.presentTextInput(
+            on: self,
+            title: "Enter API Key",
+            message: "The key is stored securely in the Keychain.",
+            placeholder: "API key",
+            configureField: { field in
+                // configureField runs after the standard configuration, so its changes win.
+                field.isSecureTextEntry = true
+            },
+            onSave: { [weak self] text in
+                guard let self else { return }
+                LMKToast.showSuccess(message: "Saved key (\(text.count) characters)", on: self)
             }
         )
     }

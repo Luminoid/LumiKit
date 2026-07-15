@@ -69,6 +69,10 @@ public enum LMKAlertPresenter {
     /// Covers the common name / title / identifier prompt: the save action hands back
     /// the field's text verbatim (empty string when untouched); trimming and empty
     /// checks stay with the caller.
+    ///
+    /// `configureField` covers anything the standard parameters don't (secure entry,
+    /// content padding, delegates); it runs after the standard configuration is
+    /// applied, so its changes win.
     public static func presentTextInput(
         on viewController: UIViewController,
         title: String,
@@ -78,6 +82,7 @@ public enum LMKAlertPresenter {
         autocapitalizationType: UITextAutocapitalizationType = .sentences,
         autocorrectionType: UITextAutocorrectionType = .default,
         keyboardType: UIKeyboardType = .default,
+        configureField: ((UITextField) -> Void)? = nil,
         saveTitle: String? = nil,
         cancelTitle: String? = nil,
         onSave: @escaping (String) -> Void
@@ -89,6 +94,7 @@ public enum LMKAlertPresenter {
             field.autocapitalizationType = autocapitalizationType
             field.autocorrectionType = autocorrectionType
             field.keyboardType = keyboardType
+            configureField?(field)
         }
         alert.addAction(UIAlertAction(title: cancelTitle ?? strings.cancel, style: .cancel))
         alert.addAction(UIAlertAction(title: saveTitle ?? strings.save, style: .default) { [weak alert] _ in

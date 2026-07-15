@@ -91,7 +91,7 @@ LumiKit/
 │   │   └── URLSessionConfigurationLMKDebugTests.swift # enableNetworkLogging
 │   ├── LumiKitLottieTests/  # 7 tests, 1 suite
 │   │   └── LMKLottieRefreshControlTests.swift
-│   └── LumiKitUITests/      # 836 tests, 122 suites
+│   └── LumiKitUITests/      # 844 tests, 122 suites
 │       ├── Alerts/          # AlertPresenter, ErrorHandler
 │       ├── Animation/       # AnimationHelper
 │       ├── Components/
@@ -99,9 +99,10 @@ LumiKit/
 │       │   │                 # EnumSelectionBottomSheet
 │       │   ├── Pickers/      # DatePickerHelper
 │       │   └── (root)        # Badge, Banner, Card, CheckboxCell, Chip, Divider, EmptyState,
-│       │                     # FilterChipBar, FloatingButton, Gradient, LoadingState, Progress,
-│       │                     # SearchBar, Skeleton, Toast, TipView, CardPage,
-│       │                     # CardPanel, ScrollStackViewController
+│       │                     # FilterChipBar, FloatingButton, Gradient, LoadingState,
+│       │                     # NavigationBar, NavigationController, PageIndicator, Progress,
+│       │                     # SearchBar, Skeleton, Toast, TipView, CardPage, CardPanel,
+│       │                     # ScrollStackViewController, SegmentedPageController
 │       ├── Controls/        # Button, SegmentedControl, Slider, TextField, TextView, ToggleButton
 │       ├── DesignSystem/
 │       │   ├── Tokens/       # Color, Spacing, CornerRadius, Alpha, Typography, Layout, Shadow
@@ -239,7 +240,7 @@ LMKThemeManager.shared.apply(spacing: .init(large: 20))
 | `LMKBannerView` | `final class` | Persistent notification bar with optional action & dismiss |
 | `LMKCardView` | `final class` | Card container with shadow, corner radius, content insets |
 | `LMKChipView` | `final class` | Tag/filter chip (`.filled` / `.outlined`) with optional tap handler |
-| `LMKFilterChipBar` | `final class` | Horizontal scrolling single-select chip bar built on `LMKChipView`. Optional "All" chip clears the filter. `configure(allTitle:filterTitles:style:)`, `setSelectedIndex(_:)` (silent), `selectionChangedHandler: ((Int?) -> Void)` — `nil` index = "All" / no selection |
+| `LMKFilterChipBar` | `final class` | Horizontal scrolling chip bar built on `LMKChipView`. Single-select by default: optional "All" chip clears the filter, `configure(allTitle:filterTitles:style:)`, `setSelectedIndex(_:)` (silent), `selectionChangedHandler: ((Int?) -> Void)` — `nil` index = "All" / no selection. `allowsMultipleSelection` (set before `configure`) switches to additive toggling: `multiSelectionChangedHandler: ((Set<Int>) -> Void)`, `selectedIndices`, silent `setSelectedIndices(_:)`; empty set allowed (consumer decides, typically "show all"), the "All" chip clears the set and highlights while it's empty |
 | `LMKDividerView` | `final class` | Pixel-perfect separator (horizontal / vertical) |
 | `LMKEmptyStateView` | `final class` | Empty state with icon, title, message, action button |
 | `LMKEnumSelectionBottomSheet` | `final class` | Generic bottom sheet for selecting from an enum's cases. `present(...)` for single-select (auto-commits on tap); `presentMultiSelect(...)` for multi-select (tap toggles, explicit Done button commits) |
@@ -354,7 +355,7 @@ Paired-file storage (still JPG + video MOV) is the caller's responsibility — L
   - `.error` -> toast (transient) or alert with retry (recoverable)
   - `.critical` -> always alert, retry if available
 - All presentation methods auto-log via `LMKLogger`
-- **`LMKAlertPresenter`** for generic alerts, action sheets, and single-text-field prompts (`presentTextInput`: save/cancel alert that hands back the field's text verbatim; `Strings` includes a configurable `save` title)
+- **`LMKAlertPresenter`** for generic alerts, action sheets, and single-text-field prompts (`presentTextInput`: save/cancel alert that hands back the field's text verbatim; optional `configureField` closure runs after the standard configuration so its changes win; `Strings` includes a configurable `save` title)
 - **`LMKCountdownConfirmation`** for destructive actions — confirm button disabled for a countdown period (default 3s) with live title countdown, preventing accidental taps
 
 ---

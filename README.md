@@ -95,7 +95,7 @@ Add LumiKit to your project via Swift Package Manager:
 dependencies: [
     .package(path: "../LumiKit")  // Local package
     // or
-    .package(url: "https://github.com/Luminoid/LumiKit.git", from: "0.9.0")
+    .package(url: "https://github.com/Luminoid/LumiKit.git", from: "0.10.0")
 ]
 ```
 
@@ -349,7 +349,7 @@ LMKThemeManager.shared.apply(spacing: .init(large: 20))
 | `LMKBannerView` | Persistent notification bar with optional action and dismiss |
 | `LMKCardView` | Card container with shadow, corner radius, content insets |
 | `LMKChipView` | Tag/filter chip (`.filled` / `.outlined`) with optional tap handler |
-| `LMKFilterChipBar` | Horizontal scrolling single-select chip row built on `LMKChipView`. Optional "All" chip clears the filter. `selectionChangedHandler` fires with the filter index or `nil` for "All" / no selection |
+| `LMKFilterChipBar` | Horizontal scrolling chip row built on `LMKChipView`. Single-select by default: optional "All" chip clears the filter, `selectionChangedHandler` fires with the filter index or `nil` for "All" / no selection. `allowsMultipleSelection` switches to additive toggling reported through `multiSelectionChangedHandler` as a `Set<Int>` (empty set allowed; the "All" chip clears it) |
 | `LMKDividerView` | Pixel-perfect separator (horizontal / vertical) |
 | `LMKEmptyStateView` | Empty state with icon, title, message, action button |
 | `LMKEnumSelectionBottomSheet` | Bottom sheet for selecting from an enum's cases — single-select (`present`) or multi-select with explicit Done button (`presentMultiSelect`) |
@@ -518,7 +518,7 @@ The browser shows the still image immediately and upgrades the cell to a playabl
 | `.error` | Toast (transient) or alert with retry (recoverable) |
 | `.critical` | Always alert, retry if available |
 
-All presentation methods auto-log via `LMKLogger`. Use `LMKAlertPresenter` for generic alerts, action sheets, and single-text-field prompts (`presentTextInput`: save/cancel alert that hands back the field's text verbatim).
+All presentation methods auto-log via `LMKLogger`. Use `LMKAlertPresenter` for generic alerts, action sheets, and single-text-field prompts (`presentTextInput`: save/cancel alert that hands back the field's text verbatim; an optional `configureField` closure covers anything the standard parameters don't, running after the standard configuration so its changes win).
 
 ### Countdown Confirmation
 

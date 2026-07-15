@@ -151,6 +151,7 @@ final class ChipsDetailViewController: DetailViewController {
 
 final class FilterChipBarDetailViewController: DetailViewController {
     private let selectionLabel = LMKLabelFactory.body(text: "Selected: All")
+    private let multiSelectionLabel = LMKLabelFactory.body(text: "Selected: filter indices 0, 2")
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -189,6 +190,25 @@ final class FilterChipBarDetailViewController: DetailViewController {
         filled.setSelectedIndex(1)
         filled.snp.makeConstraints { $0.height.equalTo(44) }
         stack.addArrangedSubview(filled)
+
+        addDivider()
+        addSectionHeader("Multi-Select")
+        stack
+            .addArrangedSubview(LMKLabelFactory
+                .caption(text: "`allowsMultipleSelection` toggles chips additively. The 'All' chip clears the set and highlights while it's empty; `setSelectedIndices(_:)` seeds silently."))
+
+        let multi = LMKFilterChipBar()
+        multi.allowsMultipleSelection = true
+        multi.configure(allTitle: "All", filterTitles: ["Photos", "Notes", "Tasks", "Links"])
+        multi.multiSelectionChangedHandler = { [weak self] indices in
+            self?.multiSelectionLabel.text = indices.isEmpty
+                ? "Selected: none (show all)"
+                : "Selected: filter indices \(indices.sorted().map(String.init).joined(separator: ", "))"
+        }
+        multi.setSelectedIndices([0, 2])
+        multi.snp.makeConstraints { $0.height.equalTo(44) }
+        stack.addArrangedSubview(multi)
+        stack.addArrangedSubview(multiSelectionLabel)
     }
 }
 

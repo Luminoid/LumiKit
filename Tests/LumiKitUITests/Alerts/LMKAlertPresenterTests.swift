@@ -111,6 +111,27 @@ struct LMKAlertPresenterTextInputTests {
     }
 
     @Test
+    func `configureField customizes the text field after standard configuration`() {
+        let (presenter, window) = makePresenter()
+        _ = window
+
+        LMKAlertPresenter.presentTextInput(
+            on: presenter,
+            title: "API key",
+            placeholder: "Standard",
+            configureField: { field in
+                field.isSecureTextEntry = true
+                field.placeholder = "Overridden"
+            },
+            onSave: { _ in }
+        )
+
+        let field = presentedAlert(presenter)?.textFields?.first
+        #expect(field?.isSecureTextEntry == true)
+        #expect(field?.placeholder == "Overridden", "configureField runs after the standard configuration, so its changes win")
+    }
+
+    @Test
     func `Custom button titles override the defaults`() {
         let (presenter, window) = makePresenter()
         _ = window

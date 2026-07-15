@@ -10,9 +10,16 @@ import UIKit
 
 /// Horizontal scrolling filter chip bar using `LMKChipView`.
 ///
-/// Manages single-select state across chips. Optionally includes an "All" chip
-/// that clears the filter selection. Selection callback fires with the integer
-/// index of the filter or `nil` when "All" is selected.
+/// Manages single-select state across chips by default. Optionally includes an
+/// "All" chip that clears the filter selection. Selection callback fires with
+/// the integer index of the filter or `nil` when "All" is selected.
+///
+/// Set `allowsMultipleSelection` for an additive mode where taps toggle chips
+/// independently (no radio behavior) and selection is reported through
+/// `multiSelectionChangedHandler` as a set of filter indices. Deselecting the
+/// last chip is allowed and reports an empty set; consumers decide how to
+/// render it (typically as "show all"). The "All" chip, when configured,
+/// clears the set and stays highlighted while the selection is empty.
 public final class LMKFilterChipBar: UIView {
     // MARK: - Public
 
@@ -21,7 +28,23 @@ public final class LMKFilterChipBar: UIView {
     public var selectionChangedHandler: ((Int?) -> Void)?
 
     /// Currently selected filter index, or `nil` for "All" / no selection.
+    /// Tracks single-select mode only.
     public private(set) var selectedIndex: Int?
+
+    /// When `true`, taps toggle chips independently (additive multi-select) and
+    /// report through `multiSelectionChangedHandler` / `selectedIndices`;
+    /// `selectionChangedHandler` and `selectedIndex` are not used. Defaults to
+    /// `false` (single-select). Set before `configure(allTitle:filterTitles:style:)`.
+    public var allowsMultipleSelection = false
+
+    /// Called when selection changes in multi-select mode, with the full set of
+    /// selected filter indices. Deselecting the last chip is allowed and fires
+    /// with an empty set; consumers decide how to treat it (typically "show all").
+    public var multiSelectionChangedHandler: ((Set<Int>) -> Void)?
+
+    /// Currently selected filter indices. Tracks multi-select mode only; empty
+    /// means no chip is selected.
+    public private(set) var selectedIndices: Set<Int> = []
 
     // MARK: - Internal State
 
@@ -93,7 +116,6 @@ public final class LMKFilterChipBar: UIView {
 
         if let allTitle {
             let allChip = LMKChipView(text: allTitle, style: style)
-            allChip.isChipSelected = selectedIndex == nil
             allChip.tapHandler = { [weak self] in
                 self?.selectAll()
             }
@@ -103,7 +125,6 @@ public final class LMKFilterChipBar: UIView {
 
         for (index, title) in filterTitles.enumerated() {
             let chip = LMKChipView(text: title, style: style)
-            chip.isChipSelected = selectedIndex == index
             chip.tapHandler = { [weak self] in
                 self?.selectFilter(at: index)
             }
@@ -111,6 +132,7 @@ public final class LMKFilterChipBar: UIView {
             chips.append(chip)
         }
 
+        updateChipStates()
         enforceMinimumChipWidth()
     }
 
@@ -133,27 +155,54 @@ public final class LMKFilterChipBar: UIView {
         updateChipStates()
     }
 
+    /// Programmatically set the selected filter indices (multi-select mode).
+    /// Does NOT fire `multiSelectionChangedHandler`.
+    public func setSelectedIndices(_ indices: Set<Int>) {
+        selectedIndices = indices
+        updateChipStates()
+    }
+
     // MARK: - Selection
 
     private func selectAll() {
-        selectedIndex = nil
-        updateChipStates()
-        selectionChangedHandler?(nil)
+        if allowsMultipleSelection {
+            selectedIndices.removeAll()
+            updateChipStates()
+            multiSelectionChangedHandler?(selectedIndices)
+        } else {
+            selectedIndex = nil
+            updateChipStates()
+            selectionChangedHandler?(nil)
+        }
     }
 
     private func selectFilter(at index: Int) {
-        selectedIndex = index
-        updateChipStates()
-        selectionChangedHandler?(index)
+        if allowsMultipleSelection {
+            if selectedIndices.contains(index) {
+                selectedIndices.remove(index)
+            } else {
+                selectedIndices.insert(index)
+            }
+            updateChipStates()
+            multiSelectionChangedHandler?(selectedIndices)
+        } else {
+            selectedIndex = index
+            updateChipStates()
+            selectionChangedHandler?(index)
+        }
     }
 
     private func updateChipStates() {
         for (chipIndex, chip) in chips.enumerated() {
             if hasAllChip, chipIndex == 0 {
-                chip.isChipSelected = selectedIndex == nil
+                chip.isChipSelected = allowsMultipleSelection
+                    ? selectedIndices.isEmpty
+                    : selectedIndex == nil
             } else {
                 let filterIndex = hasAllChip ? chipIndex - 1 : chipIndex
-                chip.isChipSelected = selectedIndex == filterIndex
+                chip.isChipSelected = allowsMultipleSelection
+                    ? selectedIndices.contains(filterIndex)
+                    : selectedIndex == filterIndex
             }
         }
     }

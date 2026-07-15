@@ -5,20 +5,21 @@ All notable changes to LumiKit will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.10.0] - 2026-07-15
 
 ### Added
 
 - **LMKSegmentedPageController** — Base class for a segmented tab container that pages between child view controllers with an interactive finger-tracking pan. Subclasses override `makePages()`, `usesFullWidthSwipe(forPageAt:)` (full-width vs edge-only pan, for pages that own interior horizontal drags), and `didChangePage(to:)`; `setPage(_:animated:)` slides for taps and deep links. The top `LMKSegmentedControl` is installed via the overridable `installSegmentedControl()` (default: nav title view).
-- **LMKMarkdownRenderer code & tables** — `renderFull()` renders fenced code blocks and GFM tables in a monospaced font, so AI chat responses stay readable. Table columns align via tab stops with a full-width rule; bullet markers and spacing are normalized.
-- **LMKDatePickerHelper.presentCalendarRangePicker** — Single-calendar range selection built on `UICalendarView` multi-date selection: the first tap sets the start, a later tap sets the end, an earlier tap re-anchors, and any tap once a full range exists begins a new selection. `onConfirm` fires only when something is selected.
-- **LMKAlertPresenter.presentTextInput** — Single-text-field alert with save/cancel for name, title, and identifier prompts. The save action hands back the field's text verbatim; trimming and empty checks stay with the caller. `Strings` gains a configurable `save` title.
 - **LMKCheckboxCell** — Check-off row for to-dos and checklists: checkbox + strike-through title, `configure(title:isDone:)`, `onToggle` callback. The checkbox hit area expands to the minimum touch target; done state is exposed via `accessibilityValue` and the `.selected` trait.
+- **LMKPhotoPickCropCoordinator** — Pick → square-crop → store flow for a single photo using a permission-free `PHPicker`. Storage is injected as a `(UIImage) -> String?` closure; the host retains the coordinator for the flow's duration.
+- **LMKSinglePhotoViewer** — One-image data source + delegate adapter for `LMKPhotoBrowserViewController`, with optional subtitle and action-button callback.
+- **LMKFilterChipBar multi-select** — `allowsMultipleSelection` adds an additive mode where taps toggle chips independently (no radio behavior). Selection is reported through `multiSelectionChangedHandler` as a `Set<Int>` of filter indices and readable via `selectedIndices`, with a silent `setSelectedIndices(_:)` for programmatic state. Deselecting the last chip is allowed and reports an empty set (consumers decide how to render it, typically as "show all"); the "All" chip, when configured, clears the set and stays highlighted while the selection is empty. The single-select API is unchanged.
+- **LMKAlertPresenter.presentTextInput** — Single-text-field alert with save/cancel for name, title, and identifier prompts. The save action hands back the field's text verbatim; trimming and empty checks stay with the caller. `Strings` gains a configurable `save` title. An optional `configureField` closure covers anything the standard parameters don't (secure entry, content padding, delegates); it runs after the standard configuration is applied, so its changes win.
+- **LMKDatePickerHelper.presentCalendarRangePicker** — Single-calendar range selection built on `UICalendarView` multi-date selection: the first tap sets the start, a later tap sets the end, an earlier tap re-anchors, and any tap once a full range exists begins a new selection. `onConfirm` fires only when something is selected.
+- **LMKMarkdownRenderer code & tables** — `renderFull()` renders fenced code blocks and GFM tables in a monospaced font, so AI chat responses stay readable. Table columns align via tab stops with a full-width rule; bullet markers and spacing are normalized.
 - **LMKLayout.iconCircle** — 36pt token for the tinted icon circle behind a list-row symbol, with the matching `LMKLayoutTheme` property.
 - **UITableViewCell.lmk_configureIconListRow** — One-call standard detail-list row: SF Symbol in a tinted circle (`LMKLayout.iconCircle`), bodyMedium title, caption subtitle, disclosure indicator, and the LumiKit highlight.
 - **Keyboard dismiss extensions** — `UITextField.lmk_dismissKeyboardOnReturn()` (Done return key + resign on `.editingDidEndOnExit`, forwarded on `LMKTextField`) and `UIViewController.lmk_dismissKeyboardOnTap()` (tap anywhere outside a field dismisses the keyboard without swallowing control taps).
-- **LMKPhotoPickCropCoordinator** — Pick → square-crop → store flow for a single photo using a permission-free `PHPicker`. Storage is injected as a `(UIImage) -> String?` closure; the host retains the coordinator for the flow's duration.
-- **LMKSinglePhotoViewer** — One-image data source + delegate adapter for `LMKPhotoBrowserViewController`, with optional subtitle and action-button callback.
 - **LMKImageUtil.encodeJPEG(_:maxDimension:quality:)** — `nonisolated` downsample + opaque RGBX re-render + `CGImageDestination` encode, so JPEGs stay 3-channel (avoids ImageIO's "AlphaPremulLast" double-memory path) and EXIF orientation is baked into the pixels.
 
 ### Fixed
@@ -29,8 +30,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Infrastructure
 
-- 891 → 984 tests; 112 → 119 source files.
-- Example app: new pages for Segmented Pages, Checkbox Cell, Pick & Crop (pick-crop coordinator + single photo viewer), Icon List Row, and Keyboard Dismiss; calendar range picker, markdown code/table, and text-input alert demos added to existing pages. 43 → 51 interactive pages; catalog reorganized from 7 into 9 sections (Lists & Cells and Navigation & Paging split out of Components and Extensions).
+- 891 → 992 tests; 112 → 119 source files.
+- Example app: new pages for Segmented Pages, Checkbox Cell, Pick & Crop (pick-crop coordinator + single photo viewer), Icon List Row, and Keyboard Dismiss; calendar range picker, markdown code/table, text-input alert, secure text input (`configureField`), and filter-chip multi-select demos added to existing pages. 43 → 51 interactive pages; catalog reorganized from 7 into 9 sections (Lists & Cells and Navigation & Paging split out of Components and Extensions).
 
 ## [0.9.0] - 2026-05-25
 
