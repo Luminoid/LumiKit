@@ -59,6 +59,64 @@ public nonisolated enum LMKImageUtil {
         }
     }
 
+    // MARK: - JPEG Encoding
+
+    /// Downsample and encode an image as an opaque JPEG.
+    ///
+    /// Redraws into an opaque RGBX `CGContext` (`.noneSkipLast`) so the encode stays
+    /// 3-channel. Required because images produced by
+    /// `CGImageSourceCreateThumbnailAtIndex` (and many picker paths) carry
+    /// `AlphaPremulLast` even for opaque sources; piping that directly into
+    /// `UIImage.jpegData` makes ImageIO log "trying to save an opaque image with
+    /// 'AlphaPremulLast' ... will double the required memory when decoding the image".
+    /// Drawing via UIKit normalizes EXIF orientation in the same pass.
+    /// `nonisolated` so encodes can run on background queues without MainActor hops.
+    ///
+    /// - Parameters:
+    ///   - image: The image to encode.
+    ///   - maxDimension: Longest edge of the output in points; larger images are downsampled (never upscaled).
+    ///   - quality: JPEG compression quality (0.0--1.0). Default 0.8.
+    /// - Returns: Opaque JPEG data, or `nil` if the image is empty or the encode fails.
+    public static func encodeJPEG(_ image: UIImage, maxDimension: CGFloat, quality: CGFloat = 0.8) -> Data? {
+        let size = image.size
+        guard size.width > 0, size.height > 0, maxDimension > 0 else { return nil }
+        let scale = min(1, maxDimension / max(size.width, size.height))
+        let pixelWidth = Int((size.width * scale).rounded())
+        let pixelHeight = Int((size.height * scale).rounded())
+        guard pixelWidth > 0, pixelHeight > 0 else { return nil }
+
+        guard let context = CGContext(
+            data: nil,
+            width: pixelWidth,
+            height: pixelHeight,
+            bitsPerComponent: 8,
+            bytesPerRow: 0,
+            space: CGColorSpaceCreateDeviceRGB(),
+            bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue
+        ) else { return nil }
+
+        // Draw through UIKit so the image's EXIF orientation is applied. Flip the
+        // context first: CoreGraphics origins are bottom-left, UIKit's top-left.
+        UIGraphicsPushContext(context)
+        context.translateBy(x: 0, y: CGFloat(pixelHeight))
+        context.scaleBy(x: 1, y: -1)
+        image.draw(in: CGRect(x: 0, y: 0, width: pixelWidth, height: pixelHeight))
+        UIGraphicsPopContext()
+        guard let opaqueImage = context.makeImage() else { return nil }
+
+        let data = NSMutableData()
+        guard let destination = CGImageDestinationCreateWithData(
+            data,
+            UTType.jpeg.identifier as CFString,
+            1,
+            nil
+        ) else { return nil }
+        let options: [CFString: Any] = [kCGImageDestinationLossyCompressionQuality: quality]
+        CGImageDestinationAddImage(destination, opaqueImage, options as CFDictionary)
+        guard CGImageDestinationFinalize(destination) else { return nil }
+        return data as Data
+    }
+
     // MARK: - Pixel Buffer
 
     private static let ciContext = CIContext()

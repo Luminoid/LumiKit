@@ -62,6 +62,9 @@ final class AlertsDetailViewController: DetailViewController {
         let alertButton = LMKButtonFactory.filled(role: .secondary, title: "Show Alert", target: self, action: #selector(showAlert))
         stack.addArrangedSubview(alertButton)
 
+        let textInputButton = LMKButtonFactory.outlined(role: .primary, title: "Show Text Input", target: self, action: #selector(showTextInput))
+        stack.addArrangedSubview(textInputButton)
+
         addDivider()
         addSectionHeader("LMKCountdownConfirmation")
         stack
@@ -146,6 +149,27 @@ final class AlertsDetailViewController: DetailViewController {
             on: self,
             title: "Update Available",
             message: "A new version of the app is available. Please update to get the latest features."
+        )
+    }
+
+    @objc private func showTextInput() {
+        LMKAlertPresenter.presentTextInput(
+            on: self,
+            title: "Rename Collection",
+            message: "Enter a new name for this collection.",
+            placeholder: "Collection name",
+            initialText: "Succulents",
+            onSave: { [weak self] text in
+                guard let self else { return }
+                // The save action hands back the field's text verbatim;
+                // trimming and empty checks stay with the caller.
+                let name = text.trimmingCharacters(in: .whitespacesAndNewlines)
+                if name.isEmpty {
+                    LMKToast.showWarning(message: "Name unchanged (empty input)", on: self)
+                } else {
+                    LMKToast.showSuccess(message: "Renamed to \u{201C}\(name)\u{201D}", on: self)
+                }
+            }
         )
     }
 

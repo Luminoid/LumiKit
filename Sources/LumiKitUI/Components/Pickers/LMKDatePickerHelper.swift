@@ -331,12 +331,11 @@ public enum LMKDatePickerHelper {
         let textField = UITextField()
         textField.placeholder = textFieldPlaceholder ?? strings.textFieldPlaceholder
         textField.autocapitalizationType = .sentences
-        textField.returnKeyType = .done
         textField.borderStyle = .roundedRect
         textField.font = LMKTypography.body
         textField.textColor = LMKColor.textPrimary
         textField.backgroundColor = LMKColor.backgroundSecondary
-        textField.addTarget(textField, action: #selector(UIResponder.resignFirstResponder), for: .editingDidEndOnExit)
+        textField.lmk_dismissKeyboardOnReturn()
 
         let maxDate = LMKDateHelper.today
         let clamped = clampedDate(defaultDate, min: nil, max: maxDate)

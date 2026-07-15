@@ -153,15 +153,15 @@ xcodegen generate
 open LumiKitExample.xcodeproj
 ```
 
-The example includes **43 interactive pages** across 7 sections:
+The example includes **51 interactive pages** across 7 sections:
 
 - **Design System**: Colors, Typography, Markdown
-- **Controls**: Buttons, Segmented Control, Switch, Toggle Button, Text Field, Text View, Search Bar
-- **Components**: Divider, Badges, Chips, Filter Chip Bar, Cards, Gradient, Page Indicator, Navigation Bar, Banners, Empty State, Loading State, Overscroll Footer
+- **Controls**: Buttons, Segmented Control, Switch, Slider, Toggle Button, Text Field, Text View, Search Bar
+- **Components**: Divider, Badges, Chips, Filter Chip Bar, Cards, Gradient, Page Indicator, Navigation Bar, Navigation Controller, Segmented Pages, Banners, Empty State, Loading State, Checkbox Cell, Overscroll Footer
 - **Feedback**: Toast, Alerts & Errors, Progress, Haptics
 - **Overlays**: Action Sheet, Enum Selection, Date Picker, Tip View, Card Page, Card Panel, Floating Button
-- **Media**: Photo Grid, Photo Browser, Photo Crop, QR Code, Share, Dominant Color
-- **Extensions**: Shadows, Borders & Radius, Fade Animations
+- **Media**: Photo Grid, Photo Browser, Photo Crop, Pick & Crop, QR Code, Share, Dominant Color
+- **Extensions**: UIColor, Shadows, Borders & Radius, Fade Animations, Cell Highlight, Icon List Row, Keyboard Dismiss
 
 ---
 
@@ -219,7 +219,8 @@ LumiKit/
 │   │   ├── Haptics/           # LMKHapticFeedbackHelper
 │   │   ├── Photo/             # LMKPhotoBrowserViewController, LMKPhotoBrowserCell,
 │   │   │                      # LMKPhotoCropViewController, LMKPhotoGridViewController,
-│   │   │                      # LMKPhotoGridCell, LMKPhotoEXIFService, LMKPhotoBrowserConfig
+│   │   │                      # LMKPhotoGridCell, LMKPhotoEXIFService, LMKPhotoBrowserConfig,
+│   │   │                      # LMKPhotoPickCropCoordinator, LMKSinglePhotoViewer
 │   │   ├── QRCode/            # LMKQRCodeGenerator
 │   │   ├── Share/             # LMKShareService, LMKSharePreviewViewController
 │   │   └── Utilities/         # LMKDeviceHelper, LMKKeyboardObserver, LMKSceneUtil,
@@ -239,14 +240,14 @@ LumiKit/
 │   │   ├── LMKNetworkRequestRecordTests.swift        # Computed properties, display formatting
 │   │   ├── LMKNetworkLoggerTests.swift               # Configuration, state transitions
 │   │   └── URLSessionConfigurationLMKDebugTests.swift # enableNetworkLogging
-│   ├── LumiKitUITests/        # 743 tests, 107 suites
+│   ├── LumiKitUITests/        # 836 tests, 122 suites
 │   │   ├── Alerts/            # AlertPresenter, ErrorHandler
 │   │   ├── Animation/         # AnimationHelper
 │   │   ├── Components/
 │   │   │   ├── BottomSheet/   # BottomSheetController, ActionSheet, BottomSheetLayout,
 │   │   │   │                  # EnumSelectionBottomSheet
 │   │   │   ├── Pickers/       # DatePickerHelper
-│   │   │   ├── Badge, Banner, Card, Chip, Divider, EmptyState,
+│   │   │   ├── Badge, Banner, Card, CheckboxCell, Chip, Divider, EmptyState,
 │   │   │   ├── Gradient, LoadingState, SearchBar, Skeleton, Toast,
 │   │   │   ├── FloatingButton, TipView, CardPage, CardPanel,
 │   │   │   └── Progress, ScrollStackViewController
@@ -258,8 +259,10 @@ LumiKit/
 │   │   │   └── ThemeManager, ComponentToken integration
 │   │   ├── Extensions/        # UIColor, UIImage, UIStackView,
 │   │   │                      # UIView (shadow/border/fade/layout),
-│   │   │                      # UIViewController (TopViewController)
-│   │   ├── Photo/             # CropAspectRatio, PhotoEXIF
+│   │   │                      # UIViewController (TopViewController, KeyboardDismiss),
+│   │   │                      # UITableViewCell (IconListRow), UITextField (KeyboardDismiss)
+│   │   ├── Photo/             # CropAspectRatio, PhotoEXIF,
+│   │   │                      # PhotoPickCropCoordinator, SinglePhotoViewer
 │   │   ├── QRCode/            # QRCodeGenerator
 │   │   ├── Share/             # SharePreview, ShareService
 │   │   └── Utilities/         # DeviceHelper, ImageUtil, KeyboardObserver,
@@ -355,7 +358,8 @@ LMKThemeManager.shared.apply(spacing: .init(large: 20))
 | `LMKProgressViewController` | Blocking progress modal (`.determinate` with progress bar, `.indeterminate` spinner-only) |
 | `LMKSearchBar` | Search bar with configurable placeholder and cancel text |
 | `LMKSkeletonCell` | Skeleton loading placeholder cell |
-| `LMKDatePickerHelper` | Date picker presentation via `LMKActionSheet` — single date, date range, date with text field |
+| `LMKCheckboxCell` | Check-off row for to-dos and checklists: checkbox + strike-through title, `configure(title:isDone:)`, `onToggle` callback. Checkbox hit area expands to the minimum touch target; done state is exposed via `accessibilityValue` and the `.selected` trait |
+| `LMKDatePickerHelper` | Date picker presentation via `LMKActionSheet` — single date, date range, single-calendar range selection (`presentCalendarRangePicker`, tap to set start / end on one `UICalendarView`), date with text field |
 | `LMKToastView` | Auto-dismissing toast notification |
 | `LMKTipView` | Onboarding tip with centered or pointed (arrow) styles — tap to dismiss. Pointed style supports `sourceOffset` for fine-tuning position |
 | `LMKFloatingButton` | Draggable floating action button with edge snapping and optional badge |
@@ -364,6 +368,7 @@ LMKThemeManager.shared.apply(spacing: .init(large: 20))
 | `LMKCardPageLayout` | Shared layout constants for card page controllers (header height, symbol sizes) |
 | `LMKCardPanelLayout` | Shared layout constants for card panel controllers (max width, insets, height ratio) |
 | `LMKScrollStackViewController` | Base class for scrollable vertical stack layout — configurable spacing, insets, keyboard dismiss, safe area. Subclasses override `setupStackContent()` |
+| `LMKSegmentedPageController` | Base class for a segmented tab container that pages between child view controllers with an interactive finger-tracking pan. Subclasses override `makePages()`, `usesFullWidthSwipe(forPageAt:)`, and `didChangePage(to:)`; `setPage(_:animated:)` slides for taps and deep links |
 | `LMKNavigationDirection` | Shared navigation direction enum (`.forward`, `.backward`, `.none`) used by CardPageController and ActionSheet |
 | `LMKPageIndicator` | Custom page indicator replacing `UIPageControl`. Active dot expands into pill shape with spring animation. `numberOfPages`, `currentPage`, `pageChangedHandler`. Display-only while `pageChangedHandler` is nil (taps / VoiceOver adjustments ignored) |
 | `LMKOverscrollFooterHelper` | Positions a footer view below scroll content, revealed only on overscroll |
@@ -400,7 +405,10 @@ All UIKit extensions use the `lmk_` prefix to avoid naming conflicts.
 | `UIButton+LMKAnimation` | Tap animation helpers |
 | `UIControl+LMKTouchArea` | Expanded touch area support |
 | `UITableViewCell+LMKHighlight` | Custom highlight behavior |
+| `UITableViewCell+LMKIconListRow` | `lmk_configureIconListRow(iconSystemName:title:subtitle:tint:)` — standard detail-list row with an SF Symbol in a tinted circle (`LMKLayout.iconCircle`), disclosure, and the LumiKit highlight |
 | `UITextField+LMKFormStyle` | Form-styled text field configuration |
+| `UITextField+LMKKeyboardDismiss` | `lmk_dismissKeyboardOnReturn()` — Done return key + resign on `.editingDidEndOnExit` (also on `LMKTextField`) |
+| `UIViewController+LMKKeyboardDismiss` | `lmk_dismissKeyboardOnTap()` — tap anywhere outside a field dismisses the keyboard without swallowing control taps |
 | `UIViewController+LMKOrientation` | Orientation lock helpers |
 | `UIViewController+LMKPopover` | Popover presentation helpers |
 | `UIViewController+LMKTopViewController` | Top view controller traversal |
@@ -444,7 +452,7 @@ LumiKitUI includes device-aware helpers and system observers:
 |---------|---------|
 | `LMKDeviceHelper` | Device type detection (`.iPhone`, `.iPad`, `.macCatalyst`), screen size classification, notch detection |
 | `LMKKeyboardObserver` | Keyboard show/hide observer with height and animation duration info |
-| `LMKImageUtil` | SF Symbol creation (`makeSymbolImage` with background), `CVPixelBuffer` to JPEG conversion |
+| `LMKImageUtil` | SF Symbol creation (`makeSymbolImage` with background), `CVPixelBuffer` to JPEG conversion, `encodeJPEG(_:maxDimension:quality:)` — nonisolated downsample + opaque RGBX re-render so encodes stay 3-channel (avoids ImageIO's "AlphaPremulLast" double-memory path) and EXIF orientation is baked in |
 | `LMKDominantColorExtractor` | RGB-histogram dominant color extraction. `dominantColor(from:ignoringTransparent:strategy:)` returns one color: `.modal` (default, densest bucket = subject identity), `.average` (mean = overall vibe), `.vibrant` (most saturated = accent color). `dominantColors(from:count:ignoringTransparent:)` returns a top-N palette ordered by frequency. Pass a subject-lifted PNG with `ignoringTransparent: true` for hard-edge accuracy |
 | `LMKMarkdownRenderer` | Markdown-to-attributed-string rendering: `render()` for inline (bold/italic), `renderFull()` for long-form content (headings, lists, fenced code blocks, GFM tables, line breaks preserved). Code and tables render in a monospaced font so AI chat responses stay readable |
 | `LMKSceneUtil` | Key window and connected scene retrieval |
@@ -457,6 +465,8 @@ LumiKitUI includes device-aware helpers and system observers:
 |-----------|---------|
 | `LMKPhotoBrowserViewController` | Full-screen photo browser with zoom, swipe navigation, and optional Live Photo playback (`PHLivePhotoView` swaps in when the data source returns a paired `PHLivePhoto` — long-press to play, with a `livephoto` + "LIVE" indicator under the action button that fades during playback) |
 | `LMKPhotoCropViewController` | Photo cropping with aspect ratio support |
+| `LMKPhotoPickCropCoordinator` | Pick → square-crop → store flow for a single photo using a permission-free `PHPicker`. Storage is injected as a `(UIImage) -> String?` closure; retain the coordinator for the flow's duration |
+| `LMKSinglePhotoViewer` | Presents one image full-screen in `LMKPhotoBrowserViewController`; optional subtitle and action-button callback. Retain while the browser is up |
 | `LMKPhotoGridViewController` | Photo grid with pinch-to-zoom column control, sort by date, content mode toggle, photo browser integration, and a LIVE badge on Live Photo cells |
 | `LMKPhotoEXIFService` | Date and GPS extraction from UIImage or PHPickerResult. Date lookup walks EXIF (`DateTimeOriginal` / `DateTimeDigitized`), TIFF (`DateTime`), IPTC (`DateCreated` + `TimeCreated`, `DigitalCreationDate` + `DigitalCreationTime`), and the XMP packet (`xmp:CreateDate`, `xmp:DateCreated`, `xmp:ModifyDate`, `photoshop:DateCreated`) — surfaces a date for screenshots and edited / re-encoded photos where one container has been stripped |
 
@@ -506,7 +516,7 @@ The browser shows the still image immediately and upgrades the cell to a playabl
 | `.error` | Toast (transient) or alert with retry (recoverable) |
 | `.critical` | Always alert, retry if available |
 
-All presentation methods auto-log via `LMKLogger`. Use `LMKAlertPresenter` for generic alerts and action sheets.
+All presentation methods auto-log via `LMKLogger`. Use `LMKAlertPresenter` for generic alerts, action sheets, and single-text-field prompts (`presentTextInput`: save/cancel alert that hands back the field's text verbatim).
 
 ### Countdown Confirmation
 

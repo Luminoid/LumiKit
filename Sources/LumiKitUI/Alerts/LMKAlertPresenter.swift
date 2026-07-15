@@ -20,10 +20,12 @@ public enum LMKAlertPresenter {
     public nonisolated struct Strings: Sendable {
         public var ok: String
         public var cancel: String
+        public var save: String
 
-        public init(ok: String = "OK", cancel: String = "Cancel") {
+        public init(ok: String = "OK", cancel: String = "Cancel", save: String = "Save") {
             self.ok = ok
             self.cancel = cancel
+            self.save = save
         }
     }
 
@@ -59,6 +61,39 @@ public enum LMKAlertPresenter {
     ) {
         let alert = UIAlertController(title: title, message: message, preferredStyle: .alert)
         alert.addAction(UIAlertAction(title: buttonTitle ?? strings.ok, style: .default) { _ in onDismiss?() })
+        viewController.present(alert, animated: true)
+    }
+
+    /// Present an alert with a single text field and save / cancel buttons.
+    ///
+    /// Covers the common name / title / identifier prompt: the save action hands back
+    /// the field's text verbatim (empty string when untouched); trimming and empty
+    /// checks stay with the caller.
+    public static func presentTextInput(
+        on viewController: UIViewController,
+        title: String,
+        message: String? = nil,
+        placeholder: String? = nil,
+        initialText: String? = nil,
+        autocapitalizationType: UITextAutocapitalizationType = .sentences,
+        autocorrectionType: UITextAutocorrectionType = .default,
+        keyboardType: UIKeyboardType = .default,
+        saveTitle: String? = nil,
+        cancelTitle: String? = nil,
+        onSave: @escaping (String) -> Void
+    ) {
+        let alert = UIAlertController(title: title, message: message, preferredStyle: .alert)
+        alert.addTextField { field in
+            field.placeholder = placeholder
+            field.text = initialText
+            field.autocapitalizationType = autocapitalizationType
+            field.autocorrectionType = autocorrectionType
+            field.keyboardType = keyboardType
+        }
+        alert.addAction(UIAlertAction(title: cancelTitle ?? strings.cancel, style: .cancel))
+        alert.addAction(UIAlertAction(title: saveTitle ?? strings.save, style: .default) { [weak alert] _ in
+            onSave(alert?.textFields?.first?.text ?? "")
+        })
         viewController.present(alert, animated: true)
     }
 

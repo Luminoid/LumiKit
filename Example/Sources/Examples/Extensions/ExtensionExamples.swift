@@ -583,3 +583,126 @@ extension HighlightGridCell: UIPointerInteractionDelegate {
         return UIPointerStyle(effect: .lift(UITargetedPreview(view: view)))
     }
 }
+
+// MARK: - Icon List Row
+
+final class IconListRowDetailViewController: DetailViewController, UITableViewDataSource, UITableViewDelegate {
+    private static let cellID = "IconListRowCell"
+    private static let estimatedRowHeight: CGFloat = 60
+    private let rows: [(icon: String, title: String, subtitle: String?, tint: UIColor)] = [
+        ("gearshape", "General", "Language, appearance, units", LMKColor.primary),
+        ("person.2", "People", "3 travelers", LMKColor.secondary),
+        ("mappin.and.ellipse", "Destinations", "Tokyo, Kyoto, Osaka", LMKColor.success),
+        ("questionmark.circle", "Help", nil, LMKColor.warning),
+    ]
+
+    private lazy var tableView: UITableView = {
+        let table = SelfSizingTableView(frame: .zero, style: .plain)
+        table.dataSource = self
+        table.delegate = self
+        table.isScrollEnabled = false
+        table.separatorStyle = .none
+        table.backgroundColor = .clear
+        table.rowHeight = UITableView.automaticDimension
+        table.estimatedRowHeight = Self.estimatedRowHeight
+        table.register(UITableViewCell.self, forCellReuseIdentifier: Self.cellID)
+        return table
+    }()
+
+    override func viewDidLoad() {
+        super.viewDidLoad()
+
+        addSectionHeader("lmk_configureIconListRow")
+        stack.addArrangedSubview(LMKLabelFactory.caption(
+            text: "One call configures a standard detail-list row: an SF Symbol in a "
+                + "tinted circle (LMKLayout.iconCircle), bodyMedium title, caption "
+                + "subtitle, disclosure indicator, and the LumiKit highlight. Use it on "
+                + "secondary list pages so they read as one family."
+        ))
+
+        stack.addArrangedSubview(tableView)
+    }
+
+    // MARK: - UITableViewDataSource
+
+    func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
+        rows.count
+    }
+
+    func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
+        let cell = tableView.dequeueReusableCell(withIdentifier: Self.cellID, for: indexPath)
+        let row = rows[indexPath.row]
+        cell.lmk_configureIconListRow(iconSystemName: row.icon, title: row.title, subtitle: row.subtitle, tint: row.tint)
+        return cell
+    }
+
+    // MARK: - UITableViewDelegate
+
+    func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
+        tableView.deselectRow(at: indexPath, animated: true)
+    }
+}
+
+/// Non-scrolling table that sizes itself to its content, so self-sizing rows
+/// (title + subtitle) are never clipped by a hardcoded height constraint.
+private final class SelfSizingTableView: UITableView {
+    override var contentSize: CGSize {
+        didSet { invalidateIntrinsicContentSize() }
+    }
+
+    override var intrinsicContentSize: CGSize {
+        CGSize(width: UIView.noIntrinsicMetric, height: contentSize.height)
+    }
+}
+
+// MARK: - Keyboard Dismiss
+
+final class KeyboardDismissDetailViewController: DetailViewController {
+    override func viewDidLoad() {
+        super.viewDidLoad()
+
+        // One call on the view controller: tapping anywhere outside a field
+        // dismisses the keyboard without swallowing control taps.
+        lmk_dismissKeyboardOnTap()
+
+        addSectionHeader("lmk_dismissKeyboardOnReturn (UITextField)")
+        stack.addArrangedSubview(LMKLabelFactory.caption(
+            text: "Single-line fields have nothing to insert on Return, so Return "
+                + "dismisses the keyboard: the return key becomes Done and the field "
+                + "resigns on .editingDidEndOnExit."
+        ))
+
+        let plainField = UITextField()
+        plainField.placeholder = "Tap here, then press Return"
+        plainField.borderStyle = .roundedRect
+        plainField.font = LMKTypography.body
+        plainField.lmk_dismissKeyboardOnReturn()
+        stack.addArrangedSubview(plainField)
+
+        addDivider()
+        addSectionHeader("lmk_dismissKeyboardOnReturn (LMKTextField)")
+        stack.addArrangedSubview(LMKLabelFactory.caption(
+            text: "LMKTextField forwards the same call to its wrapped UITextField."
+        ))
+
+        let lmkField = LMKTextField()
+        lmkField.placeholder = "Same behavior on LMKTextField"
+        lmkField.lmk_dismissKeyboardOnReturn()
+        stack.addArrangedSubview(lmkField)
+
+        addDivider()
+        addSectionHeader("lmk_dismissKeyboardOnTap (UIViewController)")
+        stack.addArrangedSubview(LMKLabelFactory.caption(
+            text: "This page called lmk_dismissKeyboardOnTap() in viewDidLoad — focus a "
+                + "field, then tap anywhere else on the page to dismiss the keyboard. "
+                + "The button below still receives its tap."
+        ))
+
+        let probeButton = LMKButtonFactory.outlined(role: .primary, title: "Taps still land here", target: self, action: #selector(probeTapped))
+        stack.addArrangedSubview(probeButton)
+    }
+
+    @objc private func probeTapped() {
+        LMKToast.showInfo(message: "Button tap received", on: self)
+    }
+}

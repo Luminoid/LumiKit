@@ -24,6 +24,8 @@ public nonisolated struct LMKLayoutTheme: Sendable {
     public var iconSmall: CGFloat
     /// Extra small icon size (chevrons, compact indicators).
     public var iconExtraSmall: CGFloat
+    /// Tinted icon circle behind a list-row symbol.
+    public var iconCircle: CGFloat
     /// Pull-to-refresh threshold; compact preview height.
     public var pullThreshold: CGFloat
     /// Minimum cell height.
@@ -41,6 +43,7 @@ public nonisolated struct LMKLayoutTheme: Sendable {
         iconLarge: CGFloat = 28,
         iconSmall: CGFloat = 20,
         iconExtraSmall: CGFloat = 16,
+        iconCircle: CGFloat = 36,
         pullThreshold: CGFloat = 80,
         cellHeightMin: CGFloat = 100,
         searchBarHeight: CGFloat = 36,
@@ -52,6 +55,7 @@ public nonisolated struct LMKLayoutTheme: Sendable {
         self.iconLarge = max(0, iconLarge)
         self.iconSmall = max(0, iconSmall)
         self.iconExtraSmall = max(0, iconExtraSmall)
+        self.iconCircle = max(0, iconCircle)
         self.pullThreshold = max(0, pullThreshold)
         self.cellHeightMin = max(0, cellHeightMin)
         self.searchBarHeight = max(0, searchBarHeight)

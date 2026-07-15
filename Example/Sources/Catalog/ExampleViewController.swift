@@ -72,12 +72,18 @@ private let exampleSections: [ExampleSection] = [
         ExampleItem(title: "Banners", subtitle: "Persistent info, warning, and error banners", iconName: "exclamationmark.bubble", makeViewController: { BannerDetailViewController() }),
         ExampleItem(title: "Empty State", subtitle: "Full screen, card, and inline styles", iconName: "square.dashed", makeViewController: { EmptyStateDetailViewController() }),
         ExampleItem(title: "Loading State", subtitle: "Inline, overlay, and skeleton loading", iconName: "progress.indicator", makeViewController: { LoadingStateDetailViewController() }),
+        ExampleItem(title: "Checkbox Cell", subtitle: "Check-off row with strike-through title", iconName: "checkmark.circle", makeViewController: { CheckboxCellDetailViewController() }),
         ExampleItem(title: "Overscroll Footer", subtitle: "Footer revealed on overscroll", iconName: "arrow.down.to.line", makeViewController: { OverscrollFooterDetailViewController() }),
     ]),
     // Transient notifications and user feedback
     ExampleSection(title: "Feedback", items: [
         ExampleItem(title: "Toast", subtitle: "Success, error, warning, info toasts", iconName: "bell", makeViewController: { ToastDetailViewController() }),
-        ExampleItem(title: "Alerts & Errors", subtitle: "Confirmation, alert, and error presentation", iconName: "exclamationmark.triangle", makeViewController: { AlertsDetailViewController() }),
+        ExampleItem(
+            title: "Alerts & Errors",
+            subtitle: "Confirmation, alert, text input, and error presentation",
+            iconName: "exclamationmark.triangle",
+            makeViewController: { AlertsDetailViewController() }
+        ),
         ExampleItem(title: "Progress", subtitle: "Determinate and indeterminate progress", iconName: "gauge.with.dots.needle.33percent", makeViewController: { ProgressDetailViewController() }),
         ExampleItem(title: "Haptics", subtitle: "Success, warning, error, impact feedback", iconName: "iphone.radiowaves.left.and.right", makeViewController: { HapticsDetailViewController() }),
     ]),
@@ -96,6 +102,12 @@ private let exampleSections: [ExampleSection] = [
         ExampleItem(title: "Photo Grid", subtitle: "Square grid with pinch zoom and sort", iconName: "square.grid.2x2", makeViewController: { PhotoGridDetailViewController() }),
         ExampleItem(title: "Photo Browser", subtitle: "Full-screen photo viewer with zoom", iconName: "photo.on.rectangle", makeViewController: { PhotoBrowserDetailViewController() }),
         ExampleItem(title: "Photo Crop", subtitle: "Crop with aspect ratios and zoom", iconName: "crop", makeViewController: { PhotoCropDetailViewController() }),
+        ExampleItem(
+            title: "Pick & Crop",
+            subtitle: "Pick, square-crop, store — plus single photo viewer",
+            iconName: "photo.badge.plus",
+            makeViewController: { PickCropDetailViewController() }
+        ),
         ExampleItem(title: "QR Code", subtitle: "Generate QR codes from text", iconName: "qrcode", makeViewController: { QRCodeDetailViewController() }),
         ExampleItem(title: "Share", subtitle: "Share preview sheet and share service", iconName: "square.and.arrow.up", makeViewController: { ShareDetailViewController() }),
         ExampleItem(
@@ -112,6 +124,18 @@ private let exampleSections: [ExampleSection] = [
         ExampleItem(title: "Borders & Radius", subtitle: "Borders, corner radius, and circular views", iconName: "square.dashed", makeViewController: { BorderDetailViewController() }),
         ExampleItem(title: "Fade Animations", subtitle: "lmk_fadeIn and lmk_fadeOut", iconName: "circle.lefthalf.filled", makeViewController: { FadeDetailViewController() }),
         ExampleItem(title: "Cell Highlight", subtitle: "lmk_applyCustomHighlight and lmk_configureCustomHighlight", iconName: "hand.tap.fill", makeViewController: { HighlightDetailViewController() }),
+        ExampleItem(
+            title: "Icon List Row",
+            subtitle: "lmk_configureIconListRow — symbol in a tinted circle",
+            iconName: "list.bullet.circle",
+            makeViewController: { IconListRowDetailViewController() }
+        ),
+        ExampleItem(
+            title: "Keyboard Dismiss",
+            subtitle: "Dismiss on Return and on tap outside a field",
+            iconName: "keyboard.chevron.compact.down",
+            makeViewController: { KeyboardDismissDetailViewController() }
+        ),
     ]),
 ]
 

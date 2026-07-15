@@ -43,7 +43,7 @@ LumiKit/
 │   │   │   ├── BottomSheet/  # LMKBottomSheetController (base), LMKActionSheet,
 │   │   │   │                 # LMKEnumSelectionBottomSheet, LMKBottomSheetLayout
 │   │   │   ├── Pickers/      # LMKDatePickerHelper (+ calendar range selection view)
-│   │   │   └── (root)        # Badge, Banner, Card, Chip, Divider, EmptyState,
+│   │   │   └── (root)        # Badge, Banner, Card, CheckboxCell, Chip, Divider, EmptyState,
 │   │   │                     # FilterChipBar, FloatingButton, Gradient, LoadingState,
 │   │   │                     # NavigationBar, NavigationController,
 │   │   │                     # PageIndicator, Progress,
@@ -69,7 +69,8 @@ LumiKit/
 │   │   ├── Haptics/         # LMKHapticFeedbackHelper
 │   │   ├── Photo/           # LMKPhotoBrowserViewController, LMKPhotoBrowserCell,
 │   │   │                    # LMKPhotoCropViewController, LMKPhotoGridViewController,
-│   │   │                    # LMKPhotoGridCell, LMKPhotoEXIFService, LMKPhotoBrowserConfig
+│   │   │                    # LMKPhotoGridCell, LMKPhotoEXIFService, LMKPhotoBrowserConfig,
+│   │   │                    # LMKPhotoPickCropCoordinator, LMKSinglePhotoViewer
 │   │   ├── QRCode/          # LMKQRCodeGenerator
 │   │   ├── Share/           # LMKShareService, LMKSharePreviewViewController
 │   │   └── Utilities/       # LMKDeviceHelper, LMKKeyboardObserver, LMKSceneUtil,
@@ -90,14 +91,14 @@ LumiKit/
 │   │   └── URLSessionConfigurationLMKDebugTests.swift # enableNetworkLogging
 │   ├── LumiKitLottieTests/  # 7 tests, 1 suite
 │   │   └── LMKLottieRefreshControlTests.swift
-│   └── LumiKitUITests/      # 743 tests, 107 suites
+│   └── LumiKitUITests/      # 836 tests, 122 suites
 │       ├── Alerts/          # AlertPresenter, ErrorHandler
 │       ├── Animation/       # AnimationHelper
 │       ├── Components/
 │       │   ├── BottomSheet/  # BottomSheetController, ActionSheet, BottomSheetLayout,
 │       │   │                 # EnumSelectionBottomSheet
 │       │   ├── Pickers/      # DatePickerHelper
-│       │   └── (root)        # Badge, Banner, Card, Chip, Divider, EmptyState,
+│       │   └── (root)        # Badge, Banner, Card, CheckboxCell, Chip, Divider, EmptyState,
 │       │                     # FilterChipBar, FloatingButton, Gradient, LoadingState, Progress,
 │       │                     # SearchBar, Skeleton, Toast, TipView, CardPage,
 │       │                     # CardPanel, ScrollStackViewController
@@ -109,8 +110,10 @@ LumiKit/
 │       │   └── (root)        # ThemeManager, ComponentToken integration
 │       ├── Extensions/      # UIColor, UIImage, UIStackView,
 │       │                    # UIView (shadow/border/fade/layout),
-│       │                    # UIViewController (TopViewController)
-│       ├── Photo/           # CropAspectRatio, PhotoEXIF
+│       │                    # UIViewController (TopViewController, KeyboardDismiss),
+│       │                    # UITableViewCell (IconListRow), UITextField (KeyboardDismiss)
+│       ├── Photo/           # CropAspectRatio, PhotoEXIF,
+│       │                    # PhotoPickCropCoordinator, SinglePhotoViewer
 │       ├── QRCode/          # QRCodeGenerator
 │       ├── Share/           # SharePreview, ShareService
 │       └── Utilities/       # DeviceHelper, ImageUtil, DominantColorExtractor,
@@ -248,6 +251,7 @@ LMKThemeManager.shared.apply(spacing: .init(large: 20))
 | `LMKProgressViewController` | `final class` | Blocking progress modal (`.determinate` with progress bar, `.indeterminate` spinner-only) |
 | `LMKSearchBar` | `final class` | Search bar with configurable strings |
 | `LMKSkeletonCell` | `final class` | Skeleton loading placeholder cell |
+| `LMKCheckboxCell` | `final class` | Check-off row for to-dos / checklists: checkbox + strike-through title. `configure(title:isDone:)`, `onToggle` callback. Checkbox hit area expands to `LMKLayout.minimumTouchTarget`; done state exposed via `accessibilityValue` + `.selected` trait; hosts also toggle from `didSelectRowAt` so the whole row is a target. Checkbox image is set directly, never via cross-dissolve (reuse flashes a checkmark on unrelated rows otherwise) |
 | `LMKToastView` | `final class` | Auto-dismissing toast notification |
 | `LMKTipView` | `final class` | Onboarding tip with centered or pointed (arrow) styles |
 | `LMKFloatingButton` | `final class` | Draggable floating action button with edge snapping and badge |
@@ -283,6 +287,9 @@ LMKThemeManager.shared.apply(spacing: .init(large: 20))
 | `UIView+LMKFade` | `lmk_fadeIn(...)`, `lmk_fadeOut(...)` |
 | `UIView+LMKLayout` | `lmk_safeAreaSnp`, `lmk_setEdgesEqualToSuperview()`, `lmk_centerInSuperview()`, `lmk_setAutoLayoutSize(width:height:)` |
 | `UIStackView+LMK` | `init(lmk_axis:...)`, `lmk_addArrangedSubviews(_:)`, `lmk_removeAllArrangedSubviews()` |
+| `UITableViewCell+LMKIconListRow` | `lmk_configureIconListRow(iconSystemName:title:subtitle:tint:)` — standard detail-list row: SF Symbol in a tinted circle (`LMKLayout.iconCircle`), disclosure, LumiKit highlight |
+| `UITextField+LMKKeyboardDismiss` | `lmk_dismissKeyboardOnReturn()` — Done return key + resign on `.editingDidEndOnExit` (also forwarded on `LMKTextField`) |
+| `UIViewController+LMKKeyboardDismiss` | `lmk_dismissKeyboardOnTap()` — tap outside a field dismisses the keyboard; `cancelsTouchesInView = false` so control taps still land |
 
 ### Share (`Share/`)
 
@@ -305,6 +312,8 @@ LMKThemeManager.shared.apply(spacing: .init(large: 20))
 | `LMKPhotoBrowserViewController` | `final class` | Full-screen photo browser with zoom, swipe, delete. Upgrades a cell from `UIImageView` to `PHLivePhotoView` when `photoLivePhoto(at:)` resolves to a non-nil `PHLivePhoto` — still image shows immediately; long-press plays the paired video. Live cells render a `livephoto` + "LIVE" capsule under the action ("…") button that fades during playback. Cell reuse guarded |
 | `LMKPhotoBrowserConfig` | `enum` | Shared configuration constants (e.g. `interPageSpacing`) |
 | `LMKPhotoCropViewController` | `final class` | Square crop editor with pan/zoom |
+| `LMKPhotoPickCropCoordinator` | `final class` | Pick → square-crop → store flow for one photo via permission-free `PHPicker`. Storage injected as `(UIImage) -> String?`; host retains the coordinator for the flow's duration (picker + crop reference their delegates weakly through it) |
+| `LMKSinglePhotoViewer` | `final class` | One-image adapter for `LMKPhotoBrowserViewController` (data source + delegate in one object). Optional subtitle and action-button callback; retain while the browser is up |
 | `LMKPhotoGridViewController` | `final class` | Photo grid with pinch-to-zoom columns, sort, content mode toggle, browser integration. Cells show a small `livephoto` SF Symbol badge when `photoGridIsLivePhoto(at:)` returns true; paired `PHLivePhoto` is forwarded to the browser via `photoGridLivePhoto(at:) async` |
 | `LMKPhotoEXIFService` | `nonisolated enum` (static) | Date + GPS extraction from UIImage or PHPickerResult. Date lookup walks EXIF (`DateTimeOriginal` / `DateTimeDigitized`), TIFF (`DateTime`), IPTC (`DateCreated` + `TimeCreated`, `DigitalCreationDate` + `DigitalCreationTime`), and the XMP packet (`xmp:CreateDate`, `xmp:DateCreated`, `xmp:ModifyDate`, `photoshop:DateCreated`) in capture-fidelity order. Recovers a date for screenshots and Lightroom / Photoshop / Capture One exports where EXIF has been stripped but another container retains the original timestamp |
 
@@ -330,7 +339,7 @@ Paired-file storage (still JPG + video MOV) is the caller's responsibility — L
 |---------|---------|
 | `LMKDeviceHelper` | Device type (`.iPhone`, `.iPad`, `.macCatalyst`), screen size classification, notch detection |
 | `LMKKeyboardObserver` | Keyboard show/hide observer with height + animation info |
-| `LMKImageUtil` | SF Symbol creation (`makeSymbolImage` with background), `CVPixelBuffer` to JPEG conversion |
+| `LMKImageUtil` | SF Symbol creation (`makeSymbolImage` with background), `CVPixelBuffer` to JPEG conversion, `encodeJPEG(_:maxDimension:quality:)` — `nonisolated` downsample + opaque RGBX (`.noneSkipLast`) re-render + `CGImageDestination` encode, so JPEGs stay 3-channel (no ImageIO "AlphaPremulLast" double-memory path) and EXIF orientation is baked into the pixels |
 | `LMKDominantColorExtractor` | RGB-histogram color extraction. `dominantColor(from:ignoringTransparent:strategy:)` returns one color: `.modal` (default, densest bucket = subject identity), `.average` (mean = gradient vibe, muddy for subjects), `.vibrant` (most saturated bucket with population tie-breaker = accent color, drops < 0.5% buckets, falls through to modal for grayscale). `dominantColors(from:count:ignoringTransparent:)` returns a top-N palette by frequency. Pass a subject-lifted PNG with `ignoringTransparent: true` (alpha threshold drops semi-transparent edges); raw photos use the default and a 20% border-ring crop. Always uses `kCGImageAlphaPremultipliedLast` — `.last` (unpremultiplied) is rejected by `CGBitmapContext` on iOS |
 | `LMKMarkdownRenderer` | Markdown-to-attributed-string: `render()` for inline (bold/italic), `renderFull()` for long-form content (headings, lists, fenced code blocks, GFM tables, `\n` preserved; code and tables in a monospaced font), `makeInlineTextView` |
 | `LMKSceneUtil` | Key window and connected scene retrieval |
@@ -345,7 +354,7 @@ Paired-file storage (still JPG + video MOV) is the caller's responsibility — L
   - `.error` -> toast (transient) or alert with retry (recoverable)
   - `.critical` -> always alert, retry if available
 - All presentation methods auto-log via `LMKLogger`
-- **`LMKAlertPresenter`** for generic alerts and action sheets
+- **`LMKAlertPresenter`** for generic alerts, action sheets, and single-text-field prompts (`presentTextInput`: save/cancel alert that hands back the field's text verbatim; `Strings` includes a configurable `save` title)
 - **`LMKCountdownConfirmation`** for destructive actions — confirm button disabled for a countdown period (default 3s) with live title countdown, preventing accidental taps
 
 ---

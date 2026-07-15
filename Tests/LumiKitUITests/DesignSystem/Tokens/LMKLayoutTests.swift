@@ -40,6 +40,7 @@ struct LMKLayoutConfigurationTests {
         #expect(config.iconMedium == 24)
         #expect(config.iconSmall == 20)
         #expect(config.iconExtraSmall == 16)
+        #expect(config.iconCircle == 36)
         #expect(config.pullThreshold == 80)
         #expect(config.cellHeightMin == 100)
         #expect(config.searchBarHeight == 36)
@@ -62,5 +63,11 @@ struct LMKLayoutConfigurationTests {
         #expect(LMKLayout.searchBarHeight == 36)
         #expect(LMKLayout.searchBarIconSize == 18)
         #expect(LMKLayout.clearButtonSize == 22)
+    }
+
+    @Test
+    func `Icon circle token is accessible and larger than the icon it wraps`() {
+        #expect(LMKLayout.iconCircle == 36)
+        #expect(LMKLayout.iconCircle > LMKLayout.iconExtraSmall)
     }
 }

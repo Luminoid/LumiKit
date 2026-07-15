@@ -29,6 +29,8 @@ public enum LMKLayout {
     public static var iconSmall: CGFloat { config.iconSmall }
     /// Extra small icon size (chevrons, compact indicators) — default 16pt.
     public static var iconExtraSmall: CGFloat { config.iconExtraSmall }
+    /// Tinted icon circle behind a list-row symbol — default 36pt.
+    public static var iconCircle: CGFloat { config.iconCircle }
     /// Pull-to-refresh threshold; compact preview height — default 80pt.
     public static var pullThreshold: CGFloat { config.pullThreshold }
     /// Minimum cell height — default 100pt.

@@ -431,6 +431,99 @@ final class PhotoCropDetailViewController: DetailViewController, LMKPhotoCropDel
     }
 }
 
+// MARK: - Pick & Crop
+
+final class PickCropDetailViewController: DetailViewController {
+    // Both flows reference their delegates weakly through these objects,
+    // so the host retains them for the duration of the interaction.
+    private var pickCropCoordinator: LMKPhotoPickCropCoordinator?
+    private var photoViewer: LMKSinglePhotoViewer?
+
+    private var storedImage: UIImage?
+    private var storedIdentifier: String?
+
+    private lazy var preview: UIImageView = {
+        let imageView = UIImageView()
+        imageView.contentMode = .scaleAspectFit
+        imageView.clipsToBounds = true
+        imageView.layer.cornerRadius = LMKCornerRadius.medium
+        imageView.backgroundColor = LMKColor.backgroundSecondary
+        imageView.snp.makeConstraints { $0.height.equalTo(200) }
+        return imageView
+    }()
+
+    private lazy var identifierLabel = LMKLabelFactory.caption(text: "No photo stored yet.")
+
+    override func viewDidLoad() {
+        super.viewDidLoad()
+
+        addSectionHeader("LMKPhotoPickCropCoordinator")
+        stack.addArrangedSubview(LMKLabelFactory.caption(
+            text: "Pick \u{2192} square-crop \u{2192} store for a single photo using a "
+                + "permission-free PHPicker. Storage is injected as a closure, so the "
+                + "coordinator stays storage-agnostic — here it keeps the image in memory "
+                + "and returns a UUID as the stored identifier."
+        ))
+
+        let pickButton = LMKButtonFactory.filled(role: .primary, title: "Pick & Crop Photo", target: self, action: #selector(startPickCrop))
+        stack.addArrangedSubview(pickButton)
+
+        stack.addArrangedSubview(preview)
+        stack.addArrangedSubview(identifierLabel)
+
+        addDivider()
+        addSectionHeader("LMKSinglePhotoViewer")
+        stack.addArrangedSubview(LMKLabelFactory.caption(
+            text: "Presents one image full-screen in LMKPhotoBrowserViewController — data "
+                + "source and delegate in a single retained object. The action (\u{2026}) "
+                + "button is backed by the optional onAction callback."
+        ))
+
+        let viewButton = LMKButtonFactory.outlined(role: .primary, title: "View Full Screen", target: self, action: #selector(viewFullScreen))
+        stack.addArrangedSubview(viewButton)
+    }
+
+    @objc private func startPickCrop() {
+        let coordinator = LMKPhotoPickCropCoordinator(
+            host: self,
+            save: { [weak self] image in
+                self?.storedImage = image
+                return UUID().uuidString
+            },
+            onSaved: { [weak self] identifier in
+                guard let self else { return }
+                storedIdentifier = identifier
+                preview.image = storedImage
+                identifierLabel.text = "Stored as \(identifier)"
+                LMKToast.showSuccess(message: "Photo stored", on: self)
+            },
+            onFailure: { [weak self] in
+                guard let self else { return }
+                LMKToast.showError(message: "Could not store photo", on: self)
+            }
+        )
+        pickCropCoordinator = coordinator
+        coordinator.start()
+    }
+
+    @objc private func viewFullScreen() {
+        guard let storedImage else {
+            LMKToast.showInfo(message: "Pick a photo first", on: self)
+            return
+        }
+        let viewer = LMKSinglePhotoViewer(
+            image: storedImage,
+            subtitle: storedIdentifier,
+            onAction: { [weak self] in
+                guard let self else { return }
+                LMKToast.showInfo(message: "Action button tapped", on: presentedViewController ?? self)
+            }
+        )
+        photoViewer = viewer
+        viewer.present(from: self)
+    }
+}
+
 // MARK: - QR Code
 
 final class QRCodeDetailViewController: DetailViewController {
@@ -446,9 +539,8 @@ final class QRCodeDetailViewController: DetailViewController {
         textField.borderStyle = .roundedRect
         textField.font = LMKTypography.body
         textField.clearButtonMode = .whileEditing
-        textField.returnKeyType = .done
         textField.addTarget(self, action: #selector(generateQR), for: .editingChanged)
-        textField.addTarget(self, action: #selector(dismissKeyboard), for: .editingDidEndOnExit)
+        textField.lmk_dismissKeyboardOnReturn()
         stack.addArrangedSubview(textField)
 
         let generateButton = LMKButtonFactory.filled(role: .primary, title: "Generate QR Code", target: self, action: #selector(generateQR))
@@ -498,10 +590,6 @@ final class QRCodeDetailViewController: DetailViewController {
     @objc private func generateQR() {
         let text = textField.text ?? ""
         imageView.image = LMKQRCodeGenerator.generateQRCode(from: text, size: 200)
-    }
-
-    @objc private func dismissKeyboard() {
-        textField.resignFirstResponder()
     }
 }
 
