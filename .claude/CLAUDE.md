@@ -92,7 +92,7 @@ LumiKit/
 │   │   └── URLSessionConfigurationLMKDebugTests.swift # enableNetworkLogging
 │   ├── LumiKitLottieTests/  # 7 tests, 1 suite
 │   │   └── LMKLottieRefreshControlTests.swift
-│   └── LumiKitUITests/      # 854 tests, 123 suites
+│   └── LumiKitUITests/      # 858 tests, 123 suites
 │       ├── Alerts/          # AlertPresenter, ErrorHandler
 │       ├── Animation/       # AnimationHelper
 │       ├── Components/
@@ -236,7 +236,7 @@ LMKThemeManager.shared.apply(spacing: .init(large: 20))
 
 | Component | Type | Purpose |
 |-----------|------|---------|
-| `LMKBottomSheetController` | `open class` | Base class for bottom sheet presentation — shared dimming, container, animation, dismiss |
+| `LMKBottomSheetController` | `open class` | Base class for bottom sheet presentation — shared dimming, container, animation, dismiss. Starting a pan resigns the first responder (pan offsets are absolute against the resting position, so a keyboard-lifted sheet would otherwise snap down the keyboard height on the first drag movement) |
 | `LMKActionSheet` | `final class` | Custom bottom-sheet action sheet with design-token styling, optional custom content, `isSelected` checkmark state, and sub-page navigation |
 | `LMKBadgeView` | `final class` | Notification count / status dot / custom text badge |
 | `LMKBannerView` | `final class` | Persistent notification bar with optional action & dismiss |
@@ -312,12 +312,12 @@ LMKThemeManager.shared.apply(spacing: .init(large: 20))
 
 | Component | Type | Purpose |
 |-----------|------|---------|
-| `LMKPhotoBrowserViewController` | `final class` | Full-screen photo browser with zoom, swipe, delete. Upgrades a cell from `UIImageView` to `PHLivePhotoView` when `photoLivePhoto(at:)` resolves to a non-nil `PHLivePhoto` — still image shows immediately; long-press plays the paired video. Live cells render a `livephoto` + "LIVE" capsule under the action ("…") button that fades during playback. Cell reuse guarded |
+| `LMKPhotoBrowserViewController` | `final class` | Full-screen photo browser with zoom, swipe, delete. Upgrades a cell from `UIImageView` to `PHLivePhotoView` when `photoLivePhoto(at:)` resolves to a non-nil `PHLivePhoto` — still image shows immediately; long-press plays the paired video. Live cells render a `livephoto` + "LIVE" capsule under the action ("…") button that fades during playback. `showsActionButton = false` (set before presenting) skips installing the "…" button for hosts whose current user has no actions to offer (view-only shared content); `actionButtonSystemImageName` swaps the symbol (e.g. "trash" when the sole action is removal). The date/subtitle pill hides when the current photo has neither; a single-photo browser shows no counter or page dots. Cell reuse guarded |
 | `LMKPhotoBrowserConfig` | `enum` | Shared configuration constants (e.g. `interPageSpacing`) |
 | `LMKPhotoCropViewController` | `final class` | Square crop editor with pan/zoom |
-| `LMKPhotoPickCropCoordinator` | `final class` | Pick → square-crop → store flow for one photo via permission-free `PHPicker`. Storage injected as `(UIImage) -> String?`; host retains the coordinator for the flow's duration (picker + crop reference their delegates weakly through it) |
-| `LMKSinglePhotoViewer` | `final class` | One-image adapter for `LMKPhotoBrowserViewController` (data source + delegate in one object). Optional subtitle and action-button callback; retain while the browser is up |
-| `LMKPhotoGridViewController` | `final class` | Photo grid with pinch-to-zoom columns, sort, content mode toggle, browser integration. Cells show a small `livephoto` SF Symbol badge when `photoGridIsLivePhoto(at:)` returns true; paired `PHLivePhoto` is forwarded to the browser via `photoGridLivePhoto(at:) async` |
+| `LMKPhotoPickCropCoordinator` | `final class` | Pick → square-crop → store flow for one photo via permission-free `PHPicker`. Storage injected as `(UIImage) -> String?`; host retains the coordinator for the flow's duration (picker + crop reference their delegates weakly through it). `croppingEnabled: false` skips the crop editor and stores the pick as-is (receipts, documents) |
+| `LMKSinglePhotoViewer` | `final class` | One-image adapter for `LMKPhotoBrowserViewController` (data source + delegate in one object). Optional subtitle, action-button callback (the browser's action button is hidden when the callback is nil), and `actionIconSystemName` to swap the button's symbol; retain while the browser is up |
+| `LMKPhotoGridViewController` | `final class` | Photo grid with pinch-to-zoom columns, sort, content mode toggle, browser integration. Cells show a small `livephoto` SF Symbol badge when `photoGridIsLivePhoto(at:)` returns true; paired `PHLivePhoto` is forwarded to the browser via `photoGridLivePhoto(at:) async`. `browserShowsActionButton` forwards to the presented browser's `showsActionButton` (default true) |
 | `LMKPhotoEXIFService` | `nonisolated enum` (static) | Date + GPS extraction from UIImage or PHPickerResult. Date lookup walks EXIF (`DateTimeOriginal` / `DateTimeDigitized`), TIFF (`DateTime`), IPTC (`DateCreated` + `TimeCreated`, `DigitalCreationDate` + `DigitalCreationTime`), and the XMP packet (`xmp:CreateDate`, `xmp:DateCreated`, `xmp:ModifyDate`, `photoshop:DateCreated`) in capture-fidelity order. Recovers a date for screenshots and Lightroom / Photoshop / Capture One exports where EXIF has been stripped but another container retains the original timestamp |
 
 **Live Photo data-source methods** (all optional, default to no-op):

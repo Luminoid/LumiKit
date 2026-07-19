@@ -61,4 +61,32 @@ struct LMKSinglePhotoViewerTests {
         #expect(browser != nil)
         #expect(browser?.modalPresentationStyle == .fullScreen)
     }
+
+    @Test
+    func `Hides the action button when onAction is nil`() {
+        let host = UIViewController()
+        let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 375, height: 812))
+        window.rootViewController = host
+        window.makeKeyAndVisible()
+
+        let viewer = LMKSinglePhotoViewer(image: makeImage())
+        viewer.present(from: host)
+
+        let browser = host.presentedViewController as? LMKPhotoBrowserViewController
+        #expect(browser?.showsActionButton == false)
+    }
+
+    @Test
+    func `Shows the action button when onAction is set`() {
+        let host = UIViewController()
+        let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 375, height: 812))
+        window.rootViewController = host
+        window.makeKeyAndVisible()
+
+        let viewer = LMKSinglePhotoViewer(image: makeImage(), onAction: {})
+        viewer.present(from: host)
+
+        let browser = host.presentedViewController as? LMKPhotoBrowserViewController
+        #expect(browser?.showsActionButton == true)
+    }
 }

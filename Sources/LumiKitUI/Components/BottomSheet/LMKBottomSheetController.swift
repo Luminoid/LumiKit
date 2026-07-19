@@ -230,6 +230,14 @@ open class LMKBottomSheetController: UIViewController {
         let containerHeight = containerView.frame.height
 
         switch gesture.state {
+        case .began:
+            // A drag takes the keyboard down with it. Pan offsets are absolute
+            // against the resting position, so a subclass holding the sheet
+            // above the keyboard (offset -keyboardHeight) would otherwise snap
+            // the full keyboard height on the first changed event while the
+            // keyboard stays up covering it.
+            view.endEditing(true)
+
         case .changed:
             let offset = max(translation.y, 0)
             containerBottomConstraint?.update(offset: offset)

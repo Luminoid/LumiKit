@@ -120,6 +120,9 @@ public final class LMKPhotoGridViewController: UIViewController {
     public var strings = LMKPhotoGridStrings()
     /// Strings forwarded to the photo browser when presented.
     public var photoBrowserStrings = LMKPhotoBrowserStrings()
+    /// Forwarded to the photo browser's `showsActionButton` when presented.
+    /// Hosts whose current user has no actions to offer set this to `false`.
+    public var browserShowsActionButton = true
 
     public private(set) var columnCount: Int = 2
     public private(set) var photoContentMode: LMKPhotoGridContentMode = .aspectFill
@@ -476,6 +479,7 @@ public final class LMKPhotoGridViewController: UIViewController {
         browser.dataSource = self
         browser.delegate = self
         browser.strings = photoBrowserStrings
+        browser.showsActionButton = browserShowsActionButton
         browser.modalPresentationStyle = .fullScreen
         present(browser, animated: true)
     }

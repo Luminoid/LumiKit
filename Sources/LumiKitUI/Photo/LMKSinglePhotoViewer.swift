@@ -20,6 +20,7 @@ public final class LMKSinglePhotoViewer: NSObject {
 
     private let image: UIImage
     private let subtitle: String?
+    private let actionIconSystemName: String
     private let onAction: (() -> Void)?
     private var browser: LMKPhotoBrowserViewController?
 
@@ -28,10 +29,18 @@ public final class LMKSinglePhotoViewer: NSObject {
     /// - Parameters:
     ///   - image: The image to display.
     ///   - subtitle: Optional subtitle under the browser's counter.
-    ///   - onAction: Backs the browser's action ("…") button; the button is inert when `nil`.
-    public init(image: UIImage, subtitle: String? = nil, onAction: (() -> Void)? = nil) {
+    ///   - actionIconSystemName: SF Symbol for the action button. The default
+    ///     "…" suits a menu; pass e.g. "trash" when the sole action is removal.
+    ///   - onAction: Backs the browser's action button; the button is hidden when `nil`.
+    public init(
+        image: UIImage,
+        subtitle: String? = nil,
+        actionIconSystemName: String = "ellipsis",
+        onAction: (() -> Void)? = nil
+    ) {
         self.image = image
         self.subtitle = subtitle
+        self.actionIconSystemName = actionIconSystemName
         self.onAction = onAction
         super.init()
     }
@@ -43,6 +52,8 @@ public final class LMKSinglePhotoViewer: NSObject {
         let browser = LMKPhotoBrowserViewController(initialIndex: 0)
         browser.dataSource = self
         browser.delegate = self
+        browser.showsActionButton = onAction != nil
+        browser.actionButtonSystemImageName = actionIconSystemName
         browser.modalPresentationStyle = .fullScreen
         self.browser = browser
         host.present(browser, animated: true)

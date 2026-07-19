@@ -343,6 +343,32 @@ struct LMKPhotoGridViewControllerTests {
 
         #expect(grid.photoBrowserStrings.emptyText == "Custom Browser Empty")
     }
+
+    @Test
+    func `browser action button defaults to shown`() {
+        let grid = LMKPhotoGridViewController()
+
+        #expect(grid.browserShowsActionButton)
+    }
+
+    @Test
+    func `browser action button visibility is forwarded when presenting`() {
+        let ds = MockPhotoGridDataSource(photoCount: 1)
+        let grid = LMKPhotoGridViewController()
+        grid.dataSource = ds
+        grid.browserShowsActionButton = false
+
+        let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 375, height: 812))
+        window.rootViewController = grid
+        window.makeKeyAndVisible()
+        grid.loadViewIfNeeded()
+
+        let collectionView = UICollectionView(frame: .zero, collectionViewLayout: UICollectionViewFlowLayout())
+        grid.collectionView(collectionView, didSelectItemAt: IndexPath(item: 0, section: 0))
+
+        let browser = grid.presentedViewController as? LMKPhotoBrowserViewController
+        #expect(browser?.showsActionButton == false)
+    }
 }
 
 // MARK: - Mock Data Source

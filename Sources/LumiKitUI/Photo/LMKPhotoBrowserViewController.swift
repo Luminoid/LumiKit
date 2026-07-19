@@ -77,6 +77,16 @@ public final class LMKPhotoBrowserViewController: UIViewController {
 
     public weak var dataSource: (any LMKPhotoBrowserDataSource)?
     public weak var delegate: (any LMKPhotoBrowserDelegate)?
+
+    /// Whether the overlay "…" action button is installed. Set before
+    /// presenting. Hosts whose current user has no actions to offer (a
+    /// view-only shared album) hide it rather than shipping a visible button
+    /// whose taps do nothing.
+    public var showsActionButton = true
+    /// SF Symbol for the action button. Set before presenting. The default
+    /// "…" suits an action menu; a host whose sole action is destructive
+    /// (remove a receipt) passes "trash" so the button says what it does.
+    public var actionButtonSystemImageName = "ellipsis"
     public var strings = LMKPhotoBrowserStrings()
 
     private let initialIndex: Int
@@ -405,26 +415,29 @@ public final class LMKPhotoBrowserViewController: UIViewController {
         #endif
 
         // Action button (add after collectionView so it's on top)
-        let actionButton = LMKPhotoBrowserConfig.makeOverlayButton(systemName: "ellipsis", target: self, action: #selector(actionButtonTapped))
-        view.addSubview(actionButton)
-        view.bringSubviewToFront(actionButton)
-        self.actionButton = actionButton
+        if showsActionButton {
+            let actionButton = LMKPhotoBrowserConfig.makeOverlayButton(systemName: actionButtonSystemImageName, target: self, action: #selector(actionButtonTapped))
+            view.addSubview(actionButton)
+            view.bringSubviewToFront(actionButton)
+            self.actionButton = actionButton
 
-        actionButton.snp.makeConstraints { make in
-            make.top.equalTo(view.safeAreaLayoutGuide).offset(LMKSpacing.large)
-            make.leading.equalToSuperview().offset(LMKSpacing.large)
-            make.width.height.equalTo(LMKPhotoBrowserConfig.overlayButtonSize)
+            actionButton.snp.makeConstraints { make in
+                make.top.equalTo(view.safeAreaLayoutGuide).offset(LMKSpacing.large)
+                make.leading.equalToSuperview().offset(LMKSpacing.large)
+                make.width.height.equalTo(LMKPhotoBrowserConfig.overlayButtonSize)
+            }
+
+            #if targetEnvironment(macCatalyst)
+                // Add hover effect for Mac
+                actionButton.addTarget(self, action: #selector(actionButtonHover), for: [.touchDown, .touchDragEnter])
+                actionButton.addTarget(self, action: #selector(actionButtonUnhover), for: [.touchUpInside, .touchUpOutside, .touchDragExit, .touchCancel])
+            #endif
         }
-
-        #if targetEnvironment(macCatalyst)
-            // Add hover effect for Mac
-            actionButton.addTarget(self, action: #selector(actionButtonHover), for: [.touchDown, .touchDragEnter])
-            actionButton.addTarget(self, action: #selector(actionButtonUnhover), for: [.touchUpInside, .touchUpOutside, .touchDragExit, .touchCancel])
-        #endif
 
         // Page control (add after collectionView so it's on top)
         pageControl.numberOfPages = photoCount
         pageControl.currentPage = max(0, min(initialIndex, photoCount - 1))
+        pageControl.hidesForSinglePage = true
         pageControl.pageIndicatorTintColor = LMKColor.graySoft
         pageControl.currentPageIndicatorTintColor = LMKColor.white
         view.addSubview(pageControl)
@@ -543,7 +556,9 @@ public final class LMKPhotoBrowserViewController: UIViewController {
 
     private func updateCounterLabel() {
         let photoCount = dataSource?.numberOfPhotos ?? 0
-        guard photoCount > 0 else {
+        // A single photo needs no position ("1 of 1" is noise); the page
+        // control handles its own case via hidesForSinglePage.
+        guard photoCount > 1 else {
             counterLabel.text = nil
             return
         }
@@ -562,6 +577,7 @@ public final class LMKPhotoBrowserViewController: UIViewController {
         guard currentIndex >= 0,
               currentIndex < photoCount else {
             dateLabel.text = nil
+            dateLabelContainer.isHidden = true
             return
         }
 
@@ -570,6 +586,9 @@ public final class LMKPhotoBrowserViewController: UIViewController {
         } else {
             dateLabel.text = dataSource?.photoSubtitle(at: currentIndex)
         }
+        // The container owns its visibility here: with no date and no subtitle
+        // the pill would render as an empty floating blob.
+        dateLabelContainer.isHidden = (dateLabel.text ?? "").isEmpty
     }
 
     // MARK: - Actions
@@ -705,11 +724,12 @@ public final class LMKPhotoBrowserViewController: UIViewController {
             // Remove empty state label if present
             view.viewWithTag(emptyStateLabelTag)?.removeFromSuperview()
 
-            // Restore photo-specific UI
+            // Restore photo-specific UI. The date pill stays out: its
+            // visibility belongs to updateDateLabel (empty pill rule), which
+            // updateCurrentIndex below re-runs.
             collectionView.isHidden = false
             pageControl.isHidden = false
             counterLabel.isHidden = false
-            dateLabelContainer.isHidden = false
             actionButton?.isHidden = false
 
             // Clamp current index to valid range

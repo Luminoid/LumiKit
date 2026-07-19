@@ -11,7 +11,8 @@ import UIKit
 /// Orchestrates pick → square-crop → store for a single photo, then hands back the
 /// stored identifier. Uses a permission-free `PHPicker` (no photo-library access,
 /// no Info.plist usage string). Storage is injected via `save`, so the coordinator
-/// stays storage-agnostic. Retain it for the flow's duration: the host view
+/// stays storage-agnostic. `croppingEnabled: false` skips the crop editor and
+/// stores the picked image as-is (receipts, documents). Retain it for the flow's duration: the host view
 /// controller holds it in a property, since `PHPickerViewController` and the crop
 /// controller only weakly reference their delegates through this object.
 ///
@@ -30,21 +31,27 @@ public final class LMKPhotoPickCropCoordinator: NSObject {
     private let save: (UIImage) -> String?
     private let onSaved: (String) -> Void
     private let onFailure: () -> Void
+    private let croppingEnabled: Bool
 
     // MARK: - Init
 
     /// - Parameters:
     ///   - host: The view controller to present the picker and crop editor from.
-    ///   - save: Stores the cropped image and returns its identifier, or `nil` on failure.
+    ///   - croppingEnabled: Whether the picked photo goes through the square-crop
+    ///     editor before storage. Pass `false` for content whose full frame matters
+    ///     (receipts, documents); the picked image then stores as-is.
+    ///   - save: Stores the resulting image and returns its identifier, or `nil` on failure.
     ///   - onSaved: Called with the identifier returned by `save`.
     ///   - onFailure: Called when `save` returns `nil`. Defaults to a no-op.
     public init(
         host: UIViewController,
+        croppingEnabled: Bool = true,
         save: @escaping (UIImage) -> String?,
         onSaved: @escaping (String) -> Void,
         onFailure: @escaping () -> Void = {}
     ) {
         self.host = host
+        self.croppingEnabled = croppingEnabled
         self.save = save
         self.onSaved = onSaved
         self.onFailure = onFailure
@@ -79,7 +86,22 @@ extension LMKPhotoPickCropCoordinator: PHPickerViewControllerDelegate {
         guard let provider = results.first?.itemProvider, provider.canLoadObject(ofClass: UIImage.self) else { return }
         provider.loadObject(ofClass: UIImage.self) { [weak self] object, _ in
             guard let image = object as? UIImage else { return }
-            Task { @MainActor in self?.presentCrop(image) }
+            Task { @MainActor in
+                guard let self else { return }
+                if self.croppingEnabled {
+                    self.presentCrop(image)
+                } else {
+                    self.commit(image)
+                }
+            }
+        }
+    }
+
+    private func commit(_ image: UIImage) {
+        if let identifier = save(image) {
+            onSaved(identifier)
+        } else {
+            onFailure()
         }
     }
 }
@@ -89,11 +111,7 @@ extension LMKPhotoPickCropCoordinator: PHPickerViewControllerDelegate {
 extension LMKPhotoPickCropCoordinator: LMKPhotoCropDelegate {
     public func photoCropViewController(_ controller: LMKPhotoCropViewController, didCropImage image: UIImage) {
         controller.dismiss(animated: true)
-        if let identifier = save(image) {
-            onSaved(identifier)
-        } else {
-            onFailure()
-        }
+        commit(image)
     }
 
     public func photoCropViewControllerDidCancel(_ controller: LMKPhotoCropViewController) {
