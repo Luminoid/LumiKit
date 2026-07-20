@@ -381,7 +381,12 @@ public final class LMKNavigationBar: UIView {
 
         // Inline title: centered between back button and right items
         inlineTitleLabel.snp.makeConstraints { make in
-            make.centerX.equalToSuperview()
+            // centerX must YIELD to the right-items stack: with 4+ bar items the
+            // stack's leading edge can cross the bar's center, so a required centerX
+            // could not also satisfy `trailing <= rightItemsStack.leading` and UIKit
+            // recovered by breaking a button's 44pt min width. High (not required)
+            // lets the title shift left / truncate while buttons keep their targets.
+            make.centerX.equalToSuperview().priority(.high)
             make.centerY.equalToSuperview()
             make.leading.greaterThanOrEqualTo(backButton.snp.trailing).offset(LMKSpacing.small)
             make.leading.greaterThanOrEqualTo(leftItemsStack.snp.trailing).offset(LMKSpacing.small)

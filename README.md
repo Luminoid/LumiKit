@@ -690,6 +690,20 @@ LumiKitCore has no default isolation and is safe to use from any concurrency con
 - [ ] Add SECURITY.md
 - [ ] Add DocC API reference documentation
 
+### Component & API gaps (flagged by the TripDays audit, 2026-07-19)
+- [ ] `LMKEmptyStateView`: optional action-button slot; TripDays hand-rolls a CTA under the view in two screens (its `TDEmptyStateCTAView` is the stopgap to delete once this lands)
+- [ ] `LMKLayout.hairline` token; apps hardcode `layer.borderWidth = 1` (TripDays stopgap: `DesignSystem.Stroke.hairline`)
+- [ ] `UIControl` touch-target helper: derive `lmk_touchAreaEdgeInsets` to `minimumTouchTarget` from the resolved bounds at layout time, so small glyphs hold 44pt at every Dynamic Type size (pattern duplicated in TripDays' `InsetHitButton` and `HeaderAddButton`)
+- [ ] `LMKAnimationHelper.animateButtonPressDown/Up`: optional alpha-dim parameter, so tile-style components stop hand-rolling the press animation for one extra property
+- [ ] `LMKBottomSheetController`: Esc / ⌘W key commands to dismiss (TripDays overrides `keyCommands` in its quick-add sheet subclass)
+- [ ] `LMKShareService`: plain-text sharing; the service covers images and files only, so TripDays carries a local `UIViewController+TextShare`
+
+### Extraction candidates (in TripDays, app-agnostic today)
+- [ ] `TableReorderController`: local-only table drag-reorder delegate pair (three screens use it)
+- [ ] `FormRow`: caption-over-control form row
+- [ ] `String.trimmedOrNil` into LumiKitCore's String extensions
+- [ ] `PasteDetector`: length-jump paste detection for text fields
+
 ---
 
 ## License
