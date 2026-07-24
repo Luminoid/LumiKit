@@ -88,8 +88,15 @@ public final class LMKSwitch: UIControl {
         thumbView.isUserInteractionEnabled = false
         addSubview(thumbView)
 
-        // Layout
+        // Layout. The track renders at whatever frame the layout resolves, so
+        // a stack view must never stretch or squeeze this control: required
+        // priorities pin it to its intrinsic size on both axes (UISwitch
+        // parity), letting neighboring labels absorb the slack instead.
         trackView.frame = CGRect(x: 0, y: 0, width: Self.trackWidth, height: Self.trackHeight)
+        setContentHuggingPriority(.required, for: .horizontal)
+        setContentHuggingPriority(.required, for: .vertical)
+        setContentCompressionResistancePriority(.required, for: .horizontal)
+        setContentCompressionResistancePriority(.required, for: .vertical)
         updateAppearance(animated: false)
 
         // Tap gesture

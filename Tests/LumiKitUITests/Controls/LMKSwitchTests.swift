@@ -48,6 +48,15 @@ struct LMKSwitchTests {
     }
 
     @Test
+    func `Layout priorities pin the control to its intrinsic size`() {
+        let toggle = LMKSwitch()
+        #expect(toggle.contentHuggingPriority(for: .horizontal) == .required)
+        #expect(toggle.contentHuggingPriority(for: .vertical) == .required)
+        #expect(toggle.contentCompressionResistancePriority(for: .horizontal) == .required)
+        #expect(toggle.contentCompressionResistancePriority(for: .vertical) == .required)
+    }
+
+    @Test
     func `Is a UIControl subclass`() {
         let toggle = LMKSwitch()
         #expect(toggle as Any is UIControl)
