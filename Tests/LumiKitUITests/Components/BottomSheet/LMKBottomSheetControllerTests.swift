@@ -141,6 +141,40 @@ struct LMKBottomSheetControllerTests {
         let maxHeight = sheet.computeMaxHeight()
         #expect(maxHeight > 0)
     }
+
+    @Test
+    func `Tall sheet in embedded child view stays within hosting bounds`() {
+        // A sheet presented in a child VC that does not cover the screen
+        // (TripDays trip detail embeds its itinerary below the nav bar) must
+        // cap against the hosting view, not the screen — otherwise the top
+        // chrome (drag indicator, back button) lands above the hosting view's
+        // bounds, where it draws but never receives touches.
+        let rootVC = UIViewController()
+        let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 375, height: 812))
+        window.rootViewController = rootVC
+        window.makeKeyAndVisible()
+
+        // Embedded child covering only the lower ~600pt of the screen.
+        let host = UIViewController()
+        rootVC.addChild(host)
+        host.view.frame = CGRect(x: 0, y: 212, width: 375, height: 600)
+        host.view.autoresizingMask = []
+        rootVC.view.addSubview(host.view)
+        host.didMove(toParent: rootVC)
+
+        // Content tall enough to exceed both the host height and the screen cap.
+        let sheet = LMKActionSheet(
+            title: "Move to",
+            actions: (0 ..< 40).map { i in .init(title: "Day \(i)") {} }
+        )
+        LMKBottomSheetController.addAsChild(sheet, in: host)
+        sheet.view.layoutIfNeeded()
+        sheet.animateIn()
+        sheet.view.layoutIfNeeded()
+
+        #expect(sheet.containerView.frame.minY >= 0)
+        #expect(sheet.containerView.frame.height <= 600 * LMKBottomSheetLayout.maxScreenHeightRatio + 1)
+    }
 }
 
 // MARK: - Test Helper

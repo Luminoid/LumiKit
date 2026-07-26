@@ -116,10 +116,17 @@ open class LMKBottomSheetController: UIViewController {
         dimmingView.snp.makeConstraints { make in make.edges.equalToSuperview() }
 
         view.addSubview(containerView)
+        // Cap the container against the hosting view, not the screen: the sheet
+        // may live in a view smaller than the screen (child-VC embedding, form
+        // sheets, resizable Catalyst windows), and a screen-based cap lets tall
+        // content push the sheet's top chrome (drag indicator, back button)
+        // above the hosting view's bounds — drawn but unreachable by hit-testing.
+        // The screen-based computeMaxHeight() remains only as the initial
+        // off-screen offset, which is always >= the resolved container height.
         let maxHeight = computeMaxHeight()
         containerView.snp.makeConstraints { make in
             make.leading.trailing.equalToSuperview()
-            make.height.lessThanOrEqualTo(maxHeight)
+            make.height.lessThanOrEqualTo(view.snp.height).multipliedBy(LMKBottomSheetLayout.maxScreenHeightRatio)
             containerBottomConstraint = make.bottom.equalToSuperview().offset(maxHeight).constraint
         }
 
