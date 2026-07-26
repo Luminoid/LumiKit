@@ -5,25 +5,32 @@ All notable changes to LumiKit will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.11.0] - 2026-07-26
 
 ### Added
 
-- **UIScrollView.lmk_enableKeyboardAdjustment()**: One-call keyboard avoidance, ported from Petfolio's `KeyboardScrollAdjuster`. Installs an adjuster as an associated object that listens to `keyboardWillChangeFrame`, grows the bottom content and scroll indicator insets to the keyboard overlap, and scrolls the focused field into the visible area (restoring on hide). Safe to call multiple times; no-op on Mac Catalyst. `LMKKeyboardInsetHelper` remains supported for call sites that want explicit start/stop observation control.
-- **Pointer interaction**: `LMKButton` and `LMKNavigationBar`'s bar buttons (back button, left and right items) now set `isPointerInteractionEnabled = true`, giving iPad pointer and Mac Catalyst users hover feedback.
-- **LMKFilterChipBar icons**: `configure(allTitle:filterTitles:filterIcons:style:)` accepts optional leading icons, positionally matched to `filterTitles` (`nil` or missing entries render text-only chips; the "All" chip never carries an icon). Backward compatible; `LMKChipView` already supported icons, the bar just never passed them.
-- **LMKPhotoBrowserViewController.showsActionButton**: opt-out for the overlay "…" action button (default `true`, set before presenting), for hosts whose current user has no actions to offer, such as read-only shared content. `LMKSinglePhotoViewer` now hides the button automatically when its `onAction` callback is nil (previously it showed an inert button), and `LMKPhotoGridViewController` forwards a new `browserShowsActionButton` property to the browsers it presents.
-- **LMKPhotoBrowserViewController.actionButtonSystemImageName**: configurable SF Symbol for the action button (default `"ellipsis"`, set before presenting), for hosts whose sole action is destructive and should read as such (e.g. `"trash"` for removing a receipt). `LMKSinglePhotoViewer` forwards it via a new `actionIconSystemName` init parameter.
+- **UIScrollView.lmk_enableKeyboardAdjustment()** — One-call keyboard avoidance: the scroll view keeps the focused input visible above the keyboard, tracks keyboard frame changes, and restores its insets on hide. Safe to call multiple times; no-op on Mac Catalyst. `LMKKeyboardInsetHelper` remains supported where explicit start/stop control is wanted.
+- **Pointer hover feedback** — `LMKButton` and `LMKNavigationBar`'s bar buttons (back button, left and right items) respond to the pointer on iPad and Mac Catalyst.
+- **LMKFilterChipBar icons** — `configure(allTitle:filterTitles:filterIcons:style:)` accepts optional leading icons, positionally matched to `filterTitles`. `nil` or missing entries render text-only chips, and the "All" chip never carries an icon. Source-compatible with the existing `configure`.
+- **LMKPhotoBrowserViewController.showsActionButton** — Opt-out for the overlay "…" action button (default `true`, set before presenting), for hosts whose current user has no actions to offer, such as read-only shared content. `LMKSinglePhotoViewer` hides the button automatically when its `onAction` callback is nil, and `LMKPhotoGridViewController` forwards a new `browserShowsActionButton` to the browsers it presents.
+- **LMKPhotoBrowserViewController.actionButtonSystemImageName** — Configurable SF Symbol for the action button (default `"ellipsis"`, set before presenting), so a host whose sole action is destructive can read as such (e.g. `"trash"`). `LMKSinglePhotoViewer` forwards it via a new `actionIconSystemName` init parameter.
 
 ### Changed
 
-- **LMKPhotoPickCropCoordinator optional crop**: new `croppingEnabled` init parameter (default `true`, source-compatible). Passing `false` skips the square-crop editor and stores the picked image as-is, for content whose full frame matters (receipts, documents).
-- **LMKAnimationHelper press animation accepts any UIControl**: `animateButtonPressDown` / `animateButtonPressUp` / `animateButtonPress` parameters widened from `UIButton` to `UIControl` (source-compatible), so custom controls such as tiles and photo buttons can reuse the press animation. Scale, alpha, and Reduce Motion behavior unchanged.
+- **LMKPhotoPickCropCoordinator optional crop** — New `croppingEnabled` init parameter (default `true`, source-compatible). Passing `false` skips the square-crop editor and stores the picked image as-is, for content whose full frame matters (receipts, documents).
+- **LMKAnimationHelper press animation accepts any UIControl** — `animateButtonPressDown` / `animateButtonPressUp` / `animateButtonPress` widened from `UIButton` to `UIControl` (source-compatible), so custom controls such as tiles and photo buttons can reuse the press animation. Scale, alpha, and Reduce Motion behavior unchanged.
 
 ### Fixed
 
-- **LMKBottomSheetController drag with the keyboard up**: starting a pan on the sheet now resigns the first responder (`endEditing`). Pan offsets are absolute against the resting position, so a subclass holding the sheet above the keyboard would snap down the full keyboard height on the first drag movement while the keyboard stayed up covering it.
-- **LMKPhotoBrowserViewController overlay noise**: the date/subtitle pill hides when the current photo has neither a date nor a subtitle (previously an empty pill floated over the photo), and a single-photo browser no longer shows the "1 of 1" counter or the one-dot page control (`hidesForSinglePage`).
+- **LMKBottomSheetController drag with the keyboard up** — Starting a drag on a sheet held above the keyboard no longer snaps the sheet down by the keyboard's height while the keyboard stays up covering it. The drag now dismisses the keyboard first.
+- **LMKBottomSheetController in embedded hosts** — A sheet presented in a view smaller than the screen (child-VC embedding, form sheets, resizable Mac Catalyst windows) no longer lets tall content push its drag indicator and back button outside the hosting view, where they were visible but could not be tapped. Sheet height is now capped against the host rather than the screen.
+- **LMKNavigationBar inline title with four or more right items** — Bar buttons keep their 44pt touch targets instead of being squeezed below them; the inline title now shifts or truncates to make room.
+- **LMKSwitch stretched by stack views** — The switch holds its intrinsic size inside a stack view (`UISwitch` parity) instead of being stretched or squeezed, letting neighboring labels absorb the slack.
+- **LMKPhotoBrowserViewController overlay noise** — The date/subtitle pill is hidden when the current photo has neither a date nor a subtitle, and a single-photo browser no longer shows a "1 of 1" counter or a one-dot page control.
+
+### Infrastructure
+
+- 992 → 1008 tests; 119 → 120 source files.
 
 ## [0.10.0] - 2026-07-15
 

@@ -95,7 +95,7 @@ Add LumiKit to your project via Swift Package Manager:
 dependencies: [
     .package(path: "../LumiKit")  // Local package
     // or
-    .package(url: "https://github.com/Luminoid/LumiKit.git", from: "0.10.0")
+    .package(url: "https://github.com/Luminoid/LumiKit.git", from: "0.11.0")
 ]
 ```
 
@@ -467,10 +467,10 @@ LumiKitUI includes device-aware helpers and system observers:
 
 | Component | Purpose |
 |-----------|---------|
-| `LMKPhotoBrowserViewController` | Full-screen photo browser with zoom, swipe navigation, and optional Live Photo playback (`PHLivePhotoView` swaps in when the data source returns a paired `PHLivePhoto` — long-press to play, with a `livephoto` + "LIVE" indicator under the action button that fades during playback). `showsActionButton = false` (set before presenting) hides the "…" action button for view-only hosts |
+| `LMKPhotoBrowserViewController` | Full-screen photo browser with zoom, swipe navigation, and optional Live Photo playback (`PHLivePhotoView` swaps in when the data source returns a paired `PHLivePhoto` — long-press to play, with a `livephoto` + "LIVE" indicator under the action button that fades during playback). `showsActionButton = false` (set before presenting) hides the "…" action button for view-only hosts, and `actionButtonSystemImageName` swaps its SF Symbol (default `"ellipsis"`, e.g. `"trash"` when the sole action is destructive). The date/subtitle pill hides when the current photo has neither, and a single-photo browser shows no counter or page dots |
 | `LMKPhotoCropViewController` | Photo cropping with aspect ratio support |
-| `LMKPhotoPickCropCoordinator` | Pick → square-crop → store flow for a single photo using a permission-free `PHPicker`. Storage is injected as a `(UIImage) -> String?` closure; retain the coordinator for the flow's duration |
-| `LMKSinglePhotoViewer` | Presents one image full-screen in `LMKPhotoBrowserViewController`; optional subtitle and action-button callback (the browser's "…" button is hidden when the callback is nil). Retain while the browser is up |
+| `LMKPhotoPickCropCoordinator` | Pick → square-crop → store flow for a single photo using a permission-free `PHPicker`. Storage is injected as a `(UIImage) -> String?` closure; retain the coordinator for the flow's duration. `croppingEnabled: false` skips the crop editor and stores the pick as-is (receipts, documents) |
+| `LMKSinglePhotoViewer` | Presents one image full-screen in `LMKPhotoBrowserViewController`; optional subtitle and action-button callback (the browser's "…" button is hidden when the callback is nil), plus `actionIconSystemName` to swap the button's symbol. Retain while the browser is up |
 | `LMKPhotoGridViewController` | Photo grid with pinch-to-zoom column control, sort by date, content mode toggle, photo browser integration, and a LIVE badge on Live Photo cells. `browserShowsActionButton` forwards to the presented browser's `showsActionButton` |
 | `LMKPhotoEXIFService` | Date and GPS extraction from UIImage or PHPickerResult. Date lookup walks EXIF (`DateTimeOriginal` / `DateTimeDigitized`), TIFF (`DateTime`), IPTC (`DateCreated` + `TimeCreated`, `DigitalCreationDate` + `DigitalCreationTime`), and the XMP packet (`xmp:CreateDate`, `xmp:DateCreated`, `xmp:ModifyDate`, `photoshop:DateCreated`) — surfaces a date for screenshots and edited / re-encoded photos where one container has been stripped |
 

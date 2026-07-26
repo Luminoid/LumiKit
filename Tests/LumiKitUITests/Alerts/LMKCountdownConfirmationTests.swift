@@ -155,9 +155,14 @@ struct LMKCountdownConfirmationTests {
         let dialog = presentedDialog(presenter)
         dialog?.loadViewIfNeeded()
 
-        // Poll — `Task.sleep` inside the countdown can be delayed when the
-        // main actor is busy under parallel test execution.
-        let deadline = Date().addingTimeInterval(5)
+        // Poll — the countdown's `Task.sleep` continuation has to re-acquire the
+        // main actor, and every suite in this target is main-actor isolated, so
+        // the resume can be starved for as long as the whole target takes to run.
+        // The budget must therefore exceed total suite wall time, not the 1s
+        // countdown: a 5s budget passed at 844 tests and started failing at 860.
+        // Polling exits as soon as the button enables, so a generous ceiling
+        // costs nothing when the behavior is correct.
+        let deadline = Date().addingTimeInterval(60)
         while Date() < deadline, dialog?.isConfirmEnabled != true {
             try await Task.sleep(for: .milliseconds(100))
         }

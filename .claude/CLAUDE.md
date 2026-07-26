@@ -92,7 +92,7 @@ LumiKit/
 │   │   └── URLSessionConfigurationLMKDebugTests.swift # enableNetworkLogging
 │   ├── LumiKitLottieTests/  # 7 tests, 1 suite
 │   │   └── LMKLottieRefreshControlTests.swift
-│   └── LumiKitUITests/      # 858 tests, 123 suites
+│   └── LumiKitUITests/      # 860 tests, 123 suites
 │       ├── Alerts/          # AlertPresenter, ErrorHandler
 │       ├── Animation/       # AnimationHelper
 │       ├── Components/
