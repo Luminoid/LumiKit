@@ -156,13 +156,44 @@ private final class LMKKeyboardScrollAdjuster {
         }
     }
 
-    /// Brings `target` into the visible (post-inset) area. Idempotent: a rect that is
-    /// already visible produces no movement, so the extra passes cost nothing.
+    /// Brings `target` into the band of the scroll view that is actually visible
+    /// above the keyboard. Idempotent: a rect already inside the band produces no
+    /// movement, so the extra passes cost nothing.
+    ///
+    /// Deliberately NOT `scrollRectToVisible`: that method tests visibility
+    /// against the raw bounds and ignores `contentInset`, so a field sitting
+    /// on-screen but under the keyboard counts as "already visible" and never
+    /// moves — the exact case this adjuster exists for.
     private func scroll(to target: UIView) {
-        guard let scrollView else { return }
-        let targetRect = target.convert(target.bounds, to: scrollView)
-        let padded = targetRect.insetBy(dx: 0, dy: -LMKSpacing.medium)
-        scrollView.scrollRectToVisible(padded, animated: LMKAnimationHelper.shouldAnimate)
+        guard let scrollView, scrollView.bounds.height > 0 else { return }
+        let padded = target.convert(target.bounds, to: scrollView)
+            .insetBy(dx: 0, dy: -LMKSpacing.medium)
+
+        // Adjusted insets so the band excludes both the keyboard overlap grown
+        // above and whatever the safe area contributes.
+        let insets = scrollView.adjustedContentInset
+        let visibleHeight = scrollView.bounds.height - insets.top - insets.bottom
+        guard visibleHeight > 0 else { return }
+
+        var offsetY = scrollView.contentOffset.y
+        if padded.maxY > offsetY + insets.top + visibleHeight {
+            offsetY = padded.maxY - insets.top - visibleHeight
+        }
+        // Re-test the top edge after any bottom-edge move, so a rect taller than
+        // the band ends with its top on screen rather than its bottom.
+        if padded.minY < offsetY + insets.top {
+            offsetY = padded.minY - insets.top
+        }
+
+        let minOffsetY = -insets.top
+        let maxOffsetY = max(minOffsetY, scrollView.contentSize.height + insets.bottom - scrollView.bounds.height)
+        offsetY = min(max(offsetY, minOffsetY), maxOffsetY)
+
+        guard abs(offsetY - scrollView.contentOffset.y) > 0.5 else { return }
+        scrollView.setContentOffset(
+            CGPoint(x: scrollView.contentOffset.x, y: offsetY),
+            animated: LMKAnimationHelper.shouldAnimate
+        )
     }
 
     @objc private func keyboardWillHide(_ note: Notification) {

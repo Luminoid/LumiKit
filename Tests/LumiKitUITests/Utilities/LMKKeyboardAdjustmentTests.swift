@@ -70,15 +70,16 @@ struct LMKKeyboardAdjustmentTests {
 
     // MARK: - Focus changes while the keyboard is already up
 
-    /// Records reveal requests. A headless xctest has no display link, so an
-    /// animated `scrollRectToVisible` never advances `contentOffset` — asserting on
-    /// the request is what actually distinguishes "asked to reveal" from "did nothing".
+    /// Records scroll requests and applies them without animation. A headless
+    /// xctest has no display link, so an animated `setContentOffset` never
+    /// advances `contentOffset` — recording the request and applying it
+    /// immediately is what lets assertions read the final offset.
     private final class RecordingScrollView: UIScrollView {
-        var revealedRects: [CGRect] = []
+        var requestedOffsets: [CGPoint] = []
 
-        override func scrollRectToVisible(_ rect: CGRect, animated: Bool) {
-            revealedRects.append(rect)
-            super.scrollRectToVisible(rect, animated: animated)
+        override func setContentOffset(_ contentOffset: CGPoint, animated: Bool) {
+            requestedOffsets.append(contentOffset)
+            super.setContentOffset(contentOffset, animated: false)
         }
     }
 
@@ -106,11 +107,10 @@ struct LMKKeyboardAdjustmentTests {
 
         NotificationCenter.default.post(name: UITextField.textDidBeginEditingNotification, object: field)
 
-        #expect(scrollView.revealedRects.count == 1)
-        // The field's rect, padded vertically so it doesn't sit flush against the edge.
-        let revealed = try? #require(scrollView.revealedRects.first)
-        #expect(revealed?.minY == 1900 - LMKSpacing.medium)
-        #expect(revealed?.maxY == 1944 + LMKSpacing.medium)
+        #expect(scrollView.requestedOffsets.count == 1)
+        // Field bottom (1944) + padding lands flush on the visible bottom edge:
+        // 1944 + 12 - 812 = 1144.
+        #expect(scrollView.contentOffset.y == 1944 + LMKSpacing.medium - 812)
     }
 
     @Test
@@ -122,7 +122,7 @@ struct LMKKeyboardAdjustmentTests {
         window.addSubview(outsider)
         NotificationCenter.default.post(name: UITextField.textDidBeginEditingNotification, object: outsider)
 
-        #expect(scrollView.revealedRects.isEmpty)
+        #expect(scrollView.requestedOffsets.isEmpty)
     }
 
     @Test
@@ -134,7 +134,38 @@ struct LMKKeyboardAdjustmentTests {
         field.superview?.addSubview(textView)
         NotificationCenter.default.post(name: UITextView.textDidBeginEditingNotification, object: textView)
 
-        #expect(scrollView.revealedRects.count == 1)
+        #expect(scrollView.requestedOffsets.count == 1)
+    }
+
+    /// The regression that motivated dropping `scrollRectToVisible`: a field on
+    /// screen but underneath the keyboard is inside the raw bounds, so a
+    /// bounds-based visibility test treats it as already visible and never
+    /// scrolls. The keyboard band math must move it above the grown inset.
+    @Test
+    func `Field under the keyboard scrolls above it`() {
+        let (window, scrollView, field) = makeHostedScrollView()
+        defer { window.isHidden = true }
+
+        // On screen (within 812pt bounds), but under a 300pt keyboard.
+        let covered = UITextField(frame: CGRect(x: 0, y: 700, width: 375, height: 44))
+        field.superview?.addSubview(covered)
+        covered.becomeFirstResponder()
+        scrollView.requestedOffsets.removeAll()
+
+        NotificationCenter.default.post(
+            name: UIResponder.keyboardDidChangeFrameNotification,
+            object: nil,
+            userInfo: [
+                UIResponder.keyboardFrameEndUserInfoKey: NSValue(cgRect: CGRect(x: 0, y: 512, width: 375, height: 300)),
+                UIResponder.keyboardAnimationDurationUserInfoKey: 0.0,
+            ]
+        )
+        NotificationCenter.default.post(name: UITextField.textDidBeginEditingNotification, object: covered)
+
+        #expect(scrollView.contentInset.bottom == 300)
+        // Field bottom (744) + padding must clear the keyboard top (visible
+        // height 512): 744 + 12 - 512 = 244.
+        #expect(scrollView.contentOffset.y == 744 + LMKSpacing.medium - 512)
     }
 
     @Test
