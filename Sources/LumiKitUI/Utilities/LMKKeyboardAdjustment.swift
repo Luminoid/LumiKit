@@ -45,12 +45,29 @@ private final class LMKKeyboardScrollAdjuster {
             name: UIResponder.keyboardWillChangeFrameNotification,
             object: nil
         )
+        // `willChange` fires before iOS resizes a presented sheet for the keyboard,
+        // so the insets and the scroll target it computes can be based on stale
+        // bounds. `didChange` lands after that settles and corrects both.
+        center.addObserver(
+            self,
+            selector: #selector(keyboardDidChange(_:)),
+            name: UIResponder.keyboardDidChangeFrameNotification,
+            object: nil
+        )
         center.addObserver(
             self,
             selector: #selector(keyboardWillHide(_:)),
             name: UIResponder.keyboardWillHideNotification,
             object: nil
         )
+        // Moving focus from one field to another while the keyboard is already up
+        // posts no keyboard notification at all, so without these the new field is
+        // never scrolled into view. Most visible on tall forms, where the field
+        // tapped next (typically a Notes text view at the bottom) sits under the
+        // keyboard and there is no way to reach it.
+        for name in [UITextField.textDidBeginEditingNotification, UITextView.textDidBeginEditingNotification] {
+            center.addObserver(self, selector: #selector(editingDidBegin(_:)), name: name, object: nil)
+        }
     }
 
     deinit {
@@ -58,12 +75,43 @@ private final class LMKKeyboardScrollAdjuster {
     }
 
     @objc private func keyboardWillChange(_ note: Notification) {
+        applyKeyboardFrame(from: note)
+    }
+
+    @objc private func keyboardDidChange(_ note: Notification) {
+        // Re-run against settled geometry: a presented sheet finishes resizing
+        // between `willChange` and `didChange`, which changes both the overlap
+        // and where the focused field ends up.
+        applyKeyboardFrame(from: note, animated: false)
+    }
+
+    /// Focus moved to another field. Only the scroll target needs recomputing —
+    /// the keyboard frame, and therefore the insets, have not changed. The target
+    /// comes from the notification rather than a first-responder search, which is
+    /// not yet settled when this fires.
+    @objc private func editingDidBegin(_ note: Notification) {
         guard let scrollView,
               scrollView.window != nil,
-              let focused = Self.firstResponder(in: scrollView),
-              let endFrame = (note.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? NSValue)?.cgRectValue,
-              let duration = note.userInfo?[UIResponder.keyboardAnimationDurationUserInfoKey] as? Double
+              let field = note.object as? UIView,
+              field.isDescendant(of: scrollView)
         else { return }
+        // Immediate, not deferred: the keyboard geometry is already settled when
+        // focus moves between fields. If this is instead the *first* focus, the
+        // keyboard frame notifications that follow re-scroll against the grown
+        // insets, so nothing is lost by acting early here.
+        scroll(to: field)
+    }
+
+    private func applyKeyboardFrame(from note: Notification, animated: Bool = true) {
+        guard let scrollView,
+              scrollView.window != nil,
+              Self.firstResponder(in: scrollView) != nil,
+              let endFrame = (note.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? NSValue)?.cgRectValue
+        else { return }
+
+        let duration = animated
+            ? (note.userInfo?[UIResponder.keyboardAnimationDurationUserInfoKey] as? Double ?? 0.25)
+            : 0
 
         let frameInScroll = scrollView.convert(endFrame, from: nil)
         let overlap = frameInScroll.intersection(scrollView.bounds)
@@ -93,17 +141,28 @@ private final class LMKKeyboardScrollAdjuster {
             restoreInsets(duration: duration)
         }
 
-        // Always scroll the focused field into the visible (post-inset,
-        // post-sheet-shrink) area. Deferred to the next runloop so the sheet's
-        // resize animation has had a chance to update `scrollView.bounds` before
-        // the scroll target is computed; otherwise it would be computed against
-        // the pre-shrink bounds and decide the field is "already visible."
-        DispatchQueue.main.async { [weak focused, weak scrollView] in
-            guard let focused, let scrollView else { return }
-            let focusedRect = focused.convert(focused.bounds, to: scrollView)
-            let padded = focusedRect.insetBy(dx: 0, dy: -LMKSpacing.medium)
-            scrollView.scrollRectToVisible(padded, animated: true)
+        scheduleScrollToFocused()
+    }
+
+    /// Scrolls the focused field into view on the next runloop, so an in-flight sheet
+    /// resize has had a chance to update `scrollView.bounds` before the scroll target
+    /// is computed; otherwise it would be computed against the pre-shrink bounds and
+    /// decide the field is "already visible".
+    private func scheduleScrollToFocused() {
+        DispatchQueue.main.async { [weak self] in
+            guard let self, let scrollView,
+                  let focused = Self.firstResponder(in: scrollView) else { return }
+            scroll(to: focused)
         }
+    }
+
+    /// Brings `target` into the visible (post-inset) area. Idempotent: a rect that is
+    /// already visible produces no movement, so the extra passes cost nothing.
+    private func scroll(to target: UIView) {
+        guard let scrollView else { return }
+        let targetRect = target.convert(target.bounds, to: scrollView)
+        let padded = targetRect.insetBy(dx: 0, dy: -LMKSpacing.medium)
+        scrollView.scrollRectToVisible(padded, animated: LMKAnimationHelper.shouldAnimate)
     }
 
     @objc private func keyboardWillHide(_ note: Notification) {

@@ -103,6 +103,16 @@ open class LMKSegmentedPageController: UIViewController, UIGestureRecognizerDele
         navigationItem.titleView = segmentedControl
     }
 
+    /// The view that hosts the child pages. Defaults to the controller's own `view`, which
+    /// suits hosts using the system navigation bar. Override to return a container pinned
+    /// below custom chrome (e.g. an `LMKNavigationBar` plus the segmented control) so pages
+    /// don't render underneath it.
+    ///
+    /// Called after ``installSegmentedControl()``, so an overriding subclass can build and
+    /// constrain the container there. The container may have zero bounds at that point;
+    /// page frames are re-applied in `viewDidLayoutSubviews` once layout resolves.
+    open var pageContainerView: UIView { view }
+
     // MARK: - Lifecycle
 
     override open func viewDidLoad() {
@@ -138,28 +148,29 @@ open class LMKSegmentedPageController: UIViewController, UIGestureRecognizerDele
     private func showInitialPage() {
         let pageVC = pages[0]
         addChild(pageVC)
-        pageVC.view.frame = view.bounds
+        pageVC.view.frame = pageContainerView.bounds
         pageVC.view.autoresizingMask = [.flexibleWidth, .flexibleHeight]
-        view.addSubview(pageVC.view)
+        pageContainerView.addSubview(pageVC.view)
         pageVC.didMove(toParent: self)
         currentChild = pageVC
         currentPageIndex = 0
     }
 
     private func transition(to index: Int, direction: Int, animated: Bool) {
+        let container = pageContainerView
         let newVC = pages[index]
         let oldVC = currentChild
         addChild(newVC)
         newVC.view.autoresizingMask = [.flexibleWidth, .flexibleHeight]
-        let width = view.bounds.width
+        let width = container.bounds.width
 
         if animated, LMKAnimationHelper.shouldAnimate, let oldVC {
             isAnimatingPageChange = true
-            newVC.view.frame = view.bounds.offsetBy(dx: CGFloat(direction) * width, dy: 0)
-            view.addSubview(newVC.view)
+            newVC.view.frame = container.bounds.offsetBy(dx: CGFloat(direction) * width, dy: 0)
+            container.addSubview(newVC.view)
             UIView.animate(withDuration: LMKAnimationHelper.Duration.screenTransition, delay: 0, options: .curveEaseInOut) {
-                newVC.view.frame = self.view.bounds
-                oldVC.view.frame = self.view.bounds.offsetBy(dx: CGFloat(-direction) * width, dy: 0)
+                newVC.view.frame = container.bounds
+                oldVC.view.frame = container.bounds.offsetBy(dx: CGFloat(-direction) * width, dy: 0)
             } completion: { _ in
                 oldVC.willMove(toParent: nil)
                 oldVC.view.removeFromSuperview()
@@ -171,14 +182,24 @@ open class LMKSegmentedPageController: UIViewController, UIGestureRecognizerDele
             oldVC?.willMove(toParent: nil)
             oldVC?.view.removeFromSuperview()
             oldVC?.removeFromParent()
-            newVC.view.frame = view.bounds
-            view.addSubview(newVC.view)
+            newVC.view.frame = container.bounds
+            container.addSubview(newVC.view)
             newVC.didMove(toParent: self)
         }
 
         currentChild = newVC
         currentPageIndex = index
         didChangePage(to: index)
+    }
+
+    /// Re-seats the visible page on the container's resolved bounds. Required when
+    /// ``pageContainerView`` is a constraint-laid-out container: it has zero bounds
+    /// during `viewDidLoad`, and autoresizing cannot scale a page up from zero.
+    /// Skipped mid-drag / mid-animation, where the frames are being driven directly.
+    override open func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        guard !isInteractiveDragActive, !isAnimatingPageChange else { return }
+        currentChild?.view.frame = pageContainerView.bounds
     }
 
     // MARK: - Interactive Paging
@@ -196,8 +217,9 @@ open class LMKSegmentedPageController: UIViewController, UIGestureRecognizerDele
 
     private func handlePagePanChanged(_ gesture: UIPanGestureRecognizer) {
         guard let currentChild, !isAnimatingPageChange else { return }
+        let container = pageContainerView
         let translation = gesture.translation(in: view).x
-        let width = view.bounds.width
+        let width = container.bounds.width
 
         if !isInteractiveDragActive {
             guard abs(translation) > 2 else { return }
@@ -205,8 +227,8 @@ open class LMKSegmentedPageController: UIViewController, UIGestureRecognizerDele
         }
 
         let offset = interactiveOffset(for: translation, width: width)
-        currentChild.view.frame = view.bounds.offsetBy(dx: offset, dy: 0)
-        interactiveNeighborVC?.view.frame = view.bounds.offsetBy(dx: offset + CGFloat(interactiveDirection) * width, dy: 0)
+        currentChild.view.frame = container.bounds.offsetBy(dx: offset, dy: 0)
+        interactiveNeighborVC?.view.frame = container.bounds.offsetBy(dx: offset + CGFloat(interactiveDirection) * width, dy: 0)
     }
 
     /// Locks the drag direction on first movement and lazily attaches the neighbor page
@@ -223,8 +245,8 @@ open class LMKSegmentedPageController: UIViewController, UIGestureRecognizerDele
         let neighbor = pages[neighborIndex]
         addChild(neighbor)
         neighbor.view.autoresizingMask = [.flexibleWidth, .flexibleHeight]
-        neighbor.view.frame = view.bounds.offsetBy(dx: CGFloat(interactiveDirection) * width, dy: 0)
-        view.addSubview(neighbor.view)
+        neighbor.view.frame = pageContainerView.bounds.offsetBy(dx: CGFloat(interactiveDirection) * width, dy: 0)
+        pageContainerView.addSubview(neighbor.view)
         interactiveNeighborIndex = neighborIndex
         interactiveNeighborVC = neighbor
     }
@@ -242,7 +264,7 @@ open class LMKSegmentedPageController: UIViewController, UIGestureRecognizerDele
 
     private func handlePagePanEnded(_ gesture: UIPanGestureRecognizer) {
         guard isInteractiveDragActive else { return }
-        let width = view.bounds.width
+        let width = pageContainerView.bounds.width
         let translation = gesture.translation(in: view).x
         let velocity = gesture.velocity(in: view).x
 
@@ -265,11 +287,12 @@ open class LMKSegmentedPageController: UIViewController, UIGestureRecognizerDele
         }
         let outgoing = currentChild
         let direction = interactiveDirection
+        let container = pageContainerView
         isAnimatingPageChange = true
 
         animateSettle {
-            outgoing?.view.frame = self.view.bounds.offsetBy(dx: CGFloat(-direction) * width, dy: 0)
-            neighbor.view.frame = self.view.bounds
+            outgoing?.view.frame = container.bounds.offsetBy(dx: CGFloat(-direction) * width, dy: 0)
+            neighbor.view.frame = container.bounds
         } completion: { _ in
             outgoing?.willMove(toParent: nil)
             outgoing?.view.removeFromSuperview()
@@ -287,11 +310,12 @@ open class LMKSegmentedPageController: UIViewController, UIGestureRecognizerDele
     private func revertInteractiveDrag(width: CGFloat) {
         let neighbor = interactiveNeighborVC
         let direction = interactiveDirection
+        let container = pageContainerView
         isAnimatingPageChange = true
 
         animateSettle {
-            self.currentChild?.view.frame = self.view.bounds
-            neighbor?.view.frame = self.view.bounds.offsetBy(dx: CGFloat(direction) * width, dy: 0)
+            self.currentChild?.view.frame = container.bounds
+            neighbor?.view.frame = container.bounds.offsetBy(dx: CGFloat(direction) * width, dy: 0)
         } completion: { _ in
             neighbor?.willMove(toParent: nil)
             neighbor?.view.removeFromSuperview()

@@ -579,8 +579,7 @@ private final class HighlightGridCell: UICollectionViewCell {
 
 extension HighlightGridCell: UIPointerInteractionDelegate {
     func pointerInteraction(_ interaction: UIPointerInteraction, styleFor _: UIPointerRegion) -> UIPointerStyle? {
-        guard let view = interaction.view else { return nil }
-        return UIPointerStyle(effect: .lift(UITargetedPreview(view: view)))
+        LMKPointerStyle.lift(for: interaction.view)
     }
 }
 

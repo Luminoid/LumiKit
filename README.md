@@ -227,7 +227,8 @@ LumiKit/
 │   │   ├── Share/             # LMKShareService, LMKSharePreviewViewController
 │   │   └── Utilities/         # LMKDeviceHelper, LMKKeyboardObserver, LMKKeyboardInsetHelper,
 │   │                          # LMKKeyboardAdjustment, LMKSceneUtil, LMKImageUtil,
-│   │                          # LMKDominantColorExtractor, LMKMarkdownRenderer
+│   │                          # LMKDominantColorExtractor, LMKMarkdownRenderer,
+│   │                          # LMKPointerStyle
 │   └── LumiKitLottie/         # LMKLottieRefreshControl
 ├── Tests/
 │   ├── LumiKitCoreTests/      # 76 tests, 12 suites — mirrors LumiKitCore/ subfolders
@@ -269,7 +270,8 @@ LumiKit/
 │   │   ├── QRCode/            # QRCodeGenerator
 │   │   ├── Share/             # SharePreview, ShareService
 │   │   └── Utilities/         # DeviceHelper, ImageUtil, KeyboardObserver,
-│   │                          # KeyboardInsetHelper, KeyboardAdjustment, MarkdownRenderer
+│   │                          # KeyboardInsetHelper, KeyboardAdjustment, MarkdownRenderer,
+│   │                          # PointerStyle
 │   └── LumiKitLottieTests/    # 7 tests, 1 suite
 │       └── LMKLottieRefreshControlTests.swift
 ```
@@ -459,6 +461,7 @@ LumiKitUI includes device-aware helpers and system observers:
 | `LMKImageUtil` | SF Symbol creation (`makeSymbolImage` with background), `CVPixelBuffer` to JPEG conversion, `encodeJPEG(_:maxDimension:quality:)` — nonisolated downsample + opaque RGBX re-render so encodes stay 3-channel (avoids ImageIO's "AlphaPremulLast" double-memory path) and EXIF orientation is baked in |
 | `LMKDominantColorExtractor` | RGB-histogram dominant color extraction. `dominantColor(from:ignoringTransparent:strategy:)` returns one color: `.modal` (default, densest bucket = subject identity), `.average` (mean = overall vibe), `.vibrant` (most saturated = accent color). `dominantColors(from:count:ignoringTransparent:)` returns a top-N palette ordered by frequency. Pass a subject-lifted PNG with `ignoringTransparent: true` for hard-edge accuracy |
 | `LMKMarkdownRenderer` | Markdown-to-attributed-string rendering: `render()` for inline (bold/italic), `renderFull()` for long-form content (headings, lists, fenced code blocks, GFM tables, line breaks preserved). Code and tables render in a monospaced font so AI chat responses stay readable |
+| `LMKPointerStyle` | Window-safe `UIPointerStyle` factories for `UIPointerInteractionDelegate`: `automatic(for:)`, `highlight(for:)`, `lift(for:)`, `hover(for:...)`, plus the underlying `preview(for:)`. Each takes an optional view and returns `nil` unless it is non-nil **and** in a window, so the result is returned straight from the delegate. Raw `UITargetedPreview(view:)` aborts the process when its view has no window, and `interaction.view != nil` does not catch it (a recycled cell keeps the interaction) |
 | `LMKSceneUtil` | Key window and connected scene retrieval |
 
 ---

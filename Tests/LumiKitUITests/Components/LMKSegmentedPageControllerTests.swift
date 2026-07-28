@@ -76,6 +76,42 @@ private final class EmptyPagesVC: LMKSegmentedPageController {
     }
 }
 
+/// Hosts its pages in a container pinned below custom chrome, the way an app using
+/// a custom navigation bar does, instead of letting them fill `view`.
+private final class ContainerHostedPageVC: LMKSegmentedPageController {
+    static let chromeHeight: CGFloat = 120
+
+    let page0 = UIViewController()
+    let page1 = UIViewController()
+    let container = UIView()
+
+    init() {
+        super.init(titles: ["A", "B"])
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    override func makePages() -> [UIViewController] {
+        [page0, page1]
+    }
+
+    override var pageContainerView: UIView { container }
+
+    override func installSegmentedControl() {
+        container.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(container)
+        NSLayoutConstraint.activate([
+            container.topAnchor.constraint(equalTo: view.topAnchor, constant: Self.chromeHeight),
+            container.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            container.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            container.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+        ])
+    }
+}
+
 // MARK: - LMKSegmentedPageController (defaults)
 
 @MainActor
@@ -259,5 +295,58 @@ struct LMKSegmentedPageControllerEmptyTests {
         vc.loadViewIfNeeded()
         vc.setPage(1, animated: false)
         #expect(vc.currentPageIndex == 0)
+    }
+}
+
+// MARK: - LMKSegmentedPageController (pageContainerView)
+
+@MainActor
+struct LMKSegmentedPageControllerContainerTests {
+    private func makeHosted() -> ContainerHostedPageVC {
+        let vc = ContainerHostedPageVC()
+        vc.view.frame = CGRect(x: 0, y: 0, width: 390, height: 844)
+        vc.loadViewIfNeeded()
+        vc.view.layoutIfNeeded()
+        return vc
+    }
+
+    @Test
+    func `default pageContainerView is the controllers own view`() {
+        let vc = TestSegmentedPageVC()
+        #expect(vc.pageContainerView === vc.view)
+    }
+
+    @Test
+    func `initial page is added to the container, not the root view`() {
+        let vc = makeHosted()
+        #expect(vc.page0.view.superview === vc.container)
+    }
+
+    @Test
+    func `page is sized to the container, clearing the custom chrome`() {
+        let vc = makeHosted()
+        #expect(vc.page0.view.frame == vc.container.bounds)
+        #expect(vc.page0.view.frame.height == 844 - ContainerHostedPageVC.chromeHeight)
+    }
+
+    @Test
+    func `setPage moves the new page into the container at full size`() {
+        let vc = makeHosted()
+        vc.setPage(1, animated: false)
+        #expect(vc.currentPageIndex == 1)
+        #expect(vc.page1.view.superview === vc.container)
+        #expect(vc.page1.view.frame == vc.container.bounds)
+    }
+
+    /// A constraint-laid-out container has zero bounds during `viewDidLoad`, so the
+    /// page frame set there is stale until layout resolves — and stale again after
+    /// any resize (rotation, window change).
+    @Test
+    func `layout pass re-seats the page on resolved container bounds`() {
+        let vc = makeHosted()
+        vc.view.frame = CGRect(x: 0, y: 0, width: 320, height: 600)
+        vc.view.layoutIfNeeded()
+        #expect(vc.container.bounds.height == 600 - ContainerHostedPageVC.chromeHeight)
+        #expect(vc.page0.view.frame == vc.container.bounds)
     }
 }

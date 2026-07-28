@@ -704,8 +704,7 @@ extension LMKPhotoBrowserCell: UIGestureRecognizerDelegate {
 
     extension LMKPhotoBrowserCell: UIPointerInteractionDelegate {
         public func pointerInteraction(_ interaction: UIPointerInteraction, styleFor _: UIPointerRegion) -> UIPointerStyle? {
-            guard let view = interaction.view else { return nil }
-            return UIPointerStyle(effect: .highlight(UITargetedPreview(view: view)))
+            LMKPointerStyle.highlight(for: interaction.view)
         }
     }
 #endif

@@ -5,6 +5,20 @@ All notable changes to LumiKit will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- **LMKPointerStyle** — Window-safe `UIPointerStyle` factories for `UIPointerInteractionDelegate`: `automatic(for:)`, `highlight(for:)`, `lift(for:)`, `hover(for:preferredTintMode:prefersShadow:prefersScaledContent:)`, plus the underlying `preview(for:)`. Each takes a `UIView?` and returns `nil` unless it is non-nil and in a window, so the result is returned straight from the delegate: `LMKPointerStyle.lift(for: interaction.view)`, or `for: self` when the effect targets the delegate itself. Raw `UITargetedPreview(view:)` asserts window membership and aborts the process (`BUG_IN_CLIENT_OF_TARGETED_PREVIEW__VIEW_IS_NOT_IN_A_WINDOW`) when a cell is recycled or a sheet dismissed mid-hover; guarding `interaction.view != nil` does not catch it, because the interaction stays attached to the recycled cell.
+
+### Fixed
+
+- **LMKPhotoBrowserCell pointer style crash** — Hovering a photo cell on Mac Catalyst while it left the view hierarchy could abort the app inside `UITargetedPreview(view:)`. The cell now routes its pointer style through `LMKPointerStyle`.
+
+### Infrastructure
+
+- +11 tests (`LMKPointerStyleTests`), +1 source file (`LMKPointerStyle.swift`). Release totals to be reconciled at tag time.
+
 ## [0.11.0] - 2026-07-26
 
 ### Added
