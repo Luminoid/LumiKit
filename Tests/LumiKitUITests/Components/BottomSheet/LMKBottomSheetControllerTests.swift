@@ -130,6 +130,44 @@ struct LMKBottomSheetControllerTests {
         #expect(sheet.view.autoresizingMask.contains(.flexibleHeight))
     }
 
+    @Test
+    func `addAsChild on a container controller still animates the sheet in`() {
+        // UINavigationController (like every UIKit container) does not forward
+        // appearance callbacks to manually-added children, so the viewDidAppear
+        // animate-in trigger never fires there. Without addAsChild's explicit
+        // kick the sheet sits at alpha 0 with its container parked off-screen —
+        // invisible, while the clear dimming view swallows every touch
+        // (TripDays' discard-changes confirmation on its form sheets).
+        let nav = UINavigationController(rootViewController: UIViewController())
+        let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 375, height: 812))
+        window.rootViewController = nav
+        window.makeKeyAndVisible()
+
+        let sheet = TestBottomSheet()
+        LMKBottomSheetController.addAsChild(sheet, in: nav)
+        sheet.view.layoutIfNeeded()
+
+        #expect(sheet.dimmingView.alpha == 1)
+        #expect(sheet.containerView.frame.minY < sheet.view.bounds.height)
+    }
+
+    @Test
+    func `addAsChild on a regular host animates in exactly once`() {
+        let parent = UIViewController()
+        let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 375, height: 812))
+        window.rootViewController = parent
+        window.makeKeyAndVisible()
+
+        let sheet = AnimationCountingSheet()
+        LMKBottomSheetController.addAsChild(sheet, in: parent)
+        // Deliver the appearance callback a regular host would send, on top of
+        // addAsChild's explicit kick: the slide must still run only once.
+        sheet.viewDidAppear(false)
+
+        #expect(sheet.dimmingView.alpha == 1)
+        #expect(sheet.animateInCount == 1)
+    }
+
     // MARK: - Max Height
 
     @Test
@@ -188,5 +226,18 @@ private final class TestBottomSheet: LMKBottomSheetController {
 
     override func setupSheetContent() {
         setupSheetContentCalled = true
+    }
+}
+
+private final class AnimationCountingSheet: LMKBottomSheetController {
+    var animateInCount = 0
+
+    override init(cancelTitle: String? = nil) {
+        super.init(cancelTitle: cancelTitle)
+    }
+
+    override func animateIn() {
+        animateInCount += 1
+        super.animateIn()
     }
 }

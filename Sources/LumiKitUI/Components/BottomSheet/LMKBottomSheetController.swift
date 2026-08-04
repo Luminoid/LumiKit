@@ -35,6 +35,9 @@ open class LMKBottomSheetController: UIViewController {
     private static let dismissDistanceRatio: CGFloat = 0.3
     /// Stored drag velocity for momentum-based dismiss animation.
     private var pendingDismissVelocity: CGFloat = 0
+    /// Guards the slide-in so it runs exactly once whether the trigger is the
+    /// appearance callback or `addAsChild`'s explicit kick.
+    private var hasAnimatedIn = false
 
     // MARK: - Lazy Views
 
@@ -100,7 +103,7 @@ open class LMKBottomSheetController: UIViewController {
 
     override open func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
-        animateIn()
+        animateInIfNeeded()
     }
 
     // MARK: - Base UI Setup
@@ -167,6 +170,15 @@ open class LMKBottomSheetController: UIViewController {
     }
 
     // MARK: - Animation
+
+    /// Animate the sheet in unless it already has. The appearance-callback and
+    /// `addAsChild` triggers can both fire on a regular host; only one slide
+    /// should run.
+    private func animateInIfNeeded() {
+        guard !hasAnimatedIn else { return }
+        hasAnimatedIn = true
+        animateIn()
+    }
 
     /// Animate the sheet into view.
     public func animateIn() {
@@ -316,5 +328,13 @@ open class LMKBottomSheetController: UIViewController {
         sheet.view.autoresizingMask = [.flexibleWidth, .flexibleHeight]
         parent.view.addSubview(sheet.view)
         sheet.didMove(toParent: parent)
+        // Container controllers (UINavigationController & co.) don't forward
+        // appearance callbacks to manually-added children, so the viewDidAppear
+        // trigger may never arrive — the sheet would sit invisible below the
+        // host while its clear dimming view eats every touch. Resolve the
+        // off-screen start position, then animate in explicitly; the guard
+        // keeps regular hosts (whose viewDidAppear does fire) to one slide.
+        sheet.view.layoutIfNeeded()
+        sheet.animateInIfNeeded()
     }
 }

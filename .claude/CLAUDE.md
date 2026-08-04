@@ -237,7 +237,7 @@ LMKThemeManager.shared.apply(spacing: .init(large: 20))
 
 | Component | Type | Purpose |
 |-----------|------|---------|
-| `LMKBottomSheetController` | `open class` | Base class for bottom sheet presentation — shared dimming, container, animation, dismiss. Starting a pan resigns the first responder (pan offsets are absolute against the resting position, so a keyboard-lifted sheet would otherwise snap down the keyboard height on the first drag movement) |
+| `LMKBottomSheetController` | `open class` | Base class for bottom sheet presentation — shared dimming, container, animation, dismiss. Starting a pan resigns the first responder (pan offsets are absolute against the resting position, so a keyboard-lifted sheet would otherwise snap down the keyboard height on the first drag movement). `addAsChild` lays out and animates the sheet in itself (guarded against the appearance-callback double-fire): container controllers like `UINavigationController` never deliver a manually-added child's `viewDidAppear`, so a sheet relying on it sat invisible while its clear dimming view swallowed touches |
 | `LMKActionSheet` | `final class` | Custom bottom-sheet action sheet with design-token styling, optional custom content, `isSelected` checkmark state, and sub-page navigation |
 | `LMKBadgeView` | `final class` | Notification count / status dot / custom text badge |
 | `LMKBannerView` | `final class` | Persistent notification bar with optional action & dismiss |
