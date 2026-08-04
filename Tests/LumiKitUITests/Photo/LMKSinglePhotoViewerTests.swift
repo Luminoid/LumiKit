@@ -20,11 +20,12 @@ struct LMKSinglePhotoViewerTests {
     }
 
     @Test
-    func `Serves exactly one photo`() {
+    func `Serves exactly one photo`() async {
         let image = makeImage()
         let viewer = LMKSinglePhotoViewer(image: image)
         #expect(viewer.numberOfPhotos == 1)
-        #expect(viewer.photo(at: 0) === image)
+        let photo = await viewer.photo(at: 0)
+        #expect(photo === image)
         #expect(viewer.photoDate(at: 0) == nil)
     }
 

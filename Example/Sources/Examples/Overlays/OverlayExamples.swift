@@ -2,13 +2,68 @@
 //  OverlayExamples.swift
 //  LumiKitExample
 //
-//  Action sheet, enum selection, date picker, tip view, card page, card panel,
-//  and floating button examples.
+//  Bottom sheet, action sheet, enum selection, date picker, tip view, card
+//  page, card panel, and floating button examples.
 //
 
 import LumiKitUI
 import SnapKit
 import UIKit
+
+// MARK: - Bottom Sheet
+
+final class BottomSheetDetailViewController: DetailViewController {
+    override func viewDidLoad() {
+        super.viewDidLoad()
+
+        addSectionHeader("Keyboard Avoidance")
+        stack.addArrangedSubview(LMKLabelFactory.caption(
+            text: "avoidsKeyboard (default true) lifts the sheet by the keyboard's actual "
+                + "overlap with it, using the keyboard's own animation curve, and restores "
+                + "on hide. Starting a drag on the sheet resigns the first responder. "
+                + "Override avoidsKeyboard to false for manual control."
+        ))
+        let presentButton = LMKButtonFactory.filled(role: .primary, title: "Show Sheet with Text Field", target: self, action: #selector(showKeyboardSheet))
+        stack.addArrangedSubview(presentButton)
+    }
+
+    @objc private func showKeyboardSheet() {
+        let sheet = KeyboardAvoidingSheetController(cancelTitle: "Cancel")
+        LMKBottomSheetController.addAsChild(sheet, in: self)
+    }
+}
+
+/// Minimal `LMKBottomSheetController` subclass with a text field, so the
+/// built-in keyboard avoidance has a first responder to react to.
+private final class KeyboardAvoidingSheetController: LMKBottomSheetController {
+    private lazy var titleLabel: UILabel = {
+        let label = LMKLabelFactory.body(text: "Rename Item")
+        label.textAlignment = .center
+        return label
+    }()
+
+    private lazy var nameField: LMKTextField = {
+        let field = LMKTextField()
+        field.placeholder = "Name"
+        field.leadingIcon = UIImage(systemName: "pencil")
+        return field
+    }()
+
+    override func setupSheetContent() {
+        containerView.addSubview(titleLabel)
+        titleLabel.snp.makeConstraints { make in
+            make.top.equalTo(dragIndicator.snp.bottom).offset(LMKSpacing.large)
+            make.leading.trailing.equalToSuperview().inset(LMKSpacing.large)
+        }
+
+        containerView.addSubview(nameField)
+        nameField.snp.makeConstraints { make in
+            make.top.equalTo(titleLabel.snp.bottom).offset(LMKSpacing.large)
+            make.leading.trailing.equalToSuperview().inset(LMKSpacing.large)
+            make.bottom.equalTo(cancelButton.snp.top).offset(-LMKSpacing.xl)
+        }
+    }
+}
 
 // MARK: - Action Sheet
 

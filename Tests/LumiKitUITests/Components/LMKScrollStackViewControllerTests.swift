@@ -150,6 +150,119 @@ struct LMKScrollStackViewControllerCustomTests {
     }
 }
 
+// MARK: - LMKScrollStackViewController (navigation bar + keyboard hooks)
+
+private final class NavBarScrollVC: LMKScrollStackViewController {
+    private lazy var bar: LMKNavigationBar = {
+        let bar = LMKNavigationBar()
+        bar.title = "Details"
+        return bar
+    }()
+
+    override var navigationBar: LMKNavigationBar? { bar }
+}
+
+private final class NoKeyboardAdjustmentVC: LMKScrollStackViewController {
+    override var installsKeyboardAdjustment: Bool { false }
+}
+
+@MainActor
+struct LMKScrollStackViewControllerHookTests {
+    @Test
+    func `default navigationBar is nil and no bar is installed`() {
+        let vc = TestScrollVC()
+        vc.loadViewIfNeeded()
+
+        #expect(vc.navigationBar == nil)
+        #expect(!vc.view.subviews.contains { $0 is LMKNavigationBar })
+    }
+
+    @Test
+    func `default installsKeyboardAdjustment is true`() {
+        let vc = TestScrollVC()
+        #expect(vc.installsKeyboardAdjustment)
+    }
+
+    @Test
+    func `custom navigationBar is pinned above the scroll view`() throws {
+        let vc = NavBarScrollVC()
+        let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 375, height: 812))
+        window.rootViewController = vc
+        window.makeKeyAndVisible()
+        vc.loadViewIfNeeded()
+        vc.view.layoutIfNeeded()
+
+        let bar = try #require(vc.navigationBar)
+        #expect(bar.superview === vc.view)
+        #expect(bar.frame.minY == 0)
+        #expect(bar.frame.width == vc.view.bounds.width)
+        #expect(bar.frame.height > 0)
+        // The scroll view tops out at the bar's bottom instead of the view top.
+        // Tolerance: the bar height accumulates a fractional hairline, so the
+        // two sides can differ by float error.
+        #expect(abs(vc.scrollView.frame.minY - bar.frame.maxY) < 0.001)
+    }
+
+    @Test
+    func `keyboard adjustment grows and restores the scroll inset`() {
+        let vc = TestScrollVC()
+        let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 375, height: 812))
+        window.rootViewController = vc
+        window.makeKeyAndVisible()
+        vc.loadViewIfNeeded()
+
+        let field = UITextField()
+        vc.stackView.addArrangedSubview(field)
+        vc.view.layoutIfNeeded()
+        field.becomeFirstResponder()
+        defer { field.resignFirstResponder() }
+
+        let keyboardFrame = CGRect(x: 0, y: 812 - 300, width: 375, height: 300)
+        NotificationCenter.default.post(
+            name: UIResponder.keyboardWillChangeFrameNotification,
+            object: nil,
+            userInfo: [
+                UIResponder.keyboardFrameEndUserInfoKey: NSValue(cgRect: keyboardFrame),
+                UIResponder.keyboardAnimationDurationUserInfoKey: 0.0,
+            ]
+        )
+        #expect(vc.scrollView.contentInset.bottom > 0)
+
+        NotificationCenter.default.post(
+            name: UIResponder.keyboardWillHideNotification,
+            object: nil,
+            userInfo: [UIResponder.keyboardAnimationDurationUserInfoKey: 0.0]
+        )
+        #expect(vc.scrollView.contentInset.bottom == 0)
+    }
+
+    @Test
+    func `installsKeyboardAdjustment false leaves the scroll inset alone`() {
+        let vc = NoKeyboardAdjustmentVC()
+        let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 375, height: 812))
+        window.rootViewController = vc
+        window.makeKeyAndVisible()
+        vc.loadViewIfNeeded()
+
+        let field = UITextField()
+        vc.stackView.addArrangedSubview(field)
+        vc.view.layoutIfNeeded()
+        field.becomeFirstResponder()
+        defer { field.resignFirstResponder() }
+
+        let keyboardFrame = CGRect(x: 0, y: 812 - 300, width: 375, height: 300)
+        NotificationCenter.default.post(
+            name: UIResponder.keyboardWillChangeFrameNotification,
+            object: nil,
+            userInfo: [
+                UIResponder.keyboardFrameEndUserInfoKey: NSValue(cgRect: keyboardFrame),
+                UIResponder.keyboardAnimationDurationUserInfoKey: 0.0,
+            ]
+        )
+        #expect(vc.scrollView.contentInset.bottom == 0)
+    }
+}
+
 // MARK: - LMKScrollStackViewController (helpers)
 
 @MainActor

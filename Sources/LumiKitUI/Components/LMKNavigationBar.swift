@@ -416,7 +416,7 @@ public final class LMKNavigationBar: UIView {
         addSubview(separatorView)
         separatorView.snp.makeConstraints { make in
             make.leading.trailing.equalToSuperview()
-            make.height.equalTo(1.0 / UIScreen.main.scale)
+            make.height.equalTo(LMKLayout.hairline)
             make.bottom.equalToSuperview()
         }
 
@@ -427,7 +427,7 @@ public final class LMKNavigationBar: UIView {
     private func updateBottomConstraint() {
         separatorView.snp.remakeConstraints { make in
             make.leading.trailing.equalToSuperview()
-            make.height.equalTo(1.0 / UIScreen.main.scale)
+            make.height.equalTo(LMKLayout.hairline)
             if largeTitleEnabled {
                 make.top.equalTo(largeTitleRow.snp.bottom)
             } else {

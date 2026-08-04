@@ -241,6 +241,22 @@ final class BorderDetailViewController: DetailViewController {
         stack.addArrangedSubview(borderedView)
 
         addDivider()
+        addSectionHeader("Hairline Default (LMKLayout.hairline)")
+        let hairlineView = UIView()
+        hairlineView.backgroundColor = LMKColor.backgroundSecondary
+        hairlineView.lmk_applyBorder(color: LMKColor.imageBorder)
+        hairlineView.lmk_applyCornerRadius(LMKCornerRadius.medium)
+
+        let hairlineLabel = LMKLabelFactory.body(text: String(
+            format: "Omitting width uses LMKLayout.hairline: one physical pixel on any display scale (%.2fpt at this screen's scale)",
+            LMKLayout.hairline
+        ))
+        hairlineLabel.textAlignment = .center
+        hairlineView.addSubview(hairlineLabel)
+        hairlineLabel.snp.makeConstraints { $0.edges.equalToSuperview().inset(LMKSpacing.large) }
+        stack.addArrangedSubview(hairlineView)
+
+        addDivider()
         addSectionHeader("lmk_makeCircular")
         let circleSize: CGFloat = 80
         let circleView = UIView()
@@ -616,7 +632,9 @@ final class IconListRowDetailViewController: DetailViewController, UITableViewDa
             text: "One call configures a standard detail-list row: an SF Symbol in a "
                 + "tinted circle (LMKLayout.iconCircle), bodyMedium title, caption "
                 + "subtitle, disclosure indicator, and the LumiKit highlight. Use it on "
-                + "secondary list pages so they read as one family."
+                + "secondary list pages so they read as one family. On iPad and Mac "
+                + "Catalyst each row also installs a hover pointer effect "
+                + "(pointerEnabled, default true; safe across cell reuse)."
         ))
 
         stack.addArrangedSubview(tableView)

@@ -26,6 +26,11 @@ public final class LMKKeyboardObserver {
     public struct KeyboardInfo {
         /// Keyboard height (0 when hidden). Includes the home indicator safe area.
         public let height: CGFloat
+        /// Keyboard end frame in screen coordinates (`keyboardFrameEndUserInfoKey`).
+        /// Convert into a local view (`view.convert(frameEnd, from: nil)`) and
+        /// intersect to get the actual overlap — the raw `height` overstates it
+        /// for floating keyboards, short windows, and side-by-side layouts.
+        public let frameEnd: CGRect
         /// Animation duration.
         public let animationDuration: TimeInterval
         /// Animation curve as animation options.
@@ -87,6 +92,7 @@ public final class LMKKeyboardObserver {
         let height: CGFloat = visible ? frameEnd.height : 0
         return KeyboardInfo(
             height: height,
+            frameEnd: frameEnd,
             animationDuration: duration,
             animationOptions: UIView.AnimationOptions(rawValue: curveRaw << 16)
         )

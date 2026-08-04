@@ -14,7 +14,11 @@ import UniformTypeIdentifiers
 // MARK: - Photo Grid
 
 final class PhotoGridDetailViewController: UIViewController, LMKPhotoGridDataSource, LMKPhotoGridDelegate {
-    private var sampleImages: [UIImage] = []
+    /// JPEG bytes rather than decoded images: the grid data source is async,
+    /// and this page demonstrates the intended conformance shape for disk- or
+    /// network-backed sources — decode off the main actor per request and
+    /// return a ready-to-display image.
+    private var sampleImageData: [Data] = []
     private var sampleDates: [Date] = []
     private var gridVC: LMKPhotoGridViewController?
     private var showsEmptyState = false
@@ -86,8 +90,8 @@ final class PhotoGridDetailViewController: UIViewController, LMKPhotoGridDataSou
                 symbol, size: size,
                 symbolPointSize: pointSize, tintColor: color,
                 backgroundColor: color.withAlphaComponent(0.15)
-            ) {
-                sampleImages.append(image)
+            ), let data = image.jpegData(compressionQuality: 0.9) {
+                sampleImageData.append(data)
                 // Spread dates across the last 2 years with some randomness
                 let dayOffset = -(i * 2 + (i * 7) % 5)
                 let date = calendar.date(byAdding: .day, value: dayOffset, to: Date()) ?? Date()
@@ -112,11 +116,19 @@ final class PhotoGridDetailViewController: UIViewController, LMKPhotoGridDataSou
 
     // MARK: - LMKPhotoGridDataSource
 
-    var numberOfPhotos: Int { showsEmptyState ? 0 : sampleImages.count }
+    var numberOfPhotos: Int { showsEmptyState ? 0 : sampleImageData.count }
 
-    func photoGridImage(at index: Int) -> UIImage? {
-        guard index >= 0, index < sampleImages.count else { return nil }
-        return sampleImages[index]
+    /// The reference async conformance: hop off the main actor, decode, and
+    /// hand back a ready-to-display image. The grid shows its neutral
+    /// placeholder meanwhile, and its generation token drops results that
+    /// land after the cell was recycled — no reuse bookkeeping needed here.
+    func photoGridImage(at index: Int) async -> UIImage? {
+        guard index >= 0, index < sampleImageData.count else { return nil }
+        let data = sampleImageData[index]
+        return await Task.detached { () -> UIImage? in
+            guard let image = UIImage(data: data) else { return nil }
+            return image.preparingForDisplay() ?? image
+        }.value
     }
 
     func photoGridDate(at index: Int) -> Date? {
@@ -128,7 +140,7 @@ final class PhotoGridDetailViewController: UIViewController, LMKPhotoGridDataSou
     /// visible in the example. Real hosts would check whichever paired-file
     /// metadata they track alongside the still image.
     func photoGridIsLivePhoto(at index: Int) -> Bool {
-        index >= 0 && index < sampleImages.count && index.isMultiple(of: 5)
+        index >= 0 && index < sampleImageData.count && index.isMultiple(of: 5)
     }
 
     // MARK: - LMKPhotoGridDelegate
@@ -253,7 +265,10 @@ final class PhotoBrowserDetailViewController: DetailViewController, LMKPhotoBrow
         livePhotoMode ? 1 : sampleImages.count
     }
 
-    func photo(at index: Int) -> UIImage? {
+    /// These images are generated up front and held decoded in memory, so this
+    /// async source just returns immediately — the other valid conformance
+    /// shape (see the photo grid page for the off-main decode pattern).
+    func photo(at index: Int) async -> UIImage? {
         if livePhotoMode {
             return pickedStill
         }

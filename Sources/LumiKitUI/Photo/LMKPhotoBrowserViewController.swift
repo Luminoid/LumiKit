@@ -15,7 +15,16 @@ import UIKit
 /// Data source for the photo browser. Provides images, dates, and subtitles.
 public protocol LMKPhotoBrowserDataSource: AnyObject {
     var numberOfPhotos: Int { get }
-    func photo(at index: Int) -> UIImage?
+    /// Image for the photo at the given index.
+    ///
+    /// Called on the main actor when a page is configured. Implementations that
+    /// decode or fetch should hop off the main actor themselves (e.g.
+    /// `Task.detached` plus `UIImage.preparingForDisplay()`) and return a
+    /// ready-to-display image; a source that already holds a decoded image just
+    /// returns it immediately. The page shows the browser background as a
+    /// placeholder until the call returns, and a result that lands after the
+    /// page was recycled is discarded.
+    func photo(at index: Int) async -> UIImage?
     func photoDate(at index: Int) -> Date?
     func photoSubtitle(at index: Int) -> String?
     /// Whether the item at the given index is a Live Photo. Drives the LIVE
@@ -501,13 +510,12 @@ public final class LMKPhotoBrowserViewController: UIViewController {
             layout.itemSize = cellSize
         }
 
-        // Update visible cells with new screen size
+        // Update visible cells with new screen size. Cells re-fit their own
+        // installed image — no data source round-trip; pages still loading
+        // resolve their size at install time instead.
         for cell in collectionView.visibleCells {
-            if let photoCell = cell as? LMKPhotoBrowserCell,
-               let indexPath = collectionView.indexPath(for: cell),
-               indexPath.item < photoCount,
-               let image = dataSource?.photo(at: indexPath.item) {
-                photoCell.updateImageSize(image: image, screenSize: screenSize)
+            if let photoCell = cell as? LMKPhotoBrowserCell {
+                photoCell.refitInstalledImage(to: screenSize)
             }
         }
 
@@ -772,14 +780,17 @@ extension LMKPhotoBrowserViewController: UICollectionViewDataSource {
         }
 
         let photoCount = dataSource?.numberOfPhotos ?? 0
-        guard indexPath.item < photoCount,
-              let image = dataSource?.photo(at: indexPath.item) else {
+        guard indexPath.item < photoCount else {
             return cell
         }
 
         let screenSize = view.bounds.size
         let isLive = dataSource?.photoIsLivePhoto(at: indexPath.item) ?? false
-        cell.configure(with: image, screenSize: screenSize, isLive: isLive)
+        let photoIndex = indexPath.item
+        // Placeholder first; the cell's generation token guards the async apply.
+        cell.configure(screenSize: screenSize, isLive: isLive) { [weak self] in
+            await self?.dataSource?.photo(at: photoIndex)
+        }
         loadLivePhotoIfAvailable(at: indexPath.item, into: cell)
         cell.onVerticalSwipeToDismiss = { [weak self] in
             self?.performDismissWithSnapTiming()

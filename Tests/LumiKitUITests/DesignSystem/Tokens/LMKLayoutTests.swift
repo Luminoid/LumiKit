@@ -27,6 +27,27 @@ struct LMKLayoutTests {
     func `Cell height minimum is positive`() {
         #expect(LMKLayout.cellHeightMin > 0)
     }
+
+    @Test
+    func `hairline(forScale:) is one physical pixel`() {
+        #expect(LMKLayout.hairline(forScale: 1) == 1)
+        #expect(LMKLayout.hairline(forScale: 2) == 0.5)
+        #expect(abs(LMKLayout.hairline(forScale: 3) - 1.0 / 3.0) < 0.0001)
+    }
+
+    @Test
+    func `hairline(forScale:) clamps degenerate scales to a full point`() {
+        #expect(LMKLayout.hairline(forScale: 0) == 1)
+        #expect(LMKLayout.hairline(forScale: 0.5) == 1)
+        #expect(LMKLayout.hairline(forScale: -2) == 1)
+    }
+
+    @Test
+    func `hairline resolves from the key window scale with a sane fallback`() {
+        let hairline = LMKLayout.hairline
+        #expect(hairline > 0)
+        #expect(hairline <= 1)
+    }
 }
 
 // MARK: - LMKLayoutTheme

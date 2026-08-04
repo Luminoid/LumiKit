@@ -16,7 +16,10 @@ let package = Package(
         .library(name: "LumiKitNetwork", targets: ["LumiKitNetwork"]),
     ],
     dependencies: [
-        .package(url: "https://github.com/SnapKit/SnapKit.git", from: "5.7.0"),
+        .package(url: "https://github.com/SnapKit/SnapKit.git", from: "6.0.0"),
+        // SwiftPM resolves the full dependency graph, so consumers of non-Lottie
+        // products still fetch this package's metadata at resolve time. The binary
+        // artifact itself downloads only when LumiKitLottie is linked.
         .package(url: "https://github.com/airbnb/lottie-spm.git", from: "4.4.0"),
     ],
     targets: [

@@ -51,7 +51,8 @@ LumiKit/
 │   │   │                     # CardPageController, CardPageLayout,
 │   │   │                     # CardPanelController, CardPanelLayout,
 │   │   │                     # NavigationDirection, OverscrollFooterHelper,
-│   │   │                     # ScrollStackViewController, SegmentedPageController
+│   │   │                     # FormScaffold, ScrollStackViewController,
+│   │   │                     # SegmentedPageController
 │   │   ├── Controls/        # LMKButton, LMKSegmentedControl, LMKSlider, LMKSwitch,
 │   │   │                    # LMKToggleButton, LMKTextField, LMKTextView
 │   │   ├── DesignSystem/
@@ -78,7 +79,7 @@ LumiKit/
 │   │                        # LMKDominantColorExtractor, LMKMarkdownRenderer,
 │   │                        # LMKPointerStyle
 │   └── LumiKitLottie/       # LMKLottieRefreshControl
-├── Tests/                   # 1008 tests / 140 suites at 0.11.0 (release figure; for current counts grep @Test/@Suite)
+├── Tests/                   # 1070 tests / 147 suites at 0.12.0 (release figure; for current counts grep @Test/@Suite)
 │   ├── LumiKitCoreTests/
 │   │   ├── Concurrency/     # LMKConcurrencyHelpersTests
 │   │   ├── Data/            # String+LMK, Collection+LMK, NSAttributedString+LMK, FormatHelper
@@ -104,7 +105,7 @@ LumiKit/
 │       │                     # FilterChipBar, FloatingButton, Gradient, LoadingState,
 │       │                     # NavigationBar, NavigationController, PageIndicator, Progress,
 │       │                     # SearchBar, Skeleton, Toast, TipView, CardPage, CardPanel,
-│       │                     # ScrollStackViewController, SegmentedPageController
+│       │                     # FormScaffold, ScrollStackViewController, SegmentedPageController
 │       ├── Controls/        # Button, SegmentedControl, Slider, TextField, TextView, ToggleButton
 │       ├── DesignSystem/
 │       │   ├── Tokens/       # Color, Spacing, CornerRadius, Alpha, Typography, Layout, Shadow
@@ -177,7 +178,7 @@ LMKThemeManager.shared.apply(spacing: .init(large: 20))
 | Spacing | `LMKSpacing` | `LMKSpacingTheme` | `.xs` (4pt), `.small` (8pt), `.medium` (12pt), `.large` (16pt) |
 | Corner Radius | `LMKCornerRadius` | `LMKCornerRadiusTheme` | `.small` (8), `.medium` (12), `.large` (16) |
 | Alpha | `LMKAlpha` | `LMKAlphaTheme` | `.overlay`, `.disabled`, `.overlayStrong` |
-| Layout | `LMKLayout` | `LMKLayoutTheme` | `.minimumTouchTarget` (44), `.iconMedium` (24), `.searchBarHeight` (36) |
+| Layout | `LMKLayout` | `LMKLayoutTheme` | `.minimumTouchTarget` (44), `.iconMedium` (24), `.searchBarHeight` (36); `.hairline` / `hairline(forScale:)` = one physical pixel, deliberately NOT themeable (display physics, not branding) |
 | Shadow | `LMKShadow` | `LMKShadowTheme` | `cellCard()`, `card()`, `button()`, `small()` |
 | Animation | `LMKAnimationHelper` | `LMKAnimationTheme` | `.Duration.*`, `.Spring.damping`, `.shouldAnimate`, `.shimmer` |
 | Badge | `LMKBadgeView` | `LMKBadgeTheme` | `minWidth`, `height`, `horizontalPadding`, `borderWidth` |
@@ -237,7 +238,7 @@ LMKThemeManager.shared.apply(spacing: .init(large: 20))
 
 | Component | Type | Purpose |
 |-----------|------|---------|
-| `LMKBottomSheetController` | `open class` | Base class for bottom sheet presentation — shared dimming, container, animation, dismiss. Starting a pan resigns the first responder (pan offsets are absolute against the resting position, so a keyboard-lifted sheet would otherwise snap down the keyboard height on the first drag movement). `addAsChild` lays out and animates the sheet in itself (guarded against the appearance-callback double-fire): container controllers like `UINavigationController` never deliver a manually-added child's `viewDidAppear`, so a sheet relying on it sat invisible while its clear dimming view swallowed touches |
+| `LMKBottomSheetController` | `open class` | Base class for bottom sheet presentation — shared dimming, container, animation, dismiss. `avoidsKeyboard` (default true) lifts the sheet by the keyboard's actual overlap with its view (converted end frame, so floating keyboards / short windows lift only what's covered) via `containerBottomConstraint` with the keyboard's curve/duration, restoring on hide; while enabled the controller owns the keyboard offset — subclasses must not also drive it (override to `false` for manual control). Dismissal stops keyboard tracking so a mid-animation hide can't fight the slide-out. Starting a pan resigns the first responder (pan offsets are absolute against the resting position, so a keyboard-lifted sheet would otherwise snap down the keyboard height on the first drag movement). `addAsChild` lays out and animates the sheet in itself (guarded against the appearance-callback double-fire): container controllers like `UINavigationController` never deliver a manually-added child's `viewDidAppear`, so a sheet relying on it sat invisible while its clear dimming view swallowed touches |
 | `LMKActionSheet` | `final class` | Custom bottom-sheet action sheet with design-token styling, optional custom content, `isSelected` checkmark state, and sub-page navigation |
 | `LMKBadgeView` | `final class` | Notification count / status dot / custom text badge |
 | `LMKBannerView` | `final class` | Persistent notification bar with optional action & dismiss |
@@ -245,7 +246,7 @@ LMKThemeManager.shared.apply(spacing: .init(large: 20))
 | `LMKChipView` | `final class` | Tag/filter chip (`.filled` / `.outlined`) with optional tap handler |
 | `LMKFilterChipBar` | `final class` | Horizontal scrolling chip bar built on `LMKChipView`. Single-select by default: optional "All" chip clears the filter, `configure(allTitle:filterTitles:filterIcons:style:)` (`filterIcons` are optional leading icons positionally matched to titles; nil/missing entries render text-only, the "All" chip never carries an icon), `setSelectedIndex(_:)` (silent), `selectionChangedHandler: ((Int?) -> Void)` — `nil` index = "All" / no selection. `allowsMultipleSelection` (set before `configure`) switches to additive toggling: `multiSelectionChangedHandler: ((Set<Int>) -> Void)`, `selectedIndices`, silent `setSelectedIndices(_:)`; empty set allowed (consumer decides, typically "show all"), the "All" chip clears the set and highlights while it's empty |
 | `LMKDividerView` | `final class` | Pixel-perfect separator (horizontal / vertical) |
-| `LMKEmptyStateView` | `final class` | Empty state with icon, title, message, action button |
+| `LMKEmptyStateView` | `final class` | Empty state with icon, message, and optional action button: `configure(message:icon:style:action:)` takes an `Action` (title, optional leading SF Symbol, `LMKButton.Style` — default filled primary — handler); `setAction(_:)` adds/replaces/removes post-configure. Button renders centered below the message, hugging its content, for `.fullScreen`/`.card`; `.inline` ignores it. Content-driven height: icon → message → button form one constraint chain (button bottom closes the container), so nothing overlaps at any Dynamic Type size. With no host-imposed height the view sizes itself to that content (edge hugging below required priority; stack-view safe); a host-imposed height wins and centers the content. Don't hand-anchor a separate CTA to the view bottom — use `Action`. A11y: with an action the view becomes a container exposing message + button separately; single static-text element when action is nil |
 | `LMKEnumSelectionBottomSheet` | `final class` | Generic bottom sheet for selecting from an enum's cases. `present(...)` for single-select (auto-commits on tap); `presentMultiSelect(...)` for multi-select (tap toggles, explicit Done button commits) |
 | `LMKGradientView` | `final class` | CAGradientLayer-backed view with 4 direction options |
 | `LMKLoadingStateView` | `final class` | Loading indicator with optional message |
@@ -263,7 +264,8 @@ LMKThemeManager.shared.apply(spacing: .init(large: 20))
 | `LMKCardPanelController` | `open class` | Centered floating card panel in its own overlay window with slide animation |
 | `LMKCardPageLayout` | `enum` (static) | Shared layout constants for card pages (header height, symbol sizes) |
 | `LMKCardPanelLayout` | `enum` (static) | Shared layout constants for card panels (max width, insets, height ratio) |
-| `LMKScrollStackViewController` | `open class` | Base class for scrollable vertical stack layout — configurable spacing, insets, keyboard dismiss, safe area, bounce. Subclasses override `setupStackContent()` |
+| `LMKScrollStackViewController` | `open class` | Base class for scrollable vertical stack layout — configurable spacing, insets, keyboard dismiss, safe area, bounce. Subclasses override `setupStackContent()`. `navigationBar: LMKNavigationBar?` (default nil, override with a stored/lazy property — read once) pins a custom bar via `pinToTop(of:)` with the scroll view topping out at the bar's bottom; `installsKeyboardAdjustment` (default true) installs `lmk_enableKeyboardAdjustment()` |
+| `LMKFormScaffold` | `enum` (static) | Builders for form screens outside the `LMKScrollStackViewController` hierarchy: `makeScrollView(keyboardDismissMode:)` (default `.onDrag`, keyboard avoidance pre-installed), `makeContentStack(spacing:)` (vertical fill, default `LMKSpacing.large`), `install(scrollView:stack:in:below:contentInsets:)` — scroll view spans from below the optional top anchor view (or view top) to the bottom safe area, stack pinned with token insets (default `cardPadding`) and width locked to the scroll frame |
 | `LMKSegmentedPageController` | `open class` | Base class for a segmented tab container that pages between child VCs with an interactive finger-tracking pan. Subclasses override `makePages()`, `usesFullWidthSwipe(forPageAt:)` (full-width vs edge-only pan, for pages that own interior horizontal drags such as a map or month grid), `didChangePage(to:)`. Top `LMKSegmentedControl` installed via overridable `installSegmentedControl()` (default: nav title view); `setPage(_:animated:)` slides for taps / deep links. `edgePanBandWidth` / `commitVelocityThreshold` are tunable open vars |
 | `LMKNavigationDirection` | `enum` | Shared navigation direction (`.forward`, `.backward`, `.none`) used by CardPageController and ActionSheet |
 | `LMKOverscrollFooterHelper` | `final class` | Positions footer below scroll content, revealed on overscroll |
@@ -287,11 +289,11 @@ LMKThemeManager.shared.apply(spacing: .init(large: 20))
 | `UIColor+LMK` | `init(lmk_hex:)`, `lmk_dynamic(lightHex:darkHex:alpha:)`, `lmk_hexString`, `lmk_isLight`, `lmk_adjustedBrightness(by:)`, `lmk_contrastingTextColor` |
 | `UIImage+LMK` | `lmk_resized(maxDimension:)`, `lmk_resized(to:)`, `lmk_solidColor(_:size:)`, `lmk_rounded(cornerRadius:)` |
 | `UIView+LMKShadow` | `lmk_applyShadow(_:)`, `lmk_removeShadow()` |
-| `UIView+LMKBorder` | `lmk_applyBorder(...)`, `lmk_removeBorder()`, `lmk_applyCornerRadius(_:)`, `lmk_makeCircular()` |
+| `UIView+LMKBorder` | `lmk_applyBorder(...)` (width defaults to `LMKLayout.hairline`), `lmk_removeBorder()`, `lmk_applyCornerRadius(_:)`, `lmk_makeCircular()` |
 | `UIView+LMKFade` | `lmk_fadeIn(...)`, `lmk_fadeOut(...)` |
 | `UIView+LMKLayout` | `lmk_safeAreaSnp`, `lmk_setEdgesEqualToSuperview()`, `lmk_centerInSuperview()`, `lmk_setAutoLayoutSize(width:height:)` |
 | `UIStackView+LMK` | `init(lmk_axis:...)`, `lmk_addArrangedSubviews(_:)`, `lmk_removeAllArrangedSubviews()` |
-| `UITableViewCell+LMKIconListRow` | `lmk_configureIconListRow(iconSystemName:title:subtitle:tint:)` — standard detail-list row: SF Symbol in a tinted circle (`LMKLayout.iconCircle`), disclosure, LumiKit highlight |
+| `UITableViewCell+LMKIconListRow` | `lmk_configureIconListRow(iconSystemName:title:subtitle:tint:pointerEnabled:)` — standard detail-list row: SF Symbol in a tinted circle (`LMKLayout.iconCircle`), disclosure, LumiKit highlight. `pointerEnabled` (default true) installs a hover `UIPointerInteraction` once per cell (associated-object guard against reconfigure duplicates), style routed through `LMKPointerStyle` (windowless-cell trap) |
 | `UITextField+LMKKeyboardDismiss` | `lmk_dismissKeyboardOnReturn()` — Done return key + resign on `.editingDidEndOnExit` (also forwarded on `LMKTextField`) |
 | `UIViewController+LMKKeyboardDismiss` | `lmk_dismissKeyboardOnTap()` — tap outside a field dismisses the keyboard; `cancelsTouchesInView = false` so control taps still land |
 
@@ -313,13 +315,15 @@ LMKThemeManager.shared.apply(spacing: .init(large: 20))
 
 | Component | Type | Purpose |
 |-----------|------|---------|
-| `LMKPhotoBrowserViewController` | `final class` | Full-screen photo browser with zoom, swipe, delete. Upgrades a cell from `UIImageView` to `PHLivePhotoView` when `photoLivePhoto(at:)` resolves to a non-nil `PHLivePhoto` — still image shows immediately; long-press plays the paired video. Live cells render a `livephoto` + "LIVE" capsule under the action ("…") button that fades during playback. `showsActionButton = false` (set before presenting) skips installing the "…" button for hosts whose current user has no actions to offer (view-only shared content); `actionButtonSystemImageName` swaps the symbol (e.g. "trash" when the sole action is removal). The date/subtitle pill hides when the current photo has neither; a single-photo browser shows no counter or page dots. Cell reuse guarded |
+| `LMKPhotoBrowserViewController` | `final class` | Full-screen photo browser with zoom, swipe, delete. Images load via the async `photo(at:)` requirement: page shows the browser background as placeholder, installs through the standard sizing path (zoom-scale reset semantics preserved), generation-token guarded against recycling; rotation re-fits use the cell's installed image, no data source round-trip. Upgrades a cell from `UIImageView` to `PHLivePhotoView` when `photoLivePhoto(at:)` resolves to a non-nil `PHLivePhoto` — still image shows immediately; long-press plays the paired video. Live cells render a `livephoto` + "LIVE" capsule under the action ("…") button that fades during playback. `showsActionButton = false` (set before presenting) skips installing the "…" button for hosts whose current user has no actions to offer (view-only shared content); `actionButtonSystemImageName` swaps the symbol (e.g. "trash" when the sole action is removal). The date/subtitle pill hides when the current photo has neither; a single-photo browser shows no counter or page dots. Cell reuse guarded |
 | `LMKPhotoBrowserConfig` | `enum` | Shared configuration constants (e.g. `interPageSpacing`) |
 | `LMKPhotoCropViewController` | `final class` | Square crop editor with pan/zoom |
 | `LMKPhotoPickCropCoordinator` | `final class` | Pick → square-crop → store flow for one photo via permission-free `PHPicker`. Storage injected as `(UIImage) -> String?`; host retains the coordinator for the flow's duration (picker + crop reference their delegates weakly through it). `croppingEnabled: false` skips the crop editor and stores the pick as-is (receipts, documents) |
 | `LMKSinglePhotoViewer` | `final class` | One-image adapter for `LMKPhotoBrowserViewController` (data source + delegate in one object). Optional subtitle, action-button callback (the browser's action button is hidden when the callback is nil), and `actionIconSystemName` to swap the button's symbol; retain while the browser is up |
-| `LMKPhotoGridViewController` | `final class` | Photo grid with pinch-to-zoom columns, sort, content mode toggle, browser integration. Cells show a small `livephoto` SF Symbol badge when `photoGridIsLivePhoto(at:)` returns true; paired `PHLivePhoto` is forwarded to the browser via `photoGridLivePhoto(at:) async`. `browserShowsActionButton` forwards to the presented browser's `showsActionButton` (default true) |
+| `LMKPhotoGridViewController` | `final class` | Photo grid with pinch-to-zoom columns, sort, content mode toggle, browser integration. Cell images load via the async `photoGridImage(at:)` requirement: neutral placeholder (`LMKColor.backgroundSecondary`) immediately, per-cell monotonic generation token so stale results never land on recycled cells. Cells show a small `livephoto` SF Symbol badge when `photoGridIsLivePhoto(at:)` returns true; paired `PHLivePhoto` is forwarded to the browser via `photoGridLivePhoto(at:) async`. `browserShowsActionButton` forwards to the presented browser's `showsActionButton` (default true) |
 | `LMKPhotoEXIFService` | `nonisolated enum` (static) | Date + GPS extraction from UIImage or PHPickerResult. Date lookup walks EXIF (`DateTimeOriginal` / `DateTimeDigitized`), TIFF (`DateTime`), IPTC (`DateCreated` + `TimeCreated`, `DigitalCreationDate` + `DigitalCreationTime`), and the XMP packet (`xmp:CreateDate`, `xmp:DateCreated`, `xmp:ModifyDate`, `photoshop:DateCreated`) in capture-fidelity order. Recovers a date for screenshots and Lightroom / Photoshop / Capture One exports where EXIF has been stripped but another container retains the original timestamp |
+
+**Async image requirements** (required, called on the main actor): `LMKPhotoGridDataSource.photoGridImage(at:) async -> UIImage?` and `LMKPhotoBrowserDataSource.photo(at:) async -> UIImage?`. Implementations that decode should hop off-main themselves (`Task.detached` + `preparingForDisplay()`) and return a ready-to-display image; sources holding decoded images return immediately (`LMKSinglePhotoViewer` does exactly that).
 
 **Live Photo data-source methods** (all optional, default to no-op):
 
@@ -342,7 +346,7 @@ Paired-file storage (still JPG + video MOV) is the caller's responsibility — L
 | Utility | Purpose |
 |---------|---------|
 | `LMKDeviceHelper` | Device type (`.iPhone`, `.iPad`, `.macCatalyst`), screen size classification, notch detection |
-| `LMKKeyboardObserver` | Keyboard show/hide observer with height + animation info |
+| `LMKKeyboardObserver` | Keyboard show/hide observer with height, end frame (`KeyboardInfo.frameEnd`, for overlap math against a local view), and animation info |
 | `LMKKeyboardAdjustment` | One-call keyboard avoidance: `scrollView.lmk_enableKeyboardAdjustment()` installs an associated-object adjuster that grows the bottom content + scroll indicator insets to the keyboard overlap on `keyboardWillChangeFrame` and scrolls the focused field into view; restores on hide. No-op on Mac Catalyst. Prefer over `LMKKeyboardInsetHelper` (start/stop lifecycle) for new form screens |
 | `LMKImageUtil` | SF Symbol creation (`makeSymbolImage` with background), `CVPixelBuffer` to JPEG conversion, `encodeJPEG(_:maxDimension:quality:)` — `nonisolated` downsample + opaque RGBX (`.noneSkipLast`) re-render + `CGImageDestination` encode, so JPEGs stay 3-channel (no ImageIO "AlphaPremulLast" double-memory path) and EXIF orientation is baked into the pixels |
 | `LMKDominantColorExtractor` | RGB-histogram color extraction. `dominantColor(from:ignoringTransparent:strategy:)` returns one color: `.modal` (default, densest bucket = subject identity), `.average` (mean = gradient vibe, muddy for subjects), `.vibrant` (most saturated bucket with population tie-breaker = accent color, drops < 0.5% buckets, falls through to modal for grayscale). `dominantColors(from:count:ignoringTransparent:)` returns a top-N palette by frequency. Pass a subject-lifted PNG with `ignoringTransparent: true` (alpha threshold drops semi-transparent edges); raw photos use the default and a 20% border-ring crop. Always uses `kCGImageAlphaPremultipliedLast` — `.last` (unpremultiplied) is rejected by `CGBitmapContext` on iOS |
@@ -449,7 +453,7 @@ public final class LMKExampleViewController: UIViewController {
 
 | Library | Version | Target | Purpose |
 |---------|---------|--------|---------|
-| SnapKit | 5.7.0+ | LumiKitUI | Programmatic Auto Layout |
+| SnapKit | 6.0.0+ | LumiKitUI | Programmatic Auto Layout |
 | Lottie | 4.4.0+ | LumiKitLottie | Pull-to-refresh animation |
 
 - **SnapKit**: Always use SnapKit for constraints; never use `NSLayoutConstraint` directly

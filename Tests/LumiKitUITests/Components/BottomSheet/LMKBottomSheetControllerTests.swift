@@ -215,6 +215,114 @@ struct LMKBottomSheetControllerTests {
     }
 }
 
+// MARK: - Keyboard Avoidance
+
+@MainActor
+struct LMKBottomSheetKeyboardTests {
+    private func postKeyboard(name: Notification.Name, frame: CGRect) {
+        NotificationCenter.default.post(
+            name: name,
+            object: nil,
+            userInfo: [
+                UIResponder.keyboardFrameEndUserInfoKey: NSValue(cgRect: frame),
+                UIResponder.keyboardAnimationDurationUserInfoKey: 0.0,
+                UIResponder.keyboardAnimationCurveUserInfoKey: UInt(7),
+            ]
+        )
+    }
+
+    private func makeHostedSheet(_ sheet: LMKBottomSheetController) -> UIWindow {
+        let parent = UIViewController()
+        let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 375, height: 812))
+        window.rootViewController = parent
+        window.makeKeyAndVisible()
+        LMKBottomSheetController.addAsChild(sheet, in: parent)
+        sheet.view.layoutIfNeeded()
+        return window
+    }
+
+    @Test
+    func `avoidsKeyboard defaults to true`() {
+        let sheet = TestBottomSheet()
+        #expect(sheet.avoidsKeyboard)
+    }
+
+    @Test
+    func `keyboard show lifts the sheet by the overlap and hide restores it`() {
+        let sheet = TestBottomSheet()
+        let window = makeHostedSheet(sheet)
+        let height = window.bounds.height
+        #expect(abs(sheet.containerView.frame.maxY - height) < 0.5)
+
+        postKeyboard(name: UIResponder.keyboardWillShowNotification,
+                     frame: CGRect(x: 0, y: height - 300, width: 375, height: 300))
+        sheet.view.layoutIfNeeded()
+        #expect(abs(sheet.containerView.frame.maxY - (height - 300)) < 0.5)
+
+        postKeyboard(name: UIResponder.keyboardWillHideNotification,
+                     frame: CGRect(x: 0, y: height, width: 375, height: 300))
+        sheet.view.layoutIfNeeded()
+        #expect(abs(sheet.containerView.frame.maxY - height) < 0.5)
+    }
+
+    @Test
+    func `lift uses the actual overlap, not the raw keyboard height`() {
+        // A keyboard frame that only partially overlaps the host (floating
+        // keyboard, short window) must lift by the covered portion only.
+        let sheet = TestBottomSheet()
+        let window = makeHostedSheet(sheet)
+        let height = window.bounds.height
+
+        // 300pt-tall keyboard frame hanging 120pt into the window.
+        postKeyboard(name: UIResponder.keyboardWillShowNotification,
+                     frame: CGRect(x: 0, y: height - 120, width: 375, height: 300))
+        sheet.view.layoutIfNeeded()
+        #expect(abs(sheet.containerView.frame.maxY - (height - 120)) < 0.5)
+
+        postKeyboard(name: UIResponder.keyboardWillHideNotification,
+                     frame: CGRect(x: 0, y: height, width: 375, height: 300))
+    }
+
+    @Test
+    func `avoidsKeyboard false leaves the sheet at rest`() {
+        let sheet = ManualKeyboardSheet()
+        let window = makeHostedSheet(sheet)
+        let height = window.bounds.height
+
+        postKeyboard(name: UIResponder.keyboardWillShowNotification,
+                     frame: CGRect(x: 0, y: height - 300, width: 375, height: 300))
+        sheet.view.layoutIfNeeded()
+        #expect(abs(sheet.containerView.frame.maxY - height) < 0.5)
+    }
+
+    @Test
+    func `dismissal does not fight a lifted offset`() {
+        let sheet = TestBottomSheet()
+        let window = makeHostedSheet(sheet)
+        let height = window.bounds.height
+
+        postKeyboard(name: UIResponder.keyboardWillShowNotification,
+                     frame: CGRect(x: 0, y: height - 300, width: 375, height: 300))
+        sheet.view.layoutIfNeeded()
+
+        sheet.animateOut {}
+        // A keyboard-hide arriving mid-dismissal must not rewrite the offset:
+        // the sheet stays on its way out (bottom at or below the view bottom).
+        postKeyboard(name: UIResponder.keyboardWillHideNotification,
+                     frame: CGRect(x: 0, y: height, width: 375, height: 300))
+        sheet.view.layoutIfNeeded()
+        #expect(sheet.containerView.frame.maxY >= height - 0.5)
+    }
+}
+
+private final class ManualKeyboardSheet: LMKBottomSheetController {
+    override var avoidsKeyboard: Bool { false }
+
+    override init(cancelTitle: String? = nil) {
+        super.init(cancelTitle: cancelTitle)
+    }
+}
+
 // MARK: - Test Helper
 
 private final class TestBottomSheet: LMKBottomSheetController {

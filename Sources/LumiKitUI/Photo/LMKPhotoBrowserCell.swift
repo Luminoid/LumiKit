@@ -113,6 +113,17 @@ public final class LMKPhotoBrowserCell: UICollectionViewCell {
     private var widthConstraint: Constraint?
     private var heightConstraint: Constraint?
 
+    /// Monotonic token identifying the latest configure/reuse cycle — the
+    /// reuse-safety guard for async image loads. `Task.cancel()` alone doesn't
+    /// prevent a stale result from landing (a body already past its
+    /// cancellation checks still delivers); comparing the captured token does.
+    private var imageLoadGeneration: UInt64 = 0
+    private var imageLoadTask: Task<Void, Never>?
+
+    /// The currently installed still image, if any (nil while an async load is
+    /// in flight). Exposed for host-side re-fitting and tests.
+    var installedImage: UIImage? { imageView.image }
+
     /// Pinch gesture: anchor zoom to gesture center at start (fixed for the whole gesture).
     private var pinchCenterInScrollView: CGPoint = .zero
     /// Pinch center in contentView coordinates for sub-1x shrink transform
@@ -286,6 +297,10 @@ public final class LMKPhotoBrowserCell: UICollectionViewCell {
     }
 
     public func configure(with image: UIImage, screenSize: CGSize, isLive: Bool = false) {
+        // A synchronous configure supersedes any in-flight async load.
+        imageLoadGeneration &+= 1
+        imageLoadTask?.cancel()
+        imageLoadTask = nil
         imageView.image = image
         livePhotoView.livePhoto = nil
         livePhotoView.isHidden = true
@@ -295,6 +310,63 @@ public final class LMKPhotoBrowserCell: UICollectionViewCell {
         // the async `PHLivePhoto` load that drives playback.
         liveBadge.isHidden = !isLive
         liveBadge.alpha = 1
+        updateImageSize(image: image, screenSize: screenSize)
+        resetZoom()
+    }
+
+    /// Configures the cell for an asynchronously provided image: shows the
+    /// bare browser background as a placeholder, resolves `imageProvider`, and
+    /// installs the result through the standard sizing path. A monotonic
+    /// generation token (bumped by every configure and `prepareForReuse`)
+    /// guards the apply, so a slow load can never land on a recycled page.
+    ///
+    /// - Parameters:
+    ///   - screenSize: Fallback fitting size, captured at configure time. If
+    ///     the cell's own scroll view has resolved bounds when the image
+    ///     arrives (the normal case), those win — they track layout changes
+    ///     that happened while the load was in flight.
+    ///   - isLive: Shows the LIVE capsule immediately, independent of the
+    ///     paired `PHLivePhoto` load.
+    ///   - imageProvider: Async image source, called once on the main actor.
+    public func configure(screenSize: CGSize, isLive: Bool = false, imageProvider: @escaping () async -> UIImage?) {
+        imageLoadGeneration &+= 1
+        let generation = imageLoadGeneration
+        imageLoadTask?.cancel()
+
+        imageView.image = nil
+        livePhotoView.livePhoto = nil
+        livePhotoView.isHidden = true
+        imageView.isHidden = false
+        liveBadge.isHidden = !isLive
+        liveBadge.alpha = 1
+        resetZoom()
+
+        imageLoadTask = Task { [weak self] in
+            guard let image = await imageProvider() else { return }
+            guard let self, generation == imageLoadGeneration else { return }
+            installLoadedImage(image, fallbackScreenSize: screenSize)
+        }
+    }
+
+    /// Re-fits the currently installed still image to a new screen size
+    /// (rotation, window resize). No-op while the async load is in flight —
+    /// the install path resolves the then-current bounds itself.
+    public func refitInstalledImage(to screenSize: CGSize) {
+        guard let image = imageView.image else { return }
+        updateImageSize(image: image, screenSize: screenSize)
+    }
+
+    /// Installs an async-loaded image through the same path as the synchronous
+    /// configure: zoom is reset to 1x *before* the new frame goes in
+    /// (installing a frame under a non-identity zoom scale inflates the new
+    /// bounds by the stale fit factor), then size + trailing reset mirror
+    /// `configure(with:screenSize:isLive:)`. A Live Photo upgrade that raced
+    /// ahead of the still is preserved — only the still layer is replaced.
+    private func installLoadedImage(_ image: UIImage, fallbackScreenSize: CGSize) {
+        resetZoom()
+        imageView.image = image
+        let bounds = scrollView.bounds.size
+        let screenSize = (bounds.width > 0 && bounds.height > 0) ? bounds : fallbackScreenSize
         updateImageSize(image: image, screenSize: screenSize)
         resetZoom()
     }
@@ -509,6 +581,10 @@ public final class LMKPhotoBrowserCell: UICollectionViewCell {
 
     override public func prepareForReuse() {
         super.prepareForReuse()
+        imageLoadGeneration &+= 1
+        imageLoadTask?.cancel()
+        imageLoadTask = nil
+        imageView.image = nil
         resetZoom()
         isDismissing = false
         isDismissDragActive = false
@@ -521,6 +597,10 @@ public final class LMKPhotoBrowserCell: UICollectionViewCell {
         onVerticalPanProgressForDismiss = nil
         onZoomStateChanged = nil
         onPagingScrollEnabled = nil
+    }
+
+    deinit {
+        imageLoadTask?.cancel()
     }
 }
 

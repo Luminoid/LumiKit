@@ -28,6 +28,7 @@ struct LMKKeyboardObserverTests {
     func `KeyboardInfo isVisible is true when height > 0`() {
         let info = LMKKeyboardObserver.KeyboardInfo(
             height: 300,
+            frameEnd: CGRect(x: 0, y: 512, width: 375, height: 300),
             animationDuration: 0.25,
             animationOptions: .curveEaseInOut
         )
@@ -35,10 +36,23 @@ struct LMKKeyboardObserverTests {
 
         let hidden = LMKKeyboardObserver.KeyboardInfo(
             height: 0,
+            frameEnd: CGRect(x: 0, y: 812, width: 375, height: 300),
             animationDuration: 0.25,
             animationOptions: .curveEaseInOut
         )
         #expect(!hidden.isVisible)
+    }
+
+    @Test
+    func `KeyboardInfo carries the notification end frame`() {
+        let frame = CGRect(x: 0, y: 512, width: 375, height: 300)
+        let info = LMKKeyboardObserver.KeyboardInfo(
+            height: 300,
+            frameEnd: frame,
+            animationDuration: 0.25,
+            animationOptions: .curveEaseInOut
+        )
+        #expect(info.frameEnd == frame)
     }
 
     // MARK: - Notification Simulation

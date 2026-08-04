@@ -65,7 +65,9 @@ public final class LMKSinglePhotoViewer: NSObject {
 extension LMKSinglePhotoViewer: LMKPhotoBrowserDataSource {
     public var numberOfPhotos: Int { 1 }
 
-    public func photo(at _: Int) -> UIImage? {
+    /// The image is held decoded in memory, so the async requirement is
+    /// satisfied by returning immediately.
+    public func photo(at _: Int) async -> UIImage? {
         image
     }
 

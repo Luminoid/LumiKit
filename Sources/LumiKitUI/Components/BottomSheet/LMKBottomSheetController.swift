@@ -28,7 +28,25 @@ open class LMKBottomSheetController: UIViewController {
     // MARK: - Properties
 
     /// Constraint controlling the container's bottom offset for animation.
+    /// Offset 0 is the resting position; positive offsets slide the sheet
+    /// down and off-screen, negative offsets lift it (keyboard avoidance).
+    ///
+    /// While ``avoidsKeyboard`` is `true` (the default) the controller owns
+    /// the keyboard portion of this offset — subclasses must not also drive it
+    /// from their own keyboard observers, or the two writers will fight.
+    /// Return `false` from ``avoidsKeyboard`` to restore fully manual control.
     public var containerBottomConstraint: Constraint?
+
+    /// Whether the sheet lifts itself above the software keyboard. Default `true`.
+    ///
+    /// When enabled, keyboard frame changes raise the container by the actual
+    /// overlap between the keyboard and this view (so floating keyboards and
+    /// short or side-by-side windows lift only as much as they're covered),
+    /// animated with the keyboard's own curve and duration, and restore it on
+    /// hide. Composes with drag-to-dismiss: starting a pan resigns the first
+    /// responder, the hide restore runs, and pan offsets stay absolute against
+    /// the resting position.
+    open var avoidsKeyboard: Bool { true }
 
     private let cancelTitle: String
     private static let dismissVelocityThreshold: CGFloat = 500
@@ -38,6 +56,10 @@ open class LMKBottomSheetController: UIViewController {
     /// Guards the slide-in so it runs exactly once whether the trigger is the
     /// appearance callback or `addAsChild`'s explicit kick.
     private var hasAnimatedIn = false
+    /// Observer backing ``avoidsKeyboard``; nil when the feature is off.
+    private var keyboardObserver: LMKKeyboardObserver?
+    /// Current upward keyboard lift applied to `containerBottomConstraint` (>= 0).
+    private var keyboardLift: CGFloat = 0
 
     // MARK: - Lazy Views
 
@@ -95,6 +117,7 @@ open class LMKBottomSheetController: UIViewController {
         super.viewDidLoad()
         setupBaseUI()
         setupSheetContent()
+        setupKeyboardAvoidance()
         registerForTraitChanges([UITraitUserInterfaceStyle.self]) { (self: Self, _: UITraitCollection) in
             self.refreshBaseColors()
             self.refreshSheetColors()
@@ -196,6 +219,12 @@ open class LMKBottomSheetController: UIViewController {
     /// Animate the sheet out of view, then call the completion handler.
     /// - Parameter velocity: Optional downward velocity (points/sec) from a drag gesture for momentum-based duration.
     public func animateOut(velocity: CGFloat = 0, completion: @escaping () -> Void) {
+        // The sheet is leaving: stop tracking the keyboard so a hide
+        // notification arriving mid-animation can't fight the slide-out by
+        // rewriting the bottom offset it is animating.
+        keyboardObserver?.stopObserving()
+        keyboardObserver = nil
+
         let containerHeight = containerView.frame.height
         let currentOffset = containerView.frame.minY - (view.bounds.height - containerHeight)
         let remainingDistance = max(containerHeight - currentOffset, 1)
@@ -217,6 +246,43 @@ open class LMKBottomSheetController: UIViewController {
             },
             completion: completion
         )
+    }
+
+    // MARK: - Keyboard Avoidance
+
+    /// Installs the keyboard observer backing ``avoidsKeyboard``.
+    private func setupKeyboardAvoidance() {
+        guard avoidsKeyboard else { return }
+        let observer = LMKKeyboardObserver()
+        observer.onKeyboardChange = { [weak self] info in
+            self?.applyKeyboardLift(for: info)
+        }
+        observer.startObserving()
+        keyboardObserver = observer
+    }
+
+    /// Raises the container by the keyboard overlap (offset 0 → negative
+    /// overlap on `containerBottomConstraint`), or restores it on hide, using
+    /// the keyboard's own animation curve and duration.
+    private func applyKeyboardLift(for info: LMKKeyboardObserver.KeyboardInfo) {
+        let overlap = keyboardOverlap(for: info)
+        guard overlap != keyboardLift else { return }
+        keyboardLift = overlap
+        containerBottomConstraint?.update(offset: -overlap)
+        let duration = LMKAnimationHelper.shouldAnimate ? info.animationDuration : 0
+        UIView.animate(withDuration: duration, delay: 0, options: info.animationOptions) {
+            self.view.layoutIfNeeded()
+        }
+    }
+
+    /// Actual overlap between the keyboard's end frame and this view — not the
+    /// raw keyboard height, which overstates the lift for floating keyboards
+    /// and hosts that don't reach the bottom of the screen.
+    private func keyboardOverlap(for info: LMKKeyboardObserver.KeyboardInfo) -> CGFloat {
+        guard info.isVisible, view.window != nil else { return 0 }
+        let frameInView = view.convert(info.frameEnd, from: nil)
+        let intersection = view.bounds.intersection(frameInView)
+        return intersection.isNull ? 0 : intersection.height
     }
 
     // MARK: - Dismissal
@@ -251,10 +317,13 @@ open class LMKBottomSheetController: UIViewController {
         switch gesture.state {
         case .began:
             // A drag takes the keyboard down with it. Pan offsets are absolute
-            // against the resting position, so a subclass holding the sheet
-            // above the keyboard (offset -keyboardHeight) would otherwise snap
-            // the full keyboard height on the first changed event while the
-            // keyboard stays up covering it.
+            // against the resting position, so a sheet held above the keyboard
+            // — by the built-in avoidsKeyboard lift (offset -overlap) or a
+            // manual subclass offset — would otherwise snap the full keyboard
+            // height on the first changed event while the keyboard stays up
+            // covering it. Resigning here lets the keyboard-hide restore bring
+            // the offset back to 0 before drag offsets start landing, keeping
+            // both writers in the same coordinate space.
             view.endEditing(true)
 
         case .changed:

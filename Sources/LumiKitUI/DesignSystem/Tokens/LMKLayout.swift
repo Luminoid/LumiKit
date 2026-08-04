@@ -41,4 +41,21 @@ public enum LMKLayout {
     public static var searchBarIconSize: CGFloat { config.searchBarIconSize }
     /// Clear button size — default 22pt.
     public static var clearButtonSize: CGFloat { config.clearButtonSize }
+
+    // MARK: - Hairline
+
+    /// One physical pixel at the given display scale (e.g. 0.5 on 2x, ~0.33 on 3x).
+    ///
+    /// Deliberately not a theme axis: a hairline is display physics — the
+    /// thinnest line the screen can draw — not a branding decision, so it does
+    /// not route through ``LMKLayoutTheme``. Scales at or below 1 resolve to a
+    /// full point.
+    public static func hairline(forScale scale: CGFloat) -> CGFloat {
+        1 / max(1, scale)
+    }
+
+    /// One physical pixel at the key window's screen scale (fallback 2x).
+    public static var hairline: CGFloat {
+        hairline(forScale: LMKSceneUtil.getKeyWindow()?.screen.scale ?? 2)
+    }
 }

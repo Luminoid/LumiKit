@@ -80,9 +80,43 @@ final class LMKPhotoGridCell: UICollectionViewCell {
         }
     }
 
+    // MARK: - Async Image Loading
+
+    /// Monotonic token identifying the latest configure/reuse cycle. Every
+    /// `configure` and `prepareForReuse` bumps it, and a load task compares its
+    /// captured token before applying, so a stale result can never land on a
+    /// recycled cell. `Task.cancel()` alone doesn't guarantee that — a body
+    /// already past its cancellation checks still delivers.
+    private var loadGeneration: UInt64 = 0
+    private var imageLoadTask: Task<Void, Never>?
+
+    /// The currently displayed image, if any (nil while showing the
+    /// placeholder). Exposed for tests.
+    var installedImage: UIImage? { imageView.image }
+
+    /// Loads the cell's image asynchronously. Until the provider returns, the
+    /// cell shows the neutral placeholder (`LMKColor.backgroundSecondary`, the
+    /// image view's own background). The result is applied only when this cell
+    /// hasn't been reconfigured or reused in the meantime.
+    func loadImage(using provider: @escaping () async -> UIImage?) {
+        loadGeneration &+= 1
+        let generation = loadGeneration
+        imageLoadTask?.cancel()
+        imageLoadTask = Task { [weak self] in
+            let image = await provider()
+            guard let self, generation == loadGeneration else { return }
+            imageView.image = image
+        }
+    }
+
     // MARK: - Configuration
 
+    /// Configures the cell. Passing `nil` shows the neutral placeholder and,
+    /// like `prepareForReuse`, invalidates any in-flight `loadImage` result.
     func configure(with image: UIImage?, contentMode: UIView.ContentMode, isLive: Bool = false) {
+        loadGeneration &+= 1
+        imageLoadTask?.cancel()
+        imageLoadTask = nil
         imageView.image = image
         imageView.contentMode = contentMode
         liveBadge.isHidden = !isLive
@@ -92,7 +126,14 @@ final class LMKPhotoGridCell: UICollectionViewCell {
 
     override func prepareForReuse() {
         super.prepareForReuse()
+        loadGeneration &+= 1
+        imageLoadTask?.cancel()
+        imageLoadTask = nil
         imageView.image = nil
         liveBadge.isHidden = true
+    }
+
+    deinit {
+        imageLoadTask?.cancel()
     }
 }

@@ -3,7 +3,8 @@
 //  LumiKitExample
 //
 //  Divider, badges, chips, cards, gradient, page indicator, navigation bar,
-//  banners, empty state, loading state, and overscroll footer examples.
+//  banners, empty state, loading state, form scaffold, and overscroll footer
+//  examples.
 //
 
 import LumiKitUI
@@ -782,6 +783,9 @@ final class BannerDetailViewController: DetailViewController {
 // MARK: - Empty State
 
 final class EmptyStateDetailViewController: DetailViewController {
+    private let toggleableEmpty = LMKEmptyStateView()
+    private var actionInstalled = false
+
     override func viewDidLoad() {
         super.viewDidLoad()
 
@@ -804,6 +808,52 @@ final class EmptyStateDetailViewController: DetailViewController {
         fullEmpty.configure(message: "Your collection is empty. Start by adding some items!", icon: "square.stack.3d.up.slash", style: .fullScreen)
         fullEmpty.snp.makeConstraints { $0.height.equalTo(LMKEmptyStateView.fullScreenCellHeight) }
         stack.addArrangedSubview(fullEmpty)
+
+        addDivider()
+        addSectionHeader("Action Button")
+        stack.addArrangedSubview(LMKLabelFactory.caption(
+            text: "configure(message:icon:style:action:) renders a button below the message. "
+                + "Icon, message, and button form one constraint chain, so the view sizes "
+                + "itself to its content (no height is pinned here); a host-imposed height "
+                + "wins and centers the content instead."
+        ))
+        let actionEmpty = LMKEmptyStateView()
+        actionEmpty.configure(
+            message: "Your library is empty.",
+            icon: "books.vertical",
+            style: .card,
+            action: LMKEmptyStateView.Action(title: "Add Item", icon: "plus") { [weak self] in
+                guard let self else { return }
+                LMKToast.showSuccess(message: "Action tapped", on: self)
+            }
+        )
+        stack.addArrangedSubview(actionEmpty)
+
+        addDivider()
+        addSectionHeader("setAction(_:)")
+        stack.addArrangedSubview(LMKLabelFactory.caption(
+            text: "setAction adds, replaces, or removes the button after configure, "
+                + "for hosts whose call-to-action depends on state (permissions, "
+                + "edit rights). Passing a custom style overrides the default filled primary."
+        ))
+        toggleableEmpty.configure(message: "No downloads yet.", icon: "arrow.down.circle", style: .card)
+        stack.addArrangedSubview(toggleableEmpty)
+        let toggleButton = LMKButtonFactory.outlined(role: .primary, title: "Toggle Action", target: self, action: #selector(toggleEmptyStateAction))
+        stack.addArrangedSubview(toggleButton)
+    }
+
+    @objc private func toggleEmptyStateAction() {
+        actionInstalled.toggle()
+        guard actionInstalled else {
+            toggleableEmpty.setAction(nil)
+            return
+        }
+        toggleableEmpty.setAction(
+            LMKEmptyStateView.Action(title: "Browse", icon: "magnifyingglass", style: .outlined(LMKColor.primary)) { [weak self] in
+                guard let self else { return }
+                LMKToast.showInfo(message: "Browse tapped", on: self)
+            }
+        )
     }
 }
 
@@ -1028,6 +1078,59 @@ final class OverscrollFooterDetailViewController: UIViewController, UITableViewD
 
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         tableView.deselectRow(at: indexPath, animated: true)
+    }
+}
+
+// MARK: - Form Scaffold
+
+/// Deliberately a plain `UIViewController`, not a `DetailViewController`:
+/// `LMKFormScaffold` exists for screens outside the
+/// `LMKScrollStackViewController` hierarchy that still want the standard
+/// scroll + stack form layout and keyboard behavior.
+final class FormScaffoldDetailViewController: UIViewController {
+    private struct FieldSpec {
+        let placeholder: String
+        let icon: String?
+        let helper: String?
+    }
+
+    private static let fieldSpecs: [FieldSpec] = [
+        FieldSpec(placeholder: "Full name", icon: "person", helper: nil),
+        FieldSpec(placeholder: "Email", icon: "envelope", helper: "We'll never share your email."),
+        FieldSpec(placeholder: "Phone", icon: "phone", helper: nil),
+        FieldSpec(placeholder: "Street address", icon: "house", helper: nil),
+        FieldSpec(placeholder: "City", icon: nil, helper: nil),
+        FieldSpec(placeholder: "Postal code", icon: nil, helper: nil),
+        FieldSpec(placeholder: "Company", icon: "building.2", helper: nil),
+        FieldSpec(placeholder: "Notes", icon: "note.text", helper: "Focus this field: the scroll view lifts it clear of the keyboard."),
+    ]
+
+    private let scrollView = LMKFormScaffold.makeScrollView()
+    private let contentStack = LMKFormScaffold.makeContentStack()
+
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        view.backgroundColor = LMKColor.backgroundPrimary
+        LMKFormScaffold.install(scrollView: scrollView, stack: contentStack, in: view)
+
+        contentStack.addArrangedSubview(LMKLabelFactory.caption(
+            text: "makeScrollView() + makeContentStack() + install(scrollView:stack:in:below:contentInsets:) "
+                + "build the standard form layout in three calls. Keyboard dismiss on drag and "
+                + "keyboard-overlap avoidance come pre-installed; the stack width is locked to the "
+                + "scroll frame so rows never stretch the content size sideways."
+        ))
+
+        for spec in Self.fieldSpecs {
+            let field = LMKTextField()
+            field.placeholder = spec.placeholder
+            if let icon = spec.icon {
+                field.leadingIcon = UIImage(systemName: icon)
+            }
+            if let helper = spec.helper {
+                field.helperText = helper
+            }
+            contentStack.addArrangedSubview(field)
+        }
     }
 }
 

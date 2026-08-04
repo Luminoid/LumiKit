@@ -57,8 +57,19 @@ private let exampleSections: [ExampleSection] = [
         ),
         ExampleItem(title: "Cards", subtitle: "Card view and card factory", iconName: "rectangle.on.rectangle", makeViewController: { CardsDetailViewController() }),
         ExampleItem(title: "Banners", subtitle: "Persistent info, warning, and error banners", iconName: "exclamationmark.bubble", makeViewController: { BannerDetailViewController() }),
-        ExampleItem(title: "Empty State", subtitle: "Full screen, card, and inline styles", iconName: "square.dashed", makeViewController: { EmptyStateDetailViewController() }),
+        ExampleItem(
+            title: "Empty State",
+            subtitle: "Full screen, card, and inline styles with optional action button",
+            iconName: "square.dashed",
+            makeViewController: { EmptyStateDetailViewController() }
+        ),
         ExampleItem(title: "Loading State", subtitle: "Inline, overlay, and skeleton loading", iconName: "progress.indicator", makeViewController: { LoadingStateDetailViewController() }),
+        ExampleItem(
+            title: "Form Scaffold",
+            subtitle: "LMKFormScaffold — scroll + stack form layout with keyboard avoidance",
+            iconName: "square.and.pencil",
+            makeViewController: { FormScaffoldDetailViewController() }
+        ),
     ]),
     // Table and list rows — cells and row helpers
     ExampleSection(title: "Lists & Cells", items: [
@@ -103,6 +114,12 @@ private let exampleSections: [ExampleSection] = [
     ]),
     // Modal and floating presentations — bottom sheets → overlays → floating
     ExampleSection(title: "Overlays", items: [
+        ExampleItem(
+            title: "Bottom Sheet",
+            subtitle: "Base sheet with built-in keyboard avoidance",
+            iconName: "rectangle.bottomthird.inset.filled",
+            makeViewController: { BottomSheetDetailViewController() }
+        ),
         ExampleItem(title: "Action Sheet", subtitle: "Action sheets with icons and sub-pages", iconName: "list.bullet", makeViewController: { ActionSheetDetailViewController() }),
         ExampleItem(title: "Enum Selection", subtitle: "Generic enum picker bottom sheet", iconName: "checklist", makeViewController: { EnumSelectionDetailViewController() }),
         ExampleItem(title: "Date Picker", subtitle: "Single date, range, calendar range, and notes", iconName: "calendar", makeViewController: { DatePickerDetailViewController() }),
@@ -135,7 +152,12 @@ private let exampleSections: [ExampleSection] = [
     ExampleSection(title: "Extensions", items: [
         ExampleItem(title: "UIColor", subtitle: "UIColor+LMK — hex init, dynamic, brightness, contrast", iconName: "swatchpalette", makeViewController: { UIColorDetailViewController() }),
         ExampleItem(title: "Shadows", subtitle: "Shadow presets and lmk_applyShadow", iconName: "shadow", makeViewController: { ShadowDetailViewController() }),
-        ExampleItem(title: "Borders & Radius", subtitle: "Borders, corner radius, and circular views", iconName: "square.dashed", makeViewController: { BorderDetailViewController() }),
+        ExampleItem(
+            title: "Borders & Radius",
+            subtitle: "Borders (hairline default), corner radius, and circular views",
+            iconName: "square.dashed",
+            makeViewController: { BorderDetailViewController() }
+        ),
         ExampleItem(title: "Fade Animations", subtitle: "lmk_fadeIn and lmk_fadeOut", iconName: "circle.lefthalf.filled", makeViewController: { FadeDetailViewController() }),
         ExampleItem(
             title: "Keyboard Dismiss",
@@ -175,7 +197,6 @@ private let aboutItems: [InfoItem] = [
 final class ExampleViewController: UIViewController, UITableViewDataSource, UITableViewDelegate {
     // MARK: - Constants
 
-    // swiftlint:disable:next force_unwrapping
     private static let githubURL = URL(string: "https://github.com/Luminoid/LumiKit")!
     private static let aboutSectionIndex = exampleSections.count
 

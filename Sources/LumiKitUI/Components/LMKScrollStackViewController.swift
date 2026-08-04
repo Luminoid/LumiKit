@@ -11,8 +11,10 @@ import UIKit
 /// Base class for view controllers with a scrollable vertical stack layout.
 ///
 /// Provides a scroll view containing a content view with a vertical stack view.
-/// Subclasses override open properties to configure spacing, insets, and scroll
-/// behavior, then override ``setupStackContent()`` to populate the stack.
+/// Subclasses override open properties to configure spacing, insets, scroll
+/// behavior, an optional custom ``navigationBar`` pinned above the scroll view,
+/// and keyboard avoidance (``installsKeyboardAdjustment``, on by default), then
+/// override ``setupStackContent()`` to populate the stack.
 ///
 /// ```swift
 /// final class MyDetailViewController: LMKScrollStackViewController {
@@ -52,6 +54,17 @@ open class LMKScrollStackViewController: UIViewController {
     /// When `false`, the scroll view fills the full superview bounds.
     /// Default: `true`.
     open var scrollViewUseSafeArea: Bool { true }
+
+    /// Optional custom navigation bar pinned above the scroll view; when
+    /// non-nil the bar is installed via ``LMKNavigationBar/pinToTop(of:)`` and
+    /// the scroll view tops out at the bar's bottom instead of the view's top
+    /// edge. Override with a stored (or lazy) property — the getter is read
+    /// once during view setup. Default: `nil`.
+    open var navigationBar: LMKNavigationBar? { nil }
+
+    /// Installs scroll-view keyboard avoidance (`lmk_enableKeyboardAdjustment()`)
+    /// so the focused field stays visible above the keyboard. Default: `true`.
+    open var installsKeyboardAdjustment: Bool { true }
 
     // MARK: - Views
 
@@ -98,14 +111,30 @@ open class LMKScrollStackViewController: UIViewController {
     // MARK: - Setup
 
     private func setupScrollStack() {
+        // Read the overridable getter once — a subclass may compute it.
+        let navigationBar = navigationBar
+        if let navigationBar {
+            view.addSubview(navigationBar)
+            navigationBar.pinToTop(of: view)
+        }
+
         view.addSubview(scrollView)
         scrollView.snp.makeConstraints { make in
+            if let navigationBar {
+                make.top.equalTo(navigationBar.snp.bottom)
+            } else {
+                make.top.equalToSuperview()
+            }
+            make.leading.trailing.equalToSuperview()
             if scrollViewUseSafeArea {
-                make.top.leading.trailing.equalToSuperview()
                 make.bottom.equalTo(view.safeAreaLayoutGuide)
             } else {
-                make.edges.equalToSuperview()
+                make.bottom.equalToSuperview()
             }
+        }
+
+        if installsKeyboardAdjustment {
+            scrollView.lmk_enableKeyboardAdjustment()
         }
 
         scrollView.addSubview(contentView)

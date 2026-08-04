@@ -53,7 +53,15 @@ public protocol LMKPhotoGridDataSource: AnyObject {
     /// Total number of photos.
     var numberOfPhotos: Int { get }
     /// Image for the photo at the given data source index.
-    func photoGridImage(at index: Int) -> UIImage?
+    ///
+    /// Called on the main actor whenever a cell needs its image. Implementations
+    /// that decode or fetch should hop off the main actor themselves (e.g.
+    /// `Task.detached` plus `UIImage.preparingForDisplay()`) and return a
+    /// ready-to-display image; a source that already holds a decoded image just
+    /// returns it immediately. The cell shows a neutral placeholder until the
+    /// call returns, and a result that lands after the cell was reused for a
+    /// different index is discarded.
+    func photoGridImage(at index: Int) async -> UIImage?
     /// Date for the photo at the given data source index. Used for sorting.
     func photoGridDate(at index: Int) -> Date?
     /// Whether the item at the given index is a Live Photo. Drives the LIVE
@@ -510,9 +518,13 @@ extension LMKPhotoGridViewController: UICollectionViewDataSource {
             return cell
         }
 
-        let image = dataSource?.photoGridImage(at: dsIndex)
         let isLive = dataSource?.photoGridIsLivePhoto(at: dsIndex) ?? false
-        cell.configure(with: image, contentMode: photoContentMode.uiContentMode, isLive: isLive)
+        // Placeholder first (the cell's own background), then the async load —
+        // the cell's generation token discards results that land after reuse.
+        cell.configure(with: nil, contentMode: photoContentMode.uiContentMode, isLive: isLive)
+        cell.loadImage { [weak self] in
+            await self?.dataSource?.photoGridImage(at: dsIndex)
+        }
         return cell
     }
 }
@@ -547,9 +559,9 @@ extension LMKPhotoGridViewController: LMKPhotoBrowserDataSource {
         sortedIndices.count
     }
 
-    public func photo(at index: Int) -> UIImage? {
+    public func photo(at index: Int) async -> UIImage? {
         guard let dsIndex = dataSourceIndex(forDisplayIndex: index) else { return nil }
-        return dataSource?.photoGridImage(at: dsIndex)
+        return await dataSource?.photoGridImage(at: dsIndex)
     }
 
     public func photoDate(at index: Int) -> Date? {

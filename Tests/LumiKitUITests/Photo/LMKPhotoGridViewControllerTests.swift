@@ -240,7 +240,7 @@ struct LMKPhotoGridViewControllerTests {
     // MARK: - Photo Browser Integration
 
     @Test
-    func `conforms to photo browser data source`() {
+    func `conforms to photo browser data source`() async {
         let ds = MockPhotoGridDataSource(photoCount: 5)
         let grid = LMKPhotoGridViewController()
         grid.dataSource = ds
@@ -249,7 +249,8 @@ struct LMKPhotoGridViewControllerTests {
         let browserDS: any LMKPhotoBrowserDataSource = grid
 
         #expect(browserDS.numberOfPhotos == 5)
-        #expect(browserDS.photo(at: 0) != nil)
+        let photo = await browserDS.photo(at: 0)
+        #expect(photo != nil)
         #expect(browserDS.photoSubtitle(at: 0) == nil)
     }
 
@@ -273,7 +274,7 @@ struct LMKPhotoGridViewControllerTests {
     }
 
     @Test
-    func `browser data source returns nil for out of bounds index`() {
+    func `browser data source returns nil for out of bounds index`() async {
         let ds = MockPhotoGridDataSource(photoCount: 3)
         let grid = LMKPhotoGridViewController()
         grid.dataSource = ds
@@ -281,7 +282,8 @@ struct LMKPhotoGridViewControllerTests {
 
         let browserDS: any LMKPhotoBrowserDataSource = grid
 
-        #expect(browserDS.photo(at: 10) == nil)
+        let photo = await browserDS.photo(at: 10)
+        #expect(photo == nil)
         #expect(browserDS.photoDate(at: -1) == nil)
     }
 
@@ -371,6 +373,70 @@ struct LMKPhotoGridViewControllerTests {
     }
 }
 
+// MARK: - Async Image Loading (LMKPhotoGridCell)
+
+@MainActor
+struct LMKPhotoGridCellAsyncImageTests {
+    @Test
+    func `async load applies the delivered image`() async {
+        let cell = LMKPhotoGridCell(frame: CGRect(x: 0, y: 0, width: 100, height: 100))
+        let image = UIImage.lmk_solidColor(.red, size: CGSize(width: 10, height: 10))
+
+        cell.configure(with: nil, contentMode: .scaleAspectFill)
+        #expect(cell.installedImage == nil)
+        cell.loadImage { image }
+
+        await settleMainActor()
+        #expect(cell.installedImage === image)
+    }
+
+    @Test
+    func `stale load never lands on a reused cell`() async {
+        let cell = LMKPhotoGridCell(frame: CGRect(x: 0, y: 0, width: 100, height: 100))
+        let staleImage = UIImage.lmk_solidColor(.red, size: CGSize(width: 10, height: 10))
+        let freshImage = UIImage.lmk_solidColor(.blue, size: CGSize(width: 10, height: 10))
+        let gate = AsyncGate()
+
+        cell.configure(with: nil, contentMode: .scaleAspectFill)
+        cell.loadImage {
+            await gate.wait()
+            return staleImage
+        }
+
+        // Reuse the cell for a different item while the first load is in flight.
+        cell.prepareForReuse()
+        cell.configure(with: nil, contentMode: .scaleAspectFill)
+        cell.loadImage { freshImage }
+        await settleMainActor()
+        #expect(cell.installedImage === freshImage)
+
+        // Release the stale load: its result must be discarded.
+        gate.open()
+        await settleMainActor()
+        #expect(cell.installedImage === freshImage)
+    }
+
+    @Test
+    func `reconfigure alone invalidates an in-flight load`() async {
+        let cell = LMKPhotoGridCell(frame: CGRect(x: 0, y: 0, width: 100, height: 100))
+        let staleImage = UIImage.lmk_solidColor(.red, size: CGSize(width: 10, height: 10))
+        let gate = AsyncGate()
+
+        cell.configure(with: nil, contentMode: .scaleAspectFill)
+        cell.loadImage {
+            await gate.wait()
+            return staleImage
+        }
+
+        // A synchronous reconfigure (e.g. the content-mode toggle) supersedes
+        // the pending load even without a reuse cycle.
+        cell.configure(with: nil, contentMode: .scaleAspectFit)
+        gate.open()
+        await settleMainActor()
+        #expect(cell.installedImage == nil)
+    }
+}
+
 // MARK: - Mock Data Source
 
 private final class MockPhotoGridDataSource: LMKPhotoGridDataSource {
@@ -386,7 +452,7 @@ private final class MockPhotoGridDataSource: LMKPhotoGridDataSource {
         photoCount
     }
 
-    func photoGridImage(at index: Int) -> UIImage? {
+    func photoGridImage(at index: Int) async -> UIImage? {
         guard index >= 0, index < photoCount else { return nil }
         return UIImage.lmk_solidColor(.blue, size: CGSize(width: 100, height: 100))
     }

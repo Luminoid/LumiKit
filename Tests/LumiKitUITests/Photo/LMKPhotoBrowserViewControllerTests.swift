@@ -143,7 +143,7 @@ private final class MockPhotoBrowserDataSource: LMKPhotoBrowserDataSource {
         photoCount
     }
 
-    func photo(at index: Int) -> UIImage? {
+    func photo(at index: Int) async -> UIImage? {
         guard index < photoCount else { return nil }
         return UIImage.lmk_solidColor(.blue, size: CGSize(width: 100, height: 100))
     }

@@ -117,4 +117,78 @@ struct LMKPhotoBrowserCellTests {
 
         // Should handle square aspect ratio
     }
+
+    // MARK: - Async Image Loading
+
+    @Test
+    func `async configure shows placeholder then installs the loaded image`() async {
+        let cell = LMKPhotoBrowserCell(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
+        let image = UIImage.lmk_solidColor(.red, size: CGSize(width: 100, height: 50))
+
+        cell.configure(screenSize: CGSize(width: 375, height: 667)) { image }
+        #expect(cell.installedImage == nil)
+
+        await settleMainActor()
+        #expect(cell.installedImage === image)
+    }
+
+    @Test
+    func `stale async result never lands after reuse`() async {
+        let cell = LMKPhotoBrowserCell(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
+        let staleImage = UIImage.lmk_solidColor(.red, size: CGSize(width: 100, height: 100))
+        let freshImage = UIImage.lmk_solidColor(.blue, size: CGSize(width: 100, height: 100))
+        let gate = AsyncGate()
+
+        cell.configure(screenSize: CGSize(width: 375, height: 667)) {
+            await gate.wait()
+            return staleImage
+        }
+
+        // Recycle the page for another index while the first load is in flight.
+        cell.prepareForReuse()
+        cell.configure(screenSize: CGSize(width: 375, height: 667)) { freshImage }
+        await settleMainActor()
+        #expect(cell.installedImage === freshImage)
+
+        gate.open()
+        await settleMainActor()
+        #expect(cell.installedImage === freshImage)
+    }
+
+    @Test
+    func `synchronous configure supersedes an in-flight async load`() async {
+        let cell = LMKPhotoBrowserCell(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
+        let asyncImage = UIImage.lmk_solidColor(.red, size: CGSize(width: 100, height: 100))
+        let syncImage = UIImage.lmk_solidColor(.green, size: CGSize(width: 100, height: 100))
+        let gate = AsyncGate()
+
+        cell.configure(screenSize: CGSize(width: 375, height: 667)) {
+            await gate.wait()
+            return asyncImage
+        }
+        cell.configure(with: syncImage, screenSize: CGSize(width: 375, height: 667))
+
+        gate.open()
+        await settleMainActor()
+        #expect(cell.installedImage === syncImage)
+    }
+
+    @Test
+    func `refitInstalledImage is a no-op while loading and refits once installed`() async {
+        let cell = LMKPhotoBrowserCell(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
+        let image = UIImage.lmk_solidColor(.blue, size: CGSize(width: 200, height: 100))
+        let gate = AsyncGate()
+
+        cell.configure(screenSize: CGSize(width: 375, height: 667)) {
+            await gate.wait()
+            return image
+        }
+        cell.refitInstalledImage(to: CGSize(width: 667, height: 375))
+        #expect(cell.installedImage == nil)
+
+        gate.open()
+        await settleMainActor()
+        cell.refitInstalledImage(to: CGSize(width: 667, height: 375))
+        #expect(cell.installedImage === image)
+    }
 }

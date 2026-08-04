@@ -50,4 +50,29 @@ struct UITableViewCellIconListRowTests {
         let content = cell.contentConfiguration as? UIListContentConfiguration
         #expect(content?.secondaryText == nil)
     }
+
+    private func pointerInteractionCount(of cell: UITableViewCell) -> Int {
+        cell.interactions.count { $0 is UIPointerInteraction }
+    }
+
+    @Test
+    func `Pointer interaction is installed once across reconfiguration`() {
+        let cell = UITableViewCell(style: .default, reuseIdentifier: "Row")
+        let baseline = pointerInteractionCount(of: cell)
+
+        cell.lmk_configureIconListRow(iconSystemName: "person.circle", title: "Alex")
+        cell.lmk_configureIconListRow(iconSystemName: "gearshape", title: "Settings")
+
+        #expect(pointerInteractionCount(of: cell) == baseline + 1)
+    }
+
+    @Test
+    func `pointerEnabled false installs no pointer interaction`() {
+        let cell = UITableViewCell(style: .default, reuseIdentifier: "Row")
+        let baseline = pointerInteractionCount(of: cell)
+
+        cell.lmk_configureIconListRow(iconSystemName: "person.circle", title: "Alex", pointerEnabled: false)
+
+        #expect(pointerInteractionCount(of: cell) == baseline)
+    }
 }
