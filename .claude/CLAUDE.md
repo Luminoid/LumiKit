@@ -78,22 +78,22 @@ LumiKit/
 │   │                        # LMKDominantColorExtractor, LMKMarkdownRenderer,
 │   │                        # LMKPointerStyle
 │   └── LumiKitLottie/       # LMKLottieRefreshControl
-├── Tests/
-│   ├── LumiKitCoreTests/    # 76 tests, 12 suites
+├── Tests/                   # 1008 tests / 140 suites at 0.11.0 (release figure; for current counts grep @Test/@Suite)
+│   ├── LumiKitCoreTests/
 │   │   ├── Concurrency/     # LMKConcurrencyHelpersTests
 │   │   ├── Data/            # String+LMK, Collection+LMK, NSAttributedString+LMK, FormatHelper
 │   │   ├── Date/            # DateHelper, DateFormatterHelper
 │   │   ├── File/            # FileUtil
 │   │   ├── Log/             # LMKLogStoreTests (ring buffer, thread safety), LMKLoggerTests (log store integration)
 │   │   └── Validation/      # URLValidator
-│   ├── LumiKitNetworkTests/  # 65 tests, 4 suites
+│   ├── LumiKitNetworkTests/
 │   │   ├── LMKNetworkRequestStoreTests.swift         # FIFO, thread safety
 │   │   ├── LMKNetworkRequestRecordTests.swift        # Computed properties, display formatting
 │   │   ├── LMKNetworkLoggerTests.swift               # Configuration, state transitions
 │   │   └── URLSessionConfigurationLMKDebugTests.swift # enableNetworkLogging
-│   ├── LumiKitLottieTests/  # 7 tests, 1 suite
+│   ├── LumiKitLottieTests/
 │   │   └── LMKLottieRefreshControlTests.swift
-│   └── LumiKitUITests/      # 860 tests, 123 suites
+│   └── LumiKitUITests/
 │       ├── Alerts/          # AlertPresenter, ErrorHandler
 │       ├── Animation/       # AnimationHelper
 │       ├── Components/
@@ -347,7 +347,7 @@ Paired-file storage (still JPG + video MOV) is the caller's responsibility — L
 | `LMKImageUtil` | SF Symbol creation (`makeSymbolImage` with background), `CVPixelBuffer` to JPEG conversion, `encodeJPEG(_:maxDimension:quality:)` — `nonisolated` downsample + opaque RGBX (`.noneSkipLast`) re-render + `CGImageDestination` encode, so JPEGs stay 3-channel (no ImageIO "AlphaPremulLast" double-memory path) and EXIF orientation is baked into the pixels |
 | `LMKDominantColorExtractor` | RGB-histogram color extraction. `dominantColor(from:ignoringTransparent:strategy:)` returns one color: `.modal` (default, densest bucket = subject identity), `.average` (mean = gradient vibe, muddy for subjects), `.vibrant` (most saturated bucket with population tie-breaker = accent color, drops < 0.5% buckets, falls through to modal for grayscale). `dominantColors(from:count:ignoringTransparent:)` returns a top-N palette by frequency. Pass a subject-lifted PNG with `ignoringTransparent: true` (alpha threshold drops semi-transparent edges); raw photos use the default and a 20% border-ring crop. Always uses `kCGImageAlphaPremultipliedLast` — `.last` (unpremultiplied) is rejected by `CGBitmapContext` on iOS |
 | `LMKMarkdownRenderer` | Markdown-to-attributed-string: `render()` for inline (bold/italic), `renderFull()` for long-form content (headings, lists, fenced code blocks, GFM tables, `\n` preserved; code and tables in a monospaced font), `makeInlineTextView` |
-| `LMKPointerStyle` | Window-safe `UIPointerStyle` factories for `UIPointerInteractionDelegate`: `automatic(for:)`, `highlight(for:)`, `lift(for:)`, `hover(for:preferredTintMode:prefersShadow:prefersScaledContent:)`, plus the underlying `preview(for:)`. Each takes a `UIView?` and returns `nil` unless it is non-nil AND `window != nil`, so it is returned straight from the delegate: `LMKPointerStyle.lift(for: interaction.view)`, or `for: self` when the effect targets the delegate. **Never construct `UITargetedPreview(view:)` directly** — it asserts window membership and aborts (`BUG_IN_CLIENT_OF_TARGETED_PREVIEW__VIEW_IS_NOT_IN_A_WINDOW`); guarding `interaction.view != nil` does not help, since a recycled cell keeps the interaction after losing its window. See FIXES.md (2026-07-27) |
+| `LMKPointerStyle` | Window-safe `UIPointerStyle` factories for `UIPointerInteractionDelegate`: `automatic(for:)`, `highlight(for:)`, `lift(for:)`, `hover(for:preferredTintMode:prefersShadow:prefersScaledContent:)`, plus the underlying `preview(for:)`. Each takes a `UIView?` and returns `nil` unless it is non-nil AND `window != nil`, so it is returned straight from the delegate: `LMKPointerStyle.lift(for: interaction.view)`, or `for: self` when the effect targets the delegate. **Never construct `UITargetedPreview(view:)` directly** — it asserts window membership and aborts (`BUG_IN_CLIENT_OF_TARGETED_PREVIEW__VIEW_IS_NOT_IN_A_WINDOW`); guarding `interaction.view != nil` does not help, since a recycled cell keeps the interaction after losing its window |
 | `LMKSceneUtil` | Key window and connected scene retrieval |
 
 ---
@@ -457,4 +457,4 @@ public final class LMKExampleViewController: UIViewController {
 
 ---
 
-*Optimized for Claude Code. Run `/doc-sync` to refresh file counts and stats.*
+*Optimized for Claude Code.*

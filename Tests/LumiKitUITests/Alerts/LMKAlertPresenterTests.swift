@@ -78,7 +78,7 @@ struct LMKAlertPresenterTextInputTests {
         LMKAlertPresenter.presentTextInput(
             on: presenter,
             title: "Custom model",
-            placeholder: "gemini-2.5-flash",
+            placeholder: "gemini-3.5-flash",
             initialText: "my-model",
             autocapitalizationType: .none,
             autocorrectionType: .no,
@@ -87,7 +87,7 @@ struct LMKAlertPresenterTextInputTests {
         )
 
         let field = presentedAlert(presenter)?.textFields?.first
-        #expect(field?.placeholder == "gemini-2.5-flash")
+        #expect(field?.placeholder == "gemini-3.5-flash")
         #expect(field?.text == "my-model")
         #expect(field?.autocapitalizationType == UITextAutocapitalizationType.none)
         #expect(field?.autocorrectionType == .no)
