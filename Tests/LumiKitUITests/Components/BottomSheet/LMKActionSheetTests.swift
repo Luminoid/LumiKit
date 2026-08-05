@@ -252,6 +252,35 @@ struct LMKActionSheetTests {
         #expect(controls.count == 5)
     }
 
+    @Test
+    func `Subtitled rows keep their content height when the sheet overflows its cap`() {
+        // Regression: with enough rows to hit the max-height cap, the scroll
+        // view's hug constraint used to tie with the labels' compression
+        // resistance (both 750) and the solver crushed every subtitle to ~0
+        // instead of scrolling.
+        let sheet = LMKActionSheet(
+            title: "Pick",
+            actions: (0 ..< 30).map { index in
+                .init(title: "Trip \(index)", subtitle: "Jun 6 – 8, 2026", icon: UIImage(systemName: "suitcase")) {}
+            }
+        )
+        let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 393, height: 852))
+        window.rootViewController = sheet
+        window.isHidden = false
+        sheet.loadViewIfNeeded()
+        sheet.view.layoutIfNeeded()
+
+        let rows = findAllActionRows(in: sheet.view)
+        #expect(rows.count == 30)
+        let baseHeight = LMKBottomSheetLayout.rowHeight - 2 * LMKSpacing.xs
+        for row in rows {
+            #expect(row.frame.height > baseHeight + LMKSpacing.xs)
+            let subtitle = findLabel(in: row, withText: "Jun 6 – 8, 2026")
+            #expect(subtitle != nil)
+            #expect((subtitle?.frame.height ?? 0) > 8)
+        }
+    }
+
     // MARK: - Static Presentation
 
     @Test
@@ -464,6 +493,29 @@ struct LMKActionSheetTests {
         }
         for subview in view.subviews {
             if let found = findFirstActionRow(in: subview) {
+                return found
+            }
+        }
+        return nil
+    }
+
+    private func findAllActionRows(in view: UIView) -> [ActionRowView] {
+        var rows: [ActionRowView] = []
+        if let row = view as? ActionRowView {
+            rows.append(row)
+        }
+        for subview in view.subviews {
+            rows.append(contentsOf: findAllActionRows(in: subview))
+        }
+        return rows
+    }
+
+    private func findLabel(in view: UIView, withText text: String) -> UILabel? {
+        if let label = view as? UILabel, label.text == text {
+            return label
+        }
+        for subview in view.subviews {
+            if let found = findLabel(in: subview, withText: text) {
                 return found
             }
         }

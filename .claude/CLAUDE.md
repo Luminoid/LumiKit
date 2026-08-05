@@ -79,7 +79,7 @@ LumiKit/
 │   │                        # LMKDominantColorExtractor, LMKMarkdownRenderer,
 │   │                        # LMKPointerStyle
 │   └── LumiKitLottie/       # LMKLottieRefreshControl
-├── Tests/                   # 1070 tests / 147 suites at 0.12.0 (release figure; for current counts grep @Test/@Suite)
+├── Tests/                   # 1073 tests / 147 suites at 0.12.0 (release figure; for current counts grep @Test/@Suite)
 │   ├── LumiKitCoreTests/
 │   │   ├── Concurrency/     # LMKConcurrencyHelpersTests
 │   │   ├── Data/            # String+LMK, Collection+LMK, NSAttributedString+LMK, FormatHelper
@@ -266,7 +266,7 @@ LMKThemeManager.shared.apply(spacing: .init(large: 20))
 | `LMKCardPanelLayout` | `enum` (static) | Shared layout constants for card panels (max width, insets, height ratio) |
 | `LMKScrollStackViewController` | `open class` | Base class for scrollable vertical stack layout — configurable spacing, insets, keyboard dismiss, safe area, bounce. Subclasses override `setupStackContent()`. `navigationBar: LMKNavigationBar?` (default nil, override with a stored/lazy property — read once) pins a custom bar via `pinToTop(of:)` with the scroll view topping out at the bar's bottom; `installsKeyboardAdjustment` (default true) installs `lmk_enableKeyboardAdjustment()` |
 | `LMKFormScaffold` | `enum` (static) | Builders for form screens outside the `LMKScrollStackViewController` hierarchy: `makeScrollView(keyboardDismissMode:)` (default `.onDrag`, keyboard avoidance pre-installed), `makeContentStack(spacing:)` (vertical fill, default `LMKSpacing.large`), `install(scrollView:stack:in:below:contentInsets:)` — scroll view spans from below the optional top anchor view (or view top) to the bottom safe area, stack pinned with token insets (default `cardPadding`) and width locked to the scroll frame |
-| `LMKSegmentedPageController` | `open class` | Base class for a segmented tab container that pages between child VCs with an interactive finger-tracking pan. Subclasses override `makePages()`, `usesFullWidthSwipe(forPageAt:)` (full-width vs edge-only pan, for pages that own interior horizontal drags such as a map or month grid), `didChangePage(to:)`. Top `LMKSegmentedControl` installed via overridable `installSegmentedControl()` (default: nav title view); `setPage(_:animated:)` slides for taps / deep links. `edgePanBandWidth` / `commitVelocityThreshold` are tunable open vars |
+| `LMKSegmentedPageController` | `open class` | Base class for a segmented tab container that pages between child VCs with an interactive finger-tracking pan. Subclasses override `makePages()`, `usesFullWidthSwipe(forPageAt:)` (full-width vs edge-only pan, for pages that own interior horizontal drags such as a map or month grid), `didChangePage(to:)`. Top `LMKSegmentedControl` installed via overridable `installSegmentedControl()` (default: nav title view); overridable `pageContainerView` (default: the controller's view) confines pages to a sub-region, e.g. below a fixed header; `setPage(_:animated:)` slides for taps / deep links. `edgePanBandWidth` / `commitVelocityThreshold` are tunable open vars |
 | `LMKNavigationDirection` | `enum` | Shared navigation direction (`.forward`, `.backward`, `.none`) used by CardPageController and ActionSheet |
 | `LMKOverscrollFooterHelper` | `final class` | Positions footer below scroll content, revealed on overscroll |
 

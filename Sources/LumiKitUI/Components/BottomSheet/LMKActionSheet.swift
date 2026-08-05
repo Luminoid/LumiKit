@@ -347,8 +347,13 @@ public final class LMKActionSheet: LMKBottomSheetController {
             }
         }
 
+        // Hug content, but below the labels' vertical compression resistance
+        // (750): when the sheet hits its max-height cap, the solver must break
+        // a non-required constraint, and at .high this equality ties with the
+        // labels' — it then crushes every title/subtitle toward zero instead
+        // of letting the sheet scroll.
         scrollView.snp.makeConstraints { make in
-            make.height.equalTo(contentStackView).priority(.high)
+            make.height.equalTo(contentStackView).priority(.medium)
         }
 
         return PageContentViews(wrapper: wrapper, actionRows: actionRows)
