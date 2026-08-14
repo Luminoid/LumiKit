@@ -102,15 +102,23 @@ public final class LMKProgressViewController: UIViewController {
         return button
     }()
 
-    /// Callback when cancel button is tapped.
-    public var onCancel: (() -> Void)?
+    /// Callback when the cancel button is tapped. The button renders only
+    /// while this is non-nil, so a non-cancellable operation never shows a
+    /// dead Cancel; setters must dismiss the controller themselves (an
+    /// early-exit path may never reach the flow's own dismiss).
+    public var onCancel: (() -> Void)? {
+        didSet {
+            guard isViewLoaded else { return }
+            rebuildBottomChain()
+        }
+    }
 
     /// Throttle VoiceOver announcements to avoid flooding.
     private var lastAnnouncementTime: Date = .distantPast
     private static let announcementThrottleInterval: TimeInterval = 2.0
 
     private let style: Style
-    private let subtitle: String?
+    private var subtitle: String?
 
     // MARK: - Initialization
 
@@ -175,9 +183,6 @@ public final class LMKProgressViewController: UIViewController {
             make.leading.trailing.equalToSuperview().inset(Self.horizontalInsets)
         }
 
-        // Anchor for the cancel button changes based on style
-        let cancelTopAnchor: ConstraintItem
-
         if style == .determinate {
             containerView.addSubview(taskLabel)
             taskLabel.snp.makeConstraints { make in
@@ -198,27 +203,64 @@ public final class LMKProgressViewController: UIViewController {
                 make.leading.trailing.equalToSuperview().inset(Self.horizontalInsets)
             }
 
-            cancelTopAnchor = progressLabel.snp.bottom
-        } else if let subtitleText = subtitle {
-            subtitleLabel.text = subtitleText
-            containerView.addSubview(subtitleLabel)
-            subtitleLabel.snp.makeConstraints { make in
-                make.top.equalTo(titleLabel.snp.bottom).offset(Self.titleToTaskSpacing)
-                make.leading.trailing.equalToSuperview().inset(Self.horizontalInsets)
-            }
-            cancelTopAnchor = subtitleLabel.snp.bottom
+            lastChainView = progressLabel
         } else {
-            cancelTopAnchor = titleLabel.snp.bottom
+            lastChainView = titleLabel
+            if let subtitle {
+                subtitleLabel.text = subtitle
+                installSubtitleLabel()
+            }
         }
 
-        containerView.addSubview(cancelButton)
-        cancelButton.snp.makeConstraints { make in
-            make.top.equalTo(cancelTopAnchor).offset(Self.labelToButtonSpacing)
-            make.centerX.equalToSuperview()
-            make.bottom.equalToSuperview().offset(-Self.bottomOffset)
-        }
-
+        rebuildBottomChain()
         activityIndicator.startAnimating()
+    }
+
+    // MARK: - Bottom chain
+
+    /// The lowest content view; the cancel button (when offered) or the
+    /// container's bottom inset hangs off it.
+    private weak var lastChainView: UIView?
+
+    /// Closes the container below `lastChainView` while no cancel button is
+    /// installed; deactivated when the button takes over the bottom edge.
+    private var bottomClosureConstraint: Constraint?
+
+    /// Adds the subtitle label between the title and the bottom chain
+    /// (indeterminate style only).
+    private func installSubtitleLabel() {
+        guard subtitleLabel.superview == nil else { return }
+        containerView.addSubview(subtitleLabel)
+        subtitleLabel.snp.makeConstraints { make in
+            make.top.equalTo(titleLabel.snp.bottom).offset(Self.titleToTaskSpacing)
+            make.leading.trailing.equalToSuperview().inset(Self.horizontalInsets)
+        }
+        lastChainView = subtitleLabel
+    }
+
+    /// Re-anchors the container's bottom edge: the cancel button is offered
+    /// only while `onCancel` is wired (a rendered Cancel that does nothing
+    /// reads as a hang), so the container closes at the button when present
+    /// and directly under the last content view otherwise.
+    private func rebuildBottomChain() {
+        guard let lastChainView else { return }
+        bottomClosureConstraint?.deactivate()
+        bottomClosureConstraint = nil
+        if onCancel != nil {
+            if cancelButton.superview == nil {
+                containerView.addSubview(cancelButton)
+            }
+            cancelButton.snp.remakeConstraints { make in
+                make.top.equalTo(lastChainView.snp.bottom).offset(Self.labelToButtonSpacing)
+                make.centerX.equalToSuperview()
+                make.bottom.equalToSuperview().offset(-Self.bottomOffset)
+            }
+        } else {
+            cancelButton.removeFromSuperview()
+            lastChainView.snp.makeConstraints { make in
+                bottomClosureConstraint = make.bottom.equalToSuperview().offset(-Self.bottomOffset).constraint
+            }
+        }
     }
 
     // MARK: - Actions
@@ -246,5 +288,38 @@ public final class LMKProgressViewController: UIViewController {
     public func updateProgress(_ progress: Float) {
         progressView.setProgress(progress, animated: true)
         progressLabel.text = LMKFormatHelper.progressPercent(progress)
+    }
+
+    /// Sets, updates, or removes the secondary line under the title
+    /// (indeterminate style only; the determinate layout drives its own task
+    /// line through `updateProgress`). Safe before presentation and
+    /// mid-flight: a HUD already on screen grows the line in place, the
+    /// intended home for "this is taking longer than usual" notes, with a
+    /// VoiceOver announcement so the note isn't sighted-only.
+    public func setSubtitle(_ text: String?) {
+        subtitle = text
+        guard style == .indeterminate, isViewLoaded else { return }
+        guard let text else {
+            guard subtitleLabel.superview != nil else { return }
+            subtitleLabel.removeFromSuperview()
+            lastChainView = titleLabel
+            rebuildBottomChain()
+            return
+        }
+        let isNew = subtitleLabel.superview == nil
+        subtitleLabel.text = text
+        subtitleLabel.alpha = 1
+        if isNew {
+            installSubtitleLabel()
+            rebuildBottomChain()
+            if LMKAnimationHelper.shouldAnimate, view.window != nil {
+                subtitleLabel.alpha = 0
+                UIView.animate(withDuration: LMKAnimationHelper.Duration.uiShort) {
+                    self.subtitleLabel.alpha = 1
+                    self.view.layoutIfNeeded()
+                }
+            }
+        }
+        UIAccessibility.post(notification: .announcement, argument: text)
     }
 }

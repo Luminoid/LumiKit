@@ -93,6 +93,69 @@ struct LMKProgressViewControllerTests {
         #expect(vc.view != nil)
     }
 
+    @Test
+    func `Cancel button renders only while onCancel is wired`() {
+        let cancelTitle = LMKAlertPresenter.strings.cancel
+        let vc = LMKProgressViewController(title: "Test", style: .indeterminate)
+        vc.loadViewIfNeeded()
+        #expect(findButton(in: vc.view, withTitle: cancelTitle) == nil)
+
+        vc.onCancel = {}
+        #expect(findButton(in: vc.view, withTitle: cancelTitle) != nil)
+
+        vc.onCancel = nil
+        #expect(findButton(in: vc.view, withTitle: cancelTitle) == nil)
+    }
+
+    @Test
+    func `Cancel wired before load renders at load`() {
+        let vc = LMKProgressViewController(title: "Test", style: .indeterminate)
+        vc.onCancel = {}
+        vc.loadViewIfNeeded()
+        #expect(findButton(in: vc.view, withTitle: LMKAlertPresenter.strings.cancel) != nil)
+    }
+
+    @Test
+    func `setSubtitle installs, updates, and removes the note mid-flight`() {
+        let vc = LMKProgressViewController(title: "Test", style: .indeterminate)
+        vc.loadViewIfNeeded()
+        #expect(findLabel(in: vc.view, withText: "Still working") == nil)
+
+        vc.setSubtitle("Still working")
+        #expect(findLabel(in: vc.view, withText: "Still working") != nil)
+
+        vc.setSubtitle("Nearly there")
+        #expect(findLabel(in: vc.view, withText: "Nearly there") != nil)
+
+        vc.setSubtitle(nil)
+        #expect(findLabel(in: vc.view, withText: "Nearly there") == nil)
+    }
+
+    @Test
+    func `setSubtitle before load applies at load`() {
+        let vc = LMKProgressViewController(title: "Test", style: .indeterminate)
+        vc.setSubtitle("Preflight note")
+        vc.loadViewIfNeeded()
+        #expect(findLabel(in: vc.view, withText: "Preflight note") != nil)
+    }
+
+    @Test
+    func `setSubtitle keeps the cancel button below the note`() {
+        let vc = LMKProgressViewController(title: "Test", style: .indeterminate)
+        vc.onCancel = {}
+        vc.loadViewIfNeeded()
+        vc.setSubtitle("A note")
+        vc.view.layoutIfNeeded()
+
+        let cancel = findButton(in: vc.view, withTitle: LMKAlertPresenter.strings.cancel)
+        let note = findLabel(in: vc.view, withText: "A note")
+        #expect(cancel != nil)
+        #expect(note != nil)
+        if let cancel, let note {
+            #expect(cancel.frame.minY >= note.frame.maxY)
+        }
+    }
+
     // MARK: - Helpers
 
     private func findButton(in view: UIView, withTitle title: String) -> UIButton? {
@@ -101,6 +164,18 @@ struct LMKProgressViewControllerTests {
         }
         for subview in view.subviews {
             if let found = findButton(in: subview, withTitle: title) {
+                return found
+            }
+        }
+        return nil
+    }
+
+    private func findLabel(in view: UIView, withText text: String) -> UILabel? {
+        if let label = view as? UILabel, label.text == text {
+            return label
+        }
+        for subview in view.subviews {
+            if let found = findLabel(in: subview, withText: text) {
                 return found
             }
         }
