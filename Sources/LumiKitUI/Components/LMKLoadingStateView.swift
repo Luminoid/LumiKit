@@ -70,7 +70,11 @@ public final class LMKLoadingStateView: UIView {
         addSubview(messageLabel)
         messageLabel.snp.makeConstraints { make in
             make.top.equalTo(activityIndicator.snp.bottom).offset(LMKSpacing.medium)
-            make.leading.trailing.equalToSuperview().inset(LMKSpacing.xl)
+            // 999, not required: hosts install this view as a
+            // `tableView.backgroundView`, whose autoresizing pass starts at
+            // width 0 — required edge insets would conflict and UIKit would
+            // break one per layout pass.
+            make.leading.trailing.equalToSuperview().inset(LMKSpacing.xl).priority(999)
             make.centerX.equalToSuperview()
         }
     }

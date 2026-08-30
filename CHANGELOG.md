@@ -5,6 +5,12 @@ All notable changes to LumiKit will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+- **LMKLoadingStateView constraint break as a table background view** — Installing the view as a `tableView.backgroundView` triggered "Unable to simultaneously satisfy constraints" on the first layout pass: UIKit's autoresizing pass starts the background view at zero width, which conflicts with the message label's required edge insets, and UIKit broke a label constraint on every pass. The label's edge insets now sit just below required (999), so the zero-width pass resolves cleanly; normal layouts are pixel-identical.
+
 ## [0.12.0] - 2026-08-04
 
 ### Changed
