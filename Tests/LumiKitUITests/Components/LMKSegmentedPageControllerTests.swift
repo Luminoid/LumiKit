@@ -98,6 +98,12 @@ private final class ContainerHostedPageVC: LMKSegmentedPageController {
         [page0, page1]
     }
 
+    /// A known root size before `viewDidLoad`, standing in for the window
+    /// size UIKit hands a real controller.
+    override func loadView() {
+        view = UIView(frame: CGRect(x: 0, y: 0, width: 390, height: 844))
+    }
+
     override var pageContainerView: UIView { container }
 
     override func installSegmentedControl() {
@@ -336,6 +342,19 @@ struct LMKSegmentedPageControllerContainerTests {
         #expect(vc.currentPageIndex == 1)
         #expect(vc.page1.view.superview === vc.container)
         #expect(vc.page1.view.frame == vc.container.bounds)
+    }
+
+    /// The container has zero bounds in `viewDidLoad`. The page must not be
+    /// installed at zero width anyway: its own first layout pass would then run
+    /// against an encapsulated width of 0 and break any inset constraint it
+    /// carries (an empty-state view inset from its list), logging a constraint
+    /// dump once per install.
+    @Test
+    func `initial page is installed at the controllers size before the container lays out`() {
+        let vc = ContainerHostedPageVC()
+        vc.loadViewIfNeeded()
+        #expect(vc.container.bounds.isEmpty)
+        #expect(vc.page0.view.frame.size == CGSize(width: 390, height: 844))
     }
 
     /// A constraint-laid-out container has zero bounds during `viewDidLoad`, so the

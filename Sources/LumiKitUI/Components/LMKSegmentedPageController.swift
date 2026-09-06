@@ -148,7 +148,7 @@ open class LMKSegmentedPageController: UIViewController, UIGestureRecognizerDele
     private func showInitialPage() {
         let pageVC = pages[0]
         addChild(pageVC)
-        pageVC.view.frame = pageContainerView.bounds
+        pageVC.view.frame = initialPageFrame()
         pageVC.view.autoresizingMask = [.flexibleWidth, .flexibleHeight]
         pageContainerView.addSubview(pageVC.view)
         pageVC.didMove(toParent: self)
@@ -190,6 +190,20 @@ open class LMKSegmentedPageController: UIViewController, UIGestureRecognizerDele
         currentChild = newVC
         currentPageIndex = index
         didChangePage(to: index)
+    }
+
+    /// The frame to install the first page with. A constraint-laid-out
+    /// ``pageContainerView`` still has zero bounds during `viewDidLoad`, and a
+    /// page that lays out once at zero width trips UIKit's unsatisfiable-
+    /// constraint dump for any inset it carries (an empty-state view inset
+    /// from its list, say): the encapsulated width is 0, so leading + inset
+    /// and trailing - inset cannot both hold. Seeding from the controller's own
+    /// bounds keeps that first pass at a real width; `viewDidLayoutSubviews`
+    /// re-seats the page on the container once layout resolves.
+    private func initialPageFrame() -> CGRect {
+        let containerBounds = pageContainerView.bounds
+        guard containerBounds.isEmpty else { return containerBounds }
+        return CGRect(origin: .zero, size: view.bounds.size)
     }
 
     /// Re-seats the visible page on the container's resolved bounds. Required when

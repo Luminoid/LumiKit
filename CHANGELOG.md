@@ -7,8 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **`lmk_apply(_:animatingDifferences:in:)` on `UITableViewDiffableDataSource` / `UICollectionViewDiffableDataSource`** — Applies a snapshot with a diff only while the given view is in a window, and through `applySnapshotUsingReloadData` otherwise. A detached list (a page its container swapped out, another tab's root) still receives data changes, and a plain `apply` there runs a batch update that forces layout outside the view hierarchy; UIKit logs `UITableViewAlertForLayoutOutsideViewHierarchy` once and then stays silent while the wasted passes continue. Pass `LMKAnimationHelper.shouldAnimate` as the animation flag to keep Reduce Motion honored.
+
 ### Fixed
 
+- **LMKSegmentedPageController zero-width first page** — When `pageContainerView` is a constraint-laid-out container it still has zero bounds during `viewDidLoad`, so the first page was installed at zero width and its first layout pass tripped "Unable to simultaneously satisfy constraints" for any inset the page carried (an empty-state view inset from its list): UIKit's encapsulated width is 0, so leading + inset and trailing - inset cannot both hold, and a required constraint was broken for one pass. The initial page is now seeded from the controller's own bounds when the container has none; `viewDidLayoutSubviews` still re-seats it on the resolved container bounds, so final layouts are unchanged.
 - **LMKLoadingStateView constraint break as a table background view** — Installing the view as a `tableView.backgroundView` triggered "Unable to simultaneously satisfy constraints" on the first layout pass: UIKit's autoresizing pass starts the background view at zero width, which conflicts with the message label's required edge insets, and UIKit broke a label constraint on every pass. The label's edge insets now sit just below required (999), so the zero-width pass resolves cleanly; normal layouts are pixel-identical.
 
 ## [0.12.0] - 2026-08-04
