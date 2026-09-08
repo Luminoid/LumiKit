@@ -36,9 +36,10 @@ Shared Swift Package providing **design tokens**, **UI components**, and **utili
 20. [Release](#release)
 21. [Dependencies](#dependencies)
 22. [Built with LumiKit](#built-with-lumikit)
-23. [TODO](#todo)
-24. [License](#license)
-25. [Changelog](#changelog)
+23. [Related projects](#related-projects)
+24. [TODO](#todo)
+25. [License](#license)
+26. [Changelog](#changelog)
 
 ---
 
@@ -680,7 +681,15 @@ LumiKitCore has no default isolation and is safe to use from any concurrency con
 |-----|-------------|
 | [Plantfolio Plus](https://plantfolio.luminoid.dev) | Plant care, watering schedules, collections, and photos for iOS, iPadOS, and Mac |
 | [Petfolio](https://petfolio.luminoid.dev) | Pet care, health tracking, vet visits, food inventory for iOS, iPadOS, and Mac |
+| [TripDays](https://tripdays.luminoid.dev) | Collaborative travel planner: day-by-day itineraries, maps, shared trips over iCloud, and expense splitting for iOS, iPadOS, and Mac |
 | [Metamer](https://metamer.luminoid.dev) | Color-vision camera for iOS: CVD simulation, daltonize filters, true-color naming, and an Ishihara plate generator |
+
+---
+
+## Related projects
+
+- [Monolith](https://github.com/Luminoid/Monolith): CLI that scaffolds iOS apps, Swift Packages, and Swift CLIs, with LumiKit wiring built in
+- Everything else at [luminoid.dev](https://luminoid.dev)
 
 ---
 
