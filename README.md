@@ -598,6 +598,11 @@ Network debugging works correctly in Swift 6 strict concurrency mode, including 
 ## Build & Test
 
 ```bash
+# Dev tooling
+brew bundle          # install swiftlint + swiftformat
+make setup-hooks     # wire pre-commit lint + format
+make check           # SwiftLint --strict + SwiftFormat --lint
+
 # Build all targets (iOS Simulator)
 xcodebuild build \
   -scheme LumiKit-Package \
