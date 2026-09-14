@@ -359,12 +359,15 @@ open class LMKBottomSheetController: UIViewController {
 
     // MARK: - Helpers
 
-    /// Compute the maximum container height based on screen size.
+    /// Compute the maximum container height from the hosting window's height.
+    ///
+    /// Window, not screen: a resizable iPad window, a Split View pane, or an
+    /// iPhone Duo scene is shorter than the display it sits on.
     public func computeMaxHeight() -> CGFloat {
-        let screenHeight = view.window?.windowScene?.screen.bounds.height
-            ?? LMKSceneUtil.getKeyWindow()?.screen.bounds.height
+        let windowHeight = view.window?.bounds.height
+            ?? LMKSceneUtil.getKeyWindow()?.bounds.height
             ?? view.bounds.height
-        return screenHeight * LMKBottomSheetLayout.maxScreenHeightRatio
+        return windowHeight * LMKBottomSheetLayout.maxScreenHeightRatio
     }
 
     /// Unified animation wrapper that respects Reduce Motion.

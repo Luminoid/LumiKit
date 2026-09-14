@@ -252,7 +252,7 @@ public final class LMKFloatingButton: UIView {
             let newX = panStartCenter.x + translation.x
             let newY = panStartCenter.y + translation.y
             center = CGPoint(
-                x: clampX(newX, in: superview.bounds),
+                x: clampX(newX, in: superview.bounds, safeArea: safeArea),
                 y: clampY(newY - buttonSize / 2, in: superview.bounds, safeArea: safeArea) + buttonSize / 2
             )
 
@@ -301,9 +301,12 @@ public final class LMKFloatingButton: UIView {
 
     // MARK: - Clamping
 
-    private func clampX(_ x: CGFloat, in bounds: CGRect) -> CGFloat {
+    /// Keeps the button's center inside the horizontal safe area: landscape
+    /// phones and iPhone Duo carry side insets for the camera region, and a
+    /// drag must not park the button under them.
+    private func clampX(_ x: CGFloat, in bounds: CGRect, safeArea: UIEdgeInsets) -> CGFloat {
         let half = buttonSize / 2
-        return min(max(x, half), bounds.width - half)
+        return min(max(x, safeArea.left + half), bounds.width - safeArea.right - half)
     }
 
     private func clampY(_ y: CGFloat, in bounds: CGRect, safeArea: UIEdgeInsets) -> CGFloat {

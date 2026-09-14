@@ -17,9 +17,21 @@ public enum LMKSceneUtil {
             .first
     }
 
-    /// Current screen scale factor (e.g., 2.0 on iPad, 3.0 on iPhone).
-    /// Falls back to `3.0` when no window is available.
+    /// Display scale of the key window (e.g., 2.0 on iPad, 3.0 on iPhone).
+    ///
+    /// Read from the window's trait collection (`displayScale`), the value
+    /// Apple recommends over `UIScreen.scale` now that a scene can sit on a
+    /// display other than the main one (iPhone Mirroring, external displays).
+    /// Falls back to `3.0` when no window is available or the trait is
+    /// unspecified.
     public static var screenScale: CGFloat {
-        getKeyWindow()?.screen.scale ?? 3.0
+        displayScale(of: getKeyWindow()) ?? 3.0
+    }
+
+    /// Display scale from a view's trait collection, `nil` when the view is
+    /// missing or the trait is unspecified (`0`).
+    public static func displayScale(of view: UIView?) -> CGFloat? {
+        guard let scale = view?.traitCollection.displayScale, scale > 0 else { return nil }
+        return scale
     }
 }

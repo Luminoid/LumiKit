@@ -303,6 +303,29 @@ final class BorderDetailViewController: DetailViewController {
             radiusRow.addArrangedSubview(box)
         }
         stack.addArrangedSubview(radiusRow)
+
+        addDivider()
+        addSectionHeader("lmk_applyConcentricCorners (iOS 26)")
+        stack.addArrangedSubview(LMKLabelFactory.caption(
+            text: "The outer card publishes its radius (asConcentricContainer: true); the inner view asks UIKit for a "
+                + "container-concentric radius: the outer corner minus the inset, floored at the minimum. "
+                + "Before iOS 26 it falls back to the fixed minimum radius."
+        ))
+        let outer = UIView()
+        outer.backgroundColor = LMKColor.backgroundSecondary
+        outer.lmk_applyCornerRadius(LMKCornerRadius.xxl, asConcentricContainer: true)
+        outer.snp.makeConstraints { $0.height.equalTo(120) }
+        let inner = UIView()
+        inner.backgroundColor = LMKColor.primary
+        inner.lmk_applyConcentricCorners(minimumRadius: LMKCornerRadius.small)
+        outer.addSubview(inner)
+        inner.snp.makeConstraints { $0.edges.equalToSuperview().inset(LMKSpacing.medium) }
+        let innerLabel = LMKLabelFactory.small(text: "concentric with the outer card")
+        innerLabel.textColor = LMKColor.white
+        innerLabel.textAlignment = .center
+        inner.addSubview(innerLabel)
+        innerLabel.snp.makeConstraints { $0.center.equalToSuperview() }
+        stack.addArrangedSubview(outer)
     }
 }
 

@@ -455,6 +455,34 @@ struct LMKNavigationBarTests {
         #expect(bar.largeTitleEnabled == false)
     }
 
+    // MARK: - Scroll edge effect
+
+    @Test
+    func `attachScrollEdgeEffect installs one top interaction on iOS 26 and none before`() {
+        let bar = LMKNavigationBar()
+        let scrollView = UIScrollView()
+        #expect(!bar.hasScrollEdgeEffect)
+
+        bar.attachScrollEdgeEffect(to: scrollView)
+        bar.attachScrollEdgeEffect(to: scrollView) // replaces, never stacks
+
+        if #available(iOS 26, *) {
+            #expect(bar.hasScrollEdgeEffect)
+            let interactions = bar.interactions.compactMap { $0 as? UIScrollEdgeElementContainerInteraction }
+            #expect(interactions.count == 1)
+            #expect(interactions.first?.scrollView === scrollView)
+            #expect(interactions.first?.edge == .top)
+        } else {
+            #expect(!bar.hasScrollEdgeEffect)
+        }
+
+        bar.detachScrollEdgeEffect()
+        #expect(!bar.hasScrollEdgeEffect)
+        if #available(iOS 26, *) {
+            #expect(!bar.interactions.contains { $0 is UIScrollEdgeElementContainerInteraction })
+        }
+    }
+
     // MARK: - Helpers
 
     private func findButton(in root: UIView, accessibilityLabel: String) -> UIButton? {

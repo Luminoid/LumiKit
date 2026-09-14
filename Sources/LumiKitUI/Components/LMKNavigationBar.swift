@@ -218,6 +218,7 @@ public final class LMKNavigationBar: UIView {
     private var rightItemActions: [() -> Void] = []
     private weak var rightAccessoryView: UIView?
     private weak var largeTitleAccessoryView: UIView?
+    private var scrollEdgeInteraction: UIInteraction?
 
     // MARK: - Initialization
 
@@ -343,6 +344,36 @@ public final class LMKNavigationBar: UIView {
             make.centerY.equalTo(largeTitleLabel)
             make.trailing.lessThanOrEqualToSuperview().offset(-Self.contentMargin)
         }
+    }
+
+    // MARK: - Scroll Edge Effect (iOS 26)
+
+    /// Whether a scroll-edge effect is currently attached (always `false`
+    /// before iOS 26).
+    public var hasScrollEdgeEffect: Bool { scrollEdgeInteraction != nil }
+
+    /// Let the system scroll-edge effect of `scrollView` render behind this
+    /// bar (iOS 26+): content scrolling under the bar fades out the way it
+    /// does under a system navigation bar, and the bar's labels and buttons
+    /// shape the effect. Requires the bar to overlay the scroll view's top
+    /// edge with a clear or translucent `barBackgroundColor`; an opaque bar
+    /// hides the effect. No-op before iOS 26, so callers need no gate.
+    public func attachScrollEdgeEffect(to scrollView: UIScrollView) {
+        detachScrollEdgeEffect()
+        if #available(iOS 26, *) {
+            let interaction = UIScrollEdgeElementContainerInteraction()
+            interaction.scrollView = scrollView
+            interaction.edge = .top
+            addInteraction(interaction)
+            scrollEdgeInteraction = interaction
+        }
+    }
+
+    /// Remove the scroll-edge effect installed by ``attachScrollEdgeEffect(to:)``.
+    public func detachScrollEdgeEffect() {
+        guard let scrollEdgeInteraction else { return }
+        removeInteraction(scrollEdgeInteraction)
+        self.scrollEdgeInteraction = nil
     }
 
     // MARK: - Setup

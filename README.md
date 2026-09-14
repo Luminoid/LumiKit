@@ -82,6 +82,8 @@ From the Example app (`Example/LumiKitExample.xcodeproj`):
 - iOS 18+ / Mac Catalyst 18+ / macOS 15+
 - Xcode 26+
 
+iOS 26 features (Liquid Glass via `LMKGlassView`, container-concentric corners, the scroll-edge effect behind `LMKNavigationBar`) are adopted behind `#available(iOS 26, *)` with same-API fallbacks, so the deployment floor stays iOS 18 and callers never gate. Layout helpers read window bounds, size classes, and trait collections rather than `UIScreen` or the device idiom, so resizable iPad windows and both iPhone Duo displays classify by the canvas they actually have.
+
 ---
 
 ## Installation
@@ -150,11 +152,11 @@ xcodegen generate
 open LumiKitExample.xcodeproj
 ```
 
-The example includes **51 interactive pages** across 9 sections:
+The example includes **53 interactive pages** across 9 sections:
 
-- **Design System**: Colors, Typography, Markdown
+- **Design System**: Colors, Typography, Markdown, Device & Display
 - **Controls**: Buttons, Toggle Button, Switch, Segmented Control, Slider, Text Field, Text View, Search Bar
-- **Components**: Divider, Gradient, Badges, Chips, Filter Chip Bar, Cards, Banners, Empty State, Loading State
+- **Components**: Divider, Gradient, Glass, Badges, Chips, Filter Chip Bar, Cards, Banners, Empty State, Loading State
 - **Lists & Cells**: Checkbox Cell, Icon List Row, Cell Highlight, Overscroll Footer
 - **Navigation & Paging**: Navigation Bar, Navigation Controller, Page Indicator, Segmented Pages
 - **Feedback**: Toast, Alerts & Errors, Progress, Haptics
@@ -354,8 +356,9 @@ LMKThemeManager.shared.apply(spacing: .init(large: 20))
 | `LMKEmptyStateView` | Empty state with icon, message, and optional action button (`Action`: title, optional leading SF Symbol, `LMKButton.Style`, handler) rendered below the message for `.fullScreen` / `.card`; `.inline` ignores it. `setAction(_:)` adds/replaces/removes post-configure. Content-driven height (icon → message → button constraint chain, no overlap at any type size); with an action present the view exposes message and button as separate accessibility elements |
 | `LMKEnumSelectionBottomSheet` | Bottom sheet for selecting from an enum's cases — single-select (`present`) or multi-select with explicit Done button (`presentMultiSelect`) |
 | `LMKGradientView` | `CAGradientLayer`-backed view with 4 direction options |
+| `LMKGlassView` | Liquid Glass surface (`UIGlassEffect`, iOS 26+) with a `systemMaterial` blur fallback on iOS 18–25: `style` (`.regular` / `.clear`), optional tint, `isInteractive`, `cornerRadius` (fixed; `usesConcentricCorners = true` follows the nearest published container corner on iOS 26). `makeContainer(spacing:)` merges nearby glass views into one shape on iOS 26; `isGlass` reports which path rendered |
 | `LMKLoadingStateView` | Loading indicator with optional message |
-| `LMKNavigationBar` | Custom navigation bar with large title and standard inline modes, configurable bar items, back button, and design-token styling. `setLeftItemEnabled(at:_:)` / `setRightItemEnabled(at:_:)` toggle per-item enabled state. `setRightAccessoryView(_:)` parks a non-tappable view (sync indicator, status icon) to the left of the right items; `setLargeTitleAccessoryView(_:)` hangs an accessory off the trailing edge of the large title text (iOS Mail / Notes pattern). Bar buttons enable pointer hover feedback on iPad / Mac Catalyst |
+| `LMKNavigationBar` | Custom navigation bar with large title and standard inline modes, configurable bar items, back button, and design-token styling. `setLeftItemEnabled(at:_:)` / `setRightItemEnabled(at:_:)` toggle per-item enabled state. `setRightAccessoryView(_:)` parks a non-tappable view (sync indicator, status icon) to the left of the right items; `setLargeTitleAccessoryView(_:)` hangs an accessory off the trailing edge of the large title text (iOS Mail / Notes pattern). Bar buttons enable pointer hover feedback on iPad / Mac Catalyst. `attachScrollEdgeEffect(to:)` renders the scroll view's iOS 26 scroll-edge effect behind a clear or translucent bar (no-op before 26) |
 | `LMKNavigationController` | `UINavigationController` subclass that preserves the edge-swipe-to-go-back gesture when the system nav bar is hidden. Pairs with `LMKNavigationBar`-based apps |
 | `LMKProgressViewController` | Blocking progress modal (`.determinate` with progress bar, `.indeterminate` spinner-only) |
 | `LMKSearchBar` | Search bar with configurable placeholder and cancel text |
@@ -401,7 +404,7 @@ All UIKit extensions use the `lmk_` prefix to avoid naming conflicts.
 | `UIColor+LMK` | `init(lmk_hex:)`, `lmk_dynamic(lightHex:darkHex:alpha:)`, `lmk_hexString`, `lmk_isLight`, `lmk_adjustedBrightness(by:)`, `lmk_contrastingTextColor` |
 | `UIImage+LMK` | `lmk_resized(maxDimension:)`, `lmk_resized(to:)`, `lmk_solidColor(_:size:)`, `lmk_rounded(cornerRadius:)` |
 | `UIView+LMKShadow` | `lmk_applyShadow(_:)`, `lmk_removeShadow()` |
-| `UIView+LMKBorder` | `lmk_applyBorder(...)` (width defaults to `LMKLayout.hairline` — one physical pixel), `lmk_removeBorder()`, `lmk_applyCornerRadius(_:)`, `lmk_makeCircular()` |
+| `UIView+LMKBorder` | `lmk_applyBorder(...)` (width defaults to `LMKLayout.hairline` — one physical pixel), `lmk_removeBorder()`, `lmk_applyCornerRadius(_:masking:asConcentricContainer:)` (the flag publishes the radius as the iOS 26 `cornerConfiguration` descendants resolve against), `lmk_applyConcentricCorners(minimumRadius:)` (iOS 26 container-concentric corners floored at the minimum, fixed radius before), `lmk_makeCircular()` |
 | `UIView+LMKFade` | `lmk_fadeIn(...)`, `lmk_fadeOut(...)` |
 | `UIView+LMKLayout` | `lmk_safeAreaSnp`, `lmk_setEdgesEqualToSuperview()`, `lmk_centerInSuperview()`, `lmk_setAutoLayoutSize(width:height:)` |
 | `UIStackView+LMK` | `init(lmk_axis:...)`, `lmk_addArrangedSubviews(_:)`, `lmk_removeAllArrangedSubviews()` |
@@ -453,14 +456,14 @@ LumiKitUI includes device-aware helpers and system observers:
 
 | Utility | Purpose |
 |---------|---------|
-| `LMKDeviceHelper` | Device type detection (`.iPhone`, `.iPad`, `.macCatalyst`), screen size classification, notch detection |
+| `LMKDeviceHelper` | Device type detection (`.iPhone`, `.iPad`, `.macCatalyst`) and `LMKScreenSize` tiers from window bounds plus size classes, never `UIScreen`: regular × regular is `.extraLarge` (iPad, Mac, wide iPad windows, iPhone Duo inner display), otherwise portrait width ≤375 `.compact`, ≤402 `.regular`, wider `.large`. `screenSize(for:)` classifies a root view's own environment; the pure `screenSize(forWindowSize:horizontalSizeClass:verticalSizeClass:)` is testable without a window. `hasTopNotch` is iPhone-only |
 | `LMKKeyboardObserver` | Keyboard show/hide observer with height, end frame (`frameEnd`, for overlap math against a local view), and animation duration info |
 | `LMKKeyboardAdjustment` | One-call keyboard avoidance: `scrollView.lmk_enableKeyboardAdjustment()` installs an associated-object adjuster that grows the bottom content and scroll indicator insets to the keyboard overlap and scrolls the focused field into view; restores on hide. No-op on Mac Catalyst |
 | `LMKImageUtil` | SF Symbol creation (`makeSymbolImage` with background), `CVPixelBuffer` to JPEG conversion, `encodeJPEG(_:maxDimension:quality:)` — nonisolated downsample + opaque RGBX re-render so encodes stay 3-channel (avoids ImageIO's "AlphaPremulLast" double-memory path) and EXIF orientation is baked in |
 | `LMKDominantColorExtractor` | RGB-histogram dominant color extraction. `dominantColor(from:ignoringTransparent:strategy:)` returns one color: `.modal` (default, densest bucket = subject identity), `.average` (mean = overall vibe), `.vibrant` (most saturated = accent color). `dominantColors(from:count:ignoringTransparent:)` returns a top-N palette ordered by frequency. Pass a subject-lifted PNG with `ignoringTransparent: true` for hard-edge accuracy |
 | `LMKMarkdownRenderer` | Markdown-to-attributed-string rendering: `render()` for inline (bold/italic), `renderFull()` for long-form content (headings, lists, fenced code blocks, GFM tables, line breaks preserved). Code and tables render in a monospaced font so AI chat responses stay readable |
 | `LMKPointerStyle` | Window-safe `UIPointerStyle` factories for `UIPointerInteractionDelegate`: `automatic(for:)`, `highlight(for:)`, `lift(for:)`, `hover(for:...)`, plus the underlying `preview(for:)`. Each takes an optional view and returns `nil` unless it is non-nil **and** in a window, so the result is returned straight from the delegate. Raw `UITargetedPreview(view:)` aborts the process when its view has no window, and `interaction.view != nil` does not catch it (a recycled cell keeps the interaction) |
-| `LMKSceneUtil` | Key window and connected scene retrieval |
+| `LMKSceneUtil` | Key window retrieval; `screenScale` / `displayScale(of:)` read the `displayScale` trait rather than `UIScreen.scale` |
 
 ---
 

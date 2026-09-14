@@ -54,8 +54,20 @@ public enum LMKLayout {
         1 / max(1, scale)
     }
 
-    /// One physical pixel at the key window's screen scale (fallback 2x).
+    /// One physical pixel at the key window's display scale (fallback 2x).
+    ///
+    /// Reads the window's `displayScale` trait rather than `UIScreen.scale`,
+    /// so the value follows the display the scene is actually on. Prefer
+    /// ``hairline(for:)`` inside a view that may live on another display.
     public static var hairline: CGFloat {
-        hairline(forScale: LMKSceneUtil.getKeyWindow()?.screen.scale ?? 2)
+        hairline(forScale: LMKSceneUtil.displayScale(of: LMKSceneUtil.getKeyWindow()) ?? 2)
+    }
+
+    /// One physical pixel for the display `view` is rendered on, from its
+    /// trait collection. Falls back to the key window's scale for a view whose
+    /// scale trait is still unspecified (not yet in a hierarchy).
+    public static func hairline(for view: UIView) -> CGFloat {
+        guard let scale = LMKSceneUtil.displayScale(of: view) else { return hairline }
+        return hairline(forScale: scale)
     }
 }

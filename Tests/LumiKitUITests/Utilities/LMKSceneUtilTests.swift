@@ -31,4 +31,15 @@ struct LMKSceneUtilTests {
         // Should be either the actual screen scale or the 3.0 fallback
         #expect(scale == 1.0 || scale == 2.0 || scale == 3.0)
     }
+
+    @Test
+    func `displayScale(of:) is nil for a missing view and positive otherwise`() {
+        #expect(LMKSceneUtil.displayScale(of: nil) == nil)
+        if let scale = LMKSceneUtil.displayScale(of: UIView()) {
+            #expect(scale > 0)
+        }
+        if let window = LMKSceneUtil.getKeyWindow() {
+            #expect(LMKSceneUtil.displayScale(of: window) == window.traitCollection.displayScale)
+        }
+    }
 }

@@ -39,12 +39,51 @@ public extension UIView {
 
     /// Apply corner radius using design tokens.
     ///
+    /// - Parameters:
+    ///   - radius: Corner radius in points.
+    ///   - masking: Whether to clip subviews to the rounded shape (default `true`).
+    ///   - asConcentricContainer: On iOS 26 also publishes the radius as the
+    ///     view's `cornerConfiguration`, which is what descendants using
+    ///     ``lmk_applyConcentricCorners(minimumRadius:masking:)`` resolve against.
+    ///     A bare `layer.cornerRadius` is invisible to that math (UIKit then
+    ///     falls back to the display's corners). No effect before iOS 26.
+    ///     Opt-in, because a published configuration is re-applied by UIKit at
+    ///     layout and would override a later manual `layer.cornerRadius`.
+    ///
     /// ```swift
-    /// view.lmk_applyCornerRadius(LMKCornerRadius.medium)
+    /// card.lmk_applyCornerRadius(LMKCornerRadius.xl, asConcentricContainer: true)
+    /// innerChip.lmk_applyConcentricCorners(minimumRadius: LMKCornerRadius.small)
     /// ```
-    func lmk_applyCornerRadius(_ radius: CGFloat, masking: Bool = true) {
+    func lmk_applyCornerRadius(_ radius: CGFloat, masking: Bool = true, asConcentricContainer: Bool = false) {
         layer.cornerRadius = radius
         layer.masksToBounds = masking
+        if asConcentricContainer, #available(iOS 26, *) {
+            cornerConfiguration = .corners(radius: .fixed(radius))
+        }
+    }
+
+    /// Apply container-concentric corners (iOS 26+): UIKit derives the radius
+    /// from the nearest ancestor that publishes a `cornerConfiguration` minus
+    /// this view's inset from it, floored at `minimumRadius`, so a nested card,
+    /// chip, or button stays concentric with its parent as either resizes.
+    /// The container must publish its corners — `lmk_applyCornerRadius(_:asConcentricContainer: true)`
+    /// or a direct `cornerConfiguration` — since a plain `layer.cornerRadius`
+    /// is not consulted; with no such ancestor UIKit resolves against the
+    /// display's corners, which is the right answer for floating chrome near a
+    /// screen edge. Before iOS 26 this is a fixed `minimumRadius` via
+    /// ``lmk_applyCornerRadius(_:masking:asConcentricContainer:)``.
+    ///
+    /// ```swift
+    /// card.lmk_applyCornerRadius(LMKCornerRadius.xl, asConcentricContainer: true)
+    /// innerCard.lmk_applyConcentricCorners(minimumRadius: LMKCornerRadius.small)
+    /// ```
+    func lmk_applyConcentricCorners(minimumRadius: CGFloat, masking: Bool = true) {
+        if #available(iOS 26, *) {
+            cornerConfiguration = .corners(radius: .containerConcentric(minimum: minimumRadius))
+            layer.masksToBounds = masking
+        } else {
+            lmk_applyCornerRadius(minimumRadius, masking: masking)
+        }
     }
 
     /// Make the view circular (uses half of the smallest dimension).

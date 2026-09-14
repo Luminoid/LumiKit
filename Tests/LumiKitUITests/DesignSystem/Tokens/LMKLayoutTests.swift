@@ -43,6 +43,19 @@ struct LMKLayoutTests {
     }
 
     @Test
+    func `hairline(for:) follows the view's display scale trait`() {
+        let view = UIView()
+        let hairline = LMKLayout.hairline(for: view)
+        #expect(hairline > 0)
+        #expect(hairline <= 1)
+        if let scale = LMKSceneUtil.displayScale(of: view) {
+            #expect(hairline == LMKLayout.hairline(forScale: scale))
+        } else {
+            #expect(hairline == LMKLayout.hairline)
+        }
+    }
+
+    @Test
     func `hairline resolves from the key window scale with a sane fallback`() {
         let hairline = LMKLayout.hairline
         #expect(hairline > 0)

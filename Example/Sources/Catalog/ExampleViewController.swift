@@ -31,6 +31,12 @@ private let exampleSections: [ExampleSection] = [
         ExampleItem(title: "Colors", subtitle: "LMKColor tokens — primary, semantic, text, background", iconName: "paintpalette", makeViewController: { ColorsDetailViewController() }),
         ExampleItem(title: "Typography", subtitle: "Headings, body, caption, scientific name", iconName: "textformat", makeViewController: { TypographyDetailViewController() }),
         ExampleItem(title: "Markdown", subtitle: "Render markdown as attributed strings", iconName: "text.badge.checkmark", makeViewController: { MarkdownDetailViewController() }),
+        ExampleItem(
+            title: "Device & Display",
+            subtitle: "LMKDeviceHelper tiers, size classes, safe areas, live on resize",
+            iconName: "iphone.gen3",
+            makeViewController: { DeviceDisplayDetailViewController() }
+        ),
     ]),
     // Interactive inputs — action → toggle → selection → text input
     ExampleSection(title: "Controls", items: [
@@ -47,6 +53,12 @@ private let exampleSections: [ExampleSection] = [
     ExampleSection(title: "Components", items: [
         ExampleItem(title: "Divider", subtitle: "Pixel-perfect horizontal separator", iconName: "minus", makeViewController: { DividerDetailViewController() }),
         ExampleItem(title: "Gradient", subtitle: "Linear gradients with configurable directions", iconName: "rectangle.fill", makeViewController: { GradientDetailViewController() }),
+        ExampleItem(
+            title: "Glass",
+            subtitle: "LMKGlassView: Liquid Glass on iOS 26, material fallback before",
+            iconName: "circle.hexagongrid.fill",
+            makeViewController: { GlassDetailViewController() }
+        ),
         ExampleItem(title: "Badges", subtitle: "Count, text, and dot badges", iconName: "app.badge", makeViewController: { BadgesDetailViewController() }),
         ExampleItem(title: "Chips", subtitle: "Filled, outlined, dismissible, and toggle", iconName: "tag", makeViewController: { ChipsDetailViewController() }),
         ExampleItem(
@@ -154,7 +166,7 @@ private let exampleSections: [ExampleSection] = [
         ExampleItem(title: "Shadows", subtitle: "Shadow presets and lmk_applyShadow", iconName: "shadow", makeViewController: { ShadowDetailViewController() }),
         ExampleItem(
             title: "Borders & Radius",
-            subtitle: "Borders (hairline default), corner radius, and circular views",
+            subtitle: "Borders (hairline default), corner radius, concentric corners, circular views",
             iconName: "square.dashed",
             makeViewController: { BorderDetailViewController() }
         ),

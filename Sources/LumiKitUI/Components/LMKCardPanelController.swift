@@ -97,11 +97,15 @@ open class LMKCardPanelController: UIViewController {
 
     private func setupCard() {
         view.addSubview(cardView)
+        // Center and inset against the safe area, not the raw window: the
+        // overlay window spans the whole scene, and iPhone Duo / landscape
+        // phones carry asymmetric side insets for the camera region.
+        let safeArea = view.safeAreaLayoutGuide
         cardView.snp.makeConstraints { make in
-            make.center.equalToSuperview()
+            make.center.equalTo(safeArea)
             make.width.lessThanOrEqualTo(cardMaxWidth)
-            make.leading.trailing.equalToSuperview().inset(cardHorizontalInset).priority(.high)
-            make.height.equalTo(view.snp.height).multipliedBy(cardMaxHeightRatio)
+            make.leading.trailing.equalTo(safeArea).inset(cardHorizontalInset).priority(.high)
+            make.height.equalTo(safeArea.snp.height).multipliedBy(cardMaxHeightRatio)
         }
 
         addChild(embeddedNavigationController)

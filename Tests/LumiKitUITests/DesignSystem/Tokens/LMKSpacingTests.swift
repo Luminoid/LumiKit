@@ -21,6 +21,29 @@ struct LMKSpacingTests {
         #expect(LMKSpacing.xl == 20)
         #expect(LMKSpacing.xxl == 24)
     }
+
+    @Test
+    func `Canvas-scaled paddings follow the key window's size classes`() {
+        let config = LMKThemeManager.shared.spacing
+        let cardPadding = LMKSpacing.cardPadding
+        let cellPadding = LMKSpacing.cellPaddingVertical
+        #if targetEnvironment(macCatalyst)
+            #expect(cardPadding == config.cardPaddingMac)
+            #expect(cellPadding == config.cellPaddingVerticalMac)
+        #else
+            guard let traits = LMKSceneUtil.getKeyWindow()?.traitCollection else { return }
+            if traits.horizontalSizeClass == .regular, traits.verticalSizeClass == .regular {
+                let cardTiers = [config.cardPaddingIPadCompact, config.cardPaddingIPadRegular, config.cardPaddingIPadLarge]
+                let cellTiers = [config.cellPaddingVerticalIPadCompact, config.cellPaddingVerticalIPadRegular, config.cellPaddingVerticalIPadLarge]
+                #expect(cardTiers.contains(cardPadding))
+                #expect(cellTiers.contains(cellPadding))
+            } else {
+                // Phone-class canvas (any iPhone, iPad Slide Over): plain theme values.
+                #expect(cardPadding == config.large)
+                #expect(cellPadding == config.small)
+            }
+        #endif
+    }
 }
 
 // MARK: - LMKSpacingTheme

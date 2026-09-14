@@ -34,83 +34,90 @@ public enum LMKSpacing {
     /// Screen margins, large gaps — default 24pt.
     public static var xxl: CGFloat { config.xxl }
 
-    // MARK: - iPad Breakpoints
+    // MARK: - Expanded-Canvas Breakpoints
 
-    // `cardPadding` uses iPadCompact (768) / iPadLarge (1024) — two tiers because
-    // horizontal content padding needs a bigger jump only on the largest iPads.
-    // `cellPaddingVertical` uses iPadCompact (768) / iPadRegular (834) — three tiers
-    // because vertical cell density is more sensitive to screen size differences
-    // between iPad Air 11" and iPad Pro 12.9".
+    // Three tiers keyed on the shortest side of the key window (the portrait
+    // width, so rotation never flips the tier) whenever the window is regular
+    // in both size classes. Size classes, not the device idiom: an iPad in
+    // Slide Over is compact and gets phone padding; an iPhone Duo's inner
+    // display (669pt, regular × regular) gets the compact iPad tier; a
+    // resizable iPad window moves between tiers as it is resized.
 
-    /// iPad mini / iPad 9th gen (longest side 1024pt, shortest 768pt).
-    private static let iPadCompactBreakpoint: CGFloat = 768
-    /// iPad Air 11" / iPad Pro 11" (longest side 1194pt, shortest 834pt).
-    private static let iPadRegularBreakpoint: CGFloat = 834
-    /// iPad Pro 12.9" / iPad Pro 13" (longest side 1366pt, shortest 1024pt).
-    private static let iPadLargeBreakpoint: CGFloat = 1024
+    /// iPad mini (744pt) and older 9.7" / 10.2" iPads (768pt).
+    private static let compactCanvasMaxWidth: CGFloat = 768
+    /// iPad 10th gen / iPad Air 11" (820pt) and iPad Pro 11" (834pt).
+    private static let regularCanvasMaxWidth: CGFloat = 834
+
+    /// Canvas tier for the key window, `nil` when the window is not regular
+    /// in both dimensions (phones, Slide Over, narrow windows, Mac Catalyst).
+    private enum CanvasTier {
+        case compact, regular, large
+    }
 
     /// Content horizontal padding for headers, list content, cards.
-    /// Scales based on device size (iPhone -> iPad -> Mac Catalyst).
-    /// All per-device values are theme-configurable via `LMKSpacingTheme`;
-    /// iPhone falls through to `config.large` from the theme.
+    /// Scales with the canvas (phone-class -> iPad tiers -> Mac Catalyst).
+    /// All per-tier values are theme-configurable via `LMKSpacingTheme`;
+    /// phone-class canvases fall through to `config.large` from the theme.
     ///
-    /// iPad breakpoints (by longest screen side):
-    /// - Compact (≤768pt): iPad mini, iPad 9th gen
-    /// - Regular (≤1024pt): iPad Air, iPad Pro 11"
-    /// - Large (>1024pt): iPad Pro 12.9"/13"
+    /// Tiers (regular × regular windows, by shortest window side):
+    /// - Compact (≤768pt): iPad mini, iPad 9th gen, iPhone Duo inner display
+    /// - Regular (≤834pt): iPad 10th gen, iPad Air 11", iPad Pro 11"
+    /// - Large (>834pt): iPad Air 13", iPad Pro 13"
     public static var cardPadding: CGFloat {
         #if targetEnvironment(macCatalyst)
             return config.cardPaddingMac
         #elseif os(iOS)
-            if UIDevice.current.userInterfaceIdiom == .pad {
-                let screenSize = longestScreenSide
-                if screenSize <= iPadCompactBreakpoint {
-                    return config.cardPaddingIPadCompact
-                } else if screenSize <= iPadLargeBreakpoint {
-                    return config.cardPaddingIPadRegular
-                } else {
-                    return config.cardPaddingIPadLarge
-                }
+            switch canvasTier {
+            case .compact: return config.cardPaddingIPadCompact
+            case .regular: return config.cardPaddingIPadRegular
+            case .large: return config.cardPaddingIPadLarge
+            case nil: return config.large
             }
-            return config.large
         #else
             return config.large
         #endif
     }
 
-    /// Cell vertical padding (larger on bigger screens).
-    /// All per-device values are theme-configurable via `LMKSpacingTheme`;
-    /// iPhone falls through to `config.small` from the theme.
+    /// Cell vertical padding (larger on bigger canvases).
+    /// All per-tier values are theme-configurable via `LMKSpacingTheme`;
+    /// phone-class canvases fall through to `config.small` from the theme.
     ///
-    /// iPad breakpoints (by longest screen side):
-    /// - Compact (≤768pt): iPad mini, iPad 9th gen
-    /// - Regular (≤834pt): iPad Air 11", iPad Pro 11"
-    /// - Large (>834pt): iPad Pro 12.9"/13"
+    /// Same tiers as ``cardPadding``.
     public static var cellPaddingVertical: CGFloat {
         #if targetEnvironment(macCatalyst)
             return config.cellPaddingVerticalMac
         #elseif os(iOS)
-            if UIDevice.current.userInterfaceIdiom == .pad {
-                let screenSize = longestScreenSide
-                if screenSize <= iPadCompactBreakpoint {
-                    return config.cellPaddingVerticalIPadCompact
-                } else if screenSize <= iPadRegularBreakpoint {
-                    return config.cellPaddingVerticalIPadRegular
-                } else {
-                    return config.cellPaddingVerticalIPadLarge
-                }
+            switch canvasTier {
+            case .compact: return config.cellPaddingVerticalIPadCompact
+            case .regular: return config.cellPaddingVerticalIPadRegular
+            case .large: return config.cellPaddingVerticalIPadLarge
+            case nil: return config.small
             }
-            return config.small
         #else
             return config.medium
         #endif
     }
 
-    /// Longest side of the current screen, resolved via the key window scene.
-    private static var longestScreenSide: CGFloat {
-        let bounds = LMKSceneUtil.getKeyWindow()?.windowScene?.screen.bounds
-            ?? CGRect(origin: .zero, size: CGSize(width: 390, height: 844))
-        return max(bounds.width, bounds.height)
+    /// Tier of the key window when it is regular in both size classes.
+    ///
+    /// Without a key window (early launch) an iPad idiom is assumed to be a
+    /// full-screen regular-tier canvas so first-pass layouts are not phone-sized.
+    private static var canvasTier: CanvasTier? {
+        guard let window = LMKSceneUtil.getKeyWindow() else {
+            return UIDevice.current.userInterfaceIdiom == .pad ? .regular : nil
+        }
+        let traits = window.traitCollection
+        guard traits.horizontalSizeClass == .regular, traits.verticalSizeClass == .regular else {
+            return nil
+        }
+        let shortestSide = min(window.bounds.width, window.bounds.height)
+        if shortestSide <= compactCanvasMaxWidth {
+            return .compact
+        } else if shortestSide <= regularCanvasMaxWidth {
+            return .regular
+        } else {
+            return .large
+        }
     }
 
     public static var buttonPaddingVertical: CGFloat { config.buttonPaddingVertical }
