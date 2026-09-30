@@ -7,60 +7,37 @@ alwaysApply: true
 
 ## Target-Level Default Isolation
 
-LumiKitUI and LumiKitLottie set `defaultIsolation: MainActor` in `Package.swift`. This means:
+LumiKitUI, LumiKitPhoto, and LumiKitLottie set `defaultIsolation: MainActor` in `Package.swift`:
 
-- **All types** in these targets are implicitly `@MainActor` — no explicit annotation needed
-- **Do NOT** add `@MainActor` to UIViewController subclasses, views, or components in LumiKitUI/Lottie — it is redundant
-- **LumiKitCore** has no default isolation — types are `nonisolated` by default
+- **All types** in these targets are implicitly `@MainActor`; **do NOT** add `@MainActor` to views, view controllers, or components
+- **LumiKitCore** and **LumiKitDebug** have no default isolation; their types are `nonisolated` by default
 
 ## Opting Out of MainActor
 
-When a type in LumiKitUI must be callable from any isolation context, use:
-
 ```swift
-// nonisolated enum (utility type, no mutable state)
-public nonisolated enum LMKImageUtil { ... }
-
-// nonisolated struct (data type, Sendable)
-public nonisolated struct LMKSpacingTheme: Sendable { ... }
+public nonisolated struct LMKSpacingTheme: Sendable, Equatable { ... }   // configuration value
+public nonisolated enum LMKStatus: Sendable, Hashable, CaseIterable { ... }
+public nonisolated enum LMKImage { ... }                                  // static utility callable off-main
+@concurrent nonisolated static func downsample(...) async -> UIImage?    // work that must leave the main actor
 ```
 
-- **ALWAYS** use `nonisolated struct: Sendable` for theme config structs
-- **ALWAYS** use `nonisolated enum` for static utility types that should be callable off-main
+- **ALWAYS** make theme category structs, `Style` structs, `Strings` structs, and public enums `nonisolated` + `Sendable` (`Equatable` / `Hashable` as appropriate)
+- **ALWAYS** use `@concurrent nonisolated static func` for CPU work (image decoding, cropping, color extraction); a sync and an async overload of one name resolve by context, so the async body must not call itself by name
+- Token reads (`LMKColor.primary`, `LMKSpacing.large`, `LMKTheme.current`) are `nonisolated`; only `LMKTheme.apply` / `update` / `reset` are `@MainActor`
 
-## Configurable Strings Pattern
+## Shared State
 
-**ALWAYS** use this pattern for user-facing strings that apps can override:
+- **ALWAYS** guard process-wide mutable state in Core with `Mutex` (`LMKLogger`, `LMKDate`, `LMKLogStore`); `nonisolated(unsafe)` only for a `static let` observer token that Swift cannot prove Sendable
+- **NEVER** `nonisolated(unsafe) static var` for configuration read from multiple threads
 
-```swift
-// 1. Sendable struct with defaults
-public struct LMKFeatureStrings: Sendable {
-    public var title: String
-    public init(title: String = "Default") {
-        self.title = title
-    }
-}
+## Strings
 
-// 2. Module-level nonisolated(unsafe) var
-nonisolated(unsafe) public var lmkFeatureStrings = LMKFeatureStrings()
-```
+- Every configurable string is a nested `Strings: Sendable, Equatable` struct with `LMKLocalized` defaults, a `static var strings` (main-actor isolated in UI targets, lock-guarded in Core), and an instance `strings` on host-created types; see `naming.RULE.md`
 
-- **MUST** be `Sendable` — all stored properties must be `Sendable`
-- **MUST** use `nonisolated(unsafe)` at module level — not inside a class
-- **MUST** provide reasonable defaults in `init`
-- Apps set strings once at launch before any UI runs
-- Two naming patterns in codebase: top-level `LMK*Strings` or nested `Type.Strings`
+## Tasks and Hops
 
-## Sendable
-
-- **ALWAYS** make configuration structs `Sendable`
-- **ALWAYS** make protocols `Sendable` when their conformers are shared across actors
-- `LMKTheme` protocol is `Sendable` (theme values are read from multiple contexts)
-
-## Concurrency Helpers
-
-- **ALWAYS** use `LMKConcurrencyHelpers.encode/decode` for off-main-thread Codable operations
-- **ALWAYS** use `LMKConcurrencyHelpers.executeTask(weak:)` for async tasks in ViewControllers
-- **ALWAYS** use `LMKConcurrencyHelpers.assertMainActor(operation:)` for runtime safety checks
-- **NEVER** use `DispatchQueue.main.async` — use `LMKConcurrencyHelpers.onMainActor(weak:)` instead
-- **NEVER** use `DispatchQueue.main.asyncAfter` — use `LMKConcurrencyHelpers.onMainActorAfter(delay:)` instead
+- **Every `Task { }` stores its handle** in a property and is cancelled in `deinit` (`Task` handles are Sendable; observer tokens and `DispatchWorkItem`s are not, so keep those out of `deinit`)
+- **ALWAYS** use `LMKConcurrency.encode` / `decode` (throwing, custom coders) for Codable work from any isolation
+- **ALWAYS** use `LMKConcurrency.onMainActor(weak:_:)` / `onMainActorAfter(delay:_:)` (both return the `Task`) instead of `DispatchQueue.main.async` / `asyncAfter`
+- **ALWAYS** use `LMKConcurrency.executeTask(weak:operation:)` for view-controller tasks that need cancellation and error logging
+- `LMKConcurrency.assertMainActor(operation:)` wraps `MainActor.assertIsolated`

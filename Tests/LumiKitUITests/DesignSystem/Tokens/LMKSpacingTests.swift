@@ -24,14 +24,14 @@ struct LMKSpacingTests {
 
     @Test
     func `Canvas-scaled paddings follow the key window's size classes`() {
-        let config = LMKThemeManager.shared.spacing
+        let config = LMKTheme.current.spacing
         let cardPadding = LMKSpacing.cardPadding
         let cellPadding = LMKSpacing.cellPaddingVertical
         #if targetEnvironment(macCatalyst)
             #expect(cardPadding == config.cardPaddingMac)
             #expect(cellPadding == config.cellPaddingVerticalMac)
         #else
-            guard let traits = LMKSceneUtil.getKeyWindow()?.traitCollection else { return }
+            guard let traits = LMKScene.keyWindow?.traitCollection else { return }
             if traits.horizontalSizeClass == .regular, traits.verticalSizeClass == .regular {
                 let cardTiers = [config.cardPaddingIPadCompact, config.cardPaddingIPadRegular, config.cardPaddingIPadLarge]
                 let cellTiers = [config.cellPaddingVerticalIPadCompact, config.cellPaddingVerticalIPadRegular, config.cellPaddingVerticalIPadLarge]
@@ -66,10 +66,10 @@ struct LMKSpacingConfigurationTests {
 
     @Test
     func `Custom spacing is applied via proxy`() {
-        let original = LMKThemeManager.shared.spacing
-        defer { LMKThemeManager.shared.apply(spacing: original) }
+        let original = LMKTheme.current.spacing
+        defer { LMKTheme.update { $0.spacing = original } }
 
-        LMKThemeManager.shared.apply(spacing: .init(large: 20, xxl: 28))
+        LMKTheme.update { $0.spacing = .init(large: 20, xxl: 28) }
         #expect(LMKSpacing.large == 20)
         #expect(LMKSpacing.xxl == 28)
         // Other values stay at defaults

@@ -2,8 +2,14 @@
 
 import PackageDescription
 
+/// CI exports LUMIKIT_WARNINGS_AS_ERRORS=1 so the package builds warning-free; consumers never
+/// inherit the setting (and `unsafeFlags` would make the package ineligible as a dependency).
+let warningsAsErrors: [SwiftSetting] =
+    Context.environment["LUMIKIT_WARNINGS_AS_ERRORS"] != nil ? [.treatAllWarnings(as: .error)] : []
+
 let package = Package(
     name: "LumiKit",
+    defaultLocalization: "en",
     platforms: [
         .iOS(.v18),
         .macCatalyst(.v18),
@@ -12,8 +18,9 @@ let package = Package(
     products: [
         .library(name: "LumiKitCore", targets: ["LumiKitCore"]),
         .library(name: "LumiKitUI", targets: ["LumiKitUI"]),
+        .library(name: "LumiKitPhoto", targets: ["LumiKitPhoto"]),
+        .library(name: "LumiKitDebug", targets: ["LumiKitDebug"]),
         .library(name: "LumiKitLottie", targets: ["LumiKitLottie"]),
-        .library(name: "LumiKitNetwork", targets: ["LumiKitNetwork"]),
     ],
     dependencies: [
         .package(url: "https://github.com/SnapKit/SnapKit.git", from: "6.0.0"),
@@ -28,19 +35,9 @@ let package = Package(
         .target(
             name: "LumiKitCore",
             dependencies: [],
-            path: "Sources/LumiKitCore"
-        ),
-
-        // MARK: - Network (DEBUG-only network debugging with concurrency workarounds)
-
-        .target(
-            name: "LumiKitNetwork",
-            dependencies: ["LumiKitCore"],
-            path: "Sources/LumiKitNetwork",
-            swiftSettings: [
-                .define("LMK_ENABLE_NETWORK_LOGGING", .when(configuration: .debug)),
-                .enableExperimentalFeature("StrictConcurrency=minimal", .when(configuration: .debug)),
-            ]
+            path: "Sources/LumiKitCore",
+            resources: [.process("Resources")],
+            swiftSettings: warningsAsErrors
         ),
 
         // MARK: - UI (UIKit + SnapKit)
@@ -49,13 +46,42 @@ let package = Package(
             name: "LumiKitUI",
             dependencies: [
                 "LumiKitCore",
-                "LumiKitNetwork",
                 .product(name: "SnapKit", package: "SnapKit"),
             ],
             path: "Sources/LumiKitUI",
+            resources: [.process("Resources")],
             swiftSettings: [
                 .defaultIsolation(MainActor.self),
-            ]
+            ] + warningsAsErrors
+        ),
+
+        // MARK: - Photo (PhotosUI-backed browser, grid, crop, metadata, share preview)
+
+        .target(
+            name: "LumiKitPhoto",
+            dependencies: ["LumiKitCore", "LumiKitUI"],
+            path: "Sources/LumiKitPhoto",
+            resources: [.process("Resources")],
+            swiftSettings: [
+                .defaultIsolation(MainActor.self),
+            ] + warningsAsErrors
+        ),
+
+        // MARK: - Debug (DEBUG-only network logging + inspector UI)
+
+        // The inspector screens need LumiKitUI (UIKit); the URLProtocol logger is Foundation-only
+        // so the target still builds and tests natively on macOS without the UI dependency.
+        .target(
+            name: "LumiKitDebug",
+            dependencies: [
+                "LumiKitCore",
+                .target(name: "LumiKitUI", condition: .when(platforms: [.iOS, .macCatalyst])),
+            ],
+            path: "Sources/LumiKitDebug",
+            resources: [.process("Resources")],
+            swiftSettings: [
+                .define("LMK_ENABLE_NETWORK_LOGGING", .when(configuration: .debug)),
+            ] + warningsAsErrors
         ),
 
         // MARK: - Lottie (Optional Lottie dependency)
@@ -67,9 +93,10 @@ let package = Package(
                 .product(name: "Lottie", package: "lottie-spm"),
             ],
             path: "Sources/LumiKitLottie",
+            resources: [.process("Resources")],
             swiftSettings: [
                 .defaultIsolation(MainActor.self),
-            ]
+            ] + warningsAsErrors
         ),
 
         // MARK: - Tests
@@ -85,17 +112,22 @@ let package = Package(
             path: "Tests/LumiKitUITests"
         ),
         .testTarget(
-            name: "LumiKitLottieTests",
-            dependencies: ["LumiKitLottie"],
-            path: "Tests/LumiKitLottieTests"
+            name: "LumiKitPhotoTests",
+            dependencies: ["LumiKitPhoto"],
+            path: "Tests/LumiKitPhotoTests"
         ),
         .testTarget(
-            name: "LumiKitNetworkTests",
-            dependencies: ["LumiKitNetwork"],
-            path: "Tests/LumiKitNetworkTests",
+            name: "LumiKitDebugTests",
+            dependencies: ["LumiKitDebug"],
+            path: "Tests/LumiKitDebugTests",
             swiftSettings: [
                 .define("LMK_ENABLE_NETWORK_LOGGING", .when(configuration: .debug)),
             ]
+        ),
+        .testTarget(
+            name: "LumiKitLottieTests",
+            dependencies: ["LumiKitLottie"],
+            path: "Tests/LumiKitLottieTests"
         ),
     ]
 )

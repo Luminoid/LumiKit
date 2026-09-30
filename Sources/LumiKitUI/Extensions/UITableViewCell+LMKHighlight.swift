@@ -23,10 +23,3 @@ public extension UITableViewCell {
         selectedBackgroundView = selectedBgView
     }
 }
-
-public extension UITableView {
-    /// Configure a standard `UITableViewCell` with custom highlight.
-    func lmk_configureCellHighlight(_ cell: UITableViewCell) {
-        cell.lmk_configureCustomHighlight()
-    }
-}

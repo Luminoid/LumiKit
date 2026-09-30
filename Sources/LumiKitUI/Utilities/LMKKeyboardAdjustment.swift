@@ -192,7 +192,7 @@ private final class LMKKeyboardScrollAdjuster {
         guard abs(offsetY - scrollView.contentOffset.y) > 0.5 else { return }
         scrollView.setContentOffset(
             CGPoint(x: scrollView.contentOffset.x, y: offsetY),
-            animated: LMKAnimationHelper.shouldAnimate
+            animated: LMKAnimation.shouldAnimate
         )
     }
 

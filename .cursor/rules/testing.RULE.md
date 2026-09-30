@@ -8,57 +8,44 @@ alwaysApply: false
 
 # Testing Rules
 
-## Test Structure
+## Structure
 
-- **LumiKitCoreTests/**: 76 tests, 12 suites — pure Foundation tests (mirrors Sources/LumiKitCore/ subfolders)
-- **LumiKitUITests/**: 369 tests, 68 suites — UIKit component tests (requires iOS Simulator, mirrors Sources/LumiKitUI/ subfolders)
-- **LumiKitLottie**: No test target — manual verification only
+Five test targets mirror the source folders: `LumiKitCoreTests`, `LumiKitUITests` (with `Support/` for `LMKThemeTesting` and `LMKWait`, and `Naming/` for the naming-rule scan), `LumiKitPhotoTests`, `LumiKitDebugTests`, `LumiKitLottieTests`. Every UIKit target needs the iOS Simulator; `swift test` cannot run the package.
 
 ## Framework: Swift Testing
 
-The entire test suite uses **Swift Testing** (not XCTest):
+- **ALWAYS** `@Suite("Description")` (or a plain struct) and `@Test func \`readable name\`()`; `#expect(...)`; `try #require(...)` instead of force unwraps
+- **ALWAYS** `@MainActor` on suites that touch UIKit or main-actor code
+- **ALWAYS** `.serialized` on suites that mutate shared state (`LMKTheme.apply`, `Type.strings`, `LMKLogger` configuration, `LMKHaptics.isEnabled`) and restore it with `defer`
+- **ALWAYS** Arrange-Act-Assert, `// MARK: -` sections, real behavior assertions (not just "no crash"), edge cases (empty, nil, zero, negative, boundary)
 
-- **ALWAYS** use `@Suite("Description")` for test suites
-- **ALWAYS** use `@Test("description") func camelCaseName()` for test methods
-- **ALWAYS** use `#expect(...)` for assertions
-- **ALWAYS** use `try #require(...)` for unwrapping optionals (never force unwrap `!` in tests)
-- **ALWAYS** use `@MainActor` on suites/tests that touch UIKit or MainActor-isolated code
+## Theme and Layout Helpers
 
-## Patterns
-
-- **ALWAYS** use Arrange-Act-Assert pattern
-- **ALWAYS** add `// MARK: -` sections for logical grouping
-- **ALWAYS** use `.serialized` trait on suites that mutate shared state (e.g., `LMKThemeManager.shared`, configurable strings)
-- **ALWAYS** use `defer` to restore shared state after mutation:
-  ```swift
-  @Test("custom theme") func customTheme() {
-      LMKThemeManager.shared.apply(spacing: .init(large: 20))
-      defer { LMKThemeManager.shared.apply(spacing: .init()) }
-      #expect(LMKSpacing.large == 20)
-  }
-  ```
-- **ALWAYS** test real behavior — assert meaningful properties, not just "no crash"
-- **ALWAYS** test edge cases: empty strings, nil values, zero sizes, negative values, boundary conditions
-
-## Build & Test Commands
-
-```bash
-# Run all tests (requires iOS Simulator — can't use swift test for UIKit targets)
-xcodebuild test \
-  -scheme LumiKit-Package \
-  -destination 'platform=iOS Simulator,name=iPhone 17' \
-  -skipPackagePluginValidation \
-  CODE_SIGNING_ALLOWED=NO 2>&1 | tail -20
-
-# Build only (faster, no simulator needed for Core)
-swift build --target LumiKitCore
+```swift
+let traits = LMKThemeTesting.traits(for: LMKThemeTesting.distinct, style: .dark, contrast: .high)
+let view = LMKChipView(title: "x")
+view.traitOverrides.lmkTheme = LMKThemeReference(LMKThemeTesting.distinct)   // per-view scoping, no global mutation
+LMKThemeTesting.fit(view, width: 320)                                          // lays out at a width
+await LMKWait.until { toast.isPresented }                                      // poll instead of a fixed sleep
 ```
 
-- **NEVER** use `swift test` for the full package — UIKit targets require iOS Simulator
-- `swift build --target LumiKitCore` is fine for Core-only changes (no UIKit)
+- Per component: a theme-change test, a Dynamic Type test (`traitOverrides.preferredContentSizeCategory = .accessibilityExtraExtraExtraLarge`), a layer re-stamp test (`traitOverrides.userInterfaceStyle = .dark` re-resolves `layer.shadowColor`), and behavior tests
+- The xctest host has no connected scene: `LMKTheme.apply` cannot stamp test windows; stamp `LMKTheme.currentReference` by hand
 
-## Target-Specific Testing
+## xctest-Host Gotchas
 
-- **LumiKitCore**: Can test with `swift test` if needed (pure Foundation)
-- **LumiKitUI**: Must use `xcodebuild test` with iOS Simulator
-- **LumiKitLottie**: No test target currently — manual verification
+- `UIControl.sendActions(for:)` delivers nothing: call the handler or the `on*` closure directly
+- UIKit modal `present` / `dismiss` completions never run; `UIRefreshControl.isRefreshing` never turns true; `becomeFirstResponder()` on a view controller hangs; `UIPasteboard.general` blocks forever
+- `UIView.setAnimationsEnabled` is process-global and unsafe across parallel suites; parallel suites can hold the main actor for seconds, so wait with `LMKWait.until` and a deadline
+- Trait overrides propagate only inside a window; reading `traitOverrides` without an override traps
+- Compare `CGFloat`s against a single literal (`#expect(x == 351)`), not an `Int` expression
+
+## Commands
+
+```bash
+make test                                                   # full package, iPhone 17 simulator
+make test-filter FILTER=LumiKitUITests/LMKButtonTests       # one suite (append /methodName for one test)
+make build-host                                             # LumiKitCore + LumiKitDebug natively (build only)
+```
+
+Logs land in `build/logs/`; read the log for the result rather than a piped exit code.

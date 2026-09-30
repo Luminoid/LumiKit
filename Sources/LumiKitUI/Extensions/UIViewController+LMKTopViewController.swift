@@ -8,19 +8,11 @@
 import UIKit
 
 public extension UIViewController {
-    /// Get the top-most view controller in the view hierarchy.
+    /// The top-most view controller under `controller` (walks navigation and tab containers and
+    /// presented controllers); with no `controller`, starts at the key window's root
+    /// (`LMKScene.keyWindow`).
     static func lmk_topViewController(controller: UIViewController? = nil) -> UIViewController? {
-        let rootViewController: UIViewController? = if let controller {
-            controller
-        } else {
-            UIApplication.shared.connectedScenes
-                .compactMap { $0 as? UIWindowScene }
-                .flatMap(\.windows)
-                .first { $0.isKeyWindow }?
-                .rootViewController
-        }
-
-        guard let root = rootViewController else { return nil }
+        guard let root = controller ?? LMKScene.keyWindow?.rootViewController else { return nil }
 
         if let nav = root as? UINavigationController {
             return lmk_topViewController(controller: nav.visibleViewController)

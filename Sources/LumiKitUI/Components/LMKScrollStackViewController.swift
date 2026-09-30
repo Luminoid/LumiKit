@@ -2,7 +2,9 @@
 //  LMKScrollStackViewController.swift
 //  LumiKit
 //
-//  Base class for scroll + vertical stack layout view controllers.
+//  Base class for scroll + vertical stack screens, styled from
+//  `theme.scrollStack`: spacing, insets, width mode, keyboard behavior, an
+//  optional custom navigation bar, a refresh control, and content reloads.
 //
 
 import SnapKit
@@ -10,87 +12,151 @@ import UIKit
 
 /// Base class for view controllers with a scrollable vertical stack layout.
 ///
-/// Provides a scroll view containing a content view with a vertical stack view.
-/// Subclasses override open properties to configure spacing, insets, scroll
-/// behavior, an optional custom ``navigationBar`` pinned above the scroll view,
-/// and keyboard avoidance (``installsKeyboardAdjustment``, on by default), then
-/// override ``setupStackContent()`` to populate the stack.
+/// Subclasses override `setupStackContent()` to populate `stackView`; spacing,
+/// insets, width mode, and scroll behavior come from `style`. `navigationBar`
+/// installs a custom bar above the scroll view; `makeRefreshControl()` adds
+/// pull-to-refresh (skipped under the Mac idiom, where `UIRefreshControl` traps).
 ///
 /// ```swift
-/// final class MyDetailViewController: LMKScrollStackViewController {
-///     override var stackSpacing: CGFloat { LMKSpacing.xl }
-///     override var contentInsets: UIEdgeInsets {
-///         UIEdgeInsets(top: LMKSpacing.xl, left: LMKSpacing.large,
-///                      bottom: LMKSpacing.xl, right: LMKSpacing.large)
+/// final class DetailViewController: LMKScrollStackViewController {
+///     init() {
+///         super.init(style: LMKScrollStackViewController.Style(widthMode: .readable))
 ///     }
 ///
 ///     override func setupStackContent() {
 ///         addSectionHeader("Details")
-///         stackView.addArrangedSubview(LMKLabelFactory.body(text: "Hello"))
+///         stackView.addArrangedSubview(UILabel.lmk_make(.body, text: "Hello"))
 ///         addDivider()
 ///     }
 /// }
 /// ```
-open class LMKScrollStackViewController: UIViewController {
-    // MARK: - Configuration
+open class LMKScrollStackViewController: UIViewController, LMKThemeApplying {
+    // MARK: - Vocabulary
 
-    /// Spacing between stack view items. Default: ``LMKSpacing/large``.
-    open var stackSpacing: CGFloat { LMKSpacing.large }
-
-    /// Insets from the content view edges to the stack view.
-    /// Default: ``LMKSpacing/cardPadding`` on all sides.
-    open var contentInsets: UIEdgeInsets {
-        let padding = LMKSpacing.cardPadding
-        return UIEdgeInsets(top: padding, left: padding, bottom: padding, right: padding)
+    /// What the scroll view's bottom edge meets.
+    public nonisolated enum BottomAnchor: Sendable, Hashable, CaseIterable {
+        case safeArea
+        case superview
     }
 
-    /// Keyboard dismiss mode for the scroll view. Default: `.onDrag`.
-    open var keyboardDismissMode: UIScrollView.KeyboardDismissMode { .onDrag }
+    // MARK: - Style
 
-    /// Whether the scroll view always bounces vertically. Default: `false`.
-    open var alwaysBounceVertical: Bool { false }
+    public nonisolated struct Style: Sendable, Equatable, LMKThemeExtension {
+        /// `nil` = `spacing.large`.
+        public var stackSpacing: CGFloat?
+        /// From the content edges to the stack; `nil` = `cardPadding` on all sides.
+        public var contentInsets: NSDirectionalEdgeInsets?
+        /// `nil` = `.tokenInsets`.
+        public var widthMode: LMKFormScaffold.WidthMode?
+        /// `nil` = `backgroundPrimary`.
+        public var backgroundColor: UIColor?
+        /// `nil` = `.onDrag`.
+        public var keyboardDismissMode: UIScrollView.KeyboardDismissMode?
+        /// `nil` = no.
+        public var alwaysBounceVertical: Bool?
+        /// `nil` = `.safeArea`.
+        public var bottomAnchor: BottomAnchor?
+        /// iOS 26 scroll edge effects at the top and bottom; `nil` = the system default.
+        public var showsScrollEdgeEffects: Bool?
+        /// Section headers from `addSectionHeader(_:)`; `nil` = `h3`.
+        public var sectionHeaderTextStyle: LMKTextStyle?
+        /// `nil` = `textPrimary`.
+        public var sectionHeaderColor: UIColor?
 
-    /// When `true`, the scroll view bottom edge anchors to the safe area layout guide.
-    /// When `false`, the scroll view fills the full superview bounds.
-    /// Default: `true`.
-    open var scrollViewUseSafeArea: Bool { true }
+        public init(
+            stackSpacing: CGFloat? = nil,
+            contentInsets: NSDirectionalEdgeInsets? = nil,
+            widthMode: LMKFormScaffold.WidthMode? = nil,
+            backgroundColor: UIColor? = nil,
+            keyboardDismissMode: UIScrollView.KeyboardDismissMode? = nil,
+            alwaysBounceVertical: Bool? = nil,
+            bottomAnchor: BottomAnchor? = nil,
+            showsScrollEdgeEffects: Bool? = nil,
+            sectionHeaderTextStyle: LMKTextStyle? = nil,
+            sectionHeaderColor: UIColor? = nil
+        ) {
+            self.stackSpacing = stackSpacing
+            self.contentInsets = contentInsets
+            self.widthMode = widthMode
+            self.backgroundColor = backgroundColor
+            self.keyboardDismissMode = keyboardDismissMode
+            self.alwaysBounceVertical = alwaysBounceVertical
+            self.bottomAnchor = bottomAnchor
+            self.showsScrollEdgeEffects = showsScrollEdgeEffects
+            self.sectionHeaderTextStyle = sectionHeaderTextStyle
+            self.sectionHeaderColor = sectionHeaderColor
+        }
 
-    /// Optional custom navigation bar pinned above the scroll view; when
-    /// non-nil the bar is installed via ``LMKNavigationBar/pinToTop(of:)`` and
-    /// the scroll view tops out at the bar's bottom instead of the view's top
-    /// edge. Override with a stored (or lazy) property — the getter is read
-    /// once during view setup. Default: `nil`.
+        public static let defaultValue = Self()
+
+        /// `other`'s non-nil fields over this style's.
+        public func merging(_ other: Self) -> Self {
+            Self(
+                stackSpacing: other.stackSpacing ?? stackSpacing,
+                contentInsets: other.contentInsets ?? contentInsets,
+                widthMode: other.widthMode ?? widthMode,
+                backgroundColor: other.backgroundColor ?? backgroundColor,
+                keyboardDismissMode: other.keyboardDismissMode ?? keyboardDismissMode,
+                alwaysBounceVertical: other.alwaysBounceVertical ?? alwaysBounceVertical,
+                bottomAnchor: other.bottomAnchor ?? bottomAnchor,
+                showsScrollEdgeEffects: other.showsScrollEdgeEffects ?? showsScrollEdgeEffects,
+                sectionHeaderTextStyle: other.sectionHeaderTextStyle ?? sectionHeaderTextStyle,
+                sectionHeaderColor: other.sectionHeaderColor ?? sectionHeaderColor
+            )
+        }
+    }
+
+    // MARK: - Hooks
+
+    /// A custom navigation bar pinned above the scroll view (read once during setup); `nil` = none.
     open var navigationBar: LMKNavigationBar? { nil }
 
-    /// Installs scroll-view keyboard avoidance (`lmk_enableKeyboardAdjustment()`)
-    /// so the focused field stays visible above the keyboard. Default: `true`.
+    /// Installs scroll-view keyboard avoidance (`lmk_enableKeyboardAdjustment()`). Default `true`.
     open var installsKeyboardAdjustment: Bool { true }
+
+    /// A pull-to-refresh control to install on the scroll view; `nil` (the default) installs none.
+    /// Skipped under the Mac idiom, where `UIRefreshControl` is unsupported.
+    open func makeRefreshControl() -> UIRefreshControl? {
+        nil
+    }
+
+    /// Override to populate `stackView`. Called from `viewDidLoad` and from `reloadContent()`.
+    open func setupStackContent() {}
 
     // MARK: - Views
 
-    /// The scroll view that contains all content.
-    public private(set) lazy var scrollView: UIScrollView = {
-        let scrollView = UIScrollView()
-        scrollView.keyboardDismissMode = self.keyboardDismissMode
-        scrollView.alwaysBounceVertical = self.alwaysBounceVertical
-        return scrollView
-    }()
-
+    public let scrollView = UIScrollView()
     /// Intermediate content view inside the scroll view.
-    public private(set) lazy var contentView: UIView = .init()
+    public let contentView = UIView()
+    /// The vertical stack subclasses add their content to.
+    public let stackView = UIStackView()
+    /// The refresh control installed from `makeRefreshControl()`, if any.
+    public private(set) var refreshControl: UIRefreshControl?
 
-    /// The vertical stack view where subclasses add their content.
-    public private(set) lazy var stackView: UIStackView = {
-        let stackView = UIStackView()
-        stackView.axis = .vertical
-        stackView.spacing = self.stackSpacing
-        stackView.alignment = .fill
-        return stackView
-    }()
+    // MARK: - State
+
+    /// Per-instance style; `nil` fields resolve from `theme.scrollStack`, then the built-in look.
+    public var style: Style {
+        didSet {
+            guard style != oldValue, isViewLoaded else { return }
+            applyTheme(traitCollection.lmkTheme)
+        }
+    }
+
+    /// Called at the end of every `applyTheme`, for tweaks the style does not cover.
+    public var didApplyStyle: ((LMKScrollStackViewController) -> Void)?
+
+    /// The style last resolved against the theme.
+    public private(set) var resolvedStyle = Style()
+
+    private var installedNavigationBar: LMKNavigationBar?
+    private var scrollBottomSafeAreaConstraint: Constraint?
+    private var scrollBottomSuperviewConstraint: Constraint?
 
     // MARK: - Initialization
 
-    public init() {
+    public init(style: Style = Style()) {
+        self.style = style
         super.init(nibName: nil, bundle: nil)
     }
 
@@ -103,20 +169,17 @@ open class LMKScrollStackViewController: UIViewController {
 
     override open func viewDidLoad() {
         super.viewDidLoad()
-        view.backgroundColor = LMKColor.backgroundPrimary
         setupScrollStack()
         setupStackContent()
+        lmk_startApplyingTheme()
     }
 
     // MARK: - Setup
 
     private func setupScrollStack() {
-        // Read the overridable getter once — a subclass may compute it.
         let navigationBar = navigationBar
-        if let navigationBar {
-            view.addSubview(navigationBar)
-            navigationBar.pinToTop(of: view)
-        }
+        installedNavigationBar = navigationBar
+        navigationBar?.install(in: view)
 
         view.addSubview(scrollView)
         scrollView.snp.makeConstraints { make in
@@ -126,15 +189,17 @@ open class LMKScrollStackViewController: UIViewController {
                 make.top.equalToSuperview()
             }
             make.leading.trailing.equalToSuperview()
-            if scrollViewUseSafeArea {
-                make.bottom.equalTo(view.safeAreaLayoutGuide)
-            } else {
-                make.bottom.equalToSuperview()
-            }
+            scrollBottomSafeAreaConstraint = make.bottom.equalTo(view.safeAreaLayoutGuide).constraint
+            scrollBottomSuperviewConstraint = make.bottom.equalToSuperview().constraint
         }
+        scrollBottomSuperviewConstraint?.deactivate()
 
         if installsKeyboardAdjustment {
             scrollView.lmk_enableKeyboardAdjustment()
+        }
+        if let control = makeRefreshControl(), traitCollection.userInterfaceIdiom != .mac {
+            scrollView.refreshControl = control
+            refreshControl = control
         }
 
         scrollView.addSubview(contentView)
@@ -143,32 +208,82 @@ open class LMKScrollStackViewController: UIViewController {
             make.width.equalToSuperview()
         }
 
-        let insets = contentInsets
+        stackView.axis = .vertical
+        stackView.alignment = .fill
         contentView.addSubview(stackView)
-        stackView.snp.makeConstraints { make in
-            make.top.equalToSuperview().offset(insets.top)
-            make.leading.equalToSuperview().offset(insets.left)
-            make.trailing.equalToSuperview().offset(-insets.right)
-            make.bottom.equalToSuperview().offset(-insets.bottom)
+    }
+
+    // MARK: - Theme
+
+    open func applyTheme(_ theme: LMKTheme) {
+        resolvedStyle = theme.scrollStack.merging(style)
+        let resolved = resolvedStyle
+        view.backgroundColor = resolved.backgroundColor ?? LMKColor.backgroundPrimary
+        stackView.spacing = resolved.stackSpacing ?? theme.spacing.large
+        scrollView.keyboardDismissMode = resolved.keyboardDismissMode ?? .onDrag
+        scrollView.alwaysBounceVertical = resolved.alwaysBounceVertical ?? false
+        if (resolved.bottomAnchor ?? .safeArea) == .safeArea {
+            scrollBottomSuperviewConstraint?.deactivate()
+            scrollBottomSafeAreaConstraint?.activate()
+        } else {
+            scrollBottomSafeAreaConstraint?.deactivate()
+            scrollBottomSuperviewConstraint?.activate()
         }
+        LMKFormScaffold.pin(
+            stackView,
+            in: contentView,
+            insets: resolved.contentInsets ?? .lmk_all(LMKSpacing.cardPadding),
+            widthMode: resolved.widthMode ?? .tokenInsets
+        )
+        if #available(iOS 26, *), let showsEdgeEffects = resolved.showsScrollEdgeEffects {
+            scrollView.topEdgeEffect.isHidden = !showsEdgeEffects
+            scrollView.bottomEdgeEffect.isHidden = !showsEdgeEffects
+        }
+        for case let header as UILabel in stackView.arrangedSubviews where header.accessibilityTraits.contains(.header) {
+            header.lmk_apply(resolved.sectionHeaderTextStyle ?? .h3, color: resolved.sectionHeaderColor ?? LMKColor.textPrimary, lineMetrics: true)
+        }
+        didApplyStyle?(self)
     }
 
-    // MARK: - Template Method
+    // MARK: - Content
 
-    /// Override to populate the stack view with content.
-    /// Called after the scroll and stack infrastructure is set up in ``viewDidLoad()``.
-    open func setupStackContent() {}
-
-    // MARK: - Helpers
-
-    /// Add a styled section header label to the stack view.
-    /// - Parameter title: The header text.
-    public func addSectionHeader(_ title: String) {
-        stackView.addArrangedSubview(LMKLabelFactory.heading(text: title, level: 3))
+    /// Empties the stack and runs `setupStackContent()` again.
+    public func reloadContent() {
+        for view in stackView.arrangedSubviews {
+            stackView.removeArrangedSubview(view)
+            view.removeFromSuperview()
+        }
+        setupStackContent()
     }
 
-    /// Add a pixel-perfect divider to the stack view.
-    public func addDivider() {
-        stackView.addArrangedSubview(LMKDividerView())
+    /// Scrolls so `view` (a descendant of the stack) is visible.
+    public func scrollTo(_ view: UIView, animated: Bool) {
+        let rect = view.convert(view.bounds, to: scrollView)
+        scrollView.scrollRectToVisible(rect, animated: animated && LMKAnimation.shouldAnimate)
+    }
+
+    /// Adds a section header (a `.header` accessibility element) to the stack.
+    @discardableResult
+    public func addSectionHeader(_ title: String) -> UILabel {
+        let label = UILabel.lmk_make(resolvedStyle.sectionHeaderTextStyle ?? .h3, text: title, color: resolvedStyle.sectionHeaderColor ?? LMKColor.textPrimary)
+        label.accessibilityTraits = .header
+        stackView.addArrangedSubview(label)
+        return label
+    }
+
+    /// Adds a pixel-perfect divider to the stack.
+    @discardableResult
+    public func addDivider() -> LMKDividerView {
+        let divider = LMKDividerView()
+        stackView.addArrangedSubview(divider)
+        return divider
+    }
+}
+
+public nonisolated extension LMKTheme {
+    /// App-wide default style for `LMKScrollStackViewController`.
+    var scrollStack: LMKScrollStackViewController.Style {
+        get { self[LMKScrollStackViewController.Style.self] }
+        set { self[LMKScrollStackViewController.Style.self] = newValue }
     }
 }

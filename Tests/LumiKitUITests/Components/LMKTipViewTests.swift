@@ -1,8 +1,6 @@
 //
 //  LMKTipViewTests.swift
-//  LumiKitUITests
-//
-//  Tests for tip component.
+//  LumiKit
 //
 
 import Testing
@@ -11,168 +9,215 @@ import UIKit
 
 @MainActor
 struct LMKTipViewTests {
-    // MARK: - Initialization
-
     @Test
-    func `Init with message only uses defaults`() {
-        let tip = LMKTipView(message: "Hello")
-
-        #expect(tip.superview == nil)
-        #expect(tip.onDismiss == nil)
-    }
-
-    @Test
-    func `Init with title, message, and icon`() {
+    func `Init keeps the content and builds the bubble`() {
         let icon = UIImage(systemName: "star")
         let tip = LMKTipView(title: "Tip", message: "Message", icon: icon)
+        #expect(tip.title == "Tip")
+        #expect(tip.message == "Message")
+        #expect(tip.icon === icon)
+        #expect(tip.titleLabel.text == "Tip")
+        #expect(tip.messageLabel.text == "Message")
+        #expect(!tip.iconBackgroundView.isHidden)
+        #expect(tip.superview == nil)
+        #expect(tip.onDismiss == nil)
 
+        let plain = LMKTipView(message: "Hello")
+        #expect(plain.titleLabel.isHidden)
+        #expect(plain.iconBackgroundView.isHidden)
+    }
+
+    @Test
+    func `Default bubble surface, dimming, and strings`() {
+        let tip = LMKTipView(message: "Test")
+        #expect(tip.bubbleView.layer.cornerRadius == LMKCornerRadius.medium)
+        #expect(tip.bubbleView.backgroundColor === LMKColor.backgroundSecondary)
+        #expect(tip.bubbleView.layer.shadowOpacity > 0)
+        #expect(tip.dimmingView.backgroundColor != nil)
+        #expect(tip.dismissButton.isHidden, "the dismiss button appears for centered tips at show time")
+        #expect(tip.dismissButton.title == "Got it")
+        let strings = LMKTipView.Strings()
+        #expect(strings.dismissAccessibilityHint == "Tap anywhere to dismiss")
+        #expect(strings.dismissButtonTitle == "Got it")
+        tip.strings = LMKTipView.Strings(dismissAccessibilityHint: "Toca", dismissButtonTitle: "Entendido")
+        #expect(tip.dismissButton.title == "Entendido")
+        #expect(tip.dimmingView.accessibilityLabel == "Toca")
+    }
+
+    @Test
+    func `Accessibility exposes the bubble and the dimming button`() {
+        let tip = LMKTipView(title: "Title", message: "Message")
+        #expect(!tip.isAccessibilityElement)
+        #expect(tip.bubbleView.isAccessibilityElement)
+        #expect(tip.bubbleView.accessibilityLabel == "Title. Message")
+        #expect(tip.dimmingView.isAccessibilityElement)
+        #expect(tip.dimmingView.accessibilityTraits == .button)
+        #expect(tip.dimmingView.gestureRecognizers?.contains { $0 is UITapGestureRecognizer } == true)
+        #expect(LMKTipView(message: "Just a message").bubbleView.accessibilityLabel == "Just a message")
+    }
+
+    @Test
+    func `Centered tips show the dismiss button and dismiss through it`() async {
+        UIView.setAnimationsEnabled(false)
+        defer { UIView.setAnimationsEnabled(true) }
+        let host = UIViewController()
+        let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 390, height: 844))
+        window.rootViewController = host
+        window.isHidden = false
+        defer { window.isHidden = true }
+
+        var dismissed = 0
+        let tip = LMKTip.show(title: "Hi", message: "There", in: host) { dismissed += 1 }
+        #expect(tip.superview === host.view)
+        #expect(!tip.dismissButton.isHidden)
+        tip.dismissButton.didTap()
+        try? await Task.sleep(for: .milliseconds(400))
+        #expect(tip.superview == nil)
+        #expect(dismissed == 1)
+    }
+
+    @Test
+    func `Pointed tips draw an arrow toward the source and hide the dismiss button`() async throws {
+        UIView.setAnimationsEnabled(false)
+        defer { UIView.setAnimationsEnabled(true) }
+        let host = UIViewController()
+        let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 390, height: 844))
+        window.rootViewController = host
+        window.isHidden = false
+        defer { window.isHidden = true }
+        let source = UIView(frame: CGRect(x: 150, y: 400, width: 60, height: 40))
+        host.view.addSubview(source)
+
+        let tip = LMKTipView(message: "Look here")
+        tip.show(placement: .pointed(sourceView: source, arrowDirection: .up), in: host)
+        host.view.layoutIfNeeded()
+        #expect(tip.dismissButton.isHidden)
+        #expect(!tip.outlineLayer.isHidden, "a solid bubble and its arrow are one outline")
+        #expect(tip.arrowLayer.isHidden)
+        let outline = try #require(tip.outlineLayer.path)
+        // The arrow reaches above the bubble toward the source.
+        #expect(outline.boundingBox.minY < 0)
+        #expect(tip.bubbleView.backgroundColor == UIColor.clear, "the outline paints the fill")
+        #expect(tip.bubbleView.layer.shadowOpacity == 0)
+        #expect(tip.outlineLayer.shadowOpacity > 0)
+        #expect(tip.bubbleView.frame.minY > source.frame.maxY)
+        #expect(tip.dimmingView.backgroundColor == UIColor.clear)
+        tip.dismiss()
+        try? await Task.sleep(for: .milliseconds(400))
         #expect(tip.superview == nil)
     }
 
-    // MARK: - Layout Constants
-
-    @Test
-    func `Layout constants have expected values`() {
-        #expect(LMKTipLayout.arrowWidth == 16)
-        #expect(LMKTipLayout.arrowHeight == 8)
-        #expect(LMKTipLayout.arrowTipRadius == 2)
-        #expect(LMKTipLayout.maxWidth == 300)
-        #expect(LMKTipLayout.minMargin == 16)
-        #expect(LMKTipLayout.sourceSpacing == 4)
-        #expect(LMKTipLayout.iconBackgroundSize == 36)
-    }
-
-    // MARK: - Configurable Strings
-
-    @Test
-    func `Default strings have expected values`() {
-        let strings = LMKTipView.Strings()
-
-        #expect(strings.dismissAccessibilityHint == "Tap anywhere to dismiss")
-        #expect(strings.dismissButtonTitle == "Got it")
-    }
-
-    // MARK: - Bubble Styling
-
-    @Test
-    func `Bubble view has correct corner radius`() {
-        let tip = LMKTipView(message: "Test")
-
-        // The bubble view is the second subview (after dimming)
-        let bubble = tip.subviews.first { $0 !== tip.subviews.first }
-        #expect(bubble?.layer.cornerRadius == LMKCornerRadius.medium)
+    private static func showPointed(_ style: LMKTipView.Style, direction: LMKTipView.ArrowDirection = .down) -> (UIWindow, LMKTipView) {
+        let host = UIViewController()
+        let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 390, height: 844))
+        window.rootViewController = host
+        window.isHidden = false
+        let source = UIView(frame: CGRect(x: 150, y: 400, width: 60, height: 40))
+        host.view.addSubview(source)
+        let tip = LMKTipView(title: "Tip", message: "Look here", style: style)
+        tip.show(placement: .pointed(sourceView: source, arrowDirection: direction), in: host)
+        host.view.layoutIfNeeded()
+        return (window, tip)
     }
 
     @Test
-    func `Bubble view has correct background color`() {
-        let tip = LMKTipView(message: "Test")
+    func `A pointed tip's color and border wrap the bubble and the arrow as one shape`() throws {
+        UIView.setAnimationsEnabled(false)
+        defer { UIView.setAnimationsEnabled(true) }
+        let style = LMKTipView.Style(surface: LMKSurfaceStyle(
+            background: .solid(.systemIndigo),
+            corners: .fixed(20),
+            border: .solid(.white, width: 2),
+            shadow: .level(.level4)
+        ))
+        let (window, tip) = Self.showPointed(style)
+        defer { window.isHidden = true }
+        let traits = tip.traitCollection
 
-        let bubble = tip.subviews.first { $0 !== tip.subviews.first }
-        #expect(bubble?.backgroundColor == LMKColor.backgroundSecondary)
-    }
+        #expect(!tip.outlineLayer.isHidden)
+        #expect(tip.outlineLayer.fillColor == UIColor.systemIndigo.resolvedColor(with: traits).cgColor)
+        #expect(tip.outlineLayer.strokeColor == UIColor.white.resolvedColor(with: traits).cgColor)
+        #expect(tip.outlineLayer.lineWidth == 2)
+        #expect(tip.bubbleView.layer.borderWidth == 0, "one stroke, not a second one on the bubble's layer")
 
-    // MARK: - Dismiss Button
-
-    @Test
-    func `Dismiss button is hidden by default before show`() {
-        let tip = LMKTipView(message: "Test")
-
-        let bubble = tip.subviews.first { $0 !== tip.subviews.first }
-        let buttons = findAllSubviews(in: bubble, ofType: UIButton.self)
-        let dismissBtn = buttons.first { $0.title(for: .normal) == LMKTipView.strings.dismissButtonTitle }
-        #expect(dismissBtn?.isHidden == true)
-    }
-
-    private func findAllSubviews<T: UIView>(in view: UIView?, ofType: T.Type) -> [T] {
-        guard let view else { return [] }
-        var result: [T] = []
-        if let typed = view as? T { result.append(typed) }
-        for sub in view.subviews {
-            result.append(contentsOf: findAllSubviews(in: sub, ofType: ofType))
-        }
-        return result
-    }
-
-    // MARK: - Dimming
-
-    @Test
-    func `Dimming view is first subview`() {
-        let tip = LMKTipView(message: "Test")
-
-        let dimming = tip.subviews.first
-        #expect(dimming != nil)
-        #expect(dimming?.gestureRecognizers?.isEmpty == false)
+        let outline = try #require(tip.outlineLayer.path)
+        let bounds = tip.bubbleView.bounds
+        let arrowHeight = LMKTipView.defaultArrowHeight
+        // The border sits inside the bubble; only the arrow leaves it, below the bottom edge.
+        #expect(abs(outline.boundingBox.minY - 1) < 0.5)
+        #expect(abs(outline.boundingBox.maxY - (bounds.maxY - 1 + arrowHeight)) < 0.5)
+        #expect(abs(outline.boundingBox.width - (bounds.width - 2)) < 0.5)
+        // A point on the arrow's flank is part of the same filled shape.
+        let sourceMidX = 180 - tip.bubbleView.frame.minX
+        #expect(outline.contains(CGPoint(x: sourceMidX, y: bounds.maxY + 2)))
     }
 
     @Test
-    func `Dimming view has tap gesture recognizer`() {
-        let tip = LMKTipView(message: "Test")
+    func `The outline follows the arrow direction and the corner style`() {
+        let arrow = LMKTipView.Arrow(pointsUp: true, centerX: 100, width: 16, height: 8, tipRadius: 2)
+        let rect = CGRect(x: 0, y: 0, width: 200, height: 80)
+        let up = LMKTipView.outlinePath(in: rect, cornerRadius: 12, maskedCorners: .lmk_all, arrow: arrow)
+        // The control point of the rounded tip marks the full arrow height.
+        #expect(up.cgPath.boundingBox.minY == -8)
+        #expect(up.cgPath.boundingBox.maxY == 80)
+        #expect(up.contains(CGPoint(x: 100, y: -4)))
+        #expect(!up.contains(CGPoint(x: 80, y: -4)))
+        #expect(!up.contains(CGPoint(x: 1, y: 1)), "the corner is rounded")
 
-        let dimming = tip.subviews.first
-        let tapGestures = dimming?.gestureRecognizers?.filter { $0 is UITapGestureRecognizer }
-        #expect(tapGestures?.count == 1)
-    }
-
-    // MARK: - Accessibility
-
-    @Test
-    func `Bubble accessibility label contains message`() {
-        let tip = LMKTipView(title: "Title", message: "Message")
-
-        let bubble = tip.subviews.first { $0 !== tip.subviews.first }
-        #expect(bubble?.accessibilityLabel == "Title. Message")
-    }
-
-    @Test
-    func `Bubble accessibility label is message when no title`() {
-        let tip = LMKTipView(message: "Just a message")
-
-        let bubble = tip.subviews.first { $0 !== tip.subviews.first }
-        #expect(bubble?.accessibilityLabel == "Just a message")
+        var down = arrow
+        down.pointsUp = false
+        let below = LMKTipView.outlinePath(in: rect, cornerRadius: 12, maskedCorners: [.layerMinXMinYCorner], arrow: down)
+        #expect(below.cgPath.boundingBox.minY == 0)
+        #expect(below.cgPath.boundingBox.maxY == 88)
+        #expect(below.contains(CGPoint(x: 100, y: 84)))
+        #expect(below.contains(CGPoint(x: 199, y: 79)), "an unmasked corner stays square")
+        #expect(!below.contains(CGPoint(x: 1, y: 1)))
     }
 
     @Test
-    func `Dimming view is accessible as button`() {
-        let tip = LMKTipView(message: "Test")
-
-        let dimming = tip.subviews.first
-        #expect(dimming?.isAccessibilityElement == true)
-        #expect(dimming?.accessibilityTraits == .button)
+    func `A gradient bubble keeps its own surface and a plain arrow in arrowColor`() {
+        UIView.setAnimationsEnabled(false)
+        defer { UIView.setAnimationsEnabled(true) }
+        let style = LMKTipView.Style(
+            surface: LMKSurfaceStyle(background: .gradient(colors: [.systemPink, .systemOrange], direction: .leftToRight)),
+            arrowColor: .systemOrange
+        )
+        let (window, tip) = Self.showPointed(style, direction: .up)
+        defer { window.isHidden = true }
+        #expect(tip.outlineLayer.isHidden)
+        #expect(!tip.arrowLayer.isHidden)
+        #expect(tip.arrowLayer.fillColor == UIColor.systemOrange.resolvedColor(with: tip.traitCollection).cgColor)
+        #expect(tip.bubbleView.lmk_surfaceBackgroundView != nil)
     }
-
-    // MARK: - Dismiss Callback
 
     @Test
-    func `Dismiss callback can be set`() {
-        var dismissed = false
-        let tip = LMKTipView(message: "Test")
-        tip.onDismiss = { dismissed = true }
-
-        // Verify callback is set by invoking it directly
-        tip.onDismiss?()
-        #expect(dismissed)
+    func `A centered tip keeps the border on the bubble itself`() {
+        UIView.setAnimationsEnabled(false)
+        defer { UIView.setAnimationsEnabled(true) }
+        let host = UIViewController()
+        let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 390, height: 844))
+        window.rootViewController = host
+        window.isHidden = false
+        defer { window.isHidden = true }
+        let tip = LMKTipView(message: "Welcome", style: LMKTipView.Style(surface: LMKSurfaceStyle(background: .solid(.systemTeal), border: .solid(.black, width: 1))))
+        tip.show(placement: .center, in: host)
+        #expect(tip.outlineLayer.isHidden)
+        #expect(tip.bubbleView.backgroundColor == UIColor.systemTeal)
+        #expect(tip.bubbleView.layer.borderWidth == 1)
     }
-
-    // MARK: - Icon
 
     @Test
-    func `Icon with background circle is created when icon provided`() {
-        let tip = LMKTipView(title: "Tip", message: "Msg", icon: UIImage(systemName: "star"))
+    func `Style overrides apply per instance and through the theme`() {
+        let tip = LMKTipView(message: "Test", style: LMKTipView.Style(surface: LMKSurfaceStyle(background: .solid(.red)), messageColor: .white, iconBackgroundSize: 50))
+        #expect(tip.bubbleView.backgroundColor == UIColor.red)
+        #expect(tip.messageLabel.textColor == UIColor.white)
 
-        // Find the circular icon background (36pt round view)
-        let bubble = tip.subviews.first { $0 !== tip.subviews.first }
-        let iconBg = findSubview(in: bubble) { view in
-            view.layer.cornerRadius == LMKTipLayout.iconBackgroundSize / 2
-        }
-        #expect(iconBg != nil)
-    }
-
-    private func findSubview(in view: UIView?, where predicate: (UIView) -> Bool) -> UIView? {
-        guard let view else { return nil }
-        if predicate(view) { return view }
-        for sub in view.subviews {
-            if let found = findSubview(in: sub, where: predicate) { return found }
-        }
-        return nil
+        var theme = LMKTheme()
+        theme.tip = LMKTipView.Style(surface: LMKSurfaceStyle(corners: .fixed(2)), dimmingColor: .clear)
+        let themed = LMKTipView(message: "Test")
+        let window = LMKThemeTesting.host(themed, theme: theme)
+        defer { window.isHidden = true }
+        #expect(themed.bubbleView.layer.cornerRadius == 2)
+        #expect(themed.dimmingView.backgroundColor == UIColor.clear)
     }
 }

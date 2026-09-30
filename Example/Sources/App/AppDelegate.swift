@@ -13,7 +13,13 @@ final class AppDelegate: UIResponder, UIApplicationDelegate {
         _ application: UIApplication,
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
     ) -> Bool {
-        true
+        // The scripted sweep runs headless; an uncaught ObjC exception would otherwise die inside
+        // AppKit's transaction flush on Mac Catalyst with no reason in the crash report.
+        NSSetUncaughtExceptionHandler { exception in
+            let report = "AUDIT-EXCEPTION|\(exception.name.rawValue)|\(exception.reason ?? "")\n" + exception.callStackSymbols.prefix(24).joined(separator: "\n")
+            FileHandle.standardError.write(Data((report + "\n").utf8))
+        }
+        return true
     }
 
     func application(

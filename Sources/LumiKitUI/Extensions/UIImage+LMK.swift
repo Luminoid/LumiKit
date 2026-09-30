@@ -7,7 +7,9 @@
 
 import UIKit
 
-public extension UIImage {
+// `nonisolated`: these are pure image operations (UIGraphicsImageRenderer is thread-safe) that apps
+// run on background queues; without it the module's MainActor default would isolate them.
+public nonisolated extension UIImage {
     /// Resize image to fit within the given maximum dimension, preserving aspect ratio.
     ///
     /// ```swift

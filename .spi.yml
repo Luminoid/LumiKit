@@ -4,9 +4,8 @@ builder:
     - documentation_targets:
         - LumiKitCore
         - LumiKitUI
-        - LumiKitNetwork
+        - LumiKitPhoto
+        - LumiKitDebug
         - LumiKitLottie
       platform: ios
-      scheme: LumiKit-Package
-    - platform: macos-xcodebuild
       scheme: LumiKit-Package

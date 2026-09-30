@@ -12,19 +12,27 @@ packages:
 targets:
   LumiKitExample:
     type: application
-    supportedDestinations: [iOS]
+    supportedDestinations: [iOS, macCatalyst]
     sources:
       - Sources
       - Resources
     dependencies:
       - package: LumiKit
         product: LumiKitUI
+      - package: LumiKit
+        product: LumiKitPhoto
+      - package: LumiKit
+        product: LumiKitDebug
+      - package: LumiKit
+        product: LumiKitLottie
     settings:
       base:
         SWIFT_VERSION: "6.2"
+        # 6 = the Mac idiom ("Optimize Interface for Mac").
+        TARGETED_DEVICE_FAMILY: "1,2,6"
         CODE_SIGN_STYLE: Automatic
         PRODUCT_BUNDLE_IDENTIFIER: com.luminoid.lumikit.example
-        MARKETING_VERSION: "0.11.0"
+        MARKETING_VERSION: "1.0.0"
         CURRENT_PROJECT_VERSION: 1
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         GENERATE_INFOPLIST_FILE: true

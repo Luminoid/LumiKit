@@ -2,101 +2,71 @@
 //  LMKActionSheet.swift
 //  LumiKit
 //
-//  Custom action sheet replacing UIAlertController(.actionSheet) with
-//  design-token-driven styling, optional custom content views, and
-//  multi-level in-sheet navigation.
+//  The action sheet namespace: models (Action, Page, Configuration), Style,
+//  Strings, and the presenters. The view controller lives in
+//  LMKActionSheetViewController, the row in LMKActionSheetRowView.
 //
 
-import SnapKit
 import UIKit
 
-/// Custom action sheet presented as a bottom sheet with design system styling.
+/// Custom action sheet presented as a bottom sheet with design-system styling.
 ///
-/// Supports a list of actions with optional icons, destructive styling,
-/// an optional custom content view (e.g., date pickers), and multi-level
-/// navigation where tapping an action can push a sub-page within the sheet.
+/// Supports a list of actions with optional icons, subtitles, destructive styling,
+/// a selected checkmark, an optional self-sizing custom view (a date picker), a
+/// confirm button, and multi-level navigation where an action opens a sub-page.
 ///
-/// Usage:
 /// ```swift
 /// LMKActionSheet.present(
-///     in: self,
+///     from: self,
 ///     title: "Photo Actions",
 ///     actions: [
-///         .init(title: "Edit", icon: UIImage(systemName: "pencil")) { ... },
-///         .init(title: "Delete", style: .destructive) { ... }
+///         .init(title: "Edit", icon: UIImage(systemName: "pencil")) { edit() },
+///         .init(title: "Delete", style: .destructive) { delete() },
 ///     ]
 /// )
+///
+/// LMKActionSheet.present(LMKActionSheet.Configuration(
+///     title: "Select Date",
+///     contentView: datePicker,
+///     confirmTitle: "Save",
+///     onConfirm: { save(datePicker.date) }
+/// ), from: self)
 /// ```
 ///
-/// Multi-level usage:
-/// ```swift
-/// LMKActionSheet.present(
-///     in: self,
-///     title: "Photo Actions",
-///     actions: [
-///         .init(title: "Edit Category", icon: UIImage(systemName: "tag"), page: .init(
-///             title: "Select Category",
-///             actions: categories.map { cat in .init(title: cat.name) { select(cat) } }
-///         )),
-///         .init(title: "Delete", style: .destructive) { delete() }
-///     ]
-/// )
-/// ```
-public final class LMKActionSheet: LMKBottomSheetController {
-    // MARK: - Types
+/// Action and confirm handlers run after the sheet has left the screen, so they can
+/// present something else right away.
+public enum LMKActionSheet {
+    // MARK: - Models
 
-    /// Visual style for an action row.
-    public enum ActionStyle {
-        case `default`
-        case destructive
-    }
-
-    /// A page of content within the action sheet. Used for multi-level navigation.
-    public struct Page {
-        public let title: String?
-        public let message: String?
-        public let actions: [Action]
-        public let contentView: UIView?
-        public let contentHeight: CGFloat
-        public let confirmTitle: String?
-        public let onConfirm: (() -> Void)?
-
-        public init(
-            title: String? = nil,
-            message: String? = nil,
-            actions: [Action] = [],
-            contentView: UIView? = nil,
-            contentHeight: CGFloat = 0,
-            confirmTitle: String? = nil,
-            onConfirm: (() -> Void)? = nil
-        ) {
-            self.title = title
-            self.message = message
-            self.actions = actions
-            self.contentView = contentView
-            self.contentHeight = contentHeight
-            self.confirmTitle = confirmTitle
-            self.onConfirm = onConfirm
-        }
-    }
-
-    /// A single action displayed as a tappable row in the sheet.
+    /// A tappable row.
     public struct Action {
-        public let title: String
-        public let subtitle: String?
-        public let icon: UIImage?
-        public let style: ActionStyle
-        public let isSelected: Bool
-        public let handler: () -> Void
-        public let page: Page?
+        /// Visual style of a row.
+        public nonisolated enum Style: Sendable, Hashable, CaseIterable {
+            case `default`
+            case destructive
+        }
 
-        /// Create a regular action that dismisses the sheet when tapped.
+        public var title: String
+        public var subtitle: String?
+        public var icon: UIImage?
+        public var style: Style
+        /// Shows a checkmark (single-selection lists).
+        public var isSelected: Bool
+        /// A disabled row dims and ignores taps.
+        public var isEnabled: Bool
+        /// Runs after the sheet dismisses; `nil` for navigation actions.
+        public var handler: (() -> Void)?
+        /// A sub-page this action opens instead of dismissing.
+        public var page: Page?
+
+        /// A regular action: dismisses the sheet, then runs `handler`.
         public init(
             title: String,
             subtitle: String? = nil,
-            style: ActionStyle = .default,
+            style: Style = .default,
             icon: UIImage? = nil,
             isSelected: Bool = false,
+            isEnabled: Bool = true,
             handler: @escaping () -> Void
         ) {
             self.title = title
@@ -104,16 +74,18 @@ public final class LMKActionSheet: LMKBottomSheetController {
             self.style = style
             self.icon = icon
             self.isSelected = isSelected
+            self.isEnabled = isEnabled
             self.handler = handler
             self.page = nil
         }
 
-        /// Create a navigation action that pushes a sub-page within the sheet.
+        /// A navigation action: pushes `page` inside the sheet.
         public init(
             title: String,
             subtitle: String? = nil,
-            style: ActionStyle = .default,
+            style: Style = .default,
             icon: UIImage? = nil,
+            isEnabled: Bool = true,
             page: Page
         ) {
             self.title = title
@@ -121,621 +93,279 @@ public final class LMKActionSheet: LMKBottomSheetController {
             self.style = style
             self.icon = icon
             self.isSelected = false
-            self.handler = {}
+            self.isEnabled = isEnabled
+            self.handler = nil
             self.page = page
         }
     }
 
-    /// Configurable strings for the action sheet.
-    public nonisolated struct Strings: Sendable {
-        public var back: String
+    /// One page of the sheet (the root, or a sub-page an action opens).
+    public struct Page {
+        public var title: String?
+        public var message: String?
+        public var actions: [Action]
+        /// A self-sizing view between the message and the actions.
+        public var contentView: UIView?
+        /// Title of a confirm button at the bottom; `nil` shows none.
+        public var confirmTitle: String?
+        /// Runs after the sheet dismisses from the confirm button.
+        public var onConfirm: (() -> Void)?
 
-        public init(back: String = "Back") {
-            self.back = back
+        public init(
+            title: String? = nil,
+            message: String? = nil,
+            actions: [Action] = [],
+            contentView: UIView? = nil,
+            confirmTitle: String? = nil,
+            onConfirm: (() -> Void)? = nil
+        ) {
+            self.title = title
+            self.message = message
+            self.actions = actions
+            self.contentView = contentView
+            self.confirmTitle = confirmTitle
+            self.onConfirm = onConfirm
         }
     }
 
-    // MARK: - Configurable Strings
+    /// Everything a sheet needs: its root page, cancellation handler, style, and strings.
+    public struct Configuration {
+        public var title: String?
+        public var message: String?
+        public var actions: [Action]
+        public var contentView: UIView?
+        public var confirmTitle: String?
+        public var onConfirm: (() -> Void)?
+        /// Runs when the sheet goes away without an action or confirm (cancel, dimming tap, drag, key command).
+        public var onCancel: (() -> Void)?
+        public var style: LMKActionSheet.Style
+        public var strings: Strings
 
-    /// Configurable strings for the action sheet. Set before presenting.
+        public init(
+            title: String? = nil,
+            message: String? = nil,
+            actions: [Action] = [],
+            contentView: UIView? = nil,
+            confirmTitle: String? = nil,
+            onConfirm: (() -> Void)? = nil,
+            onCancel: (() -> Void)? = nil,
+            style: LMKActionSheet.Style = LMKActionSheet.Style(),
+            strings: Strings = LMKActionSheet.strings
+        ) {
+            self.title = title
+            self.message = message
+            self.actions = actions
+            self.contentView = contentView
+            self.confirmTitle = confirmTitle
+            self.onConfirm = onConfirm
+            self.onCancel = onCancel
+            self.style = style
+            self.strings = strings
+        }
+
+        /// The root page.
+        public var rootPage: Page {
+            Page(title: title, message: message, actions: actions, contentView: contentView, confirmTitle: confirmTitle, onConfirm: onConfirm)
+        }
+    }
+
+    // MARK: - Style
+
+    /// Appearance of one action row.
+    public nonisolated struct RowStyle: Sendable, Equatable {
+        /// `nil` = 48.
+        public var minimumHeight: CGFloat?
+        /// Row background (`backgroundSecondary`), corners (small), border, shadow, content insets (`large` horizontal, `small` vertical).
+        public var surface: LMKSurfaceStyle
+        /// `nil` = `body`.
+        public var titleTextStyle: LMKTextStyle?
+        /// `nil` = `caption`.
+        public var subtitleTextStyle: LMKTextStyle?
+        /// `nil` = `textPrimary`.
+        public var titleColor: UIColor?
+        /// `nil` = `textSecondary`.
+        public var subtitleColor: UIColor?
+        /// `nil` = `iconMedium`.
+        public var iconSize: CGFloat?
+        /// `nil` = `primary`.
+        public var iconTint: UIColor?
+        /// `nil` = `primary`.
+        public var checkmarkColor: UIColor?
+        /// Icon and title of destructive rows; `nil` = `error`.
+        public var destructiveColor: UIColor?
+        /// Pressed background; `nil` = `primary` at `alpha.xs`.
+        public var highlightColor: UIColor?
+        /// Gap between icon, text, and accessory; `nil` = `medium`.
+        public var spacing: CGFloat?
+
+        public init(
+            minimumHeight: CGFloat? = nil,
+            surface: LMKSurfaceStyle = LMKSurfaceStyle(),
+            titleTextStyle: LMKTextStyle? = nil,
+            subtitleTextStyle: LMKTextStyle? = nil,
+            titleColor: UIColor? = nil,
+            subtitleColor: UIColor? = nil,
+            iconSize: CGFloat? = nil,
+            iconTint: UIColor? = nil,
+            checkmarkColor: UIColor? = nil,
+            destructiveColor: UIColor? = nil,
+            highlightColor: UIColor? = nil,
+            spacing: CGFloat? = nil
+        ) {
+            self.minimumHeight = minimumHeight
+            self.surface = surface
+            self.titleTextStyle = titleTextStyle
+            self.subtitleTextStyle = subtitleTextStyle
+            self.titleColor = titleColor
+            self.subtitleColor = subtitleColor
+            self.iconSize = iconSize
+            self.iconTint = iconTint
+            self.checkmarkColor = checkmarkColor
+            self.destructiveColor = destructiveColor
+            self.highlightColor = highlightColor
+            self.spacing = spacing
+        }
+
+        /// `other`'s non-nil fields over this style's.
+        public func merging(_ other: Self) -> Self {
+            Self(
+                minimumHeight: other.minimumHeight ?? minimumHeight,
+                surface: surface.merging(other.surface),
+                titleTextStyle: other.titleTextStyle ?? titleTextStyle,
+                subtitleTextStyle: other.subtitleTextStyle ?? subtitleTextStyle,
+                titleColor: other.titleColor ?? titleColor,
+                subtitleColor: other.subtitleColor ?? subtitleColor,
+                iconSize: other.iconSize ?? iconSize,
+                iconTint: other.iconTint ?? iconTint,
+                checkmarkColor: other.checkmarkColor ?? checkmarkColor,
+                destructiveColor: other.destructiveColor ?? destructiveColor,
+                highlightColor: other.highlightColor ?? highlightColor,
+                spacing: other.spacing ?? spacing
+            )
+        }
+    }
+
+    public nonisolated struct Style: Sendable, Equatable, LMKThemeExtension {
+        /// The sheet chrome (container, dimming, cancel button).
+        public var sheet: LMKBottomSheetViewController.Style
+        public var row: RowStyle
+        /// `nil` = `h3`.
+        public var titleTextStyle: LMKTextStyle?
+        /// `nil` = `textPrimary`.
+        public var titleColor: UIColor?
+        /// `nil` = `caption`.
+        public var messageTextStyle: LMKTextStyle?
+        /// `nil` = `textSecondary`.
+        public var messageColor: UIColor?
+        /// Layered on the default confirm look (filled primary, 50pt).
+        public var confirmButton: LMKButton.Style
+        /// Layered on the sub-page back button (ghost chevron).
+        public var backButton: LMKButton.Style
+        /// Gap between title, message, content, and rows; `nil` = `medium`.
+        public var sectionSpacing: CGFloat?
+        /// Gap between rows; `nil` = `xs`.
+        public var rowSpacing: CGFloat?
+        /// Sub-page slide duration; `nil` = `animation.normal`.
+        public var pageTransitionDuration: TimeInterval?
+
+        public init(
+            sheet: LMKBottomSheetViewController.Style = LMKBottomSheetViewController.Style(),
+            row: RowStyle = RowStyle(),
+            titleTextStyle: LMKTextStyle? = nil,
+            titleColor: UIColor? = nil,
+            messageTextStyle: LMKTextStyle? = nil,
+            messageColor: UIColor? = nil,
+            confirmButton: LMKButton.Style = LMKButton.Style(),
+            backButton: LMKButton.Style = LMKButton.Style(),
+            sectionSpacing: CGFloat? = nil,
+            rowSpacing: CGFloat? = nil,
+            pageTransitionDuration: TimeInterval? = nil
+        ) {
+            self.sheet = sheet
+            self.row = row
+            self.titleTextStyle = titleTextStyle
+            self.titleColor = titleColor
+            self.messageTextStyle = messageTextStyle
+            self.messageColor = messageColor
+            self.confirmButton = confirmButton
+            self.backButton = backButton
+            self.sectionSpacing = sectionSpacing
+            self.rowSpacing = rowSpacing
+            self.pageTransitionDuration = pageTransitionDuration
+        }
+
+        public static let defaultValue = Self()
+
+        /// `other`'s non-nil fields over this style's.
+        public func merging(_ other: Self) -> Self {
+            Self(
+                sheet: sheet.merging(other.sheet),
+                row: row.merging(other.row),
+                titleTextStyle: other.titleTextStyle ?? titleTextStyle,
+                titleColor: other.titleColor ?? titleColor,
+                messageTextStyle: other.messageTextStyle ?? messageTextStyle,
+                messageColor: other.messageColor ?? messageColor,
+                confirmButton: confirmButton.merging(other.confirmButton),
+                backButton: backButton.merging(other.backButton),
+                sectionSpacing: other.sectionSpacing ?? sectionSpacing,
+                rowSpacing: other.rowSpacing ?? rowSpacing,
+                pageTransitionDuration: other.pageTransitionDuration ?? pageTransitionDuration
+            )
+        }
+    }
+
+    // MARK: - Strings
+
+    public nonisolated struct Strings: Sendable, Equatable {
+        /// VoiceOver label of the sub-page back button.
+        public var back: String
+        /// VoiceOver hint on rows that open a sub-page.
+        public var submenuAccessibilityHint: String
+
+        public init(
+            back: String = LMKLocalized("actionSheet.back"),
+            submenuAccessibilityHint: String = LMKLocalized("actionSheet.submenu.accessibilityHint")
+        ) {
+            self.back = back
+            self.submenuAccessibilityHint = submenuAccessibilityHint
+        }
+    }
+
+    /// Process-wide defaults; set at app launch to override.
     public nonisolated(unsafe) static var strings = Strings()
 
-    // MARK: - Navigation Types
+    // MARK: - Presentation
 
-    private struct PageContentViews {
-        let wrapper: UIView
-        let actionRows: [ActionRowView]
+    /// Presents a sheet built from `configuration` over `host`.
+    @discardableResult
+    public static func present(_ configuration: Configuration, from host: UIViewController) -> LMKActionSheetViewController {
+        let sheet = LMKActionSheetViewController(configuration: configuration)
+        sheet.present(from: host)
+        return sheet
     }
 
-    // MARK: - Properties
-
-    private let onDismissCallback: (() -> Void)?
-    private var currentPage: Page
-    private var navigationStack: [Page] = []
-    private var currentPageViews: PageContentViews?
-    private var currentActionRows: [ActionRowView] = []
-    private var currentConfirmHandler: (() -> Void)?
-    private var isTransitioning = false
-    private var contentContainerTopConstraint: Constraint?
-
-    // MARK: - Lazy Views
-
-    private lazy var contentContainerView: UIView = {
-        let view = UIView()
-        view.clipsToBounds = true
-        return view
-    }()
-
-    private lazy var backButton: UIButton = {
-        let button = UIButton(type: .system)
-        button.setImage(UIImage(systemName: "chevron.left"), for: .normal)
-        button.tintColor = LMKColor.primary
-        button.isHidden = true
-        button.addTarget(self, action: #selector(backTapped), for: .touchUpInside)
-        button.accessibilityLabel = Self.strings.back
-        button.accessibilityTraits = .button
-        return button
-    }()
-
-    // MARK: - Initialization
-
-    /// Create an action sheet with a list of actions.
-    public init(
-        title: String? = nil,
-        message: String? = nil,
-        actions: [Action],
-        confirmTitle: String? = nil,
-        onConfirm: (() -> Void)? = nil,
-        cancelTitle: String? = nil,
-        onDismiss: (() -> Void)? = nil
-    ) {
-        self.onDismissCallback = onDismiss
-        self.currentPage = Page(
-            title: title,
-            message: message,
-            actions: actions,
-            confirmTitle: confirmTitle,
-            onConfirm: onConfirm
-        )
-        super.init(cancelTitle: cancelTitle)
-    }
-
-    /// Create an action sheet with custom content and actions.
-    public init(
-        title: String? = nil,
-        message: String? = nil,
-        contentView: UIView,
-        contentHeight: CGFloat,
-        actions: [Action],
-        confirmTitle: String? = nil,
-        onConfirm: (() -> Void)? = nil,
-        cancelTitle: String? = nil,
-        onDismiss: (() -> Void)? = nil
-    ) {
-        self.onDismissCallback = onDismiss
-        self.currentPage = Page(
-            title: title,
-            message: message,
-            actions: actions,
-            contentView: contentView,
-            contentHeight: contentHeight,
-            confirmTitle: confirmTitle,
-            onConfirm: onConfirm
-        )
-        super.init(cancelTitle: cancelTitle)
-    }
-
-    // MARK: - Sheet Content
-
-    override public func setupSheetContent() {
-        containerView.addSubview(backButton)
-        backButton.snp.makeConstraints { make in
-            make.top.equalTo(dragIndicator.snp.bottom).offset(LMKSpacing.xs)
-            make.leading.equalToSuperview().offset(LMKSpacing.small)
-            make.width.height.equalTo(LMKBottomSheetLayout.backButtonHeight)
-        }
-
-        containerView.addSubview(contentContainerView)
-        contentContainerView.snp.makeConstraints { make in
-            contentContainerTopConstraint = make.top
-                .equalTo(dragIndicator.snp.bottom)
-                .offset(LMKSpacing.large)
-                .constraint
-            make.leading.trailing.equalToSuperview()
-            make.bottom.equalTo(cancelButton.snp.top).offset(-LMKSpacing.large)
-        }
-
-        renderPage(currentPage, animated: false, direction: .none)
-    }
-
-    // MARK: - Page Rendering
-
-    private func buildPageContent(for page: Page) -> PageContentViews {
-        let wrapper = UIView()
-        var actionRows: [ActionRowView] = []
-
-        let scrollView = UIScrollView()
-        scrollView.showsVerticalScrollIndicator = true
-        scrollView.alwaysBounceVertical = false
-
-        let contentStackView = UIStackView(lmk_axis: .vertical, spacing: 0)
-
-        scrollView.addSubview(contentStackView)
-        contentStackView.snp.makeConstraints { make in
-            make.edges.equalToSuperview()
-            make.width.equalToSuperview()
-        }
-
-        if let title = page.title {
-            let label = UILabel()
-            label.text = title
-            label.font = LMKTypography.h3
-            label.textColor = LMKColor.textPrimary
-            label.numberOfLines = 0
-            let w = makeInsetWrapper(for: label)
-            contentStackView.addArrangedSubview(w)
-            contentStackView.setCustomSpacing(LMKSpacing.small, after: w)
-        }
-
-        if let message = page.message {
-            let label = UILabel()
-            label.text = message
-            label.font = LMKTypography.caption
-            label.textColor = LMKColor.textSecondary
-            label.numberOfLines = 0
-            let w = makeInsetWrapper(for: label)
-            contentStackView.addArrangedSubview(w)
-            contentStackView.setCustomSpacing(LMKSpacing.medium, after: w)
-        }
-
-        if let contentView = page.contentView {
-            contentView.removeFromSuperview()
-            let w = makeInsetWrapper(for: contentView)
-            contentView.snp.makeConstraints { make in
-                make.height.equalTo(page.contentHeight)
-            }
-            contentStackView.addArrangedSubview(w)
-            contentStackView.setCustomSpacing(LMKSpacing.medium, after: w)
-        }
-
-        for (index, action) in page.actions.enumerated() {
-            let row = ActionRowView(action: action)
-            row.onTap = { [weak self] in self?.actionTapped(at: index) }
-            actionRows.append(row)
-
-            let w = makeInsetWrapper(for: row)
-            let baseHeight = LMKBottomSheetLayout.rowHeight - 2 * LMKSpacing.xs
-            row.snp.makeConstraints { make in
-                if action.subtitle != nil {
-                    make.height.greaterThanOrEqualTo(baseHeight)
-                } else {
-                    make.height.equalTo(baseHeight)
-                }
-            }
-            contentStackView.addArrangedSubview(w)
-
-            if index < page.actions.count - 1 {
-                contentStackView.setCustomSpacing(LMKSpacing.xs, after: w)
-            }
-        }
-
-        // Layout in wrapper
-        wrapper.addSubview(scrollView)
-
-        if let confirmTitle = page.confirmTitle {
-            let confirmBtn = UIButton(type: .system)
-            confirmBtn.setTitle(confirmTitle, for: .normal)
-            confirmBtn.titleLabel?.font = LMKTypography.bodyMedium
-            confirmBtn.setTitleColor(LMKColor.white, for: .normal)
-            confirmBtn.backgroundColor = LMKColor.primary
-            confirmBtn.layer.cornerRadius = LMKCornerRadius.medium
-            confirmBtn.addTarget(self, action: #selector(pageConfirmTapped), for: .touchUpInside)
-
-            wrapper.addSubview(confirmBtn)
-            confirmBtn.snp.makeConstraints { make in
-                make.leading.trailing.equalToSuperview().inset(LMKSpacing.xl)
-                make.bottom.equalToSuperview()
-                make.height.equalTo(LMKBottomSheetLayout.buttonHeight)
-            }
-            scrollView.snp.makeConstraints { make in
-                make.top.leading.trailing.equalToSuperview()
-                make.bottom.equalTo(confirmBtn.snp.top).offset(-LMKSpacing.small)
-            }
-        } else {
-            scrollView.snp.makeConstraints { make in
-                make.edges.equalToSuperview()
-            }
-        }
-
-        // Hug content, but below the labels' vertical compression resistance
-        // (750): when the sheet hits its max-height cap, the solver must break
-        // a non-required constraint, and at .high this equality ties with the
-        // labels' — it then crushes every title/subtitle toward zero instead
-        // of letting the sheet scroll.
-        scrollView.snp.makeConstraints { make in
-            make.height.equalTo(contentStackView).priority(.medium)
-        }
-
-        return PageContentViews(wrapper: wrapper, actionRows: actionRows)
-    }
-
-    private func renderPage(_ page: Page, animated: Bool, direction: LMKNavigationDirection) {
-        let oldPageViews = currentPageViews
-        let newPageViews = buildPageContent(for: page)
-
-        currentPageViews = newPageViews
-        currentConfirmHandler = page.onConfirm
-        currentActionRows = newPageViews.actionRows
-
-        let showBack = !navigationStack.isEmpty
-
-        if !animated || direction == .none {
-            oldPageViews?.wrapper.removeFromSuperview()
-
-            contentContainerView.addSubview(newPageViews.wrapper)
-            newPageViews.wrapper.snp.makeConstraints { make in
-                make.edges.equalToSuperview()
-            }
-
-            backButton.isHidden = !showBack
-            updateContentContainerTop(showBack: showBack)
-            return
-        }
-
-        guard let oldWrapper = oldPageViews?.wrapper else {
-            contentContainerView.addSubview(newPageViews.wrapper)
-            newPageViews.wrapper.snp.makeConstraints { make in
-                make.edges.equalToSuperview()
-            }
-            backButton.isHidden = !showBack
-            updateContentContainerTop(showBack: showBack)
-            return
-        }
-
-        isTransitioning = true
-
-        // Convert old wrapper to manual frame (remove auto layout)
-        let oldFrame = oldWrapper.frame
-        oldWrapper.snp.removeConstraints()
-        oldWrapper.translatesAutoresizingMaskIntoConstraints = true
-        oldWrapper.frame = oldFrame
-
-        // Add new wrapper with auto layout
-        contentContainerView.addSubview(newPageViews.wrapper)
-        newPageViews.wrapper.snp.makeConstraints { make in
-            make.edges.equalToSuperview()
-        }
-
-        // Position new wrapper off-screen
-        let containerWidth = max(contentContainerView.bounds.width, 1)
-        let slideIn = direction == .forward ? containerWidth : -containerWidth
-        newPageViews.wrapper.transform = CGAffineTransform(translationX: slideIn, y: 0)
-
-        // Update back button and top constraint
-        backButton.isHidden = !showBack
-        updateContentContainerTop(showBack: showBack)
-
-        let duration = LMKAnimationHelper.shouldAnimate
-            ? LMKAnimationHelper.Duration.actionSheet
-            : 0
-
-        UIView.animate(withDuration: duration, delay: 0, options: .curveEaseInOut) {
-            oldWrapper.transform = CGAffineTransform(translationX: -slideIn, y: 0)
-            oldWrapper.alpha = 0
-            newPageViews.wrapper.transform = .identity
-            self.containerView.superview?.layoutIfNeeded()
-        } completion: { _ in
-            oldWrapper.removeFromSuperview()
-            self.isTransitioning = false
-        }
-    }
-
-    private func updateContentContainerTop(showBack: Bool) {
-        let topOffset = showBack
-            ? LMKSpacing.xs + LMKBottomSheetLayout.backButtonHeight + LMKSpacing.xs
-            : LMKSpacing.large
-        contentContainerTopConstraint?.update(offset: topOffset)
-    }
-
-    // MARK: - Navigation
-
-    private func navigateToPage(_ page: Page) {
-        guard !isTransitioning else { return }
-        navigationStack.append(currentPage)
-        currentPage = page
-        renderPage(page, animated: true, direction: .forward)
-    }
-
-    private func navigateBack() {
-        guard !isTransitioning, let previousPage = navigationStack.popLast() else { return }
-        currentPage = previousPage
-        renderPage(previousPage, animated: true, direction: .backward)
-    }
-
-    // MARK: - Dynamic Colors
-
-    override public func refreshSheetColors() {
-        backButton.tintColor = LMKColor.primary
-        for row in currentActionRows {
-            row.refreshColors()
-        }
-    }
-
-    // MARK: - Actions
-
-    override public func onDismissTapped() {
-        onDismissCallback?()
-        dismissSheet()
-    }
-
-    @objc private func backTapped() {
-        navigateBack()
-    }
-
-    @objc private func pageConfirmTapped() {
-        let handler = currentConfirmHandler
-        dismissSheet()
-        handler?()
-    }
-
-    private func actionTapped(at index: Int) {
-        guard index < currentPage.actions.count else { return }
-        let action = currentPage.actions[index]
-
-        if let page = action.page {
-            navigateToPage(page)
-        } else {
-            dismissSheet()
-            action.handler()
-        }
-    }
-
-    // MARK: - Helpers
-
-    private func makeInsetWrapper(for child: UIView) -> UIView {
-        let wrapper = UIView()
-        wrapper.addSubview(child)
-        child.snp.makeConstraints { make in
-            make.top.bottom.equalToSuperview()
-            make.leading.trailing.equalToSuperview().inset(LMKSpacing.xl)
-        }
-        return wrapper
-    }
-
-    // MARK: - Static Convenience
-
-    /// Present an action sheet with a list of actions.
+    /// Presents a sheet with a title, message, and actions.
+    @discardableResult
     public static func present(
-        in viewController: UIViewController,
+        from host: UIViewController,
         title: String? = nil,
         message: String? = nil,
         actions: [Action],
-        confirmTitle: String? = nil,
-        onConfirm: (() -> Void)? = nil,
-        cancelTitle: String? = nil,
-        onDismiss: (() -> Void)? = nil
-    ) {
-        let sheet = LMKActionSheet(
-            title: title,
-            message: message,
-            actions: actions,
-            confirmTitle: confirmTitle,
-            onConfirm: onConfirm,
-            cancelTitle: cancelTitle,
-            onDismiss: onDismiss
-        )
-        addAsChild(sheet, in: viewController)
+        onCancel: (() -> Void)? = nil
+    ) -> LMKActionSheetViewController {
+        present(Configuration(title: title, message: message, actions: actions, onCancel: onCancel), from: host)
     }
 
-    /// Present an action sheet with custom content and actions.
-    public static func present(
-        in viewController: UIViewController,
-        title: String? = nil,
-        message: String? = nil,
-        contentView: UIView,
-        contentHeight: CGFloat,
-        actions: [Action] = [],
-        confirmTitle: String? = nil,
-        onConfirm: (() -> Void)? = nil,
-        cancelTitle: String? = nil,
-        onDismiss: (() -> Void)? = nil
-    ) {
-        let sheet = LMKActionSheet(
-            title: title,
-            message: message,
-            contentView: contentView,
-            contentHeight: contentHeight,
-            actions: actions,
-            confirmTitle: confirmTitle,
-            onConfirm: onConfirm,
-            cancelTitle: cancelTitle,
-            onDismiss: onDismiss
-        )
-        addAsChild(sheet, in: viewController)
+    /// The action sheet currently presented over `host`, if any.
+    public static func current(in host: UIViewController) -> LMKActionSheetViewController? {
+        host.children.last { $0 is LMKActionSheetViewController } as? LMKActionSheetViewController
     }
 }
 
-// MARK: - Action Row View
-
-final class ActionRowView: UIControl {
-    private let action: LMKActionSheet.Action
-
-    var onTap: (() -> Void)?
-
-    private lazy var containerView: UIView = {
-        let view = UIView()
-        view.backgroundColor = LMKColor.backgroundSecondary
-        view.layer.cornerRadius = LMKCornerRadius.small
-        view.isUserInteractionEnabled = false
-        return view
-    }()
-
-    private lazy var iconImageView: UIImageView = {
-        let iv = UIImageView()
-        iv.contentMode = .scaleAspectFit
-        iv.tintColor = action.style == .destructive ? LMKColor.error : LMKColor.primary
-        return iv
-    }()
-
-    private lazy var titleLabel: UILabel = {
-        let label = UILabel()
-        label.text = action.title
-        label.font = LMKTypography.body
-        label.textColor = action.style == .destructive ? LMKColor.error : LMKColor.textPrimary
-        return label
-    }()
-
-    private lazy var subtitleLabel: UILabel = {
-        let label = UILabel()
-        label.font = LMKTypography.caption
-        label.textColor = LMKColor.textSecondary
-        label.numberOfLines = 2
-        return label
-    }()
-
-    private lazy var chevronImageView: UIImageView = {
-        let iv = UIImageView()
-        iv.image = UIImage(systemName: "chevron.right")
-        iv.tintColor = LMKColor.textSecondary
-        iv.contentMode = .scaleAspectFit
-        iv.isHidden = true
-        return iv
-    }()
-
-    private lazy var checkmarkImageView: UIImageView = {
-        let iv = UIImageView()
-        iv.image = UIImage(systemName: "checkmark")
-        iv.tintColor = LMKColor.primary
-        iv.contentMode = .scaleAspectFit
-        iv.isHidden = true
-        return iv
-    }()
-
-    init(action: LMKActionSheet.Action) {
-        self.action = action
-        super.init(frame: .zero)
-        setupUI()
-        setupAccessibility()
-    }
-
-    @available(*, unavailable)
-    required init?(coder: NSCoder) {
-        fatalError("init(coder:) has not been implemented")
-    }
-
-    private func setupUI() {
-        addSubview(containerView)
-        containerView.snp.makeConstraints { make in make.edges.equalToSuperview() }
-
-        let hasIcon = action.icon != nil
-        let hasSubtitle = action.subtitle != nil
-        let hasChevron = action.page != nil
-        let hasCheckmark = action.isSelected && !hasChevron
-
-        containerView.addSubview(iconImageView)
-        iconImageView.isHidden = !hasIcon
-        iconImageView.image = action.icon
-        iconImageView.snp.makeConstraints { make in
-            make.leading.equalToSuperview().offset(LMKSpacing.large)
-            make.centerY.equalToSuperview()
-            make.width.equalTo(hasIcon ? LMKLayout.iconMedium : 0)
-            make.height.equalTo(LMKLayout.iconMedium)
-        }
-
-        containerView.addSubview(chevronImageView)
-        chevronImageView.isHidden = !hasChevron
-        chevronImageView.snp.makeConstraints { make in
-            make.trailing.equalToSuperview().inset(LMKSpacing.large)
-            make.centerY.equalToSuperview()
-            make.width.height.equalTo(LMKLayout.iconSmall)
-        }
-
-        containerView.addSubview(checkmarkImageView)
-        checkmarkImageView.isHidden = !hasCheckmark
-        checkmarkImageView.snp.makeConstraints { make in
-            make.trailing.equalToSuperview().inset(LMKSpacing.large)
-            make.centerY.equalToSuperview()
-            make.width.height.equalTo(LMKLayout.iconSmall)
-        }
-
-        let textLeading: ConstraintRelatableTarget = hasIcon
-            ? iconImageView.snp.trailing
-            : containerView.snp.leading
-        let textLeadingOffset = hasIcon ? LMKSpacing.medium : LMKSpacing.large
-
-        let hasTrailingAccessory = hasChevron || hasCheckmark
-        let textTrailing: ConstraintRelatableTarget = if hasChevron {
-            chevronImageView.snp.leading
-        } else if hasCheckmark {
-            checkmarkImageView.snp.leading
-        } else {
-            containerView.snp.trailing
-        }
-        let textTrailingOffset = hasTrailingAccessory ? -LMKSpacing.small : -LMKSpacing.large
-
-        if hasSubtitle {
-            subtitleLabel.text = action.subtitle
-            containerView.addSubview(titleLabel)
-            containerView.addSubview(subtitleLabel)
-
-            titleLabel.snp.makeConstraints { make in
-                make.leading.equalTo(textLeading).offset(textLeadingOffset)
-                make.trailing.lessThanOrEqualTo(textTrailing).offset(textTrailingOffset)
-                make.top.equalToSuperview().offset(LMKSpacing.medium)
-            }
-            subtitleLabel.snp.makeConstraints { make in
-                make.leading.equalTo(titleLabel)
-                make.trailing.lessThanOrEqualTo(textTrailing).offset(textTrailingOffset)
-                make.top.equalTo(titleLabel.snp.bottom).offset(LMKSpacing.xs)
-                make.bottom.equalToSuperview().offset(-LMKSpacing.medium)
-            }
-        } else {
-            containerView.addSubview(titleLabel)
-            titleLabel.snp.makeConstraints { make in
-                make.leading.equalTo(textLeading).offset(textLeadingOffset)
-                make.centerY.equalToSuperview()
-                make.trailing.lessThanOrEqualTo(textTrailing).offset(textTrailingOffset)
-            }
-        }
-
-        addTarget(self, action: #selector(tapped), for: .touchUpInside)
-    }
-
-    private func setupAccessibility() {
-        isAccessibilityElement = true
-        var label = action.title
-        if let subtitle = action.subtitle {
-            label += ", \(subtitle)"
-        }
-        accessibilityLabel = label
-        accessibilityTraits = action.isSelected ? [.button, .selected] : .button
-        if action.page != nil {
-            accessibilityHint = "Opens submenu"
-        }
-    }
-
-    func refreshColors() {
-        let isDestructive = action.style == .destructive
-        containerView.backgroundColor = LMKColor.backgroundSecondary
-        iconImageView.tintColor = isDestructive ? LMKColor.error : LMKColor.primary
-        titleLabel.textColor = isDestructive ? LMKColor.error : LMKColor.textPrimary
-        subtitleLabel.textColor = LMKColor.textSecondary
-        chevronImageView.tintColor = LMKColor.textSecondary
-        checkmarkImageView.tintColor = LMKColor.primary
-    }
-
-    override var isHighlighted: Bool {
-        didSet {
-            let duration = LMKAnimationHelper.shouldAnimate ? LMKAnimationHelper.Duration.uiShort : 0
-            UIView.animate(withDuration: duration) {
-                self.containerView.backgroundColor = self.isHighlighted
-                    ? LMKColor.primary.withAlphaComponent(LMKAlpha.overlayMedium)
-                    : LMKColor.backgroundSecondary
-            }
-        }
-    }
-
-    @objc private func tapped() {
-        onTap?()
+public nonisolated extension LMKTheme {
+    /// App-wide default style for `LMKActionSheet`.
+    var actionSheet: LMKActionSheet.Style {
+        get { self[LMKActionSheet.Style.self] }
+        set { self[LMKActionSheet.Style.self] = newValue }
     }
 }

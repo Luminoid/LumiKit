@@ -12,37 +12,80 @@ import UIKit
 @MainActor
 struct LMKLoadingStateViewTests {
     @Test
-    func `startLoading shows view and sets accessibility`() {
+    func `startLoading shows the view, spins, and sets accessibility`() {
         let view = LMKLoadingStateView()
         view.startLoading(message: "Loading plants...")
         #expect(!view.isHidden)
+        #expect(view.isLoading)
+        #expect(view.activityIndicator.isAnimating)
         #expect(view.accessibilityLabel == "Loading plants...")
+        #expect(!view.messageLabel.isHidden)
+        #expect(view.message == "Loading plants...")
     }
 
     @Test
-    func `stopLoading hides view`() {
+    func `A loading view without a message still has a VoiceOver label`() {
+        let view = LMKLoadingStateView()
+        view.startLoading()
+        #expect(view.messageLabel.isHidden)
+        #expect(view.accessibilityLabel == LMKLoadingStateView.Strings().loadingAccessibilityLabel)
+        view.strings = LMKLoadingStateView.Strings(loadingAccessibilityLabel: "Cargando")
+        #expect(view.accessibilityLabel == "Cargando")
+        view.startLoading(message: "")
+        #expect(view.messageLabel.isHidden)
+    }
+
+    @Test
+    func `stopLoading hides the view`() {
         let view = LMKLoadingStateView()
         view.startLoading(message: "Loading")
         view.stopLoading()
         #expect(view.isHidden)
+        #expect(!view.isLoading)
+        #expect(!view.activityIndicator.isAnimating)
     }
 
     @Test
-    func `updateMessage sets label text and accessibility`() {
+    func `updateMessage sets the label and accessibility label`() {
         let view = LMKLoadingStateView()
         view.updateMessage("Step 2 of 3")
+        #expect(view.messageLabel.text == "Step 2 of 3")
         #expect(view.accessibilityLabel == "Step 2 of 3")
+        view.updateMessage(nil)
+        #expect(view.messageLabel.isHidden)
     }
 
     @Test
     func `Accessibility traits include updatesFrequently`() {
-        let view = LMKLoadingStateView()
-        #expect(view.accessibilityTraits.contains(.updatesFrequently))
+        #expect(LMKLoadingStateView().accessibilityTraits.contains(.updatesFrequently))
     }
 
     @Test
-    func `Overlay style has non-clear background`() {
-        let view = LMKLoadingStateView(overlayStyle: true)
-        #expect(view.backgroundColor != .clear)
+    func `Overlay presentation dims the background and uses the large indicator`() {
+        let inline = LMKLoadingStateView()
+        #expect(inline.backgroundColor == UIColor.clear)
+        #expect(inline.activityIndicator.style == .medium)
+
+        let overlay = LMKLoadingStateView(style: .overlay)
+        #expect(overlay.backgroundColor != UIColor.clear)
+        #expect(overlay.backgroundColor?.cgColor.alpha ?? 0 < 1)
+        #expect(overlay.activityIndicator.style == .large)
+        overlay.style.overlayBackground = .red
+        #expect(overlay.backgroundColor == UIColor.red)
+    }
+
+    @Test
+    func `Style colors and theme defaults apply`() {
+        let view = LMKLoadingStateView(style: LMKLoadingStateView.Style(indicatorColor: .red, messageColor: .blue))
+        view.startLoading(message: "x")
+        #expect(view.activityIndicator.color == UIColor.red)
+        #expect(view.messageLabel.textColor == UIColor.blue)
+
+        var theme = LMKTheme()
+        theme.loadingState = LMKLoadingStateView.Style(presentation: .overlay)
+        let themed = LMKLoadingStateView()
+        let window = LMKThemeTesting.host(themed, theme: theme)
+        defer { window.isHidden = true }
+        #expect(themed.activityIndicator.style == .large)
     }
 }

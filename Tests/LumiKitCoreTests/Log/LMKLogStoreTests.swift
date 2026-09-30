@@ -22,6 +22,7 @@ struct LMKLogStoreTests {
         #expect(store.entries.count == 2)
         #expect(store.entries[0].message == "Hello")
         #expect(store.entries[1].message == "Oops")
+        #expect(store.maxEntries == 10)
     }
 
     @Test
@@ -60,9 +61,28 @@ struct LMKLogStoreTests {
         store.append(makeEntry(message: "fourth"))
 
         #expect(store.count == 3)
-        #expect(store.entries[0].message == "second")
-        #expect(store.entries[1].message == "third")
-        #expect(store.entries[2].message == "fourth")
+        #expect(store.entries.map(\.message) == ["second", "third", "fourth"])
+    }
+
+    @Test
+    func `Order survives several wrap-arounds`() {
+        let store = LMKLogStore(maxEntries: 4)
+        for i in 1 ... 11 {
+            store.append(makeEntry(message: "m\(i)"))
+        }
+        #expect(store.entries.map(\.message) == ["m8", "m9", "m10", "m11"])
+    }
+
+    @Test
+    func `Appending after clear starts a fresh sequence`() {
+        let store = LMKLogStore(maxEntries: 3)
+        for i in 1 ... 5 {
+            store.append(makeEntry(message: "m\(i)"))
+        }
+        store.clear()
+        store.append(makeEntry(message: "n1"))
+        store.append(makeEntry(message: "n2"))
+        #expect(store.entries.map(\.message) == ["n1", "n2"])
     }
 
     @Test
@@ -93,14 +113,14 @@ struct LMKLogStoreTests {
     // MARK: - Formatting
 
     @Test
-    func `Formatted output contains level and category`() {
+    func `Formatted output contains level, category, and call site`() {
         let store = LMKLogStore(maxEntries: 10)
-        store.append(makeEntry(level: .warning, category: "Network", message: "timeout"))
+        store.append(LMKLogEntry(level: .warning, category: "Network", message: "timeout", file: "Fetch.swift", function: "load()", line: 7))
 
         let output = store.formatted()
         #expect(output.contains("[WARNING]"))
         #expect(output.contains("[Network]"))
-        #expect(output.contains("timeout"))
+        #expect(output.contains("[Fetch.swift:7] load() - timeout"))
     }
 
     @Test
@@ -125,6 +145,7 @@ struct LMKLogStoreTests {
 
         // 200 appended, max 100 retained
         #expect(store.count == 100)
+        #expect(store.entries.count == 100)
     }
 
     // MARK: - Log Level
@@ -150,65 +171,5 @@ struct LMKLogStoreTests {
         message: String = "test"
     ) -> LMKLogEntry {
         LMKLogEntry(timestamp: Date(), level: level, category: category, message: message)
-    }
-}
-
-// MARK: - LMKLogger Log Store Integration
-
-@Suite(.serialized)
-struct LMKLoggerLogStoreIntegrationTests {
-    @Test
-    func `enableLogStore creates a store`() {
-        LMKLogger.enableLogStore(maxEntries: 10)
-        #expect(LMKLogger.logStore != nil)
-        LMKLogger.disableLogStore()
-    }
-
-    @Test
-    func `disableLogStore removes the store`() {
-        LMKLogger.enableLogStore()
-        LMKLogger.disableLogStore()
-        #expect(LMKLogger.logStore == nil)
-    }
-
-    @Test
-    func `Log calls populate the store when enabled`() {
-        LMKLogger.enableLogStore(maxEntries: 100)
-
-        LMKLogger.info("info msg", category: .data)
-        LMKLogger.warning("warn msg", category: .network)
-        LMKLogger.error("err msg")
-
-        let store = LMKLogger.logStore
-        #expect(store != nil)
-
-        // At least 3 entries (debug may also be captured in DEBUG builds)
-        let entries = store?.entries ?? []
-        #expect(entries.count >= 3)
-
-        // Verify levels are captured
-        let levels = Set(entries.map(\.level))
-        #expect(levels.contains(.info))
-        #expect(levels.contains(.warning))
-        #expect(levels.contains(.error))
-
-        LMKLogger.disableLogStore()
-    }
-
-    @Test
-    func `Log calls do nothing when store is disabled`() {
-        LMKLogger.disableLogStore()
-        LMKLogger.info("should not crash")
-        #expect(LMKLogger.logStore == nil)
-    }
-
-    @Test
-    func `LogCategory exposes name property`() {
-        #expect(LMKLogger.LogCategory.general.name == "General")
-        #expect(LMKLogger.LogCategory.data.name == "Data")
-        #expect(LMKLogger.LogCategory.network.name == "Network")
-
-        let custom = LMKLogger.LogCategory(name: "Custom")
-        #expect(custom.name == "Custom")
     }
 }

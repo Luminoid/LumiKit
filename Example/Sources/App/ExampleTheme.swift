@@ -2,42 +2,48 @@
 //  ExampleTheme.swift
 //  LumiKitExample
 //
-//  Demonstrates how to create a custom theme for LumiKit.
+//  Demonstrates how to declare an app theme for LumiKit: name only the colors
+//  that differ from the defaults and register it once at launch. A second
+//  theme exists so the Theme Switcher page (and the sweep) can prove that
+//  every component re-renders when the theme changes.
 //
 
 import LumiKitUI
 import UIKit
 
-/// Example theme — customize colors for your app.
-struct ExampleTheme: LMKTheme {
-    // Brand
-    var primary: UIColor { UIColor(red: 0.29, green: 0.69, blue: 0.49, alpha: 1.0) }      // #4CAF7D
-    var primaryDark: UIColor { UIColor(red: 0.24, green: 0.59, blue: 0.42, alpha: 1.0) }
-    var secondary: UIColor { UIColor(red: 0.35, green: 0.55, blue: 0.75, alpha: 1.0) }    // #598CBF
-    var tertiary: UIColor { .systemBrown }
+extension LMKTheme {
+    /// The catalog's brand theme; applied from `ExampleViewController.viewDidLoad`.
+    static let example = LMKTheme(
+        colors: LMKColorTheme(
+            primary: UIColor(red: 0.29, green: 0.69, blue: 0.49, alpha: 1.0), // #4CAF7D
+            primaryVariant: UIColor(red: 0.24, green: 0.59, blue: 0.42, alpha: 1.0),
+            secondary: UIColor(red: 0.35, green: 0.55, blue: 0.75, alpha: 1.0) // #598CBF
+        )
+    )
 
-    // Semantic
-    var success: UIColor { .systemGreen }
-    var warning: UIColor { .systemOrange }
-    var error: UIColor { .systemRed }
-    var info: UIColor { .systemBlue }
+    /// A contrasting theme: indigo and teal accents on a cool tinted background, with a
+    /// rounder corner scale, so a switch is visible on every page.
+    static let ocean = LMKTheme(
+        colors: LMKColorTheme(
+            primary: UIColor(red: 0.30, green: 0.36, blue: 0.85, alpha: 1.0),
+            secondary: UIColor(red: 0.10, green: 0.62, blue: 0.66, alpha: 1.0),
+            tertiary: UIColor(red: 0.85, green: 0.45, blue: 0.30, alpha: 1.0),
+            backgroundPrimary: .lmk_dynamic(light: UIColor(red: 0.96, green: 0.97, blue: 1.0, alpha: 1), dark: UIColor(red: 0.06, green: 0.07, blue: 0.11, alpha: 1)),
+            backgroundSecondary: .lmk_dynamic(light: UIColor(red: 0.91, green: 0.93, blue: 0.98, alpha: 1), dark: UIColor(red: 0.11, green: 0.12, blue: 0.18, alpha: 1))
+        ),
+        cornerRadius: LMKCornerRadiusTheme(xs: 6, small: 12, medium: 18, large: 24, xl: 28, xxl: 36)
+    )
+}
 
-    // Text
-    var textPrimary: UIColor { .label }
-    var textSecondary: UIColor { .secondaryLabel }
-    var textTertiary: UIColor { .tertiaryLabel }
+/// The themes the switcher and the sweep can apply, by name.
+enum ExampleThemes {
+    static let names = ["example", "ocean", "default"]
 
-    // Backgrounds
-    var backgroundPrimary: UIColor { .systemBackground }
-    var backgroundSecondary: UIColor { .secondarySystemBackground }
-    var backgroundTertiary: UIColor { .tertiarySystemBackground }
-
-    // Neutral / Dividers
-    var divider: UIColor { .separator }
-    var imageBorder: UIColor { .separator }
-    var graySoft: UIColor { UIColor(white: 0.75, alpha: 1) }
-    var grayMuted: UIColor { UIColor(white: 0.85, alpha: 1) }
-    var white: UIColor { UIColor(white: 0.98, alpha: 1) }
-    var black: UIColor { UIColor(white: 0.1, alpha: 1) }
-    var photoBrowserBackground: UIColor { UIColor(white: 0.1, alpha: 1) }
+    static func theme(named name: String) -> LMKTheme {
+        switch name.lowercased() {
+        case "ocean": .ocean
+        case "default": .default
+        default: .example
+        }
+    }
 }

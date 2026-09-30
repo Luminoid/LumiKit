@@ -26,6 +26,7 @@ opt_in_rules:
 included:
   - Sources
   - Tests
+  - Example/Sources
 
 # Case-sensitive paths to ignore during linting. Takes precedence over `included`. Wildcards
 # are supported.
@@ -76,6 +77,39 @@ type_name:
 cyclomatic_complexity:
   warning: 20
   error: 40
+
+# Components nest their value types (`LMKActionSheet.Action.Style`, `LMKListRowConfiguration.Leading.SymbolBackground`).
+nesting:
+  type_level: 2
+
+# Project rules.
+custom_rules:
+  # User-visible text ships through the module string tables (`LMKLocalized` / a type's `Strings`),
+  # never as a literal, so every locale the package supports stays complete. Package targets only:
+  # the Example app (`Example/Sources`) writes its demo copy inline.
+  no_literal_user_strings:
+    name: "Literal user-visible string"
+    regex: '(accessibilityLabel|accessibilityHint|accessibilityValue|placeholder|\.text|\.title)\s*=\s*"[A-Za-z][^"]*"'
+    included: "Sources/LumiKit[A-Za-z]+/.*\\.swift"
+    excluded_match_kinds:
+      - comment
+      - doccomment
+      - doccomment.field
+    message: "Route user-visible text through LMKLocalized / the type's Strings instead of a literal."
+    severity: error
+
+  # Components resolve every appearance value from the theme handed to `applyTheme(_:)` (the window's
+  # or subtree's trait), never from the process-wide store, so per-window theme scoping keeps working.
+  no_theme_store_in_components:
+    name: "Theme store read in a component"
+    regex: 'LMKTheme\.(current|currentReference)\b'
+    included: "Sources/LumiKitUI/(Components|Controls)/.*\\.swift"
+    excluded_match_kinds:
+      - comment
+      - doccomment
+      - doccomment.field
+    message: "Components read the theme passed to applyTheme(_:) or traitCollection.lmkTheme, not LMKTheme.current."
+    severity: error
 
 # The default reporter (SwiftLint's output format) can be configured as `checkstyle`, `codeclimate`, `csv`,
 # `emoji`, `github-actions-logging`, `gitlab`, `html`, `json`, `junit`, `markdown`, `relative-path`, `sarif`,

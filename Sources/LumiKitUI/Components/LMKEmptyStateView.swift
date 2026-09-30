@@ -2,71 +2,67 @@
 //  LMKEmptyStateView.swift
 //  LumiKit
 //
-//  Reusable empty state view component with fullScreen, card, and inline styles.
+//  Empty state: icon, title, message, and up to two actions, laid out as a
+//  centered column (full screen, card) or a row (inline).
 //
 
 import SnapKit
 import UIKit
 
-/// Empty state view style.
-public enum LMKEmptyStateStyle {
-    case fullScreen
-    case card
-    case inline
-
-    public var iconSize: CGFloat {
-        switch self {
-        case .fullScreen: 80
-        case .card: 40
-        case .inline: 20
-        }
-    }
-
-    public var font: UIFont {
-        switch self {
-        case .fullScreen: LMKTypography.h3
-        case .card: LMKTypography.body
-        case .inline: LMKTypography.caption
-        }
-    }
-
-    public var isHorizontal: Bool { self == .inline }
-}
-
-/// Reusable empty state view for displaying messages when content is unavailable.
+/// Empty state view for screens, cards, and inline rows without content.
 ///
-/// **Sizing contract**: the content (icon → message → optional action button)
-/// forms one vertical constraint chain inside a centered container whose
-/// height is content-driven, so it grows with multi-line messages and larger
-/// Dynamic Type sizes and the pieces can never overlap. With no host-imposed
-/// height the view sizes itself to that content (its edges hug the container
-/// at below-required priority), so it can sit directly in a stack view. A
-/// host-imposed height wins over the hugging and centers the content; make it
-/// generous enough for the content, or it will overflow the view's bounds.
-/// Don't anchor a separate call-to-action to the view's bottom edge — use
-/// ``Action`` so the button participates in the chain.
-public final class LMKEmptyStateView: UIView {
-    /// Configuration for the optional call-to-action button rendered below the
-    /// message.
-    ///
-    /// Shown for the `.fullScreen` and `.card` styles. The horizontal `.inline`
-    /// style has no room for a call to action and ignores the action entirely.
+/// ```swift
+/// emptyState.configure(LMKEmptyStateView.Content(
+///     title: "No plants yet",
+///     message: "Add your first plant to start tracking waterings.",
+///     icon: .system("leaf"),
+///     primaryAction: .init(title: "Add plant", icon: "plus") { addPlant() }
+/// ))
+/// ```
+///
+/// **Sizing contract**: the content forms one centered column whose height is
+/// content-driven, so it grows with multi-line messages and larger Dynamic Type
+/// sizes. With no host-imposed height the view sizes itself to that content and
+/// can sit in a stack view; a host-imposed height wins and centers the content.
+public final class LMKEmptyStateView: UIView, LMKThemeApplying {
+    // MARK: - Layout
+
+    public nonisolated enum Layout: Sendable, Hashable, CaseIterable {
+        /// Large icon, centered column.
+        case fullScreen
+        /// Compact column for a card or section.
+        case card
+        /// One row: small icon, message, and the primary action as a trailing button.
+        case inline
+
+        public var isHorizontal: Bool { self == .inline }
+    }
+
+    // MARK: - Content
+
+    /// The icon above (or beside) the message.
+    public enum Icon: Equatable {
+        case system(String)
+        case image(UIImage)
+
+        var image: UIImage? {
+            switch self {
+            case let .system(name): UIImage(systemName: name)
+            case let .image(image): image
+            }
+        }
+    }
+
+    /// A call to action.
     public struct Action {
-        /// Button title.
         public var title: String
         /// Optional leading SF Symbol name.
         public var icon: String?
-        /// Visual style for the button. Defaults to the filled primary style.
-        public var style: LMKButton.Style
-        /// Called when the button is tapped.
+        /// Visual style; `nil` = the empty state's `primaryButton` / `secondaryButton` style.
+        public var style: LMKButton.Style?
         public var handler: () -> Void
 
-        public init(
-            title: String,
-            icon: String? = nil,
-            style: LMKButton.Style = .filled(LMKColor.primary),
-            handler: @escaping () -> Void
-        ) {
+        public init(title: String, icon: String? = nil, style: LMKButton.Style? = nil, handler: @escaping () -> Void) {
             self.title = title
             self.icon = icon
             self.style = style
@@ -74,34 +70,157 @@ public final class LMKEmptyStateView: UIView {
         }
     }
 
-    private static var iconToLabelSpacing: CGFloat { LMKSpacing.small }
-    private static var labelToButtonSpacing: CGFloat { LMKSpacing.large }
+    /// What the empty state shows.
+    public struct Content {
+        public var title: String?
+        public var message: String
+        public var icon: Icon?
+        public var primaryAction: Action?
+        public var secondaryAction: Action?
+
+        public init(title: String? = nil, message: String, icon: Icon? = nil, primaryAction: Action? = nil, secondaryAction: Action? = nil) {
+            self.title = title
+            self.message = message
+            self.icon = icon
+            self.primaryAction = primaryAction
+            self.secondaryAction = secondaryAction
+        }
+    }
+
+    // MARK: - Style
+
+    public nonisolated struct Style: Sendable, Equatable, LMKThemeExtension {
+        /// `nil` = `.fullScreen`.
+        public var layout: Layout?
+        /// Background, corners, insets around the content; the default is transparent with no insets
+        /// (`.card` layout adds `large` insets).
+        public var surface: LMKSurfaceStyle
+        /// `nil` = 80 / 40 / 20 by layout.
+        public var iconSize: CGFloat?
+        /// `nil` = `textTertiary`.
+        public var iconTint: UIColor?
+        /// `nil` = `h3` / `body` / `caption` by layout.
+        public var titleTextStyle: LMKTextStyle?
+        /// `nil` = `body` / `caption` / `caption` by layout.
+        public var messageTextStyle: LMKTextStyle?
+        /// `nil` = `textPrimary`.
+        public var titleColor: UIColor?
+        /// `nil` = `textPrimary` (`textSecondary` when a title is present).
+        public var messageColor: UIColor?
+        /// Gap between icon, title, and message; `nil` = `small`.
+        public var spacing: CGFloat?
+        /// Gap above the actions; `nil` = `large`.
+        public var actionSpacing: CGFloat?
+        /// `nil` = filled primary.
+        public var primaryButton: LMKButton.Style?
+        /// `nil` = ghost primary.
+        public var secondaryButton: LMKButton.Style?
+
+        public init(
+            layout: Layout? = nil,
+            surface: LMKSurfaceStyle = LMKSurfaceStyle(),
+            iconSize: CGFloat? = nil,
+            iconTint: UIColor? = nil,
+            titleTextStyle: LMKTextStyle? = nil,
+            messageTextStyle: LMKTextStyle? = nil,
+            titleColor: UIColor? = nil,
+            messageColor: UIColor? = nil,
+            spacing: CGFloat? = nil,
+            actionSpacing: CGFloat? = nil,
+            primaryButton: LMKButton.Style? = nil,
+            secondaryButton: LMKButton.Style? = nil
+        ) {
+            self.layout = layout
+            self.surface = surface
+            self.iconSize = iconSize
+            self.iconTint = iconTint
+            self.titleTextStyle = titleTextStyle
+            self.messageTextStyle = messageTextStyle
+            self.titleColor = titleColor
+            self.messageColor = messageColor
+            self.spacing = spacing
+            self.actionSpacing = actionSpacing
+            self.primaryButton = primaryButton
+            self.secondaryButton = secondaryButton
+        }
+
+        public static let defaultValue = Self()
+        public static let fullScreen = Self(layout: .fullScreen)
+        public static let card = Self(layout: .card)
+        public static let inline = Self(layout: .inline)
+
+        /// `other`'s non-nil fields over this style's.
+        public func merging(_ other: Self) -> Self {
+            Self(
+                layout: other.layout ?? layout,
+                surface: surface.merging(other.surface),
+                iconSize: other.iconSize ?? iconSize,
+                iconTint: other.iconTint ?? iconTint,
+                titleTextStyle: other.titleTextStyle ?? titleTextStyle,
+                messageTextStyle: other.messageTextStyle ?? messageTextStyle,
+                titleColor: other.titleColor ?? titleColor,
+                messageColor: other.messageColor ?? messageColor,
+                spacing: other.spacing ?? spacing,
+                actionSpacing: other.actionSpacing ?? actionSpacing,
+                primaryButton: other.primaryButton.map { primaryButton?.merging($0) ?? $0 } ?? primaryButton,
+                secondaryButton: other.secondaryButton.map { secondaryButton?.merging($0) ?? $0 } ?? secondaryButton
+            )
+        }
+    }
+
+    // MARK: - Subviews
+
+    public let iconView = UIImageView()
+    public let titleLabel = UILabel()
+    public let messageLabel = UILabel()
+    /// The primary action's button (`nil` without a primary action).
+    public private(set) var actionButton: LMKButton?
+    /// The secondary action's button (`nil` without a secondary action; never shown inline).
+    public private(set) var secondaryActionButton: LMKButton?
+    private let containerStack = UIStackView()
+    private let textStack = UIStackView()
+    private let actionStack = UIStackView()
+
+    // MARK: - State
+
+    /// Per-instance style; `nil` fields resolve from `theme.emptyState`, then the built-in look.
+    public var style: Style {
+        didSet {
+            guard style != oldValue else { return }
+            applyTheme(traitCollection.lmkTheme)
+        }
+    }
+
+    /// The current content (`nil` until configured).
+    public private(set) var content: Content?
+
+    /// The layout in effect.
+    public var layout: Layout { resolved.layout ?? .fullScreen }
+
+    /// Called at the end of every `applyTheme`, for tweaks the style does not cover.
+    public var didApplyStyle: ((LMKEmptyStateView) -> Void)?
+
+    private var resolved = Style()
+    private var iconSizeConstraint: Constraint?
+    private var containerInsetsConstraint: Constraint?
+
     private static let iconAnimationScale: CGFloat = 0.95
     private static let iconAnimationDelay: TimeInterval = 0.05
     private static let labelAnimationDelay: TimeInterval = 0.1
     private static let buttonAnimationDelay: TimeInterval = 0.15
 
-    public static let inlineCellHeight: CGFloat = 44
-    public static let cardCellHeight: CGFloat = 120
-    public static let fullScreenCellHeight: CGFloat = 150
-    public static var inlineHorizontalInsets: CGFloat { LMKSpacing.large * 2 }
+    // MARK: - Initialization
 
-    private let messageLabel = UILabel()
-    private let iconImageView = UIImageView()
-    private var containerView = UIView()
-    private var horizontalContainerView: UIView?
-    private var currentStyle: LMKEmptyStateStyle = .fullScreen
-    private var currentAction: Action?
-    /// The rendered call-to-action button; nil when no action is set or the
-    /// style is `.inline`.
-    private(set) var actionButton: LMKButton?
-
-    override public init(frame: CGRect) {
-        super.init(frame: frame)
+    public init(style: Style = Style()) {
+        self.style = style
+        super.init(frame: .zero)
         setupUI()
-        registerForTraitChanges([UITraitUserInterfaceStyle.self]) { (self: Self, _: UITraitCollection) in
-            self.refreshDynamicColors()
-        }
+        lmk_startApplyingTheme()
+    }
+
+    override public convenience init(frame: CGRect) {
+        self.init(style: Style())
+        self.frame = frame
     }
 
     @available(*, unavailable)
@@ -109,258 +228,248 @@ public final class LMKEmptyStateView: UIView {
         fatalError("init(coder:) has not been implemented")
     }
 
-    private func refreshDynamicColors() {
-        iconImageView.tintColor = LMKColor.textTertiary
-        messageLabel.textColor = LMKColor.textPrimary
-    }
+    // MARK: - Setup
 
     private func setupUI() {
         backgroundColor = .clear
         isAccessibilityElement = true
         accessibilityTraits = .staticText
 
-        containerView.backgroundColor = .clear
-        addSubview(containerView)
-        containerView.snp.makeConstraints { make in
+        addSubview(containerStack)
+        containerStack.snp.makeConstraints { make in
             make.center.equalToSuperview()
-            make.leading.greaterThanOrEqualToSuperview()
-            make.trailing.lessThanOrEqualToSuperview()
-            // Vertical sizing contract. The guards keep the content inside the
-            // view whenever the host height allows it (999, not required, so a
-            // host that pins a too-short height gets the old silent overflow
-            // instead of unsatisfiable-constraint breakage); the edge hugging
-            // gives the view its content height when the host imposes none —
-            // without it the view collapses to zero height in a stack view and
-            // the centered content spills over its neighbors. The hugging must
-            // stay below UILabel's default vertical content hugging (250): any
-            // higher and a host-imposed taller height stretches the message
-            // label to fill the view instead of breaking the hugging, losing
-            // the centered layout.
-            make.top.greaterThanOrEqualToSuperview().priority(999)
-            make.bottom.lessThanOrEqualToSuperview().priority(999)
-            make.top.equalToSuperview().priority(249)
-            make.bottom.equalToSuperview().priority(249)
+            // Vertical sizing contract: the guards keep the content inside the view whenever the host
+            // height allows it (999, not required, so a too-short host height overflows silently
+            // instead of breaking constraints); the hugging gives the view its content height when
+            // the host imposes none. The hugging stays below UILabel's default vertical hugging (250),
+            // so a taller host height centers the content instead of stretching the message.
+            containerInsetsConstraint = make.edges.equalToSuperview().priority(249).constraint
+            make.top.left.greaterThanOrEqualToSuperview().priority(999)
+            make.bottom.right.lessThanOrEqualToSuperview().priority(999)
         }
 
-        iconImageView.contentMode = .scaleAspectFit
-        iconImageView.tintColor = LMKColor.textTertiary
-        iconImageView.isHidden = true
-        containerView.addSubview(iconImageView)
+        iconView.contentMode = .scaleAspectFit
+        iconView.isHidden = true
+        iconView.snp.makeConstraints { make in
+            iconSizeConstraint = make.width.height.equalTo(0).constraint
+        }
 
-        messageLabel.textColor = LMKColor.textPrimary
+        titleLabel.numberOfLines = 0
+        titleLabel.isHidden = true
         messageLabel.numberOfLines = 0
         messageLabel.lineBreakMode = .byWordWrapping
-        // Without this, a mid-session Dynamic Type change would not reflow the
-        // message until the next configure() call.
-        messageLabel.adjustsFontForContentSizeCategory = true
-        containerView.addSubview(messageLabel)
+        textStack.axis = .vertical
+        textStack.addArrangedSubview(titleLabel)
+        textStack.addArrangedSubview(messageLabel)
+
+        actionStack.axis = .horizontal
+        actionStack.alignment = .center
+        actionStack.isHidden = true
+
+        containerStack.addArrangedSubview(iconView)
+        containerStack.addArrangedSubview(textStack)
+        containerStack.addArrangedSubview(actionStack)
     }
 
-    private func setupConstraints(for style: LMKEmptyStateStyle) {
-        if let horizontalContainer = horizontalContainerView {
-            iconImageView.removeFromSuperview()
-            messageLabel.removeFromSuperview()
-            horizontalContainer.removeFromSuperview()
-            horizontalContainerView = nil
-            containerView.addSubview(iconImageView)
-            containerView.addSubview(messageLabel)
-        }
-
-        iconImageView.snp.remakeConstraints { _ in }
-        messageLabel.snp.remakeConstraints { _ in }
-
-        if style.isHorizontal {
-            messageLabel.textAlignment = .natural
-            if !iconImageView.isHidden {
-                let horizontalContainer = UIView()
-                horizontalContainer.backgroundColor = .clear
-                containerView.addSubview(horizontalContainer)
-                horizontalContainerView = horizontalContainer
-
-                iconImageView.removeFromSuperview()
-                messageLabel.removeFromSuperview()
-                horizontalContainer.addSubview(iconImageView)
-                horizontalContainer.addSubview(messageLabel)
-
-                iconImageView.snp.makeConstraints { make in
-                    make.width.height.equalTo(style.iconSize)
-                    make.leading.equalToSuperview()
-                    make.centerY.equalToSuperview()
-                }
-                messageLabel.snp.makeConstraints { make in
-                    make.leading.equalTo(iconImageView.snp.trailing).offset(Self.iconToLabelSpacing)
-                    make.trailing.equalToSuperview()
-                    make.centerY.equalToSuperview()
-                    make.top.bottom.equalToSuperview()
-                }
-                horizontalContainer.snp.makeConstraints { make in
-                    make.centerX.centerY.equalToSuperview()
-                    make.top.bottom.equalToSuperview()
-                }
-            } else {
-                messageLabel.snp.makeConstraints { make in
-                    make.centerX.centerY.equalToSuperview()
-                    make.leading.trailing.equalToSuperview()
-                    make.top.bottom.equalToSuperview()
-                }
-            }
-        } else {
-            messageLabel.textAlignment = .center
-            if !iconImageView.isHidden {
-                iconImageView.snp.makeConstraints { make in
-                    make.width.height.equalTo(style.iconSize)
-                    make.centerX.equalToSuperview()
-                    make.top.equalToSuperview()
-                }
-                messageLabel.snp.makeConstraints { make in
-                    make.top.equalTo(iconImageView.snp.bottom).offset(LMKSpacing.small)
-                    make.leading.trailing.equalToSuperview()
-                }
-            } else {
-                messageLabel.snp.makeConstraints { make in
-                    make.centerX.equalToSuperview()
-                    make.top.leading.trailing.equalToSuperview()
-                }
-            }
-
-            if let actionButton {
-                actionButton.snp.makeConstraints { make in
-                    make.top.equalTo(messageLabel.snp.bottom).offset(Self.labelToButtonSpacing)
-                    make.centerX.equalToSuperview()
-                    make.leading.greaterThanOrEqualToSuperview()
-                    make.trailing.lessThanOrEqualToSuperview()
-                    make.bottom.equalToSuperview()
-                }
-            } else {
-                messageLabel.snp.makeConstraints { make in
-                    make.bottom.equalToSuperview()
-                }
-            }
-        }
+    override public func layoutSubviews() {
+        super.layoutSubviews()
+        lmk_layoutSurfaceIfNeeded()
     }
 
-    /// Configure the empty state view.
-    ///
-    /// - Parameters:
-    ///   - message: The message text.
-    ///   - icon: Optional SF Symbol shown above the message (beside it for `.inline`).
-    ///   - style: Presentation style. Default `.fullScreen`.
-    ///   - action: Optional call-to-action button rendered below the message,
-    ///     centered and hugging its content. Shown for `.fullScreen` and
-    ///     `.card`; the `.inline` style ignores it.
-    public func configure(message: String, icon: String? = nil, style: LMKEmptyStateStyle = .fullScreen, action: Action? = nil) {
-        messageLabel.text = message
-        messageLabel.font = style.font
-        currentStyle = style
-        currentAction = action
+    // MARK: - Configuration
 
-        if let iconName = icon, let iconImage = UIImage(systemName: iconName) {
-            iconImageView.image = iconImage
-            iconImageView.isHidden = false
-        } else {
-            iconImageView.isHidden = true
-        }
-
-        rebuildActionButton()
-        setupConstraints(for: style)
-        updateAccessibility()
-
-        if LMKAnimationHelper.shouldAnimate {
-            if !iconImageView.isHidden {
-                iconImageView.alpha = 0
-                iconImageView.transform = CGAffineTransform(scaleX: Self.iconAnimationScale, y: Self.iconAnimationScale)
-                UIView.animate(withDuration: LMKAnimationHelper.Duration.actionSheet, delay: Self.iconAnimationDelay, options: .curveEaseOut) {
-                    self.iconImageView.alpha = 1
-                    self.iconImageView.transform = .identity
-                }
-            }
-            messageLabel.alpha = 0
-            UIView.animate(withDuration: LMKAnimationHelper.Duration.actionSheet, delay: Self.labelAnimationDelay, options: .curveEaseOut) {
-                self.messageLabel.alpha = 1
-            }
-            fadeInActionButton()
-        } else {
-            iconImageView.alpha = 1
-            iconImageView.transform = .identity
-            messageLabel.alpha = 1
-            actionButton?.alpha = 1
-        }
+    /// Sets the content and rebuilds the action buttons.
+    public func configure(_ content: Content) {
+        self.content = content
+        applyTheme(traitCollection.lmkTheme)
+        animateEntrance()
     }
 
-    /// Add, replace, or remove the call-to-action button after `configure`.
-    ///
-    /// Passing `nil` removes the button and restores the view as a single
-    /// static-text accessibility element. The `.inline` style ignores the
-    /// action (see ``configure(message:icon:style:action:)``).
+    /// Adds, replaces, or removes the primary action after `configure`.
     public func setAction(_ action: Action?) {
-        currentAction = action
-        rebuildActionButton()
-        setupConstraints(for: currentStyle)
-        updateAccessibility()
-
-        if LMKAnimationHelper.shouldAnimate {
-            fadeInActionButton()
-        } else {
-            actionButton?.alpha = 1
+        content?.primaryAction = action
+        applyTheme(traitCollection.lmkTheme)
+        if LMKAnimation.shouldAnimate, let actionButton {
+            actionButton.alpha = 0
+            UIView.animate(withDuration: LMKAnimation.Duration.normal, delay: Self.buttonAnimationDelay, options: LMKAnimation.Curve.easeOut.options) {
+                actionButton.alpha = 1
+            }
         }
     }
 
-    // MARK: - Action Button
+    // MARK: - Theme
 
-    /// Tears down and (when an action is set and the style has room for it)
-    /// rebuilds the call-to-action button. Rebuilding rather than mutating
-    /// keeps constraint state trivial: a fresh button carries no stale
-    /// constraints into `setupConstraints`.
-    private func rebuildActionButton() {
+    public func applyTheme(_ theme: LMKTheme) {
+        resolved = theme.emptyState.merging(style)
+        let layout = layout
+        let defaults = LMKSurfaceStyle(
+            background: .clear,
+            corners: LMKCornerStyle.none,
+            shadow: LMKShadowSource.none,
+            contentInsets: layout == .card ? .lmk_all(theme.spacing.large) : .lmk_all(0)
+        )
+        let applied = lmk_apply(surface: resolved.surface, defaults: defaults)
+        let insets = applied.contentInsets ?? .lmk_all(0)
+        containerInsetsConstraint?.update(inset: UIEdgeInsets(top: insets.top, left: insets.leading, bottom: insets.bottom, right: insets.trailing))
+
+        // Content
+        iconView.image = content?.icon?.image
+        iconView.isHidden = iconView.image == nil
+        iconView.tintColor = resolved.iconTint ?? LMKColor.textTertiary
+        iconSizeConstraint?.update(offset: resolved.iconSize ?? Self.iconSize(for: layout))
+
+        let hasTitle = content?.title.map { !$0.isEmpty } ?? false
+        titleLabel.isHidden = !hasTitle
+        titleLabel.lmk_apply(resolved.titleTextStyle ?? Self.titleTextStyle(for: layout), color: resolved.titleColor ?? LMKColor.textPrimary)
+        titleLabel.lmk_setText(content?.title)
+        messageLabel.lmk_apply(resolved.messageTextStyle ?? Self.messageTextStyle(for: layout), color: resolved.messageColor ?? (hasTitle ? LMKColor.textSecondary : LMKColor.textPrimary))
+        messageLabel.lmk_setText(content?.message)
+
+        // Layout
+        containerStack.axis = layout.isHorizontal ? .horizontal : .vertical
+        containerStack.alignment = layout.isHorizontal ? .center : .center
+        containerStack.spacing = resolved.spacing ?? theme.spacing.small
+        textStack.spacing = resolved.spacing ?? theme.spacing.xs
+        titleLabel.textAlignment = layout.isHorizontal ? .natural : .center
+        messageLabel.textAlignment = layout.isHorizontal ? .natural : .center
+        containerStack.setCustomSpacing(resolved.actionSpacing ?? theme.spacing.large, after: textStack)
+        rebuildActions(theme: theme)
+        actionStack.spacing = theme.spacing.small
+        updateAccessibility()
+        invalidateIntrinsicContentSize()
+        didApplyStyle?(self)
+    }
+
+    private func rebuildActions(theme: LMKTheme) {
         actionButton?.removeFromSuperview()
+        secondaryActionButton?.removeFromSuperview()
         actionButton = nil
-
-        // The horizontal inline style has no room for a call to action.
-        guard let action = currentAction, !currentStyle.isHorizontal else { return }
-
-        let button = LMKButton()
-        button.applyStyle(action.style, title: action.title)
-        if let iconName = action.icon {
-            button.configuration?.image = UIImage(systemName: iconName)
-            button.configuration?.imagePlacement = .leading
-            button.configuration?.imagePadding = LMKSpacing.small
+        secondaryActionButton = nil
+        if let primary = content?.primaryAction {
+            let button = makeButton(for: primary, defaultStyle: resolved.primaryButton ?? .filled())
+            actionStack.addArrangedSubview(button)
+            actionButton = button
         }
-        button.tapHandler = action.handler
-        // Hug the content: the button should never stretch to the message width.
+        if let secondary = content?.secondaryAction, !layout.isHorizontal {
+            let button = makeButton(for: secondary, defaultStyle: resolved.secondaryButton ?? .ghost())
+            actionStack.addArrangedSubview(button)
+            secondaryActionButton = button
+        }
+        actionStack.isHidden = actionStack.arrangedSubviews.isEmpty
+        if layout.isHorizontal {
+            actionButton?.style = (actionButton?.style ?? LMKButton.Style()).size(.small)
+        }
+    }
+
+    private func makeButton(for action: Action, defaultStyle: LMKButton.Style) -> LMKButton {
+        let button = LMKButton(title: action.title, style: action.style.map { defaultStyle.merging($0) } ?? defaultStyle)
+        if let icon = action.icon {
+            button.setSymbol(icon)
+        }
+        button.onTap = action.handler
+        // Hug the content: the button never stretches to the message width.
         button.setContentHuggingPriority(.required, for: .horizontal)
         button.setContentCompressionResistancePriority(.required, for: .horizontal)
-        containerView.addSubview(button)
-        actionButton = button
+        return button
     }
 
-    /// Fades the action button in after the label (same duration, later delay),
-    /// mirroring the icon → label entrance stagger.
-    private func fadeInActionButton() {
-        guard let actionButton else { return }
-        actionButton.alpha = 0
-        UIView.animate(withDuration: LMKAnimationHelper.Duration.actionSheet, delay: Self.buttonAnimationDelay, options: .curveEaseOut) {
-            actionButton.alpha = 1
+    private static func iconSize(for layout: Layout) -> CGFloat {
+        switch layout {
+        case .fullScreen: 80
+        case .card: 40
+        case .inline: 20
+        }
+    }
+
+    private static func titleTextStyle(for layout: Layout) -> LMKTextStyle {
+        switch layout {
+        case .fullScreen: .h3
+        case .card: .bodyBold
+        case .inline: .captionMedium
+        }
+    }
+
+    private static func messageTextStyle(for layout: Layout) -> LMKTextStyle {
+        switch layout {
+        case .fullScreen: .body
+        case .card: .caption
+        case .inline: .caption
+        }
+    }
+
+    private func animateEntrance() {
+        guard LMKAnimation.shouldAnimate else {
+            iconView.alpha = 1
+            iconView.transform = .identity
+            textStack.alpha = 1
+            actionStack.alpha = 1
+            return
+        }
+        if !iconView.isHidden {
+            iconView.alpha = 0
+            iconView.transform = CGAffineTransform(scaleX: Self.iconAnimationScale, y: Self.iconAnimationScale)
+            UIView.animate(withDuration: LMKAnimation.Duration.normal, delay: Self.iconAnimationDelay, options: LMKAnimation.Curve.easeOut.options) {
+                self.iconView.alpha = 1
+                self.iconView.transform = .identity
+            }
+        }
+        textStack.alpha = 0
+        UIView.animate(withDuration: LMKAnimation.Duration.normal, delay: Self.labelAnimationDelay, options: LMKAnimation.Curve.easeOut.options) {
+            self.textStack.alpha = 1
+        }
+        actionStack.alpha = 0
+        UIView.animate(withDuration: LMKAnimation.Duration.normal, delay: Self.buttonAnimationDelay, options: LMKAnimation.Curve.easeOut.options) {
+            self.actionStack.alpha = 1
         }
     }
 
     // MARK: - Accessibility
 
-    /// With no action the view is one static-text element (message as label).
-    /// With an action present that single element would swallow the button, so
-    /// the view becomes a plain container exposing the message label and the
-    /// button as separate accessibility elements.
+    /// Without actions the view is one static-text element (title and message as its label).
+    /// With an action that element would swallow the button, so the view becomes a container
+    /// exposing the labels and the buttons separately.
     private func updateAccessibility() {
-        if actionButton != nil {
+        let label = [content?.title, content?.message].compactMap(\.self).filter { !$0.isEmpty }.joined(separator: ". ")
+        if actionButton != nil || secondaryActionButton != nil {
             isAccessibilityElement = false
             accessibilityTraits = []
             accessibilityLabel = nil
+            titleLabel.isAccessibilityElement = !titleLabel.isHidden
             messageLabel.isAccessibilityElement = true
+            accessibilityElements = [titleLabel, messageLabel, actionButton, secondaryActionButton].compactMap(\.self).filter { !$0.isHidden }
         } else {
             isAccessibilityElement = true
             accessibilityTraits = .staticText
-            accessibilityLabel = messageLabel.text
+            accessibilityLabel = label
+            accessibilityElements = nil
+            titleLabel.isAccessibilityElement = false
             messageLabel.isAccessibilityElement = false
         }
+    }
+
+    // MARK: - Bridges
+
+    /// The content as a `UIContentUnavailableConfiguration`, for hosts that use
+    /// `contentUnavailableConfiguration` on a view controller.
+    public func asContentUnavailableConfiguration() -> UIContentUnavailableConfiguration {
+        var configuration = UIContentUnavailableConfiguration.empty()
+        configuration.text = content?.title ?? content?.message
+        configuration.secondaryText = content?.title == nil ? nil : content?.message
+        configuration.image = content?.icon?.image
+        if let primary = content?.primaryAction {
+            var button = UIButton.Configuration.filled()
+            button.title = primary.title
+            button.image = primary.icon.flatMap { UIImage(systemName: $0) }
+            configuration.button = button
+            configuration.buttonProperties.primaryAction = UIAction { _ in primary.handler() }
+        }
+        if let secondary = content?.secondaryAction {
+            var button = UIButton.Configuration.plain()
+            button.title = secondary.title
+            configuration.secondaryButton = button
+            configuration.secondaryButtonProperties.primaryAction = UIAction { _ in secondary.handler() }
+        }
+        return configuration
     }
 
     /// Wraps this view for use as `tableView.backgroundView`.
@@ -368,28 +477,15 @@ public final class LMKEmptyStateView: UIView {
         let container = UIView()
         container.backgroundColor = backgroundColor ?? LMKColor.backgroundPrimary
         container.addSubview(self)
-        snp.makeConstraints { make in make.edges.equalToSuperview() }
+        snp.makeConstraints { $0.edges.equalToSuperview() }
         return container
     }
 }
 
-/// Helper extension for creating empty state table view cells.
-public extension UITableViewCell {
-    static func lmk_emptyStateCell(message: String, icon: String? = nil, style: LMKEmptyStateStyle = .card, reuseIdentifier: String = "LMKEmptyStateCell") -> UITableViewCell {
-        let cell = UITableViewCell(style: .default, reuseIdentifier: reuseIdentifier)
-        cell.selectionStyle = .none
-        cell.backgroundColor = .clear
-
-        let emptyStateView = LMKEmptyStateView()
-        emptyStateView.configure(message: message, icon: icon, style: style)
-        cell.contentView.addSubview(emptyStateView)
-
-        let height: CGFloat = style == .inline ? LMKEmptyStateView.inlineCellHeight : (style == .card ? LMKEmptyStateView.cardCellHeight : LMKEmptyStateView.fullScreenCellHeight)
-        emptyStateView.snp.makeConstraints { make in
-            make.centerX.centerY.equalToSuperview()
-            make.leading.trailing.equalToSuperview().inset(LMKEmptyStateView.inlineHorizontalInsets)
-            make.height.greaterThanOrEqualTo(height)
-        }
-        return cell
+public nonisolated extension LMKTheme {
+    /// App-wide default style for `LMKEmptyStateView`.
+    var emptyState: LMKEmptyStateView.Style {
+        get { self[LMKEmptyStateView.Style.self] }
+        set { self[LMKEmptyStateView.Style.self] = newValue }
     }
 }

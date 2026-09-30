@@ -13,20 +13,20 @@ struct CollectionLMKTests {
     @Test
     func `Safe subscript returns element for valid index`() {
         let items = ["a", "b", "c"]
-        #expect(items[safe: 1] == "b")
+        #expect(items[lmk_safe: 1] == "b")
     }
 
     @Test
     func `Safe subscript returns nil for out-of-bounds index`() {
         let items = ["a", "b", "c"]
-        #expect(items[safe: 5] == nil)
-        #expect(items[safe: -1] == nil)
+        #expect(items[lmk_safe: 5] == nil)
+        #expect(items[lmk_safe: -1] == nil)
     }
 
     @Test
     func `Safe subscript returns nil for empty collection`() {
         let items: [String] = []
-        #expect(items[safe: 0] == nil)
+        #expect(items[lmk_safe: 0] == nil)
     }
 
     @Test

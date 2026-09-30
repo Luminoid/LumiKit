@@ -1,0 +1,9 @@
+/* LumiKitDebug — Simplified Chinese */
+"networkHistory.title" = "网络记录";
+"networkHistory.empty" = "尚未捕获任何网络请求";
+"networkHistory.clear.accessibilityLabel" = "清除记录";
+"networkDetail.title" = "请求详情";
+"networkDetail.copied" = "已复制";
+"networkDetail.copy.accessibilityLabel" = "拷贝请求";
+"networkRecord.errorStatus" = "错误";
+"networkRecord.pendingStatus" = "等待中";

@@ -2,79 +2,196 @@
 //  LMKLottieRefreshControl.swift
 //  LumiKit
 //
-//  Custom pull-to-refresh indicator with circle-spinner Lottie animation.
-//  Phase 1: A point grows into a complete circle ring as the user pulls.
-//  Phase 2: The ring extends and shrinks while spinning continuously.
+//  Pull-to-refresh control with a two-phase Lottie animation: the ring draws
+//  as the user pulls, then spins while loading. Ships its own ring animation
+//  and tints it from the theme; hosts inject any Lottie animation instead.
 //
 
 import Lottie
 import LumiKitUI
 import UIKit
 
-/// Custom refresh control with circle-spinner Lottie animation.
+/// Pull-to-refresh control driven by a Lottie animation, styled from `theme.lottieRefreshControl`.
 ///
-/// Phase 1 (pull): Trim path draws the ring proportional to scroll offset.
-/// Phase 2 (loading): Ring arc oscillates (extends/shrinks) while spinning.
+/// Phase 1 (pull): the animation scrubs to `timeline.phase1EndFrame` proportionally to the pull.
+/// Phase 2 (loading): frames `phase1EndFrame...totalFrames` loop until `endRefreshing()`.
+///
+/// ```swift
+/// refreshControl = LMKLottieRefreshControl.install(on: collectionView) { [weak self] in self?.reload() }
+/// // Mac idiom: install returns nil; offer Command-R instead
+/// override var keyCommands: [UIKeyCommand]? { [LMKLottieRefreshControl.makeRefreshKeyCommand(action: #selector(reload))] }
+/// ```
+///
+/// `install(on:)` tracks the scroll view itself (offset and drag end). A host that drives the
+/// control by hand calls `updatePullProgress(scrollView:)` from `scrollViewDidScroll` and
+/// `handleEndDragging(scrollView:)` from `scrollViewDidEndDragging`.
 ///
 /// Behaviour:
-/// - Refresh is NOT triggered while the user is still dragging.
-///   It fires only after they release the scroll past the threshold.
-/// - After loading finishes, the spinner fades out smoothly and
-///   ignores further scroll-offset changes until the dismiss completes.
-public final class LMKLottieRefreshControl: UIRefreshControl {
+/// - A release past `pullThreshold` starts the refresh. UIKit starts one itself when the pull
+///   crosses the system's own distance mid-drag; both report through `onRefresh` and
+///   `.valueChanged` once, and both spin.
+/// - `endRefreshing()` waits out `minimumSpinDuration`, then fades the spinner; a
+///   `beginRefreshing()` during that wait cancels it.
+/// - Under Reduce Motion the Lottie view stays hidden and the system spinner shows.
+public final class LMKLottieRefreshControl: UIRefreshControl, LMKThemeApplying {
+    // MARK: - Timeline
+
+    /// Frame layout of the animation: the pull scrubs `0...phase1EndFrame`, loading loops the rest.
+    public nonisolated struct Timeline: Sendable, Equatable {
+        public var phase1EndFrame: CGFloat
+        public var totalFrames: CGFloat
+
+        public init(phase1EndFrame: CGFloat = 60, totalFrames: CGFloat = 180) {
+            self.phase1EndFrame = max(0, phase1EndFrame)
+            self.totalFrames = max(self.phase1EndFrame, totalFrames)
+        }
+
+        /// The bundled ring animation's timeline.
+        public static let bundled = Self()
+    }
+
+    // MARK: - Style
+
+    public nonisolated struct Style: Sendable, Equatable, LMKThemeExtension {
+        /// Pull distance (pt) that maps to 100% of phase 1; `nil` = `theme.layout.pullThreshold`.
+        public var pullThreshold: CGFloat?
+        /// Frame layout; `nil` = the bundled animation's (60 / 180).
+        public var timeline: Timeline?
+        /// Shortest time the spinner stays up once refreshing; `nil` = 0.8 s.
+        public var minimumSpinDuration: TimeInterval?
+        /// Side of the animation view; `nil` = `spacing.xxl` × 2.
+        public var size: CGFloat?
+        /// Color applied to the animation's `tintKeypath` fills and strokes; `nil` = `primary`.
+        public var tintColor: UIColor?
+        /// Lottie keypath the tint targets; `nil` = every `Color` property (`**.Color`).
+        public var tintKeypath: String?
+        /// Whether the tint is applied at all (turn off for animations with their own colors); `nil` = true.
+        public var appliesTint: Bool?
+        /// Impact haptic when the pull crosses the threshold; `nil` = enabled.
+        public var haptics: Bool?
+
+        public init(
+            pullThreshold: CGFloat? = nil,
+            timeline: Timeline? = nil,
+            minimumSpinDuration: TimeInterval? = nil,
+            size: CGFloat? = nil,
+            tintColor: UIColor? = nil,
+            tintKeypath: String? = nil,
+            appliesTint: Bool? = nil,
+            haptics: Bool? = nil
+        ) {
+            self.pullThreshold = pullThreshold
+            self.timeline = timeline
+            self.minimumSpinDuration = minimumSpinDuration
+            self.size = size
+            self.tintColor = tintColor
+            self.tintKeypath = tintKeypath
+            self.appliesTint = appliesTint
+            self.haptics = haptics
+        }
+
+        public static let defaultValue = Self()
+
+        /// `other`'s non-nil fields over this style's.
+        public func merging(_ other: Self) -> Self {
+            Self(
+                pullThreshold: other.pullThreshold ?? pullThreshold,
+                timeline: other.timeline ?? timeline,
+                minimumSpinDuration: other.minimumSpinDuration ?? minimumSpinDuration,
+                size: other.size ?? size,
+                tintColor: other.tintColor ?? tintColor,
+                tintKeypath: other.tintKeypath ?? tintKeypath,
+                appliesTint: other.appliesTint ?? appliesTint,
+                haptics: other.haptics ?? haptics
+            )
+        }
+    }
+
+    // MARK: - Strings
+
+    public nonisolated struct Strings: Sendable, Equatable {
+        /// Title of the Command-R key command.
+        public var refresh: String
+
+        public init(refresh: String = LMKLocalized("refreshControl.refresh")) {
+            self.refresh = refresh
+        }
+    }
+
+    /// Process-wide strings. Override at app launch to localize.
+    public nonisolated(unsafe) static var strings = Strings()
+
     // MARK: - Constants
 
-    /// Pull distance (pt) that maps to 100% of Phase 1.
-    public static let pullThreshold: CGFloat = 80
+    private static let defaultMinimumSpinDuration: TimeInterval = 0.8
+    private static let defaultTintKeypath = "**.Color"
 
-    private static let phase1EndFrame: CGFloat = 60
-    private static let totalFrames: CGFloat = 180
-    private static let dismissDuration: TimeInterval = LMKAnimationHelper.Duration.listUpdate
-    private static let minimumSpinDuration: TimeInterval = 0.8
+    /// The ring animation shipped with the package (`refresh_spinner.json`), tinted at runtime.
+    public static let bundledAnimation: LottieAnimation? = LottieAnimation.named("refresh_spinner", bundle: lmkModuleBundle, subdirectory: nil, animationCache: nil)
 
-    // MARK: - Configuration
+    // MARK: - Properties
 
-    /// Name of the Lottie animation JSON file.
-    /// Defaults to `"refresh_spinner"`.
-    public var animationName: String = "refresh_spinner" {
+    /// The animation played; `nil` plays the bundled ring.
+    public var animation: LottieAnimation? {
         didSet {
-            if animationName != oldValue {
-                animationView.animation = loadAnimation()
-            }
+            animationView.animation = animation ?? Self.bundledAnimation
+            applyTint()
         }
     }
 
-    /// Bundle to load the Lottie animation from. Defaults to `.main`.
-    public var animationBundle: Bundle = .main {
+    /// Per-instance style, layered over `theme.lottieRefreshControl`.
+    public var style: Style {
         didSet {
-            if animationBundle != oldValue {
-                animationView.animation = loadAnimation()
-            }
+            guard style != oldValue else { return }
+            applyTheme(traitCollection.lmkTheme)
         }
     }
+
+    /// Called at the end of every `applyTheme`, for tweaks the style does not cover.
+    public var didApplyStyle: ((LMKLottieRefreshControl) -> Void)?
+
+    /// The style in effect after the theme and instance style are merged.
+    public private(set) var resolvedStyle = Style()
+
+    /// Called whenever a refresh starts (alongside `.valueChanged`).
+    public var onRefresh: (() -> Void)?
+
+    /// The Lottie view; exposed for animation tweaks the style does not cover.
+    public let animationView = LottieAnimationView()
+
+    /// The scroll view `install(on:)` attached to, if any.
+    public private(set) weak var attachedScrollView: UIScrollView?
+
+    /// Whether the spinner is up: from `beginRefreshing()` until the fade after `endRefreshing()`
+    /// completes. Unlike `isRefreshing`, it does not depend on the scroll view being on screen.
+    public private(set) var isAnimatingRefresh = false
+
+    /// Whether an `endRefreshing()` is waiting out `minimumSpinDuration`.
+    public var hasPendingEndRefresh: Bool { pendingEndRefresh != nil }
 
     // MARK: - State
 
+    private var isTriggeringRefresh = false
     private var isDismissing = false
     private var passedThreshold = false
     private var spinStartTime: Date?
-    private var pendingEndRefresh = false
-
-    // MARK: - Subviews
-
-    private lazy var animationView: LottieAnimationView = {
-        let view = LottieAnimationView()
-        view.contentMode = .scaleAspectFit
-        view.loopMode = .playOnce
-        view.animation = loadAnimation()
-        return view
-    }()
+    private var pendingEndRefresh: Task<Void, Never>?
+    private var contentOffsetObservation: NSKeyValueObservation?
 
     // MARK: - Initialization
 
-    override public init() {
+    /// - Parameters:
+    ///   - animation: The Lottie animation to play; `nil` plays the bundled ring.
+    ///   - style: Per-instance style, layered over `theme.lottieRefreshControl`.
+    public init(animation: LottieAnimation? = nil, style: Style = Style()) {
+        self.animation = animation
+        self.style = style
         super.init()
         setup()
+    }
+
+    override public convenience init() {
+        self.init(animation: nil)
     }
 
     @available(*, unavailable)
@@ -82,98 +199,182 @@ public final class LMKLottieRefreshControl: UIRefreshControl {
         fatalError("init(coder:) has not been implemented")
     }
 
+    deinit {
+        pendingEndRefresh?.cancel()
+    }
+
     private func setup() {
-        if LMKAnimationHelper.shouldAnimate {
+        animationView.contentMode = .scaleAspectFit
+        animationView.loopMode = .playOnce
+        // A spin interrupted by the app leaving the foreground picks up where it stopped.
+        animationView.backgroundBehavior = .pauseAndRestore
+        animationView.animation = animation ?? Self.bundledAnimation
+        animationView.isAccessibilityElement = false
+        if LMKAnimation.shouldAnimate {
             tintColor = .clear
             hideDefaultSubviews()
         }
         addSubview(animationView)
+        addTarget(self, action: #selector(handleValueChanged), for: .valueChanged)
+        lmk_startApplyingTheme()
     }
+
+    // MARK: - Installation
+
+    /// Installs a control on `scrollView` and tracks its pulls; returns `nil` under Mac
+    /// Catalyst's Mac idiom, where `UIRefreshControl` is unsupported (offer
+    /// `makeRefreshKeyCommand(action:)` there instead).
+    public static func install(
+        on scrollView: UIScrollView,
+        animation: LottieAnimation? = nil,
+        style: Style = Style(),
+        onRefresh: (() -> Void)? = nil
+    ) -> LMKLottieRefreshControl? {
+        guard scrollView.traitCollection.userInterfaceIdiom != .mac else { return nil }
+        let control = LMKLottieRefreshControl(animation: animation, style: style)
+        control.onRefresh = onRefresh
+        scrollView.refreshControl = control
+        control.attach(to: scrollView)
+        return control
+    }
+
+    /// A Command-R key command titled with `strings.refresh`, the Mac idiom's stand-in for the pull.
+    public static func makeRefreshKeyCommand(action: Selector, strings: Strings = LMKLottieRefreshControl.strings) -> UIKeyCommand {
+        UIKeyCommand(title: strings.refresh, action: action, input: "r", modifierFlags: .command)
+    }
+
+    private func attach(to scrollView: UIScrollView) {
+        attachedScrollView = scrollView
+        contentOffsetObservation = scrollView.observe(\.contentOffset, options: [.new]) { [weak self] scrollView, _ in
+            MainActor.assumeIsolated {
+                self?.updatePullProgress(scrollView: scrollView)
+            }
+        }
+        scrollView.panGestureRecognizer.addTarget(self, action: #selector(handlePan(_:)))
+    }
+
+    @objc private func handlePan(_ gesture: UIPanGestureRecognizer) {
+        guard gesture.state == .ended || gesture.state == .cancelled, let attachedScrollView else { return }
+        handleEndDragging(scrollView: attachedScrollView)
+    }
+
+    /// `.valueChanged` from UIKit: the pull crossed the system's distance and the control is
+    /// refreshing without `beginRefreshing()` having run, so the spin starts here.
+    /// `handleEndDragging` reports its own trigger itself. Internal so tests can drive it.
+    @objc func handleValueChanged() {
+        guard !isTriggeringRefresh else { return }
+        if !isAnimatingRefresh {
+            startSpinning()
+        }
+        onRefresh?()
+    }
+
+    // MARK: - Theme
+
+    public func applyTheme(_ theme: LMKTheme) {
+        resolvedStyle = theme.lottieRefreshControl.merging(style)
+        applyTint()
+        setNeedsLayout()
+        didApplyStyle?(self)
+    }
+
+    private func applyTint() {
+        guard resolvedStyle.appliesTint ?? true else { return }
+        let tint = (resolvedStyle.tintColor ?? LMKColor.primary).resolvedColor(with: traitCollection)
+        let keypath = AnimationKeypath(keypath: resolvedStyle.tintKeypath ?? Self.defaultTintKeypath)
+        animationView.setValueProvider(ColorValueProvider(tint.lottieColorValue), keypath: keypath)
+    }
+
+    // MARK: - Layout
 
     override public func didMoveToWindow() {
         super.didMoveToWindow()
-        animationView.isHidden = !LMKAnimationHelper.shouldAnimate
+        animationView.isHidden = !LMKAnimation.shouldAnimate
+        // Lottie stops a view that leaves its window; a refresh still running spins again.
+        if window != nil, isAnimatingRefresh, !isDismissing, !animationView.isAnimationPlaying {
+            playPhase2()
+        }
     }
 
     override public func layoutSubviews() {
         super.layoutSubviews()
-        if LMKAnimationHelper.shouldAnimate {
+        if LMKAnimation.shouldAnimate {
             hideDefaultSubviews()
         }
-        let size = min(bounds.width, bounds.height, LMKSpacing.xxl * 2)
-        animationView.frame = CGRect(
-            x: (bounds.width - size) / 2,
-            y: (bounds.height - size) / 2,
-            width: size,
-            height: size
-        )
+        let preferred = resolvedStyle.size ?? traitCollection.lmkTheme.spacing.xxl * 2
+        let side = min(bounds.width, bounds.height, preferred)
+        animationView.frame = CGRect(x: (bounds.width - side) / 2, y: (bounds.height - side) / 2, width: side, height: side)
     }
 
-    // MARK: - Public
+    // MARK: - Pull tracking
 
-    /// Call from `scrollViewDidScroll` to drive Phase 1 based on pull offset.
+    /// Drives phase 1 from the scroll offset (call from `scrollViewDidScroll` when not installed).
     public func updatePullProgress(scrollView: UIScrollView) {
-        guard !isRefreshing, !isDismissing else { return }
-
-        let offset = max(0, -(scrollView.contentOffset.y + scrollView.adjustedContentInset.top))
-        let pull = min(offset / Self.pullThreshold, 1)
+        guard !isRefreshing, !isAnimatingRefresh, !isDismissing else { return }
+        let offset = -(scrollView.contentOffset.y + scrollView.adjustedContentInset.top)
+        let pull = Self.pullProgress(offset: offset, threshold: pullThreshold)
 
         if pull >= 1, !passedThreshold {
             passedThreshold = true
-            LMKHapticFeedbackHelper.light()
+            if resolvedStyle.haptics ?? true {
+                LMKHaptics.light()
+            }
         } else if pull >= 1 {
             passedThreshold = true
         }
 
-        let phase1Progress = (Self.phase1EndFrame / Self.totalFrames) * pull
-        animationView.currentProgress = phase1Progress
-        animationView.isHidden = pull <= 0
-
-        if !LMKAnimationHelper.shouldAnimate {
-            animationView.isHidden = true
-        }
+        animationView.currentProgress = Self.phase1Progress(pull: pull, timeline: timeline)
+        animationView.isHidden = pull <= 0 || !LMKAnimation.shouldAnimate
     }
 
-    /// Call from `scrollViewDidEndDragging` to trigger refresh if past threshold.
-    /// Returns `true` if refresh was triggered.
+    /// Triggers a refresh when the last drag ended past the threshold (call from
+    /// `scrollViewDidEndDragging` when not installed). Returns whether it did.
     @discardableResult
     public func handleEndDragging(scrollView: UIScrollView) -> Bool {
-        guard !isRefreshing, !isDismissing else { return false }
-
+        guard !isRefreshing, !isAnimatingRefresh, !isDismissing else { return false }
         let shouldRefresh = passedThreshold
         passedThreshold = false
-
         if shouldRefresh {
             beginRefreshing()
+            isTriggeringRefresh = true
             sendActions(for: .valueChanged)
+            isTriggeringRefresh = false
+            onRefresh?()
         }
         return shouldRefresh
     }
 
+    // MARK: - Refreshing
+
     override public func beginRefreshing() {
         super.beginRefreshing()
+        startSpinning()
+    }
+
+    /// Shows the animation and loops phase 2, for a refresh started by the host, a release past
+    /// the threshold, or UIKit.
+    private func startSpinning() {
+        cancelPendingEndRefresh()
+        isAnimatingRefresh = true
         isDismissing = false
         passedThreshold = false
-        pendingEndRefresh = false
         spinStartTime = Date()
-        animationView.isHidden = false
+        animationView.isHidden = !LMKAnimation.shouldAnimate
         animationView.alpha = 1
         playPhase2()
     }
 
     override public func endRefreshing() {
-        guard isRefreshing, !isDismissing else { return }
-
+        guard isRefreshing || isAnimatingRefresh, !isDismissing else { return }
         if let startTime = spinStartTime {
-            let elapsed = Date().timeIntervalSince(startTime)
-            let remaining = Self.minimumSpinDuration - elapsed
+            let remaining = minimumSpinDuration - Date().timeIntervalSince(startTime)
             if remaining > 0 {
-                guard !pendingEndRefresh else { return }
-                pendingEndRefresh = true
-                DispatchQueue.main.asyncAfter(deadline: .now() + remaining) { [weak self] in
-                    guard let self, self.pendingEndRefresh else { return }
-                    self.pendingEndRefresh = false
-                    self.performDismiss()
+                guard pendingEndRefresh == nil else { return }
+                pendingEndRefresh = Task { [weak self] in
+                    try? await Task.sleep(for: .seconds(remaining))
+                    guard !Task.isCancelled, let self else { return }
+                    pendingEndRefresh = nil
+                    performDismiss()
                 }
                 return
             }
@@ -181,23 +382,25 @@ public final class LMKLottieRefreshControl: UIRefreshControl {
         performDismiss()
     }
 
-    // MARK: - Dismiss
+    /// Drops a deferred `endRefreshing()` (a new refresh started, or the host went away).
+    public func cancelPendingEndRefresh() {
+        pendingEndRefresh?.cancel()
+        pendingEndRefresh = nil
+    }
 
     private func performDismiss() {
         guard !isDismissing else { return }
         isDismissing = true
         spinStartTime = nil
-
-        let duration = LMKAnimationHelper.shouldAnimate ? Self.dismissDuration : 0
-
-        LMKAnimationHelper.fadeOut(animationView, duration: duration) { [weak self] in
-            guard let self else { return }
-            guard self.isDismissing else { return } // New refresh started during dismiss
-            self.stopPhase2()
-            self.animationView.alpha = 1
-            self.animationView.isHidden = true
-            self.isDismissing = false
-            self.finishEndRefreshing()
+        let duration = LMKAnimation.shouldAnimate ? LMKAnimation.Duration.moderate : 0
+        LMKAnimation.fadeOut(animationView, duration: duration) { [weak self] in
+            guard let self, isDismissing else { return } // a new refresh started during the fade
+            stopPhase2()
+            animationView.alpha = 1
+            animationView.isHidden = true
+            isDismissing = false
+            isAnimatingRefresh = false
+            finishEndRefreshing()
         }
     }
 
@@ -207,22 +410,54 @@ public final class LMKLottieRefreshControl: UIRefreshControl {
 
     // MARK: - Private
 
-    private func loadAnimation() -> LottieAnimation? {
-        LottieAnimation.named(animationName, bundle: animationBundle, subdirectory: nil, animationCache: nil)
+    private var pullThreshold: CGFloat {
+        max(1, resolvedStyle.pullThreshold ?? traitCollection.lmkTheme.layout.pullThreshold)
+    }
+
+    private var timeline: Timeline {
+        resolvedStyle.timeline ?? .bundled
+    }
+
+    private var minimumSpinDuration: TimeInterval {
+        max(0, resolvedStyle.minimumSpinDuration ?? Self.defaultMinimumSpinDuration)
     }
 
     private func hideDefaultSubviews() {
-        subviews.filter { $0 !== animationView }.forEach { $0.alpha = 0 }
+        for subview in subviews where subview !== animationView {
+            subview.alpha = 0
+        }
     }
 
     private func playPhase2() {
-        guard LMKAnimationHelper.shouldAnimate else { return }
-        animationView.play(fromFrame: Self.phase1EndFrame, toFrame: Self.totalFrames, loopMode: .loop)
+        guard LMKAnimation.shouldAnimate else { return }
+        animationView.play(fromFrame: timeline.phase1EndFrame, toFrame: timeline.totalFrames, loopMode: .loop)
     }
 
     private func stopPhase2() {
-        guard LMKAnimationHelper.shouldAnimate else { return }
+        guard LMKAnimation.shouldAnimate else { return }
         animationView.stop()
         animationView.currentProgress = 0
+    }
+
+    // MARK: - Pure helpers
+
+    /// Pull fraction for a downward `offset` past the top inset, 0...1.
+    nonisolated static func pullProgress(offset: CGFloat, threshold: CGFloat) -> CGFloat {
+        guard threshold > 0 else { return offset > 0 ? 1 : 0 }
+        return min(max(0, offset) / threshold, 1)
+    }
+
+    /// Animation progress (0...1 of the whole timeline) for a phase-1 `pull` fraction.
+    nonisolated static func phase1Progress(pull: CGFloat, timeline: Timeline) -> CGFloat {
+        guard timeline.totalFrames > 0 else { return 0 }
+        return (timeline.phase1EndFrame / timeline.totalFrames) * min(max(0, pull), 1)
+    }
+}
+
+public nonisolated extension LMKTheme {
+    /// App-wide default style for `LMKLottieRefreshControl`.
+    var lottieRefreshControl: LMKLottieRefreshControl.Style {
+        get { self[LMKLottieRefreshControl.Style.self] }
+        set { self[LMKLottieRefreshControl.Style.self] = newValue }
     }
 }

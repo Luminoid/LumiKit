@@ -7,7 +7,7 @@
 
 import UIKit
 
-public extension UIColor {
+public nonisolated extension UIColor {
     /// Initialize from a 24-bit hex literal in `0xRRGGBB` form.
     ///
     /// Compile-time validated (no Optional, no force-unwrap) and avoids the
@@ -48,6 +48,26 @@ public extension UIColor {
     /// Designed for theme files where every color has both a light and dark
     /// variant. Generated theme code uses this convenience to shrink each
     /// color declaration from ~5 lines of arithmetic to one line.
+    /// Whether two colors resolve identically in light and in dark mode.
+    ///
+    /// `UIColor ==` compares dynamic (provider) colors by identity, so two independently built
+    /// themes never compare equal; this samples both interface styles instead.
+    func lmk_isVisuallyEqual(to other: UIColor) -> Bool {
+        if self == other { return true }
+        for style in [UIUserInterfaceStyle.light, .dark] {
+            let traits = UITraitCollection(userInterfaceStyle: style)
+            guard resolvedColor(with: traits) == other.resolvedColor(with: traits) else { return false }
+        }
+        return true
+    }
+
+    /// A trait-aware color that resolves to `light` or `dark` by interface style.
+    static func lmk_dynamic(light: UIColor, dark: UIColor) -> UIColor {
+        UIColor { traits in
+            traits.userInterfaceStyle == .dark ? dark : light
+        }
+    }
+
     static func lmk_dynamic(lightHex: UInt32, darkHex: UInt32, alpha: CGFloat = 1.0) -> UIColor {
         UIColor { traitCollection in
             traitCollection.userInterfaceStyle == .dark
@@ -123,6 +143,13 @@ public extension UIColor {
         return luminance > 0.5
     }
 
+    /// The color to draw glyphs and text in when this color is an accent: itself when it is
+    /// dark enough, otherwise darkened by `factor` so a pale accent stays legible on light
+    /// backgrounds. Use the raw accent only for translucent fills behind the glyph.
+    func lmk_glyphTint(onLightAccentDarkenBy factor: CGFloat = 0.7) -> UIColor {
+        lmk_isLight ? lmk_adjustedBrightness(by: factor) : self
+    }
+
     /// Returns a new color with brightness adjusted by the given factor.
     /// Values > 1.0 lighten, < 1.0 darken.
     ///
@@ -141,8 +168,54 @@ public extension UIColor {
         )
     }
 
+    /// The shade a pressed or selected fill takes: darker by `factor` (a multiplier, `0.9` =
+    /// 10% darker). A color that is already dark lightens by the same amount instead, where
+    /// darkening would not show. Follows the color through appearance changes.
+    ///
+    /// ```swift
+    /// let pressed = LMKColor.primary.lmk_stateShade(by: 0.9)
+    /// ```
+    func lmk_stateShade(by factor: CGFloat) -> UIColor {
+        let amount = min(max(1 - factor, 0), 1)
+        // Below this brightness darkening does not show, so the shade lightens.
+        let darkFillBrightness: CGFloat = 0.35
+        return UIColor { traits in
+            let resolved = self.resolvedColor(with: traits)
+            var h: CGFloat = 0, s: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
+            guard resolved.getHue(&h, saturation: &s, brightness: &b, alpha: &a) else { return resolved }
+            let shaded = b < darkFillBrightness ? min(1, b + amount) : b * (1 - amount)
+            return UIColor(hue: h, saturation: s, brightness: shaded, alpha: a)
+        }
+    }
+
     /// Returns a contrasting text color (white or black) based on this color's luminance.
     var lmk_contrastingTextColor: UIColor {
         lmk_isLight ? .black : .white
+    }
+
+    /// This color at `alpha` painted over `background`, as one opaque color that follows both
+    /// colors through appearance changes. A tinted surface that floats over content uses it in
+    /// place of a translucent fill, so what lies underneath never shows through.
+    ///
+    /// ```swift
+    /// let surface = LMKColor.warning.lmk_composited(over: LMKColor.backgroundPrimary, alpha: 0.15)
+    /// ```
+    func lmk_composited(over background: UIColor, alpha: CGFloat) -> UIColor {
+        let amount = min(max(alpha, 0), 1)
+        return UIColor { traits in
+            var top: (r: CGFloat, g: CGFloat, b: CGFloat, a: CGFloat) = (0, 0, 0, 0)
+            var base: (r: CGFloat, g: CGFloat, b: CGFloat, a: CGFloat) = (0, 0, 0, 0)
+            let resolvedBase = background.resolvedColor(with: traits)
+            guard self.resolvedColor(with: traits).getRed(&top.r, green: &top.g, blue: &top.b, alpha: &top.a),
+                  resolvedBase.getRed(&base.r, green: &base.g, blue: &base.b, alpha: &base.a)
+            else { return resolvedBase }
+            let weight = amount * top.a
+            return UIColor(
+                red: top.r * weight + base.r * (1 - weight),
+                green: top.g * weight + base.g * (1 - weight),
+                blue: top.b * weight + base.b * (1 - weight),
+                alpha: base.a
+            )
+        }
     }
 }

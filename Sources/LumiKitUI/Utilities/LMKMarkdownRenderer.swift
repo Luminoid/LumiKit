@@ -56,7 +56,7 @@ public enum LMKMarkdownRenderer {
 
     /// Render long-form markdown as an attributed string.
     ///
-    /// Block-aware: the text is split into fenced code blocks (```` ``` ````), GitHub-style tables
+    /// Block-aware: the text is split into fenced code blocks (three backticks), GitHub-style tables
     /// (`| a | b |` + `|---|`), and normal prose. Code and tables render in a monospaced font (code
     /// gets a subtle background; tables get tab-stop-aligned columns with a full-width header rule)
     /// so an AI response that emits them stays readable instead of collapsing to a run-on line. Normal prose

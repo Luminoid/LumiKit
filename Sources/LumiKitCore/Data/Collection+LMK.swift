@@ -12,10 +12,10 @@ public extension Collection {
     ///
     /// ```swift
     /// let items = ["a", "b", "c"]
-    /// items[safe: 5]  // nil (no crash)
-    /// items[safe: 1]  // "b"
+    /// items[lmk_safe: 5]  // nil (no crash)
+    /// items[lmk_safe: 1]  // "b"
     /// ```
-    subscript(safe index: Index) -> Element? {
+    subscript(lmk_safe index: Index) -> Element? {
         indices.contains(index) ? self[index] : nil
     }
 }

@@ -19,7 +19,7 @@ public extension UITableViewDiffableDataSource {
     /// - Parameters:
     ///   - snapshot: The snapshot to apply.
     ///   - animatingDifferences: Whether to animate on-screen changes. Pass
-    ///     `LMKAnimationHelper.shouldAnimate` to honor Reduce Motion.
+    ///     `LMKAnimation.shouldAnimate` to honor Reduce Motion.
     ///   - view: The table view this data source drives, or any view in its hierarchy.
     func lmk_apply(
         _ snapshot: NSDiffableDataSourceSnapshot<SectionIdentifierType, ItemIdentifierType>,

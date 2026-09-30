@@ -1,474 +1,171 @@
 # LumiKit — Claude Code Guide
 
-> Shared Swift Package providing design tokens, UI components, and utilities for Lumi apps.
-> Swift 6.2, UIKit, SnapKit, iOS 18+ / Mac Catalyst 18+ / macOS 15+. iOS 26 APIs ship behind `#available(iOS 26, *)` with fallbacks (see Platform Support & Availability).
+> Shared Swift Package: design tokens, a value-type theme, styled UIKit components and controls, a photo module, debug tooling, and a Lottie refresh control.
+> Swift 6.2, UIKit + SnapKit, iOS 18+ / Mac Catalyst 18+ (`LumiKitCore` and `LumiKitDebug` also build for macOS 15+). iOS 26 APIs ship behind `#available(iOS 26, *)` with fallbacks.
 
 ---
 
-## Package Overview
+## Package overview
 
-| Target | Dependencies | Purpose |
-|--------|-------------|---------|
-| **LumiKitCore** | Foundation only | Logger (+ LogStore ring buffer), DateHelper, URLValidator, ConcurrencyHelpers, FormatHelper, FileHelper, String/Collection/NSAttributedString extensions |
-| **LumiKitNetwork** | LumiKitCore | Network debugging with URLProtocol interception (DEBUG only, `LMK_ENABLE_NETWORK_LOGGING` flag) |
-| **LumiKitUI** | LumiKitCore + LumiKitNetwork + SnapKit | Design system tokens, theme, animation, haptics, alerts, components, controls, utilities, photo browser/crop/EXIF, share, QR code, network debug UI (DEBUG), extensions |
-| **LumiKitLottie** | LumiKitUI + Lottie | Lottie-powered pull-to-refresh control |
+| Product | Dependencies | Purpose | Default isolation |
+|---|---|---|---|
+| **LumiKitCore** | Foundation | `LMKLogger` (+ `LMKLogging`, `LMKLogStore`), `LMKDate`, `LMKDateFormat`, `LMKFormat`, `LMKFile`, `LMKConcurrency`, `LMKURLValidator`, `LMKCalendarDay` / `LMKCalendarMonth` / `LMKCalendarSelection`, String / Collection / NSAttributedString extensions | none (nonisolated) |
+| **LumiKitUI** | Core + SnapKit | Tokens and the theme, styles, components, controls, lists, navigation, calendar, detail cards, alerts, toasts, share, haptics, animation, utilities, `lmk_` extensions | `MainActor` |
+| **LumiKitPhoto** | Core + UI | Photo browser, grid, crop editor, pick-and-crop coordinator, share preview, `LMKPhotoMetadata` | `MainActor` |
+| **LumiKitDebug** | Core + UI (iOS / Catalyst only) | `LMKNetworkLogger` (URLProtocol capture with redaction) + `LMKNetworkHistoryViewController`; compiled only under `LMK_ENABLE_NETWORK_LOGGING` (debug configs) | none |
+| **LumiKitLottie** | UI + Lottie | `LMKLottieRefreshControl` with the bundled ring | `MainActor` |
 
-**Swift 6.2** strict concurrency with `defaultIsolation: MainActor` on LumiKitUI and LumiKitLottie targets. Platforms: iOS 18+, Mac Catalyst 18+, macOS 15+.
+Every product ships `en`, `es`, `zh-Hans`, `zh-Hant` string tables under `Resources/` and a DocC catalog (`<Target>.docc`). The `LumiKitUI` catalog holds the guides: Getting Started, Theming, Styling, Components, Controls, Extensions, Localization, Platform Support, Migration.
 
 ---
 
-## Project Structure
+## Project structure
 
 ```
 LumiKit/
-├── Package.swift
+├── Package.swift                 # five products; LUMIKIT_WARNINGS_AS_ERRORS turns warnings into errors
+├── Makefile                      # lint, check, build, build-catalyst, build-host, test, test-filter, example, docs, migrate
+├── Scripts/
+│   ├── git-hooks/pre-commit      # SwiftLint --strict + SwiftFormat --lint on staged files; rejects a personal DEVELOPMENT_TEAM
+│   ├── migrate-1.0.sh            # 0.x → 1.0 consumer migration (rules below); --print-table renders docs/MIGRATION-1.0.md
+│   └── migrate-1.0.rules         # product / path / type / regex / member / filematch / report rules (append-only)
+├── docs/                         # MIGRATION-1.0.md (generated tables + recipes), PLATFORM.md, images/
 ├── Sources/
-│   ├── LumiKitCore/
-│   │   ├── Concurrency/     # LMKConcurrencyHelpers (encode/decode off main)
-│   │   ├── Data/            # LMKFormatHelper, String+LMK, Collection+LMK, NSAttributedString+LMK
-│   │   ├── Date/            # LMKDateHelper, LMKDateFormatterHelper
-│   │   ├── File/            # LMKFileUtil
-│   │   ├── Log/             # LMKLogger, LMKLogStore (ring buffer), LMKLogLevel, LMKLogEntry
-│   │   └── Validation/      # LMKURLValidator
-│   ├── LumiKitNetwork/        # [DEBUG only, LMK_ENABLE_NETWORK_LOGGING flag]
-│   │   ├── LMKNetworkLogger.swift            # URLProtocol-based interception
-│   │   ├── LMKNetworkRequestStore.swift       # Thread-safe FIFO store (OSAllocatedUnfairLock)
-│   │   ├── LMKNetworkRequestRecord.swift      # Request/response data model
-│   │   └── URLSessionConfiguration+LMKDebug.swift  # .enableNetworkLogging()
+│   ├── LumiKitCore/              # Concurrency/ Data/ Date/ File/ Localization/ Log/ Validation/ Resources/
 │   ├── LumiKitUI/
-│   │   ├── Alerts/          # LMKAlertPresenter, LMKErrorHandler, LMKCountdownConfirmation
-│   │   ├── Animation/       # LMKAnimationHelper
-│   │   ├── Components/
-│   │   │   ├── BottomSheet/  # LMKBottomSheetController (base), LMKActionSheet,
-│   │   │   │                 # LMKEnumSelectionBottomSheet, LMKBottomSheetLayout
-│   │   │   ├── Pickers/      # LMKDatePickerHelper (+ calendar range selection view)
-│   │   │   └── (root)        # Badge, Banner, Card, CheckboxCell, Chip, Divider, EmptyState,
-│   │   │                     # FilterChipBar, FloatingButton, Glass, Gradient, LoadingState,
-│   │   │                     # NavigationBar, NavigationController,
-│   │   │                     # PageIndicator, Progress,
-│   │   │                     # SearchBar, Skeleton, Toast, TipView,
-│   │   │                     # CardPageController, CardPageLayout,
-│   │   │                     # CardPanelController, CardPanelLayout,
-│   │   │                     # NavigationDirection, OverscrollFooterHelper,
-│   │   │                     # FormScaffold, ScrollStackViewController,
-│   │   │                     # SegmentedPageController
-│   │   ├── Controls/        # LMKButton, LMKSegmentedControl, LMKSlider, LMKSwitch,
-│   │   │                    # LMKToggleButton, LMKTextField, LMKTextView
-│   │   ├── DesignSystem/
-│   │   │   ├── Tokens/       # LMKColor, LMKSpacing, LMKCornerRadius, LMKAlpha,
-│   │   │   │                 # LMKLayout, LMKShadow, LMKTypography, LMKBadge
-│   │   │   ├── Themes/       # LMKSpacingTheme, LMKCornerRadiusTheme, LMKAlphaTheme,
-│   │   │   │                 # LMKLayoutTheme, LMKShadowTheme, LMKTypographyTheme,
-│   │   │   │                 # LMKBadgeTheme, LMKAnimationTheme
-│   │   │   ├── Factories/    # LMKButtonFactory, LMKCardFactory, LMKLabelFactory
-│   │   │   └── LMKTheme.swift  # LMKTheme protocol + LMKThemeManager + LMKDefaultTheme
-│   │   ├── Debug/            # [DEBUG only]
-│   │   │   └── Network/     # LMKNetworkHistoryViewController, LMKNetworkDetailViewController
-│   │   ├── Extensions/      # UIKit extensions (lmk_ prefix): UIColor, UIImage, UIView,
-│   │   │                    # UIStackView, UITextField, UIButton, UITableViewCell, etc.
-│   │   ├── Haptics/         # LMKHapticFeedbackHelper
-│   │   ├── Photo/           # LMKPhotoBrowserViewController, LMKPhotoBrowserCell,
-│   │   │                    # LMKPhotoCropViewController, LMKPhotoGridViewController,
-│   │   │                    # LMKPhotoGridCell, LMKPhotoEXIFService, LMKPhotoBrowserConfig,
-│   │   │                    # LMKPhotoPickCropCoordinator, LMKSinglePhotoViewer
-│   │   ├── QRCode/          # LMKQRCodeGenerator
-│   │   ├── Share/           # LMKShareService, LMKSharePreviewViewController
-│   │   └── Utilities/       # LMKDeviceHelper, LMKKeyboardObserver, LMKKeyboardInsetHelper,
-│   │                        # LMKKeyboardAdjustment, LMKSceneUtil, LMKImageUtil,
-│   │                        # LMKDominantColorExtractor, LMKMarkdownRenderer,
-│   │                        # LMKPointerStyle
-│   └── LumiKitLottie/       # LMKLottieRefreshControl
-├── Tests/                   # 1073 tests / 147 suites at 0.12.0 (release figure; for current counts grep @Test/@Suite)
-│   ├── LumiKitCoreTests/
-│   │   ├── Concurrency/     # LMKConcurrencyHelpersTests
-│   │   ├── Data/            # String+LMK, Collection+LMK, NSAttributedString+LMK, FormatHelper
-│   │   ├── Date/            # DateHelper, DateFormatterHelper
-│   │   ├── File/            # FileUtil
-│   │   ├── Log/             # LMKLogStoreTests (ring buffer, thread safety), LMKLoggerTests (log store integration)
-│   │   └── Validation/      # URLValidator
-│   ├── LumiKitNetworkTests/
-│   │   ├── LMKNetworkRequestStoreTests.swift         # FIFO, thread safety
-│   │   ├── LMKNetworkRequestRecordTests.swift        # Computed properties, display formatting
-│   │   ├── LMKNetworkLoggerTests.swift               # Configuration, state transitions
-│   │   └── URLSessionConfigurationLMKDebugTests.swift # enableNetworkLogging
-│   ├── LumiKitLottieTests/
-│   │   └── LMKLottieRefreshControlTests.swift
-│   └── LumiKitUITests/
-│       ├── Alerts/          # AlertPresenter, ErrorHandler
-│       ├── Animation/       # AnimationHelper
-│       ├── Components/
-│       │   ├── BottomSheet/  # BottomSheetController, ActionSheet, BottomSheetLayout,
-│       │   │                 # EnumSelectionBottomSheet
-│       │   ├── Pickers/      # DatePickerHelper
-│       │   └── (root)        # Badge, Banner, Card, CheckboxCell, Chip, Divider, EmptyState,
-│       │                     # FilterChipBar, FloatingButton, Glass, Gradient, LoadingState,
-│       │                     # NavigationBar, NavigationController, PageIndicator, Progress,
-│       │                     # SearchBar, Skeleton, Toast, TipView, CardPage, CardPanel,
-│       │                     # FormScaffold, ScrollStackViewController, SegmentedPageController
-│       ├── Controls/        # Button, SegmentedControl, Slider, TextField, TextView, ToggleButton
-│       ├── DesignSystem/
-│       │   ├── Tokens/       # Color, Spacing, CornerRadius, Alpha, Typography, Layout, Shadow
-│       │   ├── Themes/       # AnimationTheme, BadgeTheme, SendableCompliance
-│       │   ├── Factories/    # ButtonFactory, CardFactory, LabelFactory
-│       │   └── (root)        # ThemeManager, ComponentToken integration
-│       ├── Extensions/      # UIColor, UIImage, UIStackView,
-│       │                    # UIView (shadow/border/fade/layout),
-│       │                    # UIViewController (TopViewController, KeyboardDismiss),
-│       │                    # UITableViewCell (IconListRow), UITextField (KeyboardDismiss)
-│       ├── Photo/           # CropAspectRatio, PhotoEXIF,
-│       │                    # PhotoPickCropCoordinator, SinglePhotoViewer
-│       ├── QRCode/          # QRCodeGenerator
-│       ├── Share/           # SharePreview, ShareService
-│       └── Utilities/       # DeviceHelper, ImageUtil, DominantColorExtractor,
-│                            # KeyboardObserver, KeyboardInsetHelper, KeyboardAdjustment,
-│                            # MarkdownRenderer, PointerStyle
+│   │   ├── DesignSystem/         # LMKTheme (+ store, trait, LMKThemeApplying), Themes/ (category structs), Tokens/, Styles/ (LMKSurfaceStyle)
+│   │   ├── Components/           # leaf views + BottomSheet/ Calendar/ DetailCards/ ListRow/ NavigationBar/ Pickers/ TabBar/ Toast/
+│   │   ├── Controls/             # LMKButton, Checkbox, RatingControl, SegmentedControl (+Layout, +Gestures), Slider, Switch, TextField, TextView, CopyableLabel, PhotoButton, LMKTextInputStyle
+│   │   ├── Alerts/ Animation/ Haptics/ Share/ Utilities/ Extensions/ Localization/ Resources/
+│   ├── LumiKitPhoto/             # browser (+CollectionView, +Dismiss, +MacCatalyst, +Style), grid, crop (+Layout, +Gestures, +Resize, +Crop, +Style), coordinator, share preview, metadata
+│   ├── LumiKitDebug/             # logger, record, store, history + detail VCs, URLSessionConfiguration+LMKDebug
+│   └── LumiKitLottie/            # LMKLottieRefreshControl + Resources/refresh_spinner.json
+├── Tests/<Target>Tests/          # mirrors the source folders; Support/ holds LMKThemeTesting and LMKWait; Naming/ checks the naming rules over Sources/
+└── Example/                      # XcodeGen project (project.yml); 68 catalog pages in 12 sections (Catalog/ExampleCatalog.swift), one file per page under Examples/<Section>/, + the accessibility sweep runner
 ```
 
 ---
 
-## Naming Conventions
+## Rules that bite
 
-- **Public types**: `LMK` prefix (e.g. `LMKColor`, `LMKSpacing`, `LMKAnimationHelper`)
-- **Extension methods**: `lmk_` prefix (e.g. `view.lmk_addSubviews(...)`)
-- **Theme configs**: `LMK*Theme` structs (e.g. `LMKTypographyTheme`, `LMKSpacingTheme`)
-- **Configurable strings**: Module-level `nonisolated(unsafe)` variable + `Sendable` struct
-- **Protocols for data/delegates**: `LMKPhotoBrowserDataSource`, `LMKPhotoGridDataSource`, `LMKPhotoCropDelegate`, `LMKSharePreviewDelegate`
-
----
-
-## Swift 6.2 Concurrency Patterns
-
-- LumiKitUI and LumiKitLottie use `defaultIsolation: MainActor` — all types are MainActor by default (no explicit `@MainActor` needed)
-- Pure data types (Sendable structs, protocols) must opt out with `nonisolated`
-- **Theme config structs** are `nonisolated struct: Sendable` — can be created/passed from any context
-- **Token enums** (LMKColor, LMKTypography, etc.) are `@MainActor` — accessed only from main thread
-- Configurable strings accessed from non-MainActor contexts **must** be module-level `nonisolated(unsafe)`
-- `LMKConcurrencyHelpers.encode/decode` — off-main-thread Codable operations
+1. **Design tokens only.** Never hard-code a color, font, spacing, radius, shadow, or alpha. Text goes through `lmk_apply(_ style: LMKTextStyle)` / `UILabel.lmk_make`, never `.font =`. Components never read `LMKTheme.current` (SwiftLint `no_theme_store_in_components`); they resolve against the `theme` passed to `applyTheme(_:)`.
+2. **Naming** (full spec in `CONTRIBUTING.md`, checked by `Tests/LumiKitUITests/Naming`): `LMK` prefix, nested types never repeat it; view controllers end in `ViewController`; namespaces are subject nouns (no `Helper` / `Util` / `Service` / `Manager`); the visual variant enum is `Variant`; `Style` is reserved for the per-component token struct; callbacks are `on<Event>`; `present(from:)` for things that end in `host.present`, `show(in:)` for installed views, `dismiss()` everywhere; `lmk_` on every public extension member of a non-LMK type.
+3. **Every component**: nested all-optional `Style: LMKThemeExtension` (embedding `LMKSurfaceStyle` and per-state `LMKControlStateStyle` where relevant) with `merging(_:)` and a slot on `LMKTheme`; nested `Strings` with `LMKLocalized("key")` defaults (keys in all four tables; SwiftLint `no_literal_user_strings`); public structural subviews; `didApplyStyle`; `applyTheme(_:)` as the one place that assigns appearance; `lmk_startApplyingTheme()` last in `init` (views) or in `viewDidLoad` (view controllers).
+4. **Controls** honor `isEnabled`, answer a 44pt hit area from `point(inside:with:)` (`lmk_hitTestBounds(minimumSide:)`), scale with Dynamic Type (heights are floors), and check `LMKAnimation.shouldAnimate` before animating.
+5. **Concurrency**: UI, Photo, and Lottie use `defaultIsolation: MainActor`; value types (themes, styles, strings, enums) are `nonisolated struct/enum: Sendable`; off-main work is `@concurrent nonisolated static func`; Core has no default isolation and guards shared state with `Mutex`. Store every `Task` and cancel it in `deinit`.
+6. **Platform gates**: new-OS APIs behind `if #available(iOS 26, *)` with a same-API fallback (see `docs/PLATFORM.md`); layout from size classes and window bounds, never `UIScreen.main` or the idiom; `UIRefreshControl` subclasses and `UISlider` track tints are guarded under the Mac idiom.
+7. **Migration rules are frozen for consumers.** New APIs must match the shape the rules produce; only member reshapes may still be appended to `Scripts/migrate-1.0.rules` (with a `report` recipe), and `--print-table` regenerates the tables in `docs/MIGRATION-1.0.md`.
+8. **SwiftFormat strips unused private declarations** on save (`unusedPrivateDeclarations`): land a private helper and its first use in the same edit. Its `isEmpty` rule rewrites `x.count == 0` on any receiver; a non-collection needs its own `isEmpty` or a different expression.
 
 ---
 
-## Platform Support & Availability
-
-- **The floor stays iOS 18 / Mac Catalyst 18.** New-OS APIs ship behind `if #available(iOS 26, *)` with a same-API fallback on the other branch (`LMKGlassView` → `UIBlurEffect`, `lmk_applyConcentricCorners` → fixed radius, `attachScrollEdgeEffect` → no-op) so hosts never gate; never raise the floor for one feature. Built and tested against the iOS 26.4 SDK (Xcode 26.4). iOS 27 SDK-only APIs (`navigationItem.barMinimizationBehavior`, `tabBarController.sidebar.preferredPlacement`, `prominentTabIdentifier`, `UIHingeInteraction` and reserved regions in 27.1) need Xcode 27 on the build machine first, then go behind `#available(iOS 27, *)` the same way.
-- **Layout comes from size classes and window bounds, never `UIScreen.main`, the device idiom, or interface orientation.** iOS 27 makes iOS apps resizable (large iPads, iPhone Mirroring), and iPhone Duo's inner display is regular × regular at 669 × 951pt while its cover display is 466 × 678pt, switching at runtime when it folds. `LMKDeviceHelper.screenSize(for:)`, `LMKSpacing.cardPadding` / `cellPaddingVertical`, `LMKLayout.hairline(for:)`, and `LMKSceneUtil.screenScale` all read the window or trait collection; `lmk_windowOrientation` (from `effectiveGeometry`) is for camera / media rotation only. Re-read tiers on `viewWillTransition(to:with:)` or a trait change.
-- **Safe areas per edge.** Landscape phones and iPhone Duo carry side insets for the camera region, so overlays clamp against `safeAreaInsets.left` / `.right` as well as top / bottom (`LMKFloatingButton`, `LMKCardPanelController`); `hasTopNotch` only answers for the top edge on iPhone.
-- **Tiers.** `LMKScreenSize` by portrait width unless regular × regular: compact ≤375 (SE, mini, XS / 11 Pro), regular ≤402 (16e / 17e 390, 15 / 16 393, 16 Pro / 17 / 17 Pro / 18 Pro 402), large >402 (11 414, Air 420, Plus 430, Pro Max 440, Duo cover 466), extraLarge = regular × regular (iPad, Mac, wide iPad windows, Duo inner 669). `LMKSpacing` canvas tiers for regular × regular windows by shortest side: ≤768 compact (iPad mini, Duo inner), ≤834 regular (11" iPads), wider large (13" iPads).
-- **iOS 27 gates for consuming apps** (LumiKit itself needs nothing): apps built with the 27 SDK must use the scene-based lifecycle (`UIApplicationSceneManifest`) and declare a launch screen (`UILaunchScreen` / `UILaunchStoryboardName`) or they fail to launch / upload; `UIApplication.statusBar*` is deprecated for `UIWindowScene.statusBarManager`; Liquid Glass can no longer be opted out once built with Xcode 27.
-
----
-
-## Design System — Fully Configurable Tokens
-
-**All tokens are customizable** via `LMKThemeManager`. Each category has a configuration struct with defaults matching the built-in values. Token enums proxy to the active configuration.
-
-### Configuration at App Launch
+## Theme and Style pattern
 
 ```swift
-// Configure everything at once
-LMKThemeManager.shared.configure(
-    colors: MyAppTheme(),
-    typography: .init(fontFamily: "Inter"),
-    spacing: .init(large: 20, xxl: 28),
-    cornerRadius: .init(small: 12, medium: 16)
-)
+// A theme is a value; apply re-renders every window (LMKColor.* are dynamic colors on the lmkTheme trait).
+extension LMKTheme { static let myApp = LMKTheme(colors: LMKColorTheme(primary: .systemIndigo)) }
+LMKTheme.apply(.myApp)
+LMKTheme.update { $0.button.variant = .tinted }        // app-wide default for one component
+let large = LMKTheme.current.spacing.large            // readable from any isolation
 
-// Or configure individual categories
-LMKThemeManager.shared.apply(MyAppTheme())
-LMKThemeManager.shared.apply(typography: .init(fontFamily: "Inter"))
-LMKThemeManager.shared.apply(spacing: .init(large: 20))
-```
-
-### Token Categories
-
-| Category | Proxy Enum | Config Struct | Key Properties |
-|----------|-----------|---------------|----------------|
-| Colors | `LMKColor` | `LMKTheme` (protocol) | `.primary`, `.backgroundPrimary`, `.textPrimary` |
-| Typography | `LMKTypography` | `LMKTypographyTheme` | `fontFamily`, `h1Size`, `bodySize`, line heights, letter spacing |
-| Spacing | `LMKSpacing` | `LMKSpacingTheme` | `.xs` (4pt), `.small` (8pt), `.medium` (12pt), `.large` (16pt) |
-| Corner Radius | `LMKCornerRadius` | `LMKCornerRadiusTheme` | `.small` (8), `.medium` (12), `.large` (16) |
-| Alpha | `LMKAlpha` | `LMKAlphaTheme` | `.overlay`, `.disabled`, `.overlayStrong` |
-| Layout | `LMKLayout` | `LMKLayoutTheme` | `.minimumTouchTarget` (44), `.iconMedium` (24), `.searchBarHeight` (36); `.hairline` / `hairline(forScale:)` = one physical pixel, deliberately NOT themeable (display physics, not branding) |
-| Shadow | `LMKShadow` | `LMKShadowTheme` | `cellCard()`, `card()`, `button()`, `small()` |
-| Animation | `LMKAnimationHelper` | `LMKAnimationTheme` | `.Duration.*`, `.Spring.damping`, `.shouldAnimate`, `.shimmer` |
-| Badge | `LMKBadgeView` | `LMKBadgeTheme` | `minWidth`, `height`, `horizontalPadding`, `borderWidth` |
-
-### Design System Files
-
-```
-DesignSystem/
-├── LMKTheme.swift              # LMKTheme protocol + LMKThemeManager + LMKDefaultTheme
-├── Tokens/
-│   ├── LMKColor.swift          # Color proxy -> LMKThemeManager.shared.current
-│   ├── LMKTypography.swift     # Font proxy -> LMKThemeManager.shared.typography
-│   ├── LMKSpacing.swift        # Spacing proxy
-│   ├── LMKCornerRadius.swift   # Corner radius proxy
-│   ├── LMKAlpha.swift          # Alpha proxy
-│   ├── LMKLayout.swift         # Layout dimensions proxy
-│   ├── LMKShadow.swift         # Shadow proxy
-│   └── LMKBadge.swift          # Badge proxy -> LMKThemeManager.shared.badge
-├── Themes/
-│   ├── LMKTypographyTheme.swift    # fontFamily, sizes, weights, line heights
-│   ├── LMKSpacingTheme.swift       # 4pt grid values
-│   ├── LMKCornerRadiusTheme.swift  # Corner radius config
-│   ├── LMKAlphaTheme.swift         # Alpha/opacity config
-│   ├── LMKLayoutTheme.swift        # Layout dimensions config
-│   ├── LMKShadowTheme.swift        # Shadow config
-│   └── LMKBadgeTheme.swift         # Badge sizing config
-└── Factories/
-    ├── LMKButtonFactory.swift      # Role-based button factory (LMKButtonRole + filled/outlined/ghost/iconOnly)
-    ├── LMKCardFactory.swift        # Factory methods for card views
-    └── LMKLabelFactory.swift       # Factory methods for styled labels
-```
-
-### Pattern: Token Enum -> Config Struct -> ThemeManager
-
-```swift
-// 1. Config struct with defaults (nonisolated, Sendable)
-public nonisolated struct LMKSpacingTheme: Sendable {
-    public var large: CGFloat
-    public init(large: CGFloat = 16, ...) { ... }
+// A component resolves token ← theme.<component> ← instance style, all optional.
+public final class LMKChipView: UIControl, LMKThemeApplying {
+    public nonisolated struct Style: Sendable, Equatable, LMKThemeExtension { /* variant, tintColor, surface, states… */ }
+    public var style = Style() { didSet { applyTheme(traitCollection.lmkTheme) } }
+    public var didApplyStyle: ((LMKChipView) -> Void)?
+    public func applyTheme(_ theme: LMKTheme) { let resolved = theme.chip.merging(style); /* every appearance assignment here */ didApplyStyle?(self) }
 }
-
-// 2. Token enum proxies to config (inherits @MainActor)
-public enum LMKSpacing {
-    private static var config: LMKSpacingTheme { LMKThemeManager.shared.spacing }
-    public static var large: CGFloat { config.large }
-}
-
-// 3. ThemeManager holds the active config
-LMKThemeManager.shared.apply(spacing: .init(large: 20))
 ```
 
----
-
-## Components Reference
-
-### Visual Components (`Components/`)
-
-| Component | Type | Purpose |
-|-----------|------|---------|
-| `LMKBottomSheetController` | `open class` | Base class for bottom sheet presentation — shared dimming, container, animation, dismiss. `avoidsKeyboard` (default true) lifts the sheet by the keyboard's actual overlap with its view (converted end frame, so floating keyboards / short windows lift only what's covered) via `containerBottomConstraint` with the keyboard's curve/duration, restoring on hide; while enabled the controller owns the keyboard offset — subclasses must not also drive it (override to `false` for manual control). Dismissal stops keyboard tracking so a mid-animation hide can't fight the slide-out. Starting a pan resigns the first responder (pan offsets are absolute against the resting position, so a keyboard-lifted sheet would otherwise snap down the keyboard height on the first drag movement). `addAsChild` lays out and animates the sheet in itself (guarded against the appearance-callback double-fire): container controllers like `UINavigationController` never deliver a manually-added child's `viewDidAppear`, so a sheet relying on it sat invisible while its clear dimming view swallowed touches |
-| `LMKActionSheet` | `final class` | Custom bottom-sheet action sheet with design-token styling, optional custom content, `isSelected` checkmark state, and sub-page navigation |
-| `LMKBadgeView` | `final class` | Notification count / status dot / custom text badge |
-| `LMKBannerView` | `final class` | Persistent notification bar with optional action & dismiss |
-| `LMKCardView` | `final class` | Card container with shadow, corner radius, content insets |
-| `LMKChipView` | `final class` | Tag/filter chip (`.filled` / `.outlined`) with optional tap handler |
-| `LMKFilterChipBar` | `final class` | Horizontal scrolling chip bar built on `LMKChipView`. Single-select by default: optional "All" chip clears the filter, `configure(allTitle:filterTitles:filterIcons:style:)` (`filterIcons` are optional leading icons positionally matched to titles; nil/missing entries render text-only, the "All" chip never carries an icon), `setSelectedIndex(_:)` (silent), `selectionChangedHandler: ((Int?) -> Void)` — `nil` index = "All" / no selection. `allowsMultipleSelection` (set before `configure`) switches to additive toggling: `multiSelectionChangedHandler: ((Set<Int>) -> Void)`, `selectedIndices`, silent `setSelectedIndices(_:)`; empty set allowed (consumer decides, typically "show all"), the "All" chip clears the set and highlights while it's empty |
-| `LMKDividerView` | `final class` | Pixel-perfect separator (horizontal / vertical) |
-| `LMKEmptyStateView` | `final class` | Empty state with icon, message, and optional action button: `configure(message:icon:style:action:)` takes an `Action` (title, optional leading SF Symbol, `LMKButton.Style` — default filled primary — handler); `setAction(_:)` adds/replaces/removes post-configure. Button renders centered below the message, hugging its content, for `.fullScreen`/`.card`; `.inline` ignores it. Content-driven height: icon → message → button form one constraint chain (button bottom closes the container), so nothing overlaps at any Dynamic Type size. With no host-imposed height the view sizes itself to that content (edge hugging below required priority; stack-view safe); a host-imposed height wins and centers the content. Don't hand-anchor a separate CTA to the view bottom — use `Action`. A11y: with an action the view becomes a container exposing message + button separately; single static-text element when action is nil |
-| `LMKEnumSelectionBottomSheet` | `final class` | Generic bottom sheet for selecting from an enum's cases. `present(...)` for single-select (auto-commits on tap); `presentMultiSelect(...)` for multi-select (tap toggles, explicit Done button commits) |
-| `LMKGradientView` | `final class` | CAGradientLayer-backed view with 4 direction options |
-| `LMKGlassView` | `final class` | `UIVisualEffectView` subclass rendering Liquid Glass (`UIGlassEffect`) on iOS 26+ and a `systemMaterial` blur on iOS 18–25, so hosts need no availability gate. `style` (`.regular` / `.clear`), optional tint (translucent `contentView` background on the fallback), `isInteractive`, `cornerRadius` (via `cornerConfiguration` on 26, fixed unless `usesConcentricCorners = true`; `layer.cornerRadius` before). `makeContainer(spacing:)` returns a `UIGlassContainerEffect` host whose `contentView` merges nearby glass views (inert pre-26). `isGlass` tells which path rendered |
-| `LMKLoadingStateView` | `final class` | Loading indicator with optional message |
-| `LMKNavigationBar` | `final class` | Custom navigation bar with large title and standard inline modes. Configurable back button, left/right `LMKNavigationBarItem` arrays, separator, appearance (background, tint, title font/color). `pinToTop(of:)` for layout. `setLeftItemEnabled(at:_:)` / `setRightItemEnabled(at:_:)` toggle per-item enabled state (disabled items render at `LMKAlpha.disabled` and stop firing their action). `setRightAccessoryView(_:)` parks a non-tappable view (sync indicator, status icon) immediately to the left of the right items — lives outside the items stack, so `setRightItems(_:)` doesn't disturb it. `setLargeTitleAccessoryView(_:)` hangs a view off the trailing edge of the large title text (iOS Mail / Notes pattern) — the title's content-hugging priority is `.required`, so the accessory tracks the actual text width. Bar buttons enable pointer hover feedback on iPad / Mac Catalyst. `attachScrollEdgeEffect(to:)` / `detachScrollEdgeEffect()` install the iOS 26 `UIScrollEdgeElementContainerInteraction` so the scroll view's edge effect renders behind the bar (needs a clear / translucent `barBackgroundColor` over the scroll view's top edge; no-op before 26) |
-| `LMKNavigationController` | `open class` | `UINavigationController` subclass that keeps the interactive edge-swipe-to-go-back gesture working when the system nav bar is hidden (as it is in apps using `LMKNavigationBar`). Installs itself as the pop-gesture delegate and enables the gesture only when the stack has 2+ VCs |
-| `LMKPageIndicator` | `final class` | Custom page indicator replacing `UIPageControl`. Active dot expands into pill with spring animation. `numberOfPages`, `currentPage`, `pageChangedHandler`. Display-only while `pageChangedHandler` is nil (taps / VoiceOver adjustments are ignored, so the highlight can't desync from a controller-driven host) |
-| `LMKProgressViewController` | `final class` | Blocking progress modal (`.determinate` with progress bar, `.indeterminate` spinner-only). The Cancel button renders only while `onCancel` is set — wire the handler to dismiss as well as cancel (an early-exit path may never reach the flow's own dismiss), and leave it nil for non-cancellable operations rather than shipping a dead button. `setSubtitle(_:)` adds / updates / removes the secondary line on an indeterminate HUD before or mid-presentation (the home for "taking longer than usual" notes), with a VoiceOver announcement |
-| `LMKSearchBar` | `final class` | Search bar with configurable strings |
-| `LMKSkeletonCell` | `final class` | Skeleton loading placeholder cell |
-| `LMKCheckboxCell` | `final class` | Check-off row for to-dos / checklists: checkbox + strike-through title. `configure(title:isDone:)`, `onToggle` callback. Checkbox hit area expands to `LMKLayout.minimumTouchTarget`; done state exposed via `accessibilityValue` + `.selected` trait; hosts also toggle from `didSelectRowAt` so the whole row is a target. Checkbox image is set directly, never via cross-dissolve (reuse flashes a checkmark on unrelated rows otherwise) |
-| `LMKToastView` | `final class` | Auto-dismissing toast notification |
-| `LMKTipView` | `final class` | Onboarding tip with centered or pointed (arrow) styles |
-| `LMKFloatingButton` | `final class` | Draggable floating action button with edge snapping and badge |
-| `LMKCardPageController` | `open class` | Base class for card-embedded navigation pages with header, title, multi-page slide |
-| `LMKCardPanelController` | `open class` | Centered floating card panel in its own overlay window with slide animation; the card centers and insets against the overlay's safe-area guide, so side insets (landscape cutouts, iPhone Duo camera region) are respected |
-| `LMKCardPageLayout` | `enum` (static) | Shared layout constants for card pages (header height, symbol sizes) |
-| `LMKCardPanelLayout` | `enum` (static) | Shared layout constants for card panels (max width, insets, height ratio) |
-| `LMKScrollStackViewController` | `open class` | Base class for scrollable vertical stack layout — configurable spacing, insets, keyboard dismiss, safe area, bounce. Subclasses override `setupStackContent()`. `navigationBar: LMKNavigationBar?` (default nil, override with a stored/lazy property — read once) pins a custom bar via `pinToTop(of:)` with the scroll view topping out at the bar's bottom; `installsKeyboardAdjustment` (default true) installs `lmk_enableKeyboardAdjustment()` |
-| `LMKFormScaffold` | `enum` (static) | Builders for form screens outside the `LMKScrollStackViewController` hierarchy: `makeScrollView(keyboardDismissMode:)` (default `.onDrag`, keyboard avoidance pre-installed), `makeContentStack(spacing:)` (vertical fill, default `LMKSpacing.large`), `install(scrollView:stack:in:below:contentInsets:)` — scroll view spans from below the optional top anchor view (or view top) to the bottom safe area, stack pinned with token insets (default `cardPadding`) and width locked to the scroll frame |
-| `LMKSegmentedPageController` | `open class` | Base class for a segmented tab container that pages between child VCs with an interactive finger-tracking pan. Subclasses override `makePages()`, `usesFullWidthSwipe(forPageAt:)` (full-width vs edge-only pan, for pages that own interior horizontal drags such as a map or month grid), `didChangePage(to:)`. Top `LMKSegmentedControl` installed via overridable `installSegmentedControl()` (default: nav title view); overridable `pageContainerView` (default: the controller's view) confines pages to a sub-region, e.g. below a fixed header; `setPage(_:animated:)` slides for taps / deep links. `edgePanBandWidth` / `commitVelocityThreshold` are tunable open vars |
-| `LMKNavigationDirection` | `enum` | Shared navigation direction (`.forward`, `.backward`, `.none`) used by CardPageController and ActionSheet |
-| `LMKOverscrollFooterHelper` | `final class` | Positions footer below scroll content, revealed on overscroll |
-
-### Controls (`Controls/`)
-
-| Control | Type | Purpose |
-|---------|------|---------|
-| `LMKButton` | `open class` | UIButton subclass with 4 styles: `.filled`, `.outlined`, `.ghost` (text-only), `.iconOnly` (circular). Capsule corners, press animation, `isLoading` state, pointer hover feedback (iPad / Mac Catalyst). `tapHandler`/`didTapHandler` closures |
-| `LMKSegmentedControl` | `open class` | Custom `UIControl` (NOT `UISegmentedControl`) with sliding pill indicator, spring animation, haptic. `init(items:)`, `selectedSegmentIndex` (`-1` = no selection, hides indicator — matches `UISegmentedControl.noSegment`), `valueChangedHandler`, `fitsSegmentsToContent` (per-segment natural width), `makeScrollableContainer()`. `fitsSegmentsToContent` and `makeScrollableContainer()` compose — combined mode uses fit-mode exact widths (`itemPadding`) and ignores `scrollableItemPadding`. `itemSpacing` tunes the gap between segments in scrollable mode (default `LMKSpacing.medium`; non-scrollable mode always uses 0) |
-| `LMKSlider` | `final class` | Tokenized continuous or step-snapped slider with optional caption (leading) + live value readout (trailing) row above the track. `value` / `setValue(_:animated:)` are silent; user drags fire `.valueChanged` + `valueChangedHandler`. `step > 0` snaps to `minimumValue + n * step` (cached snapped value bypasses `UISlider`'s float drift). `valueFormatter: ((Float) -> String)?` drives the readout; both caption and readout auto-hide when nil. Uses `LMKTypography.captionMedium` + design-token tints. Adjustable accessibility trait with live `accessibilityValue` |
-| `LMKSwitch` | `final class` | Custom toggle replacing `UISwitch`. Rounded track + sliding thumb, spring animation, haptic. `isOn`, `setOn(_:animated:)`, `valueChangedHandler`. Sends `.valueChanged` |
-| `LMKTextField` | `open class` | Text field with validation states, helper text, leading icon |
-| `LMKTextView` | `open class` | Multi-line text input with placeholder, character limit |
-| `LMKToggleButton` | `open class` | Toggle button with on/off states |
-
-### UIKit Extensions (`Extensions/`)
-
-| Extension | Key Methods |
-|-----------|-------------|
-| `UIColor+LMK` | `init(lmk_hex:)`, `lmk_dynamic(lightHex:darkHex:alpha:)`, `lmk_hexString`, `lmk_isLight`, `lmk_adjustedBrightness(by:)`, `lmk_contrastingTextColor` |
-| `UIImage+LMK` | `lmk_resized(maxDimension:)`, `lmk_resized(to:)`, `lmk_solidColor(_:size:)`, `lmk_rounded(cornerRadius:)` |
-| `UIView+LMKShadow` | `lmk_applyShadow(_:)`, `lmk_removeShadow()` |
-| `UIView+LMKBorder` | `lmk_applyBorder(...)` (width defaults to `LMKLayout.hairline`), `lmk_removeBorder()`, `lmk_applyCornerRadius(_:masking:asConcentricContainer:)` (the flag also publishes the radius as the iOS 26 `cornerConfiguration` so descendants can be concentric; a bare `layer.cornerRadius` is invisible to that math), `lmk_applyConcentricCorners(minimumRadius:)` (iOS 26 container-concentric radius floored at the minimum, resolved against the nearest published ancestor or else the display's corners; fixed radius before 26), `lmk_makeCircular()` |
-| `UIView+LMKFade` | `lmk_fadeIn(...)`, `lmk_fadeOut(...)` |
-| `UIView+LMKLayout` | `lmk_safeAreaSnp`, `lmk_setEdgesEqualToSuperview()`, `lmk_centerInSuperview()`, `lmk_setAutoLayoutSize(width:height:)` |
-| `UIStackView+LMK` | `init(lmk_axis:...)`, `lmk_addArrangedSubviews(_:)`, `lmk_removeAllArrangedSubviews()` |
-| `UITableViewCell+LMKIconListRow` | `lmk_configureIconListRow(iconSystemName:title:subtitle:tint:pointerEnabled:)` — standard detail-list row: SF Symbol in a tinted circle (`LMKLayout.iconCircle`), disclosure, LumiKit highlight. `pointerEnabled` (default true) installs a hover `UIPointerInteraction` once per cell (associated-object guard against reconfigure duplicates), style routed through `LMKPointerStyle` (windowless-cell trap) |
-| `UITextField+LMKKeyboardDismiss` | `lmk_dismissKeyboardOnReturn()` — Done return key + resign on `.editingDidEndOnExit` (also forwarded on `LMKTextField`) |
-| `UIViewController+LMKKeyboardDismiss` | `lmk_dismissKeyboardOnTap()` — tap outside a field dismisses the keyboard; `cancelsTouchesInView = false` so control taps still land |
-
-### Share (`Share/`)
-
-| Component | Type | Purpose |
-|-----------|------|---------|
-| `LMKShareResult` | `enum` | Result of share operation: `.completed(ActivityType?)`, `.cancelled`, `.failed(Error)` |
-| `LMKShareService` | `enum` (static) | Share sheet wrapper — `shareImage` (returns `LMKShareResult`), `shareFile` with popover support |
-| `LMKSharePreviewViewController` | `final class` | Image preview sheet with share + save-to-photos. All feedback is delegate-driven via `LMKSharePreviewDelegate` (`didShareWith`, `didFailToShare`, `sharePreviewDidSave`, `didFailToSave`) |
-
-### QR Code (`QRCode/`)
-
-| Component | Type | Purpose |
-|-----------|------|---------|
-| `LMKQRCodeGenerator` | `enum` (static) | CoreImage QR code generation with configurable correction level and size |
-
-### Photo (`Photo/`)
-
-| Component | Type | Purpose |
-|-----------|------|---------|
-| `LMKPhotoBrowserViewController` | `final class` | Full-screen photo browser with zoom, swipe, delete. Images load via the async `photo(at:)` requirement: page shows the browser background as placeholder, installs through the standard sizing path (zoom-scale reset semantics preserved), generation-token guarded against recycling; rotation re-fits use the cell's installed image, no data source round-trip. Upgrades a cell from `UIImageView` to `PHLivePhotoView` when `photoLivePhoto(at:)` resolves to a non-nil `PHLivePhoto` — still image shows immediately; long-press plays the paired video. Live cells render a `livephoto` + "LIVE" capsule under the action ("…") button that fades during playback. `showsActionButton = false` (set before presenting) skips installing the "…" button for hosts whose current user has no actions to offer (view-only shared content); `actionButtonSystemImageName` swaps the symbol (e.g. "trash" when the sole action is removal). The date/subtitle pill hides when the current photo has neither; a single-photo browser shows no counter or page dots. Cell reuse guarded |
-| `LMKPhotoBrowserConfig` | `enum` | Shared configuration constants (e.g. `interPageSpacing`) |
-| `LMKPhotoCropViewController` | `final class` | Square crop editor with pan/zoom |
-| `LMKPhotoPickCropCoordinator` | `final class` | Pick → square-crop → store flow for one photo via permission-free `PHPicker`. Storage injected as `(UIImage) -> String?`; host retains the coordinator for the flow's duration (picker + crop reference their delegates weakly through it). `croppingEnabled: false` skips the crop editor and stores the pick as-is (receipts, documents) |
-| `LMKSinglePhotoViewer` | `final class` | One-image adapter for `LMKPhotoBrowserViewController` (data source + delegate in one object). Optional subtitle, action-button callback (the browser's action button is hidden when the callback is nil), and `actionIconSystemName` to swap the button's symbol; retain while the browser is up |
-| `LMKPhotoGridViewController` | `final class` | Photo grid with pinch-to-zoom columns, sort, content mode toggle, browser integration. Cell images load via the async `photoGridImage(at:)` requirement: neutral placeholder (`LMKColor.backgroundSecondary`) immediately, per-cell monotonic generation token so stale results never land on recycled cells. Cells show a small `livephoto` SF Symbol badge when `photoGridIsLivePhoto(at:)` returns true; paired `PHLivePhoto` is forwarded to the browser via `photoGridLivePhoto(at:) async`. `browserShowsActionButton` forwards to the presented browser's `showsActionButton` (default true) |
-| `LMKPhotoEXIFService` | `nonisolated enum` (static) | Date + GPS extraction from UIImage or PHPickerResult. Date lookup walks EXIF (`DateTimeOriginal` / `DateTimeDigitized`), TIFF (`DateTime`), IPTC (`DateCreated` + `TimeCreated`, `DigitalCreationDate` + `DigitalCreationTime`), and the XMP packet (`xmp:CreateDate`, `xmp:DateCreated`, `xmp:ModifyDate`, `photoshop:DateCreated`) in capture-fidelity order. Recovers a date for screenshots and Lightroom / Photoshop / Capture One exports where EXIF has been stripped but another container retains the original timestamp |
-
-**Async image requirements** (required, called on the main actor): `LMKPhotoGridDataSource.photoGridImage(at:) async -> UIImage?` and `LMKPhotoBrowserDataSource.photo(at:) async -> UIImage?`. Implementations that decode should hop off-main themselves (`Task.detached` + `preparingForDisplay()`) and return a ready-to-display image; sources holding decoded images return immediately (`LMKSinglePhotoViewer` does exactly that).
-
-**Live Photo data-source methods** (all optional, default to no-op):
-
-| Protocol | Method | Role |
-|----------|--------|------|
-| `LMKPhotoGridDataSource` | `photoGridIsLivePhoto(at:) -> Bool` | Show LIVE badge on grid cell |
-| `LMKPhotoGridDataSource` | `photoGridLivePhoto(at:) async -> PHLivePhoto?` | Forwarded to the browser when the grid presents it |
-| `LMKPhotoBrowserDataSource` | `photoLivePhoto(at:) async -> PHLivePhoto?` | Swap the browser cell to `PHLivePhotoView` |
-
-Paired-file storage (still JPG + video MOV) is the caller's responsibility — LumiKit takes a pre-assembled `PHLivePhoto`. Hosts typically use `PHLivePhoto.request(withResourceFileURLs:)` to build one from disk.
-
-### Pickers (`Components/Pickers/`)
-
-| Component | Type | Purpose |
-|-----------|------|---------|
-| `LMKDatePickerHelper` | `enum` (static) | Date picker presentation via `LMKActionSheet` — single date (past/future), date range with live enforcement, single-calendar range picker (`presentCalendarRangePicker`: UICalendarView multi-date selection renders the whole range; nothing is selected until the first tap sets the start, a later tap sets the end, an earlier tap re-anchors, and any tap once a full range exists resets to begin a new selection; `onConfirm` fires only when something is selected), date with text field. Configurable strings, auto-clamping |
-
-### Utilities (`Utilities/`)
-
-| Utility | Purpose |
-|---------|---------|
-| `LMKDeviceHelper` | Device type (`.iPhone`, `.iPad`, `.macCatalyst`, nonisolated) and `LMKScreenSize` tiers. `screenSize` reads the key window's bounds + traits (never `UIScreen`); `screenSize(for:)` reads a root view's own bounds + traits (split-view child, resizable iPad window, iPhone Duo scene); `screenSize(forWindowSize:horizontalSizeClass:verticalSizeClass:)` is the pure, nonisolated classifier. Regular × regular → `.extraLarge`; otherwise by portrait width: ≤`compactMaxWidth` (375) compact, ≤`regularMaxWidth` (402) regular, wider large. Re-read on `viewWillTransition` / trait change. `hasTopNotch` is iPhone-only and orientation-dependent |
-| `LMKKeyboardObserver` | Keyboard show/hide observer with height, end frame (`KeyboardInfo.frameEnd`, for overlap math against a local view), and animation info |
-| `LMKKeyboardAdjustment` | One-call keyboard avoidance: `scrollView.lmk_enableKeyboardAdjustment()` installs an associated-object adjuster that grows the bottom content + scroll indicator insets to the keyboard overlap on `keyboardWillChangeFrame` and scrolls the focused field into view; restores on hide. No-op on Mac Catalyst. Prefer over `LMKKeyboardInsetHelper` (start/stop lifecycle) for new form screens |
-| `LMKImageUtil` | SF Symbol creation (`makeSymbolImage` with background), `CVPixelBuffer` to JPEG conversion, `encodeJPEG(_:maxDimension:quality:)` — `nonisolated` downsample + opaque RGBX (`.noneSkipLast`) re-render + `CGImageDestination` encode, so JPEGs stay 3-channel (no ImageIO "AlphaPremulLast" double-memory path) and EXIF orientation is baked into the pixels |
-| `LMKDominantColorExtractor` | RGB-histogram color extraction. `dominantColor(from:ignoringTransparent:strategy:)` returns one color: `.modal` (default, densest bucket = subject identity), `.average` (mean = gradient vibe, muddy for subjects), `.vibrant` (most saturated bucket with population tie-breaker = accent color, drops < 0.5% buckets, falls through to modal for grayscale). `dominantColors(from:count:ignoringTransparent:)` returns a top-N palette by frequency. Pass a subject-lifted PNG with `ignoringTransparent: true` (alpha threshold drops semi-transparent edges); raw photos use the default and a 20% border-ring crop. Always uses `kCGImageAlphaPremultipliedLast` — `.last` (unpremultiplied) is rejected by `CGBitmapContext` on iOS |
-| `LMKMarkdownRenderer` | Markdown-to-attributed-string: `render()` for inline (bold/italic), `renderFull()` for long-form content (headings, lists, fenced code blocks, GFM tables, `\n` preserved; code and tables in a monospaced font), `makeInlineTextView` |
-| `LMKPointerStyle` | Window-safe `UIPointerStyle` factories for `UIPointerInteractionDelegate`: `automatic(for:)`, `highlight(for:)`, `lift(for:)`, `hover(for:preferredTintMode:prefersShadow:prefersScaledContent:)`, plus the underlying `preview(for:)`. Each takes a `UIView?` and returns `nil` unless it is non-nil AND `window != nil`, so it is returned straight from the delegate: `LMKPointerStyle.lift(for: interaction.view)`, or `for: self` when the effect targets the delegate. **Never construct `UITargetedPreview(view:)` directly** — it asserts window membership and aborts (`BUG_IN_CLIENT_OF_TARGETED_PREVIEW__VIEW_IS_NOT_IN_A_WINDOW`); guarding `interaction.view != nil` does not help, since a recycled cell keeps the interaction after losing its window |
-| `LMKSceneUtil` | Key window retrieval; `screenScale` and `displayScale(of:)` read the `displayScale` trait (not `UIScreen.scale`), `nil` when unspecified |
+Tests scope a theme without global mutation: `LMKThemeTesting.traits(for:style:contrast:)` builds a trait collection, `LMKThemeTesting.fit(view, width:)` lays out, `LMKThemeTesting.distinct` is a theme where every value differs from the default. The xctest host has no connected scene, so `LMKTheme.apply` cannot stamp test windows; tests stamp `LMKTheme.currentReference` by hand.
 
 ---
 
-## Error Handling
+## Platform support and availability
 
-- **`LMKErrorHandler`** for user-facing errors — supports severity-based presentation:
-  - `.info` -> info toast
-  - `.warning` -> alert with OK
-  - `.error` -> toast (transient) or alert with retry (recoverable)
-  - `.critical` -> always alert, retry if available
-- All presentation methods auto-log via `LMKLogger`
-- **`LMKAlertPresenter`** for generic alerts, action sheets, and single-text-field prompts (`presentTextInput`: save/cancel alert that hands back the field's text verbatim; optional `configureField` closure runs after the standard configuration so its changes win; `Strings` includes a configurable `save` title)
-- **`LMKCountdownConfirmation`** for destructive actions — confirm button disabled for a countdown period (default 3s) with live title countdown, preventing accidental taps
+- **The floor stays iOS 18 / Mac Catalyst 18.** Built and tested with Xcode 26 (Swift 6.2) and, since 2026-09-27, Xcode 27 (Swift 6.4), on the iOS 26 simulator. Under Swift 6.4 the members of an extension follow the module's MainActor default even when the extended type is nonisolated, so extensions meant to run anywhere (`UIImage`, `LMKTheme` style slots, protocol defaults such as `LMKEnumSelectable`) are `nonisolated extension`s, pinned by `LMKNonisolatedSurfaceTests`; consumer subclasses of the package's controllers declare `isolated deinit`. The adopted iOS 26 APIs, their fallbacks, and the iOS 27 follow-ups (`barMinimizationBehavior`, `sidebar.preferredPlacement`, `prominentTabIdentifier`, `UIHingeInteraction`, reserved regions) are listed in `docs/PLATFORM.md`; iOS 27 APIs are a 1.x follow-up now that Xcode 27 is installed and go behind `#available(iOS 27, *)` the same way.
+- **Layout from traits and window bounds.** `LMKDevice.screenSize(for:)` (compact ≤375, regular ≤402, large, extraLarge for regular × regular), `LMKSpacing.cardPadding` / `cellPaddingVertical` (shortest side ≤768 / ≤834 / wider), `LMKLayout.hairline(for:)`, `LMKScene.screenScale`; `LMKScene.observeGeometry(of:)` and `LMKDevice.observeScreenSize(of:)` report resizes, folds, and the iOS 26 interactive-resize flag. `lmk_windowOrientation` is for camera / media rotation only.
+- **Safe areas per edge**: overlays clamp against `safeAreaInsets.left` / `.right` as well as top / bottom.
+- **iOS 27 gates for consuming apps** (LumiKit needs nothing): scene-based lifecycle and a declared launch screen are mandatory with the 27 SDK; `UIApplication.statusBar*` is deprecated for `UIWindowScene.statusBarManager`.
 
 ---
 
-## Build & Test Commands
+## Build and test
 
 ```bash
-# Build all targets (iOS Simulator)
-xcodebuild build \
-  -scheme LumiKit-Package \
-  -destination 'platform=iOS Simulator,name=iPhone 17,OS=26.2' \
-  -skipPackagePluginValidation \
-  CODE_SIGNING_ALLOWED=NO 2>&1 | tail -5
-
-# Build for Mac Catalyst
-xcodebuild build \
-  -scheme LumiKit-Package \
-  -destination 'platform=macOS,variant=Mac Catalyst' \
-  -skipPackagePluginValidation \
-  CODE_SIGNING_ALLOWED=NO 2>&1 | tail -5
-
-# Run tests (requires iOS Simulator — UIKit targets can't use `swift test`)
-xcodebuild test \
-  -scheme LumiKit-Package \
-  -destination 'platform=iOS Simulator,name=iPhone 17,OS=26.2' \
-  -skipPackagePluginValidation \
-  CODE_SIGNING_ALLOWED=NO 2>&1 | tail -20
-
-# Build single target (faster iteration)
-swift build --target LumiKitCore
-
-# Build Example app (XcodeGen project — must use -scheme, NEVER -target)
-cd Example && xcodebuild build \
-  -project LumiKitExample.xcodeproj \
-  -scheme LumiKitExample \
-  -destination 'platform=iOS Simulator,name=iPhone 17,OS=26.2' \
-  -skipPackagePluginValidation \
-  CODE_SIGNING_ALLOWED=NO 2>&1 | tail -5
+make check            # SwiftLint --strict + SwiftFormat --lint (the pre-commit hook runs the same on staged files)
+make build            # iOS Simulator: platform=iOS Simulator,name=iPhone 17,OS=26.2 (DEST overrides)
+make build-catalyst   # platform=macOS,variant=Mac Catalyst
+make build-host       # swift build for LumiKitCore + LumiKitDebug (native macOS)
+make test             # full package on the simulator; UIKit targets cannot run under `swift test`
+make test-filter FILTER=LumiKitUITests/LMKButtonTests      # one suite (or .../method)
+make example          # cd Example && xcodegen generate, then build (XcodeGen: -scheme, NEVER -target; regenerate after adding files)
+make docs             # xcodebuild docbuild for every target into build/docc
+make migrate CONSUMER=../MyApp ARGS=--dry-run
 ```
+
+Logs land in `build/logs/` (gitignored). Verify a build through the log, not a piped exit code.
+
+### Example sweep
+
+The Example app is the accessibility test bed. Launch arguments: `-lmk-page <title>`, `-lmk-audit`, `-lmk-audit-all`, `-lmk-config <name>`, `-lmk-screenshots <abs dir>`, `-lmk-rtl`, `-lmk-theme example|ocean|default`, `-lmk-live-photo <still> <video>` (the Photo Browser page opens a Live Photo built from the two files; the simulator library has none). `ExampleSweepRunner` pushes every catalog page, runs `ExampleAccessibilityAudit` (truncated, clippedHorizontally, overlap, smallTarget, unlabeled, contrast, fixedFont), writes a PNG per page, prints `AUDIT|config|page|severity|check|path|detail` lines, and exits. Drive the simulator with `xcrun simctl ui <sim> content_size accessibility-extra-extra-extra-large | appearance dark | increase_contrast enabled` and `simctl launch --console-pty --terminate-running-process`; run the Catalyst binary directly after `codesign --force --deep --sign -`. Remaining contrast warnings are brand-color pairs, accepted by design.
+
+The sweep and the unit tests cannot touch the screen. Gestures (taps landing on the right view, pinches, drags, long presses, pull to refresh) are verified with a throwaway XCUITest target built over the Example sources, with `simctl io recordVideo` and `ffmpeg` frames for anything that animates. Four of the 1.0 bugs were invisible to everything else: chips that ignored taps on their title, a refresh ring that did not spin, a zoomed photo that panned off the page, and a Live Photo that never loaded. XCUITest waits for the app to go idle before each gesture, so a touch that must land during a transition (the browser's first swipe, undone when the presentation finished) needs raw touch records through XCTest's event synthesizer, one finger per record (the synthesizer's completion block takes `(BOOL, NSError *)`; a block declared with one argument crashes the runner). `XCUIScreen.main.screenshot()` in a loop right after a raw touch gives about ten lossless frames a second with no idle wait. A simulator recording stores no frames while the screen is static and refines color after motion stops: resample to a constant frame rate for timing, and use a loop of `simctl io screenshot` for alpha and tint.
 
 ---
 
-## Forced Dark Mode + Status Bar Pattern
+## UIKit rules the package learned the hard way
 
-View controllers that force dark mode (e.g., photo browser, crop editor) must follow this 3-step pattern:
+- **A `UIControl` tracks a touch only when it is the hit-test view.** A touch that lands on an interactive subview (any plain `UIView` or `UIStackView`) and reaches the control through the responder chain never fires `touchUpInside`. Subviews of a control are `isUserInteractionEnabled = false`, or the control overrides `hitTest` and returns itself (`LMKChipView`, which still hands its dismiss button the touch). `LMKControlHitTestingTests` checks every custom control.
+- **A wrapping label takes its width from constraints, never from its own content.** A label bounded only by `<=` keeps whatever narrow width an early layout pass gave it and wraps one word per line from then on. Put it in a stack with the fixed-width neighbour, or pin both edges.
+- **UIKit starts a refresh itself** when a pull crosses the system's distance mid-drag: `isRefreshing` turns true and `.valueChanged` fires without `beginRefreshing()` being called. Anything `beginRefreshing()` starts (the Lottie loop) must start from the `.valueChanged` handler too.
+- **A view under a zoom transform is laid out by frame, not by constraints.** Auto Layout and `UIScrollView` zoom disagree about where the view sits, and the layout engine only re-applies a frame when its solution changes. The photo page sets `bounds` and `center` itself, keeps the content area the size of the page, and expresses the photo's travel as content insets.
+- **A floating surface is opaque.** A translucent tint over content lets the content show through; composite the tint over the background color (`lmk_composited(over:alpha:)`).
+- **A state shades the fill the control shows, not its tint.** A neutral filled button is gray with a label-colored tint; shading the tint for the pressed state came out black. Derive pressed and selected fills from the resting fill with `lmk_stateShade(by:)`, which lightens a fill that is already dark.
+- **Selected and pressed looks differ from the resting one by more than a shade of the same fill.** In a row of filled chips a 15% darker fill was the selection. A filled `LMKFilterChipBar` keeps the full tint for the selected chip and washes the others; a press changes the fill, never the alpha of the whole control.
+- **`viewDidAppear` does not reposition content.** A zoom presentation takes touches about a second before it reports the appearance, so a swipe can be under way when it arrives: the photo browser re-aligns its page only while the collection view is idle, and applies `initialIndex` once.
+- **What a drag fades is its own layer.** Fading a root view fades everything on it. The browser's stage is a separate view under clear pages, and the browser presents over the full screen so there is a screen to show through; a view that must stay solid over a fading background keeps an opaque backing of its own.
+- **Small fixed-size views hug their content at required priority** (`LMKBadgeView`): with equal priorities a stack picks who stretches.
+- **A view that publishes an iOS 26 `cornerConfiguration`, clips, and has subviews eats its own border at the corners.** UIKit clips the subviews along a tighter curve than the layer border follows, for any published configuration (`.capsule()`, a fixed radius): a 1.5pt outline lost a quarter of its width on a chip's ends, a hairline lost five sixths. Capsules and circles are therefore drawn with `layer.cornerRadius` on every OS and a hidden subview (`LMKCornerTrackingView`) keeps the radius current on resize; `asConcentricContainer` skips a clipping view that already has a border. On iOS 26.x a configuration cannot be taken back once UIKit applied it (restoring the unspecified one leaves square corners; iOS 27 handles it), so the choice is made before publishing, never after.
+- **Line widths are whole pixels.** 1.5pt at 3x is 4.5 pixels and Core Animation draws 4 on one edge and 5 on another. Borders and strokes go through `LMKLayout.pixelAligned(_:for:)`.
+- **Changing `action.state` (or `image`, `subtitle`) in a handler does not repaint an open menu**: the handler gets a copy. A `.keepsMenuPresented` row repaints by rebuilding the visible menu: `UIContextMenuInteraction.updateVisibleMenu` for a button or a view (the block runs once per visible menu, so an open submenu is matched by its stable identifier), and a fresh menu with the same identifier assigned to `UIBarButtonItem.menu` for a bar button, which has no public interaction (an open submenu collapses to the top level there). The source comes from `action.presentationSourceItem`; `LMKMenu.reloadVisibleMenu(presenting:)` does all of it.
+- **The iOS 18 zoom transition scales the whole presenting screen down and back**, which reads as the page bouncing behind the photo, most of all after a dismiss drag during which that page stood still. The photo browser runs its own transition (`LMKPhotoBrowserZoomAnimator`): one image view travels between the thumbnail and the stage while the stage fades, and the presenter never moves.
 
-```swift
-public final class LMKExampleViewController: UIViewController {
-    // 1. Explicitly return .lightContent (don't rely on system inference)
-    override public var preferredStatusBarStyle: UIStatusBarStyle { .lightContent }
+## Testing gotchas (xctest host on the simulator)
 
-    public init() {
-        super.init(nibName: nil, bundle: nil)
-        // 2. Tell UIKit this presented VC controls the status bar
-        modalPresentationCapturesStatusBarAppearance = true
-    }
-
-    override public func viewDidLoad() {
-        super.viewDidLoad()
-        // 3. Force dark appearance on this VC's view hierarchy
-        overrideUserInterfaceStyle = .dark
-    }
-}
-```
-
-**Why all three?**
-- `overrideUserInterfaceStyle = .dark` forces dark appearance for colors, materials, and vibrancy
-- `preferredStatusBarStyle = .lightContent` is explicit (safer than relying on system inference from interface style)
-- `modalPresentationCapturesStatusBarAppearance = true` is required for modally presented VCs to control the status bar; without it, the **presenting** VC's status bar style is used
-
-**UINavigationController gotcha**: UIKit asks the **container** (not the child) for `preferredStatusBarStyle`. If a forced-dark VC is embedded in a navigation controller, either subclass the nav controller and override `childForStatusBarStyle` to return `topViewController`, or set `navigationBar.barStyle = .black` to force light status bar content.
+- `UIControl.sendActions(for:)` delivers nothing: call the handler method or the `on*` closure directly. `UIRefreshControl.isRefreshing` never turns true. UIKit modal `present` / `dismiss` completion blocks never run; components animate with `UIViewPropertyAnimator` and finish teardown through `LMKOnceCompletion`, so tests assert the component's own state.
+- `becomeFirstResponder()` on a view controller hangs the main thread; `UIPasteboard.general` blocks forever (`LMKCopyableLabel` writes through an internal hook the test replaces); `UIView.setAnimationsEnabled` is process-global and unsafe across parallel suites.
+- Parallel suites can hold the main actor for seconds: poll with `LMKWait.until` instead of a fixed sleep. Trait overrides propagate only inside a window; reading a trait on `traitOverrides` that has no override traps.
+- `UITabBarController(tabs:)` builds every tab's controller at load (lazy roots use a placeholder swapped in on first selection); `UIBarButtonItem(image:menu:)` and `UIButton.menu` copy the menu; `UIButton.configurationUpdateHandler` runs only on UIKit's pass, so `LMKButton` resolves state in an `updateConfiguration()` override.
+- A weak mock returned from a helper and bound to `_` dies before the assertions: pin it with `withExtendedLifetime`. `#expect(x == 375 - 8 - 16)` types the right side as `Int` against a `CGFloat`: compare against a single literal.
+- `Calendar.date(from:)` normalizes overflowed components; ICU inserts U+202F before AM/PM and U+00A0 in some locales; `UIImage.lmk_solidColor` fixtures render at the screen scale.
+- UIKit layout: `convenience init(frame:)` must call the designated initializer (never `self.init()`); a `UIContentView` bounded only from below answers an expanded fitting target with an infinite height (add a low-priority hug); a nested `UIStackView`'s hugging priority does not stop the outer stack stretching it (set it on the items); multi-line labels in horizontal stacks need `preferredMaxLayoutWidth` from `layoutSubviews`; `UITableViewCell.contentView` constraints sit at 999. `lmk_adjustedBrightness(by:)` is a multiplier (0.85 darkens 15%), never a delta.
+- Mac idiom: `UISlider` track / thumb tints throw `NSInternalInconsistencyException`; AppKit's `_crashOnException` hides the reason, so diagnose with `lldb --batch -o "breakpoint set -n objc_exception_throw" -o "process launch -- <args>" -o "po $x0" -o "bt"`. A window's `semanticContentAttribute` does not flip descendants; RTL previews set `UIView.appearance().semanticContentAttribute` before views exist plus `lmk_forceLayoutDirection` on the window.
 
 ---
 
-## Adding New Tokens / Components
+## Forced dark mode + status bar pattern
 
-1. **New design token**: Add to appropriate `LMK*Theme` config struct + proxy in the token enum
-2. **New component**: Add to `Components/` or `Controls/`; use `LMK` prefix; depend only on design tokens
-3. **New extension**: Add to `Extensions/` with `lmk_` prefix; keep extensions small and focused
-4. **New configurable strings**: Use the module-level pattern (not nested in `@MainActor` class)
-5. **After changes**: Run full build on iOS Simulator + Mac Catalyst; run tests
+View controllers that force dark mode (photo browser, crop editor) do all three: `override var preferredStatusBarStyle { .lightContent }`, `modalPresentationCapturesStatusBarAppearance = true` in `init`, and `overrideUserInterfaceStyle = .dark` in `viewDidLoad`. Inside a `UINavigationController`, override `childForStatusBarStyle` on the container to return `topViewController`.
+
+---
+
+## Adding tokens and components
+
+1. **Token**: add the field to the `LMK*Theme` category struct (defaulted) and the proxy on the token enum; tokens are `nonisolated`.
+2. **Component**: follow rule 3 above; add tests (theme change, Dynamic Type, layer re-stamp, behavior), an Example page in the matching catalog section (then `xcodegen generate`), a DocC topic entry in `Sources/LumiKitUI/LumiKitUI.docc/LumiKitUI.md`, and a CHANGELOG line under `[Unreleased]`.
+3. **Extension**: `Extensions/` with the `lmk_` prefix, one file per feature area (`UIView+LMKCorners.swift`).
+4. **String**: a `Strings` field with a `LMKLocalized` default and the key in all four `Localizable.strings` (the localization test checks parity).
+5. **After changes**: `make check`, `make build`, `make build-catalyst`, the affected `make test-filter`, and `make example` when the Example changed.
 
 ---
 
 ## Dependencies
 
-| Library | Version | Target | Purpose |
-|---------|---------|--------|---------|
-| SnapKit | 6.0.0+ | LumiKitUI | Programmatic Auto Layout |
-| Lottie | 4.4.0+ | LumiKitLottie | Pull-to-refresh animation |
-
-- **SnapKit**: Always use SnapKit for constraints; never use `NSLayoutConstraint` directly
-- **Lottie**: Isolated in separate target so apps can opt out
+| Library | Version | Product | Purpose |
+|---|---|---|---|
+| SnapKit | 6.0.0+ | LumiKitUI | Programmatic Auto Layout (never `NSLayoutConstraint` directly) |
+| Lottie (lottie-spm) | 4.4.0+ | LumiKitLottie | Pull-to-refresh animation; isolated so other consumers never link it |
 
 ---
 

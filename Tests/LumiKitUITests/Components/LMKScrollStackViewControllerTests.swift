@@ -7,150 +7,14 @@ import Testing
 import UIKit
 @testable import LumiKitUI
 
-// MARK: - Test Helpers
-
 private final class TestScrollVC: LMKScrollStackViewController {
-    var setupStackContentCalled = false
+    var setupCalls = 0
 
     override func setupStackContent() {
-        setupStackContentCalled = true
+        setupCalls += 1
+        stackView.addArrangedSubview(UILabel.lmk_make(.body, text: "Row \(setupCalls)"))
     }
 }
-
-private final class CustomScrollVC: LMKScrollStackViewController {
-    override var stackSpacing: CGFloat { LMKSpacing.xl }
-    override var contentInsets: UIEdgeInsets {
-        UIEdgeInsets(top: LMKSpacing.xl, left: LMKSpacing.large, bottom: LMKSpacing.xl, right: LMKSpacing.large)
-    }
-
-    override var keyboardDismissMode: UIScrollView.KeyboardDismissMode { .interactive }
-    override var alwaysBounceVertical: Bool { true }
-    override var scrollViewUseSafeArea: Bool { false }
-}
-
-// MARK: - LMKScrollStackViewController (defaults)
-
-@MainActor
-struct LMKScrollStackViewControllerDefaultTests {
-    @Test
-    func `default stackSpacing is LMKSpacing.large`() {
-        let vc = TestScrollVC()
-        #expect(vc.stackSpacing == LMKSpacing.large)
-    }
-
-    @Test
-    func `default keyboardDismissMode is .onDrag`() {
-        let vc = TestScrollVC()
-        #expect(vc.keyboardDismissMode == .onDrag)
-    }
-
-    @Test
-    func `default alwaysBounceVertical is false`() {
-        let vc = TestScrollVC()
-        #expect(!vc.alwaysBounceVertical)
-    }
-
-    @Test
-    func `default scrollViewUseSafeArea is true`() {
-        let vc = TestScrollVC()
-        #expect(vc.scrollViewUseSafeArea)
-    }
-
-    @Test
-    func `default contentInsets uses cardPadding on all sides`() {
-        let vc = TestScrollVC()
-        let padding = LMKSpacing.cardPadding
-        let expected = UIEdgeInsets(top: padding, left: padding, bottom: padding, right: padding)
-        #expect(vc.contentInsets == expected)
-    }
-}
-
-// MARK: - LMKScrollStackViewController (view hierarchy)
-
-@MainActor
-struct LMKScrollStackViewControllerHierarchyTests {
-    @Test
-    func `scrollView is added to view after loadViewIfNeeded`() {
-        let vc = TestScrollVC()
-        vc.loadViewIfNeeded()
-        #expect(vc.scrollView.superview === vc.view)
-    }
-
-    @Test
-    func `contentView is added to scrollView`() {
-        let vc = TestScrollVC()
-        vc.loadViewIfNeeded()
-        #expect(vc.contentView.superview === vc.scrollView)
-    }
-
-    @Test
-    func `stackView is added to contentView`() {
-        let vc = TestScrollVC()
-        vc.loadViewIfNeeded()
-        #expect(vc.stackView.superview === vc.contentView)
-    }
-
-    @Test
-    func `view background is backgroundPrimary`() {
-        let vc = TestScrollVC()
-        vc.loadViewIfNeeded()
-        #expect(vc.view.backgroundColor == LMKColor.backgroundPrimary)
-    }
-
-    @Test
-    func `stackView axis is vertical`() {
-        let vc = TestScrollVC()
-        vc.loadViewIfNeeded()
-        #expect(vc.stackView.axis == .vertical)
-    }
-
-    @Test
-    func `stackView alignment is fill`() {
-        let vc = TestScrollVC()
-        vc.loadViewIfNeeded()
-        #expect(vc.stackView.alignment == .fill)
-    }
-}
-
-// MARK: - LMKScrollStackViewController (template methods)
-
-@MainActor
-struct LMKScrollStackViewControllerTemplateTests {
-    @Test
-    func `setupStackContent is called during viewDidLoad`() {
-        let vc = TestScrollVC()
-        vc.loadViewIfNeeded()
-        #expect(vc.setupStackContentCalled)
-    }
-}
-
-// MARK: - LMKScrollStackViewController (custom configuration)
-
-@MainActor
-struct LMKScrollStackViewControllerCustomTests {
-    @Test
-    func `custom stackSpacing is applied to stackView`() {
-        let vc = CustomScrollVC()
-        vc.loadViewIfNeeded()
-        #expect(vc.stackView.spacing == LMKSpacing.xl)
-    }
-
-    @Test
-    func `custom keyboardDismissMode is applied to scrollView`() {
-        let vc = CustomScrollVC()
-        vc.loadViewIfNeeded()
-        #expect(vc.scrollView.keyboardDismissMode == .interactive)
-    }
-
-    @Test
-    func `custom alwaysBounceVertical is applied to scrollView`() {
-        let vc = CustomScrollVC()
-        vc.loadViewIfNeeded()
-        #expect(vc.scrollView.alwaysBounceVertical)
-    }
-}
-
-// MARK: - LMKScrollStackViewController (navigation bar + keyboard hooks)
 
 private final class NavBarScrollVC: LMKScrollStackViewController {
     private lazy var bar: LMKNavigationBar = {
@@ -166,122 +30,185 @@ private final class NoKeyboardAdjustmentVC: LMKScrollStackViewController {
     override var installsKeyboardAdjustment: Bool { false }
 }
 
-@MainActor
-struct LMKScrollStackViewControllerHookTests {
-    @Test
-    func `default navigationBar is nil and no bar is installed`() {
-        let vc = TestScrollVC()
-        vc.loadViewIfNeeded()
-
-        #expect(vc.navigationBar == nil)
-        #expect(!vc.view.subviews.contains { $0 is LMKNavigationBar })
-    }
-
-    @Test
-    func `default installsKeyboardAdjustment is true`() {
-        let vc = TestScrollVC()
-        #expect(vc.installsKeyboardAdjustment)
-    }
-
-    @Test
-    func `custom navigationBar is pinned above the scroll view`() throws {
-        let vc = NavBarScrollVC()
-        let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 375, height: 812))
-        window.rootViewController = vc
-        window.makeKeyAndVisible()
-        vc.loadViewIfNeeded()
-        vc.view.layoutIfNeeded()
-
-        let bar = try #require(vc.navigationBar)
-        #expect(bar.superview === vc.view)
-        #expect(bar.frame.minY == 0)
-        #expect(bar.frame.width == vc.view.bounds.width)
-        #expect(bar.frame.height > 0)
-        // The scroll view tops out at the bar's bottom instead of the view top.
-        // Tolerance: the bar height accumulates a fractional hairline, so the
-        // two sides can differ by float error.
-        #expect(abs(vc.scrollView.frame.minY - bar.frame.maxY) < 0.001)
-    }
-
-    @Test
-    func `keyboard adjustment grows and restores the scroll inset`() {
-        let vc = TestScrollVC()
-        let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 375, height: 812))
-        window.rootViewController = vc
-        window.makeKeyAndVisible()
-        vc.loadViewIfNeeded()
-
-        let field = UITextField()
-        vc.stackView.addArrangedSubview(field)
-        vc.view.layoutIfNeeded()
-        field.becomeFirstResponder()
-        defer { field.resignFirstResponder() }
-
-        let keyboardFrame = CGRect(x: 0, y: 812 - 300, width: 375, height: 300)
-        NotificationCenter.default.post(
-            name: UIResponder.keyboardWillChangeFrameNotification,
-            object: nil,
-            userInfo: [
-                UIResponder.keyboardFrameEndUserInfoKey: NSValue(cgRect: keyboardFrame),
-                UIResponder.keyboardAnimationDurationUserInfoKey: 0.0,
-            ]
-        )
-        #expect(vc.scrollView.contentInset.bottom > 0)
-
-        NotificationCenter.default.post(
-            name: UIResponder.keyboardWillHideNotification,
-            object: nil,
-            userInfo: [UIResponder.keyboardAnimationDurationUserInfoKey: 0.0]
-        )
-        #expect(vc.scrollView.contentInset.bottom == 0)
-    }
-
-    @Test
-    func `installsKeyboardAdjustment false leaves the scroll inset alone`() {
-        let vc = NoKeyboardAdjustmentVC()
-        let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 375, height: 812))
-        window.rootViewController = vc
-        window.makeKeyAndVisible()
-        vc.loadViewIfNeeded()
-
-        let field = UITextField()
-        vc.stackView.addArrangedSubview(field)
-        vc.view.layoutIfNeeded()
-        field.becomeFirstResponder()
-        defer { field.resignFirstResponder() }
-
-        let keyboardFrame = CGRect(x: 0, y: 812 - 300, width: 375, height: 300)
-        NotificationCenter.default.post(
-            name: UIResponder.keyboardWillChangeFrameNotification,
-            object: nil,
-            userInfo: [
-                UIResponder.keyboardFrameEndUserInfoKey: NSValue(cgRect: keyboardFrame),
-                UIResponder.keyboardAnimationDurationUserInfoKey: 0.0,
-            ]
-        )
-        #expect(vc.scrollView.contentInset.bottom == 0)
+private final class RefreshingVC: LMKScrollStackViewController {
+    override func makeRefreshControl() -> UIRefreshControl? {
+        UIRefreshControl()
     }
 }
 
-// MARK: - LMKScrollStackViewController (helpers)
-
 @MainActor
-struct LMKScrollStackViewControllerHelperTests {
-    @Test
-    func `addSectionHeader adds a UILabel to the stack view`() {
-        let vc = TestScrollVC()
-        vc.loadViewIfNeeded()
-        vc.addSectionHeader("Test Header")
-        #expect(vc.stackView.arrangedSubviews.count == 1)
-        #expect(vc.stackView.arrangedSubviews.first is UILabel)
+struct LMKScrollStackViewControllerTests {
+    private func host(_ controller: UIViewController) -> UIWindow {
+        let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 375, height: 812))
+        window.rootViewController = controller
+        window.makeKeyAndVisible()
+        controller.loadViewIfNeeded()
+        controller.view.layoutIfNeeded()
+        return window
     }
 
     @Test
-    func `addDivider adds a LMKDividerView to the stack view`() {
-        let vc = TestScrollVC()
-        vc.loadViewIfNeeded()
-        vc.addDivider()
-        #expect(vc.stackView.arrangedSubviews.count == 1)
-        #expect(vc.stackView.arrangedSubviews.first is LMKDividerView)
+    func `Default layout: token insets, large spacing, safe-area bottom, drag dismiss`() {
+        let controller = TestScrollVC()
+        let window = host(controller)
+        defer { window.isHidden = true }
+        #expect(controller.scrollView.superview === controller.view)
+        #expect(controller.contentView.superview === controller.scrollView)
+        #expect(controller.stackView.superview === controller.contentView)
+        #expect(controller.stackView.axis == .vertical)
+        #expect(controller.stackView.alignment == .fill)
+        #expect(controller.stackView.spacing == LMKSpacing.large)
+        #expect(controller.scrollView.keyboardDismissMode == .onDrag)
+        #expect(!controller.scrollView.alwaysBounceVertical)
+        #expect(controller.view.backgroundColor === LMKColor.backgroundPrimary)
+        #expect(controller.setupCalls == 1)
+        let padding = LMKSpacing.cardPadding
+        #expect(controller.stackView.frame.minX == padding)
+        #expect(controller.stackView.frame.minY == padding)
+        #expect(controller.stackView.frame.width == 375 - padding * 2)
+        #expect(controller.scrollView.frame.maxY == controller.view.bounds.height - controller.view.safeAreaInsets.bottom)
+        #expect(controller.refreshControl == nil)
+    }
+
+    @Test
+    func `Style controls spacing, insets, scroll behavior, and the bottom anchor`() {
+        let controller = TestScrollVC(style: LMKScrollStackViewController.Style(
+            stackSpacing: LMKSpacing.xl,
+            contentInsets: NSDirectionalEdgeInsets(top: 4, leading: 8, bottom: 12, trailing: 16),
+            backgroundColor: .red,
+            keyboardDismissMode: .interactive,
+            alwaysBounceVertical: true,
+            bottomAnchor: .superview
+        ))
+        let window = host(controller)
+        defer { window.isHidden = true }
+        #expect(controller.stackView.spacing == LMKSpacing.xl)
+        #expect(controller.scrollView.keyboardDismissMode == .interactive)
+        #expect(controller.scrollView.alwaysBounceVertical)
+        #expect(controller.view.backgroundColor == UIColor.red)
+        #expect(controller.stackView.frame.minX == 8)
+        #expect(controller.stackView.frame.minY == 4)
+        #expect(controller.stackView.frame.width == 351)
+        #expect(controller.scrollView.frame.maxY == controller.view.bounds.height)
+
+        controller.style.bottomAnchor = .safeArea
+        controller.view.layoutIfNeeded()
+        #expect(controller.scrollView.frame.maxY == controller.view.bounds.height - controller.view.safeAreaInsets.bottom)
+    }
+
+    @Test
+    func `Width modes: readable guide and capped width`() {
+        let readable = TestScrollVC(style: LMKScrollStackViewController.Style(widthMode: .readable))
+        let window = host(readable)
+        defer { window.isHidden = true }
+        let guide = readable.contentView.readableContentGuide.layoutFrame
+        #expect(readable.stackView.frame.minX >= guide.minX)
+        #expect(readable.stackView.frame.maxX <= guide.maxX)
+
+        readable.style.widthMode = .capped(maxWidth: 200, horizontalInset: 10)
+        readable.view.layoutIfNeeded()
+        #expect(readable.stackView.frame.width == 200)
+        #expect(abs(readable.stackView.frame.midX - 375 / 2) < 1)
+
+        readable.style.widthMode = .capped(maxWidth: 1000, horizontalInset: 10)
+        readable.view.layoutIfNeeded()
+        #expect(readable.stackView.frame.width == 355, "the inset wins once the cap is wider than the host")
+    }
+
+    @Test
+    func `reloadContent empties the stack and rebuilds it`() {
+        let controller = TestScrollVC()
+        controller.loadViewIfNeeded()
+        #expect(controller.stackView.arrangedSubviews.count == 1)
+        controller.reloadContent()
+        #expect(controller.setupCalls == 2)
+        #expect(controller.stackView.arrangedSubviews.count == 1)
+        #expect((controller.stackView.arrangedSubviews.first as? UILabel)?.text == "Row 2")
+    }
+
+    @Test
+    func `Section headers and dividers`() {
+        let controller = TestScrollVC()
+        controller.loadViewIfNeeded()
+        let header = controller.addSectionHeader("Test Header")
+        #expect(header.text == "Test Header")
+        #expect(header.accessibilityTraits.contains(.header))
+        #expect(header.lmk_textStyle == .h3)
+        #expect(controller.stackView.arrangedSubviews.last === header)
+        let divider = controller.addDivider()
+        #expect(controller.stackView.arrangedSubviews.last === divider)
+
+        controller.style.sectionHeaderColor = .purple
+        #expect(header.textColor == UIColor.purple)
+    }
+
+    @Test
+    func `A custom navigation bar is installed above the scroll view`() throws {
+        let controller = NavBarScrollVC()
+        let window = host(controller)
+        defer { window.isHidden = true }
+        let bar = try #require(controller.navigationBar)
+        #expect(bar.superview === controller.view)
+        #expect(bar.frame.minY == 0)
+        #expect(bar.frame.width == controller.view.bounds.width)
+        #expect(bar.frame.height > 0)
+        #expect(abs(controller.scrollView.frame.minY - bar.frame.maxY) < 0.001)
+    }
+
+    @Test
+    func `makeRefreshControl installs pull-to-refresh outside the Mac idiom`() {
+        let controller = RefreshingVC()
+        controller.loadViewIfNeeded()
+        if controller.traitCollection.userInterfaceIdiom == .mac {
+            #expect(controller.refreshControl == nil)
+        } else {
+            #expect(controller.refreshControl != nil)
+            #expect(controller.scrollView.refreshControl === controller.refreshControl)
+        }
+    }
+
+    @Test
+    func `Keyboard adjustment grows and restores the scroll inset, unless opted out`() {
+        let controller = TestScrollVC()
+        let window = host(controller)
+        defer { window.isHidden = true }
+        let field = UITextField()
+        controller.stackView.addArrangedSubview(field)
+        controller.view.layoutIfNeeded()
+        field.becomeFirstResponder()
+        defer { field.resignFirstResponder() }
+
+        let keyboardFrame = CGRect(x: 0, y: 812 - 300, width: 375, height: 300)
+        let info: [AnyHashable: Any] = [
+            UIResponder.keyboardFrameEndUserInfoKey: NSValue(cgRect: keyboardFrame),
+            UIResponder.keyboardAnimationDurationUserInfoKey: 0.0,
+        ]
+        NotificationCenter.default.post(name: UIResponder.keyboardWillChangeFrameNotification, object: nil, userInfo: info)
+        #expect(controller.scrollView.contentInset.bottom > 0)
+        NotificationCenter.default.post(name: UIResponder.keyboardWillHideNotification, object: nil, userInfo: [UIResponder.keyboardAnimationDurationUserInfoKey: 0.0])
+        #expect(controller.scrollView.contentInset.bottom == 0)
+
+        let optedOut = NoKeyboardAdjustmentVC()
+        window.rootViewController = optedOut
+        optedOut.loadViewIfNeeded()
+        let otherField = UITextField()
+        optedOut.stackView.addArrangedSubview(otherField)
+        optedOut.view.layoutIfNeeded()
+        otherField.becomeFirstResponder()
+        defer { otherField.resignFirstResponder() }
+        NotificationCenter.default.post(name: UIResponder.keyboardWillChangeFrameNotification, object: nil, userInfo: info)
+        #expect(optedOut.scrollView.contentInset.bottom == 0)
+    }
+
+    @Test
+    func `theme.scrollStack supplies app-wide defaults`() {
+        var theme = LMKTheme()
+        theme.scrollStack = LMKScrollStackViewController.Style(stackSpacing: 33, backgroundColor: .magenta)
+        let controller = TestScrollVC()
+        let window = LMKThemeTesting.host(controller.view, theme: theme)
+        defer { window.isHidden = true }
+        controller.applyTheme(theme)
+        #expect(controller.stackView.spacing == 33)
+        #expect(controller.view.backgroundColor == UIColor.magenta)
     }
 }

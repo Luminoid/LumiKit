@@ -9,3 +9,4 @@
 
 brew "swiftlint"   # 0.59+
 brew "swiftformat" # 0.60.1+
+brew "xcodegen"    # 2.44+ (regenerates Example/LumiKitExample.xcodeproj from Example/project.yml)

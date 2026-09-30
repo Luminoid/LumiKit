@@ -2,76 +2,186 @@
 //  LMKFloatingButton.swift
 //  LumiKit
 //
-//  Draggable floating action button that stays on top of the window.
-//  Snaps to the nearest horizontal edge after dragging.
+//  Draggable floating action button that snaps to the nearest horizontal
+//  edge, stays inside the safe area, and can remember its corner.
 //
 
 import SnapKit
 import UIKit
 
-/// Layout constants for the floating button.
-public enum LMKFloatingButtonLayout {
-    public static let defaultSize: CGFloat = 56
-    public static var edgeMargin: CGFloat { LMKSpacing.large }
-    public static var iconSize: CGFloat { LMKLayout.iconMedium }
-    public static let badgeOffset: CGFloat = -4
-}
-
 /// Draggable floating action button for quick actions or debug access.
 ///
-/// Presented on the key window so it persists across view controller transitions.
-/// After dragging, the button snaps to the nearest horizontal edge (left or right).
-///
 /// ```swift
-/// // Show a floating debug button
-/// LMKFloatingButton.show(icon: UIImage(systemName: "ladybug")) {
-///     print("Debug tapped")
-/// }
-///
-/// // Dismiss
-/// LMKFloatingButton.dismissCurrent()
+/// let button = LMKFloatingButton.show(icon: UIImage(systemName: "ladybug"), in: view) { openDebugMenu() }
+/// button.badge = .count(3)
+/// button.dismiss()
 /// ```
-public final class LMKFloatingButton: UIView {
-    // MARK: - Configurable Strings
+///
+/// The host retains the button through the view hierarchy; `show(in:)` installs
+/// it in a view or a window scene's key window. With a `positionKey` the snapped
+/// corner persists across launches.
+public final class LMKFloatingButton: UIControl, LMKThemeApplying {
+    // MARK: - Style
 
-    public nonisolated struct Strings: Sendable {
-        public var accessibilityLabel: String
+    public nonisolated struct Style: Sendable, Equatable, LMKThemeExtension {
+        /// Side of the button; `nil` = 56.
+        public var size: CGFloat?
+        /// Background (`primary`; `.glass` for Liquid Glass), corners (circle), shadow (`level2`), border.
+        public var surface: LMKSurfaceStyle
+        /// `nil` = `onAccent`.
+        public var iconTint: UIColor?
+        /// `nil` = `iconMedium`.
+        public var iconSize: CGFloat?
+        /// Distance kept from the edges; `nil` = `large`.
+        public var edgeMargin: CGFloat?
+        /// Badge style; `nil` = the theme badge.
+        public var badge: LMKBadgeView.Style?
+        /// Scale while dragging; `nil` = 0.95.
+        public var dragScale: CGFloat?
+        public var highlighted: LMKControlStateStyle?
+        public var disabled: LMKControlStateStyle?
 
-        public init(accessibilityLabel: String = "Floating action button") {
-            self.accessibilityLabel = accessibilityLabel
+        public init(
+            size: CGFloat? = nil,
+            surface: LMKSurfaceStyle = LMKSurfaceStyle(),
+            iconTint: UIColor? = nil,
+            iconSize: CGFloat? = nil,
+            edgeMargin: CGFloat? = nil,
+            badge: LMKBadgeView.Style? = nil,
+            dragScale: CGFloat? = nil,
+            highlighted: LMKControlStateStyle? = nil,
+            disabled: LMKControlStateStyle? = nil
+        ) {
+            self.size = size
+            self.surface = surface
+            self.iconTint = iconTint
+            self.iconSize = iconSize
+            self.edgeMargin = edgeMargin
+            self.badge = badge
+            self.dragScale = dragScale
+            self.highlighted = highlighted
+            self.disabled = disabled
+        }
+
+        public static let defaultValue = Self()
+
+        /// `other`'s non-nil fields over this style's.
+        public func merging(_ other: Self) -> Self {
+            Self(
+                size: other.size ?? size,
+                surface: surface.merging(other.surface),
+                iconTint: other.iconTint ?? iconTint,
+                iconSize: other.iconSize ?? iconSize,
+                edgeMargin: other.edgeMargin ?? edgeMargin,
+                badge: other.badge.map { badge?.merging($0) ?? $0 } ?? badge,
+                dragScale: other.dragScale ?? dragScale,
+                highlighted: LMKControlStateStyle.merge(highlighted, other.highlighted),
+                disabled: LMKControlStateStyle.merge(disabled, other.disabled)
+            )
         }
     }
 
+    // MARK: - Strings
+
+    public nonisolated struct Strings: Sendable, Equatable {
+        public var accessibilityLabel: String
+        public var moveToTopLeading: String
+        public var moveToTopTrailing: String
+        public var moveToBottomLeading: String
+        public var moveToBottomTrailing: String
+
+        public init(
+            accessibilityLabel: String = LMKLocalized("floatingButton.accessibilityLabel"),
+            moveToTopLeading: String = LMKLocalized("floatingButton.move.topLeading"),
+            moveToTopTrailing: String = LMKLocalized("floatingButton.move.topTrailing"),
+            moveToBottomLeading: String = LMKLocalized("floatingButton.move.bottomLeading"),
+            moveToBottomTrailing: String = LMKLocalized("floatingButton.move.bottomTrailing")
+        ) {
+            self.accessibilityLabel = accessibilityLabel
+            self.moveToTopLeading = moveToTopLeading
+            self.moveToTopTrailing = moveToTopTrailing
+            self.moveToBottomLeading = moveToBottomLeading
+            self.moveToBottomTrailing = moveToBottomTrailing
+        }
+    }
+
+    /// Process-wide defaults; set at app launch to override.
     public nonisolated(unsafe) static var strings = Strings()
+
+    /// Per-instance strings (default `Self.strings`).
+    public var strings: Strings = LMKFloatingButton.strings {
+        didSet { updateAccessibility() }
+    }
+
+    // MARK: - Corner
+
+    /// Where the button rests.
+    public nonisolated enum Corner: String, Sendable, Hashable, CaseIterable {
+        case topLeading, topTrailing, bottomLeading, bottomTrailing
+    }
 
     // MARK: - Properties
 
-    /// The currently visible floating button, if any.
-    public private(set) weak static var current: LMKFloatingButton?
-
     /// Called when the button is tapped.
-    public var tapHandler: (() -> Void)?
+    public var onTap: (() -> Void)?
 
     /// The button icon.
     public var icon: UIImage? {
         didSet { iconView.image = icon }
     }
 
-    private let buttonSize: CGFloat
-    private let iconView = UIImageView()
-    private var badgeView: LMKBadgeView?
+    /// Badge content (`nil` hides the badge).
+    public var badge: LMKBadgeView.Content? {
+        didSet { updateBadge() }
+    }
+
+    /// Per-instance style; `nil` fields resolve from `theme.floatingButton`, then the built-in look.
+    public var style: Style {
+        didSet {
+            guard style != oldValue else { return }
+            applyTheme(traitCollection.lmkTheme)
+        }
+    }
+
+    /// `UserDefaults` key under which the resting corner and vertical position persist.
+    public var positionKey: String? {
+        didSet { restorePositionIfNeeded() }
+    }
+
+    /// Called at the end of every `applyTheme`, for tweaks the style does not cover.
+    public var didApplyStyle: ((LMKFloatingButton) -> Void)?
+
+    public let iconView = UIImageView()
+    public private(set) var badgeView: LMKBadgeView?
+
+    private var resolved = Style()
+    private var sizeConstraint: Constraint?
+    private var iconSizeConstraint: Constraint?
     private var panStartCenter: CGPoint = .zero
+    private var isDragging = false
+    private var restingCorner: Corner = .bottomTrailing
+    /// Vertical position as a fraction of the available height, so it survives resizes.
+    private var restingFraction: CGFloat = 1
+
+    private var buttonSize: CGFloat { resolved.size ?? Self.defaultSize }
+    private var edgeMargin: CGFloat { resolved.edgeMargin ?? traitCollection.lmkTheme.spacing.large }
+    private static let defaultSize: CGFloat = 56
+    private static let defaultDragScale: CGFloat = 0.95
+    private static let badgeOffset: CGFloat = -4
 
     // MARK: - Initialization
 
-    public init(icon: UIImage?, size: CGFloat = LMKFloatingButtonLayout.defaultSize) {
-        self.buttonSize = size
-        super.init(frame: CGRect(origin: .zero, size: CGSize(width: size, height: size)))
+    public init(icon: UIImage?, style: Style = Style()) {
         self.icon = icon
+        self.style = style
+        super.init(frame: .zero)
         setupUI()
-        registerForTraitChanges([UITraitUserInterfaceStyle.self]) { (self: Self, _: UITraitCollection) in
-            self.refreshDynamicColors()
-        }
+        lmk_startApplyingTheme()
+    }
+
+    /// A button with an explicit side.
+    public convenience init(icon: UIImage?, size: CGFloat) {
+        self.init(icon: icon, style: Style(size: size))
     }
 
     @available(*, unavailable)
@@ -82,82 +192,135 @@ public final class LMKFloatingButton: UIView {
     // MARK: - Setup
 
     private func setupUI() {
-        // Shape
-        backgroundColor = LMKColor.primary
-        layer.cornerRadius = buttonSize / 2
-        lmk_applyShadow(LMKShadow.button())
-
-        // Icon
+        snp.makeConstraints { make in
+            sizeConstraint = make.width.height.equalTo(Self.defaultSize).constraint
+        }
         iconView.image = icon
         iconView.contentMode = .scaleAspectFit
-        iconView.tintColor = LMKColor.white
+        iconView.isUserInteractionEnabled = false
         addSubview(iconView)
         iconView.snp.makeConstraints { make in
             make.center.equalToSuperview()
-            make.width.height.equalTo(LMKFloatingButtonLayout.iconSize)
+            iconSizeConstraint = make.width.height.equalTo(0).constraint
         }
 
-        // Gestures
-        let tap = UITapGestureRecognizer(target: self, action: #selector(handleTap))
-        addGestureRecognizer(tap)
-
+        addTarget(self, action: #selector(handleTap), for: .touchUpInside)
         let pan = UIPanGestureRecognizer(target: self, action: #selector(handlePan(_:)))
         addGestureRecognizer(pan)
 
-        // Accessibility
         isAccessibilityElement = true
-        accessibilityLabel = Self.strings.accessibilityLabel
         accessibilityTraits = .button
+        updateAccessibility()
     }
 
-    private func refreshDynamicColors() {
-        backgroundColor = LMKColor.primary
-        lmk_applyShadow(LMKShadow.button())
-        iconView.tintColor = LMKColor.white
+    override public func layoutSubviews() {
+        super.layoutSubviews()
+        lmk_layoutSurfaceIfNeeded()
+    }
+
+    override public func didMoveToSuperview() {
+        super.didMoveToSuperview()
+        guard superview != nil else { return }
+        restorePositionIfNeeded()
+        place(animated: false)
+    }
+
+    override public func safeAreaInsetsDidChange() {
+        super.safeAreaInsetsDidChange()
+        place(animated: false)
+    }
+
+    override public var isHighlighted: Bool {
+        didSet {
+            guard isHighlighted != oldValue else { return }
+            applyTheme(traitCollection.lmkTheme)
+        }
+    }
+
+    override public var isEnabled: Bool {
+        didSet {
+            guard isEnabled != oldValue else { return }
+            applyTheme(traitCollection.lmkTheme)
+            updateAccessibility()
+        }
+    }
+
+    override public func point(inside point: CGPoint, with event: UIEvent?) -> Bool {
+        guard isEnabled, !isHidden else { return false }
+        return lmk_hitTestBounds(minimumSide: traitCollection.lmkTheme.layout.minimumTouchTarget).contains(point)
+    }
+
+    // MARK: - Theme
+
+    public func applyTheme(_ theme: LMKTheme) {
+        resolved = theme.floatingButton.merging(style)
+        var defaults = LMKSurfaceStyle(
+            background: .solid(LMKColor.primary),
+            corners: .circle,
+            shadow: .level(.level2)
+        )
+        var surface = resolved.surface
+        var stateAlpha: CGFloat = 1
+        var scale: CGFloat = isDragging ? (resolved.dragScale ?? Self.defaultDragScale) : 1
+        if isHighlighted, let highlighted = resolved.highlighted {
+            if let background = highlighted.background { surface.background = background }
+            if let border = highlighted.border { surface.border = border }
+            if let shadow = highlighted.shadow { surface.shadow = shadow }
+            if let alpha = highlighted.alpha { stateAlpha = min(stateAlpha, alpha) }
+            if let value = highlighted.scale { scale = value }
+        } else if isHighlighted {
+            defaults.background = .solid(LMKColor.primaryVariant)
+        }
+        if !isEnabled {
+            let disabled = resolved.disabled ?? LMKControlStateStyle(alpha: theme.alpha.disabled)
+            if let background = disabled.background { surface.background = background }
+            stateAlpha = min(stateAlpha, disabled.alpha ?? theme.alpha.disabled)
+        }
+        lmk_apply(surface: surface, defaults: defaults, clipsContent: false)
+        alpha = stateAlpha
+        transform = scale == 1 ? .identity : CGAffineTransform(scaleX: scale, y: scale)
+        sizeConstraint?.update(offset: buttonSize)
+        iconView.tintColor = resolved.iconTint ?? LMKColor.onAccent
+        iconSizeConstraint?.update(offset: resolved.iconSize ?? theme.layout.iconMedium)
+        badgeView?.style = resolved.badge ?? LMKBadgeView.Style()
+        didApplyStyle?(self)
     }
 
     // MARK: - Show / Dismiss
 
-    /// Show the floating button on the key window.
-    public func show() {
-        // Dismiss any existing floating button
-        Self.current?.dismiss()
-
-        guard let window = LMKSceneUtil.getKeyWindow() else { return }
-
-        Self.current = self
-        window.addSubview(self)
-
-        // Initial position: right edge, vertically centered
-        let safeArea = window.safeAreaInsets
-        let x = window.bounds.width - buttonSize - LMKFloatingButtonLayout.edgeMargin
-        let y = window.bounds.midY - buttonSize / 2
-        frame.origin = CGPoint(
-            x: x,
-            y: clampY(y, in: window.bounds, safeArea: safeArea)
-        )
-
-        // Animate in
-        if LMKAnimationHelper.shouldAnimate {
-            alpha = 0
-            transform = CGAffineTransform(scaleX: 0.5, y: 0.5)
-            UIView.animate(
-                withDuration: LMKAnimationHelper.Duration.modalPresentation,
-                delay: 0,
-                usingSpringWithDamping: LMKAnimationHelper.Spring.damping,
-                initialSpringVelocity: 0,
-                options: [.curveEaseOut],
-                animations: {
-                    self.alpha = 1
-                    self.transform = .identity
-                }
-            )
+    /// Installs the button in `hostView` at its resting corner, animating in.
+    public func show(in hostView: UIView) {
+        for subview in hostView.subviews where subview is Self && subview !== self {
+            (subview as? Self)?.dismiss()
         }
+        hostView.addSubview(self)
+        hostView.layoutIfNeeded()
+        place(animated: false)
+        guard LMKAnimation.shouldAnimate else { return }
+        alpha = 0
+        transform = CGAffineTransform(scaleX: 0.5, y: 0.5)
+        UIView.animate(
+            withDuration: LMKAnimation.Duration.moderate,
+            delay: 0,
+            usingSpringWithDamping: LMKAnimation.spring.damping,
+            initialSpringVelocity: 0,
+            options: LMKAnimation.Curve.easeOut.options,
+            animations: {
+                self.alpha = 1
+                self.transform = .identity
+            }
+        )
     }
 
-    /// Dismiss the floating button.
+    /// Installs the button on the scene's key window (`nil` = the active key window), above every screen.
+    public func show(in scene: UIWindowScene?) {
+        guard let window = scene?.keyWindow ?? LMKScene.keyWindow else { return }
+        show(in: window)
+    }
+
+    /// Removes the button with an animation.
     public func dismiss() {
-        let duration = LMKAnimationHelper.shouldAnimate ? LMKAnimationHelper.Duration.actionSheet : 0
+        let duration = LMKAnimation.shouldAnimate ? LMKAnimation.Duration.normal : 0
         UIView.animate(
             withDuration: duration,
             animations: {
@@ -165,153 +328,188 @@ public final class LMKFloatingButton: UIView {
                 self.transform = CGAffineTransform(scaleX: 0.5, y: 0.5)
             },
             completion: { _ in
-                if Self.current === self {
-                    Self.current = nil
-                }
                 self.removeFromSuperview()
+                self.alpha = 1
+                self.transform = .identity
             }
         )
     }
 
-    // MARK: - Static Convenience
-
-    /// Show a floating button on the key window. Returns the button for further configuration.
+    /// Shows a floating button in `hostView` (`nil` = the key window) and returns it.
     @discardableResult
-    public static func show(icon: UIImage?, tapHandler: @escaping () -> Void) -> LMKFloatingButton {
+    public static func show(icon: UIImage?, in hostView: UIView? = nil, onTap: @escaping () -> Void) -> LMKFloatingButton {
         let button = LMKFloatingButton(icon: icon)
-        button.tapHandler = tapHandler
-        button.show()
+        button.onTap = onTap
+        if let hostView {
+            button.show(in: hostView)
+        } else {
+            button.show(in: nil as UIWindowScene?)
+        }
         return button
-    }
-
-    /// Dismiss the currently visible floating button.
-    public static func dismissCurrent() {
-        current?.dismiss()
     }
 
     // MARK: - Badge
 
-    /// Show a count badge on the floating button.
-    public func showBadge(count: Int) {
-        let badge = getOrCreateBadge()
-        badge.configure(count: count)
-    }
-
-    /// Show a text badge on the floating button.
-    public func showBadge(text: String) {
-        let badge = getOrCreateBadge()
-        badge.configure(text: text)
-    }
-
-    /// Show a dot badge on the floating button.
-    public func showBadge() {
-        let badge = getOrCreateBadge()
-        badge.configure()
-    }
-
-    /// Hide the badge.
-    public func hideBadge() {
-        badgeView?.removeFromSuperview()
-        badgeView = nil
-    }
-
-    private func getOrCreateBadge() -> LMKBadgeView {
-        if let existing = badgeView { return existing }
-
-        let badge = LMKBadgeView()
-        addSubview(badge)
-        badge.snp.makeConstraints { make in
-            make.top.equalToSuperview().offset(LMKFloatingButtonLayout.badgeOffset)
-            make.trailing.equalToSuperview().offset(-LMKFloatingButtonLayout.badgeOffset)
+    private func updateBadge() {
+        guard let badge else {
+            badgeView?.removeFromSuperview()
+            badgeView = nil
+            return
         }
-        badgeView = badge
-        return badge
+        let view = badgeView ?? {
+            let view = LMKBadgeView(style: resolved.badge ?? LMKBadgeView.Style())
+            // A touch on the badge belongs to the button; an interactive subview would swallow it.
+            view.isUserInteractionEnabled = false
+            addSubview(view)
+            view.snp.makeConstraints { make in
+                make.top.equalToSuperview().offset(Self.badgeOffset)
+                make.trailing.equalToSuperview().offset(-Self.badgeOffset)
+            }
+            badgeView = view
+            return view
+        }()
+        view.configure(badge)
     }
+
+    // MARK: - Position
+
+    /// Moves the button to `corner` (the vertical fraction stays), optionally animated.
+    public func move(to corner: Corner, animated: Bool = true) {
+        restingCorner = corner
+        restingFraction = corner == .topLeading || corner == .topTrailing ? 0 : 1
+        persistPosition()
+        place(animated: animated)
+    }
+
+    private func place(animated: Bool) {
+        guard let superview else { return }
+        let safeArea = superview.safeAreaInsets
+        let bounds = superview.bounds
+        let half = buttonSize / 2
+        let leadingX = safeArea.left + edgeMargin + half
+        let trailingX = bounds.width - safeArea.right - edgeMargin - half
+        let isLeading = restingCorner == .topLeading || restingCorner == .bottomLeading
+        let isRightToLeft = effectiveUserInterfaceLayoutDirection == .rightToLeft
+        let x = isLeading != isRightToLeft ? leadingX : trailingX
+        let minY = safeArea.top + edgeMargin + half
+        let maxY = bounds.height - safeArea.bottom - edgeMargin - half
+        let y = minY + (maxY - minY) * restingFraction
+        let target = CGPoint(x: x, y: clampY(y, in: bounds, safeArea: safeArea))
+        if animated, LMKAnimation.shouldAnimate {
+            UIView.animate(
+                withDuration: LMKAnimation.Duration.fast,
+                delay: 0,
+                usingSpringWithDamping: LMKAnimation.spring.damping,
+                initialSpringVelocity: 0,
+                options: LMKAnimation.Curve.easeOut.options,
+                animations: { self.center = target }
+            )
+        } else {
+            center = target
+        }
+    }
+
+    private func persistPosition() {
+        guard let positionKey else { return }
+        UserDefaults.standard.set([Self.cornerKey: restingCorner.rawValue, Self.fractionKey: restingFraction], forKey: positionKey)
+    }
+
+    private func restorePositionIfNeeded() {
+        guard let positionKey, let stored = UserDefaults.standard.dictionary(forKey: positionKey) else { return }
+        if let corner = (stored[Self.cornerKey] as? String).flatMap(Corner.init(rawValue:)) {
+            restingCorner = corner
+        }
+        if let fraction = stored[Self.fractionKey] as? CGFloat {
+            restingFraction = min(max(fraction, 0), 1)
+        }
+    }
+
+    private static let cornerKey = "corner"
+    private static let fractionKey = "fraction"
 
     // MARK: - Gestures
 
     @objc private func handleTap() {
-        tapHandler?()
+        guard isEnabled else { return }
+        onTap?()
     }
 
     @objc private func handlePan(_ gesture: UIPanGestureRecognizer) {
-        guard let superview else { return }
-
+        guard let superview, isEnabled else { return }
         switch gesture.state {
         case .began:
             panStartCenter = center
-            if LMKAnimationHelper.shouldAnimate {
-                UIView.animate(withDuration: LMKAnimationHelper.Duration.buttonPress) { [weak self] in
-                    self?.transform = CGAffineTransform(scaleX: 0.95, y: 0.95)
-                }
-            }
-
+            isDragging = true
+            applyTheme(traitCollection.lmkTheme)
         case .changed:
             let translation = gesture.translation(in: superview)
             let safeArea = superview.safeAreaInsets
-            let newX = panStartCenter.x + translation.x
-            let newY = panStartCenter.y + translation.y
             center = CGPoint(
-                x: clampX(newX, in: superview.bounds, safeArea: safeArea),
-                y: clampY(newY - buttonSize / 2, in: superview.bounds, safeArea: safeArea) + buttonSize / 2
+                x: clampX(panStartCenter.x + translation.x, in: superview.bounds, safeArea: safeArea),
+                y: clampY(panStartCenter.y + translation.y, in: superview.bounds, safeArea: safeArea)
             )
-
         case .ended, .cancelled:
+            isDragging = false
             snapToNearestEdge()
-            if LMKAnimationHelper.shouldAnimate {
-                UIView.animate(withDuration: LMKAnimationHelper.Duration.buttonPress) { [weak self] in
-                    self?.transform = .identity
-                }
-            }
-
+            applyTheme(traitCollection.lmkTheme)
         default:
             break
         }
     }
 
-    // MARK: - Edge Snapping
-
     private func snapToNearestEdge() {
         guard let superview else { return }
-
-        let midX = superview.bounds.midX
-        let margin = LMKFloatingButtonLayout.edgeMargin
         let safeArea = superview.safeAreaInsets
-
-        let targetX: CGFloat = if center.x < midX {
-            // Snap to left edge
-            margin + safeArea.left + buttonSize / 2
-        } else {
-            // Snap to right edge
-            superview.bounds.width - margin - safeArea.right - buttonSize / 2
+        let bounds = superview.bounds
+        let half = buttonSize / 2
+        let minY = safeArea.top + edgeMargin + half
+        let maxY = bounds.height - safeArea.bottom - edgeMargin - half
+        restingFraction = maxY > minY ? min(max((center.y - minY) / (maxY - minY), 0), 1) : 0.5
+        let isLeadingSide = (center.x < bounds.midX) != (effectiveUserInterfaceLayoutDirection == .rightToLeft)
+        let isTop = restingFraction < 0.5
+        restingCorner = switch (isTop, isLeadingSide) {
+        case (true, true): .topLeading
+        case (true, false): .topTrailing
+        case (false, true): .bottomLeading
+        case (false, false): .bottomTrailing
         }
-
-        let duration = LMKAnimationHelper.shouldAnimate ? LMKAnimationHelper.Duration.uiShort : 0
-        UIView.animate(
-            withDuration: duration,
-            delay: 0,
-            usingSpringWithDamping: LMKAnimationHelper.Spring.damping,
-            initialSpringVelocity: 0,
-            options: [.curveEaseOut],
-            animations: { [weak self] in
-                self?.center.x = targetX
-            }
-        )
+        persistPosition()
+        place(animated: true)
     }
 
-    // MARK: - Clamping
-
-    /// Keeps the button's center inside the horizontal safe area: landscape
-    /// phones and iPhone Duo carry side insets for the camera region, and a
-    /// drag must not park the button under them.
+    /// Keeps the center inside the horizontal safe area (landscape cutouts, iPhone Duo camera region).
     private func clampX(_ x: CGFloat, in bounds: CGRect, safeArea: UIEdgeInsets) -> CGFloat {
         let half = buttonSize / 2
         return min(max(x, safeArea.left + half), bounds.width - safeArea.right - half)
     }
 
     private func clampY(_ y: CGFloat, in bounds: CGRect, safeArea: UIEdgeInsets) -> CGFloat {
-        let minY = safeArea.top + LMKFloatingButtonLayout.edgeMargin
-        let maxY = bounds.height - safeArea.bottom - LMKFloatingButtonLayout.edgeMargin - buttonSize
-        return min(max(y, minY), maxY)
+        let half = buttonSize / 2
+        let minY = safeArea.top + edgeMargin + half
+        let maxY = bounds.height - safeArea.bottom - edgeMargin - half
+        return min(max(y, minY), max(minY, maxY))
+    }
+
+    // MARK: - Accessibility
+
+    private func updateAccessibility() {
+        accessibilityLabel = strings.accessibilityLabel
+        var traits: UIAccessibilityTraits = .button
+        if !isEnabled { traits.insert(.notEnabled) }
+        accessibilityTraits = traits
+        accessibilityCustomActions = [
+            UIAccessibilityCustomAction(name: strings.moveToTopLeading) { [weak self] _ in self?.move(to: .topLeading); return true },
+            UIAccessibilityCustomAction(name: strings.moveToTopTrailing) { [weak self] _ in self?.move(to: .topTrailing); return true },
+            UIAccessibilityCustomAction(name: strings.moveToBottomLeading) { [weak self] _ in self?.move(to: .bottomLeading); return true },
+            UIAccessibilityCustomAction(name: strings.moveToBottomTrailing) { [weak self] _ in self?.move(to: .bottomTrailing); return true },
+        ]
+    }
+}
+
+public nonisolated extension LMKTheme {
+    /// App-wide default style for `LMKFloatingButton`.
+    var floatingButton: LMKFloatingButton.Style {
+        get { self[LMKFloatingButton.Style.self] }
+        set { self[LMKFloatingButton.Style.self] = newValue }
     }
 }

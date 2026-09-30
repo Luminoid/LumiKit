@@ -2,98 +2,57 @@
 //  LMKShadow.swift
 //  LumiKit
 //
-//  Shadow tokens.
-//  Proxies to `LMKThemeManager.shared.shadow` for customization.
+//  Shadow tokens: elevation levels resolved against the active theme.
+//  Proxies to `LMKTheme.current.shadow`.
 //
 
 import UIKit
 
-/// Encapsulates shadow configuration for consistent application.
-public struct LMKShadowStyle {
-    /// Shadow color (dynamic UIColor that adapts to dark mode).
-    public let color: UIColor
-    /// Shadow offset.
-    public let offset: CGSize
-    /// Shadow blur radius.
-    public let radius: CGFloat
-    /// Shadow opacity.
-    public let opacity: Float
+/// A resolved shadow, ready for `UIView.lmk_applyShadow(_:)`.
+///
+/// `color` is normally a trait-aware dynamic color; the layer helper resolves it
+/// against the view's traits and re-stamps it when they change.
+public nonisolated struct LMKShadowStyle: Sendable, Equatable {
+    public var color: UIColor
+    public var offset: CGSize
+    public var radius: CGFloat
+    public var opacity: Float
+
+    public init(color: UIColor, offset: CGSize, radius: CGFloat, opacity: Float) {
+        self.color = color
+        self.offset = offset
+        self.radius = max(0, radius)
+        self.opacity = min(max(opacity, 0), 1)
+    }
 }
 
-/// Shadow tokens for the Lumi design system.
+/// Shadow tokens.
 ///
-/// Customize by applying a shadow theme:
-/// ```swift
-/// LMKThemeManager.shared.apply(shadow: .init(cellCardRadius: 8, cardRadius: 12))
-/// ```
-public enum LMKShadow {
-    private static var config: LMKShadowTheme {
-        LMKThemeManager.shared.shadow
-    }
+/// Usage: `card.lmk_applyShadow(.level3)` or `LMKShadow.style(for: .level2)`.
+public nonisolated enum LMKShadow {
+    /// Elevation levels: 1 is the tightest lift, 5 the widest.
+    public nonisolated enum Level: Int, Sendable, Hashable, CaseIterable, Comparable {
+        case none = 0
+        case level1
+        case level2
+        case level3
+        case level4
+        case level5
 
-    /// Shadow opacity for icon overlays (e.g. category icon on photo).
-    /// For general-purpose shadow opacity, use the individual shadow functions (`cellCard()`, `card()`, etc.).
-    public static var opacity: Float { config.iconOverlayOpacity }
-
-    /// Shadow color that adapts to light/dark mode (lower opacity in dark mode).
-    private static func shadowColor(lightAlpha: CGFloat, darkAlpha: CGFloat) -> UIColor {
-        UIColor { traitCollection in
-            let alpha = traitCollection.userInterfaceStyle == .dark ? darkAlpha : lightAlpha
-            return UIColor.black.withAlphaComponent(alpha)
+        public static func < (lhs: Self, rhs: Self) -> Bool {
+            lhs.rawValue < rhs.rawValue
         }
     }
 
-    public static func cellCard() -> LMKShadowStyle {
-        LMKShadowStyle(
-            color: shadowColor(lightAlpha: config.cellCard.lightAlpha, darkAlpha: config.cellCard.darkAlpha),
-            offset: config.cellCard.offset,
-            radius: config.cellCard.radius,
-            opacity: config.cellCard.opacity
-        )
+    private static var config: LMKShadowTheme {
+        LMKTheme.current.shadow
     }
 
-    public static func card() -> LMKShadowStyle {
-        LMKShadowStyle(
-            color: shadowColor(lightAlpha: config.card.lightAlpha, darkAlpha: config.card.darkAlpha),
-            offset: config.card.offset,
-            radius: config.card.radius,
-            opacity: config.card.opacity
-        )
-    }
+    /// Opacity for icon overlays on photos (LIVE badges, symbol chips over images).
+    public static var iconOverlayOpacity: Float { config.iconOverlayOpacity }
 
-    public static func button() -> LMKShadowStyle {
-        LMKShadowStyle(
-            color: shadowColor(lightAlpha: config.button.lightAlpha, darkAlpha: config.button.darkAlpha),
-            offset: config.button.offset,
-            radius: config.button.radius,
-            opacity: config.button.opacity
-        )
-    }
-
-    public static func small() -> LMKShadowStyle {
-        LMKShadowStyle(
-            color: shadowColor(lightAlpha: config.small.lightAlpha, darkAlpha: config.small.darkAlpha),
-            offset: config.small.offset,
-            radius: config.small.radius,
-            opacity: config.small.opacity
-        )
-    }
-
-    public static func medium() -> LMKShadowStyle {
-        LMKShadowStyle(
-            color: shadowColor(lightAlpha: config.medium.lightAlpha, darkAlpha: config.medium.darkAlpha),
-            offset: config.medium.offset,
-            radius: config.medium.radius,
-            opacity: config.medium.opacity
-        )
-    }
-
-    public static func large() -> LMKShadowStyle {
-        LMKShadowStyle(
-            color: shadowColor(lightAlpha: config.large.lightAlpha, darkAlpha: config.large.darkAlpha),
-            offset: config.large.offset,
-            radius: config.large.radius,
-            opacity: config.large.opacity
-        )
+    /// The resolved style for `level`; `.none` resolves to an invisible shadow.
+    public static func style(for level: Level) -> LMKShadowStyle {
+        config.shadow(for: level).style
     }
 }

@@ -31,9 +31,9 @@ extension UICollectionViewCell: LMKHighlightable {}
 /// overlay color when configuring `selectedBackgroundView` — keeps the two
 /// highlight APIs visually identical without a duplicated color literal.
 enum LMKHighlightConstants {
-    static let darkModeOverlayAlpha = LMKAlpha.overlayDark
-    static let lightModeOverlayAlpha = LMKAlpha.overlayLight
-    static let animationDuration = LMKAnimationHelper.Duration.uiShort
+    static let darkModeOverlayAlpha = LMKAlpha.small
+    static let lightModeOverlayAlpha = LMKAlpha.xxs
+    static let animationDuration = LMKAnimation.Duration.fast
     static let containerDetectionSubviewsThreshold = 2
 
     /// In dark mode the card itself is already dark, so a black overlay
@@ -42,9 +42,9 @@ enum LMKHighlightConstants {
     static var highlightOverlayColor: UIColor {
         UIColor { traitCollection in
             if traitCollection.userInterfaceStyle == .dark {
-                LMKColor.white.withAlphaComponent(darkModeOverlayAlpha)
+                LMKColor.onAccent.withAlphaComponent(darkModeOverlayAlpha)
             } else {
-                LMKColor.black.withAlphaComponent(lightModeOverlayAlpha)
+                LMKColor.scrim.withAlphaComponent(lightModeOverlayAlpha)
             }
         }
     }
@@ -60,7 +60,7 @@ public extension LMKHighlightable {
     func lmk_applyCustomHighlight(highlighted: Bool, animated: Bool) {
         let darkOverlayColor = LMKHighlightConstants.highlightOverlayColor
         let containerViews = lmk_findContainerViews(in: contentView)
-        let shouldAnimate = animated && LMKAnimationHelper.shouldAnimate
+        let shouldAnimate = animated && LMKAnimation.shouldAnimate
 
         // Install overlay views BEFORE entering the animation block. CALayer
         // cornerRadius isn't animated implicitly, so a layer added inside

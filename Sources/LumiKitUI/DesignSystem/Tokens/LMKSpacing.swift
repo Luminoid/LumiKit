@@ -3,7 +3,7 @@
 //  LumiKit
 //
 //  Spacing tokens (4pt base unit).
-//  Proxies to `LMKThemeManager.shared.spacing` for customization.
+//  Proxies to `LMKTheme.current.spacing` for customization.
 //
 
 import UIKit
@@ -12,11 +12,11 @@ import UIKit
 ///
 /// Customize by applying a spacing theme:
 /// ```swift
-/// LMKThemeManager.shared.apply(spacing: .init(large: 20, xxl: 28))
+/// LMKTheme.update { $0.spacing = .init(large: 20, xxl: 28) }
 /// ```
-public enum LMKSpacing {
+public nonisolated enum LMKSpacing {
     private static var config: LMKSpacingTheme {
-        LMKThemeManager.shared.spacing
+        LMKTheme.current.spacing
     }
 
     /// Very tight spacing (stacked labels) — default 2pt.
@@ -63,7 +63,7 @@ public enum LMKSpacing {
     /// - Compact (≤768pt): iPad mini, iPad 9th gen, iPhone Duo inner display
     /// - Regular (≤834pt): iPad 10th gen, iPad Air 11", iPad Pro 11"
     /// - Large (>834pt): iPad Air 13", iPad Pro 13"
-    public static var cardPadding: CGFloat {
+    @MainActor public static var cardPadding: CGFloat {
         #if targetEnvironment(macCatalyst)
             return config.cardPaddingMac
         #elseif os(iOS)
@@ -83,7 +83,7 @@ public enum LMKSpacing {
     /// phone-class canvases fall through to `config.small` from the theme.
     ///
     /// Same tiers as ``cardPadding``.
-    public static var cellPaddingVertical: CGFloat {
+    @MainActor public static var cellPaddingVertical: CGFloat {
         #if targetEnvironment(macCatalyst)
             return config.cellPaddingVerticalMac
         #elseif os(iOS)
@@ -102,8 +102,8 @@ public enum LMKSpacing {
     ///
     /// Without a key window (early launch) an iPad idiom is assumed to be a
     /// full-screen regular-tier canvas so first-pass layouts are not phone-sized.
-    private static var canvasTier: CanvasTier? {
-        guard let window = LMKSceneUtil.getKeyWindow() else {
+    @MainActor private static var canvasTier: CanvasTier? {
+        guard let window = LMKScene.keyWindow else {
             return UIDevice.current.userInterfaceIdiom == .pad ? .regular : nil
         }
         let traits = window.traitCollection

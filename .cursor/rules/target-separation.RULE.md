@@ -1,29 +1,34 @@
 ---
-description: "LumiKit three-target architecture: Core (Foundation), UI (UIKit+SnapKit), Lottie"
+description: "LumiKit five-product architecture: Core (Foundation), UI (UIKit+SnapKit), Photo (PhotosUI), Debug (DEBUG-only), Lottie"
 alwaysApply: true
 ---
 
 # Target Separation
 
-## Three Targets — Strict Boundaries
+## Five Products, Strict Boundaries
 
-| Target | Dependencies | Allowed Imports | Default Isolation |
-|--------|-------------|-----------------|-------------------|
-| **LumiKitCore** | Foundation only | `Foundation`, `UniformTypeIdentifiers` | None (nonisolated) |
-| **LumiKitUI** | LumiKitCore + SnapKit | `UIKit`, `SnapKit`, `LumiKitCore`, `CoreImage`, `Photos`, `CoreLocation` | `MainActor` |
-| **LumiKitLottie** | LumiKitUI + Lottie | `Lottie`, `LumiKitUI`, `UIKit` | `MainActor` |
+| Product | Depends on | Allowed imports | Default isolation |
+|---|---|---|---|
+| **LumiKitCore** | Foundation | `Foundation`, `UniformTypeIdentifiers`, `Synchronization`, `os` | none (nonisolated) |
+| **LumiKitUI** | Core + SnapKit | `UIKit`, `SnapKit`, `LumiKitCore`, `CoreImage`, `CoreLocation`, `Synchronization` | `MainActor` |
+| **LumiKitPhoto** | Core + UI | + `Photos`, `PhotosUI`, `ImageIO` | `MainActor` |
+| **LumiKitDebug** | Core + UI (iOS / Catalyst only) | `Foundation` for the logger; `UIKit` + `LumiKitUI` for the inspector screens | none |
+| **LumiKitLottie** | UI + Lottie | + `Lottie` | `MainActor` |
 
 ## Rules
 
 - **NEVER** import UIKit in LumiKitCore
-- **NEVER** import Lottie in LumiKitUI — Lottie is isolated so apps can opt out
-- **ALWAYS** place Foundation-only utilities in LumiKitCore (Logger, DateHelper, FormatHelper, URLValidator, ConcurrencyHelpers, FileUtil, String/Collection extensions)
-- **ALWAYS** place UIKit components in LumiKitUI (DesignSystem, Components, Controls, Extensions, Photo, Haptics, Alerts, Animation, Share, QRCode, Utilities)
-- **ALWAYS** use SnapKit for Auto Layout in LumiKitUI — never `NSLayoutConstraint` directly
+- **NEVER** import PhotosUI / Photos in LumiKitUI; anything that needs them lives in LumiKitPhoto
+- **NEVER** import Lottie outside LumiKitLottie
+- **NEVER** import LumiKitDebug from another product; it is compiled only under `LMK_ENABLE_NETWORK_LOGGING` (debug configurations) and linked by apps under `#if DEBUG`
+- **ALWAYS** place Foundation-only utilities in LumiKitCore (`LMKLogger`, `LMKDate`, `LMKDateFormat`, `LMKFormat`, `LMKFile`, `LMKConcurrency`, `LMKURLValidator`, the calendar value types, String / Collection / NSAttributedString extensions)
+- **ALWAYS** place UIKit components in LumiKitUI (`DesignSystem`, `Components`, `Controls`, `Extensions`, `Alerts`, `Animation`, `Haptics`, `Share`, `Utilities`)
+- **ALWAYS** use SnapKit for Auto Layout in UI targets; never `NSLayoutConstraint` directly
+- Each product owns its `Resources/<locale>.lproj/Localizable.strings` and its `LMKLocalized` helper; strings never cross products
 
 ## Adding New Files
 
-1. Ask: "Does this need UIKit?" → No → LumiKitCore; Yes → LumiKitUI
-2. Ask: "Does this need Lottie?" → Yes → LumiKitLottie
-3. Place in the appropriate subdirectory within the target
-4. Update `CLAUDE.md` project structure if adding a new subdirectory
+1. Needs UIKit? No → LumiKitCore. Yes → LumiKitUI
+2. Needs Photos / PhotosUI? → LumiKitPhoto. Needs Lottie? → LumiKitLottie. Debug-only network tooling? → LumiKitDebug
+3. Place it in the matching subdirectory (`Components/<Family>/` for multi-file components); mirror the path under `Tests/<Target>Tests/`
+4. Update `.claude/CLAUDE.md` when adding a subdirectory, and the target's DocC catalog topics when adding a public type

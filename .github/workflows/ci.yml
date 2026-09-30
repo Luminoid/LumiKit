@@ -1,0 +1,111 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  LUMIKIT_WARNINGS_AS_ERRORS: "1"
+  XCB: xcodebuild -scheme LumiKit-Package -skipPackagePluginValidation CODE_SIGNING_ALLOWED=NO
+
+jobs:
+  lint:
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install tools
+        run: brew install swiftlint swiftformat
+      - name: SwiftLint
+        run: swiftlint --strict --reporter github-actions-logging
+      - name: SwiftFormat
+        run: swiftformat --lint .
+
+  test-ios:
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v4
+      - name: Select Xcode
+        run: |
+          XCODE=$(ls -d /Applications/Xcode_26*.app | sort -V | tail -1)
+          echo "Using $XCODE"
+          sudo xcode-select -s "$XCODE"
+          xcodebuild -version
+      - name: Test (iOS Simulator)
+        run: |
+          $XCB test -destination 'platform=iOS Simulator,name=iPhone 17' \
+            -resultBundlePath build/ios.xcresult 2>&1 | tee build/test-ios.log | tail -40
+      - name: Upload result bundle
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-test-results
+          path: |
+            build/ios.xcresult
+            build/test-ios.log
+
+  build-catalyst:
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v4
+      - name: Select Xcode
+        run: |
+          XCODE=$(ls -d /Applications/Xcode_26*.app | sort -V | tail -1)
+          sudo xcode-select -s "$XCODE"
+      - name: Build (Mac Catalyst)
+        run: $XCB build -destination 'platform=macOS,variant=Mac Catalyst' 2>&1 | tail -40
+
+  native-macos:
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v4
+      - name: Select Xcode
+        run: |
+          XCODE=$(ls -d /Applications/Xcode_26*.app | sort -V | tail -1)
+          sudo xcode-select -s "$XCODE"
+      # `swift test` links every test target into one bundle, so the UIKit targets keep native
+      # macOS tests off the table; this lane proves the Foundation-only targets still build there.
+      - name: Build Foundation-only targets
+        run: |
+          swift build --target LumiKitCore
+          swift build --target LumiKitDebug
+
+  example:
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v4
+      - name: Select Xcode
+        run: |
+          XCODE=$(ls -d /Applications/Xcode_26*.app | sort -V | tail -1)
+          sudo xcode-select -s "$XCODE"
+      - name: Install XcodeGen
+        run: brew install xcodegen
+      - name: Build Example app
+        run: |
+          cd Example && xcodegen generate && cd ..
+          xcodebuild build -project Example/LumiKitExample.xcodeproj -scheme LumiKitExample \
+            -destination 'platform=iOS Simulator,name=iPhone 17' \
+            -skipPackagePluginValidation CODE_SIGNING_ALLOWED=NO 2>&1 | tail -40
+
+  docs:
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v4
+      - name: Select Xcode
+        run: |
+          XCODE=$(ls -d /Applications/Xcode_26*.app | sort -V | tail -1)
+          sudo xcode-select -s "$XCODE"
+      - name: Build DocC archives
+        run: |
+          xcodebuild docbuild -scheme LumiKit-Package -destination 'generic/platform=iOS' \
+            -derivedDataPath build/docc -skipPackagePluginValidation CODE_SIGNING_ALLOWED=NO 2>&1 | tail -20
+      - name: Upload DocC archives
+        uses: actions/upload-artifact@v4
+        with:
+          name: docc-archives
+          path: build/docc/Build/Products/**/*.doccarchive
+          if-no-files-found: warn

@@ -1,8 +1,6 @@
 //
 //  LMKFloatingButtonTests.swift
-//  LumiKitUITests
-//
-//  Tests for floating action button component.
+//  LumiKit
 //
 
 import Testing
@@ -11,129 +9,136 @@ import UIKit
 
 @MainActor
 struct LMKFloatingButtonTests {
-    // MARK: - Initialization
+    private static func makeHost() -> (UIWindow, UIView) {
+        UIView.setAnimationsEnabled(false)
+        let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 390, height: 844))
+        let host = UIView(frame: window.bounds)
+        window.addSubview(host)
+        window.isHidden = false
+        return (window, host)
+    }
 
     @Test
-    func `Init with default size creates correct frame`() {
+    func `Default size, circle, primary background, and icon`() {
         let button = LMKFloatingButton(icon: UIImage(systemName: "star"))
-
-        #expect(button.frame.width == LMKFloatingButtonLayout.defaultSize)
-        #expect(button.frame.height == LMKFloatingButtonLayout.defaultSize)
+        button.layoutIfNeeded()
+        #expect(button.bounds.size == CGSize(width: 56, height: 56))
+        #expect(button.lmk_cornerStyle == .circle)
+        #expect(button.backgroundColor === LMKColor.primary)
+        #expect(button.iconView.tintColor === LMKColor.onAccent)
+        #expect(button.iconView.image != nil)
+        #expect(button.layer.shadowOpacity > 0)
+        button.icon = UIImage(systemName: "gear")
+        #expect(button.iconView.image != nil)
     }
 
     @Test
-    func `Init with custom size creates correct frame`() {
-        let button = LMKFloatingButton(icon: nil, size: 48)
-
-        #expect(button.frame.width == 48)
-        #expect(button.frame.height == 48)
-    }
-
-    // MARK: - Layout Constants
-
-    @Test
-    func `Layout constants have expected values`() {
-        #expect(LMKFloatingButtonLayout.defaultSize == 56)
-        #expect(LMKFloatingButtonLayout.edgeMargin == 16)
-        #expect(LMKFloatingButtonLayout.iconSize == 24)
-        #expect(LMKFloatingButtonLayout.badgeOffset == -4)
-    }
-
-    // MARK: - Shape
-
-    @Test
-    func `Button is circular`() {
-        let size: CGFloat = 56
-        let button = LMKFloatingButton(icon: nil, size: size)
-
-        #expect(button.layer.cornerRadius == size / 2)
+    func `Custom size and style`() {
+        let sized = LMKFloatingButton(icon: nil, size: 48)
+        sized.layoutIfNeeded()
+        #expect(sized.bounds.width == 48)
+        let styled = LMKFloatingButton(icon: nil, style: LMKFloatingButton.Style(surface: LMKSurfaceStyle(background: .solid(.red)), iconTint: .black, iconSize: 10))
+        #expect(styled.backgroundColor == UIColor.red)
+        #expect(styled.iconView.tintColor == UIColor.black)
     }
 
     @Test
-    func `Button has primary background color`() {
+    func `Accessibility label, traits, custom actions, and strings`() {
         let button = LMKFloatingButton(icon: nil)
-
-        #expect(button.backgroundColor == LMKColor.primary)
-    }
-
-    // MARK: - Icon
-
-    @Test
-    func `Icon view has white tint`() {
-        let button = LMKFloatingButton(icon: UIImage(systemName: "gear"))
-
-        let iconView = button.subviews.compactMap { $0 as? UIImageView }.first
-        #expect(iconView?.tintColor == LMKColor.white)
-    }
-
-    @Test
-    func `Setting icon updates image view`() {
-        let button = LMKFloatingButton(icon: nil)
-        let newIcon = UIImage(systemName: "star")
-        button.icon = newIcon
-
-        let iconView = button.subviews.compactMap { $0 as? UIImageView }.first
-        #expect(iconView?.image != nil)
-    }
-
-    // MARK: - Configurable Strings
-
-    @Test
-    func `Default strings have expected values`() {
-        let strings = LMKFloatingButton.Strings()
-
-        #expect(strings.accessibilityLabel == "Floating action button")
-    }
-
-    // MARK: - Accessibility
-
-    @Test
-    func `Button has accessibility traits`() {
-        let button = LMKFloatingButton(icon: nil)
-
         #expect(button.isAccessibilityElement)
         #expect(button.accessibilityTraits.contains(.button))
-    }
-
-    // MARK: - Badge
-
-    @Test
-    func `Show badge adds badge view`() {
-        let button = LMKFloatingButton(icon: nil)
-        button.showBadge(count: 3)
-
-        let badge = button.subviews.compactMap { $0 as? LMKBadgeView }.first
-        #expect(badge != nil)
+        #expect(button.accessibilityLabel == "Floating action button")
+        #expect(button.accessibilityCustomActions?.count == 4)
+        button.strings = LMKFloatingButton.Strings(accessibilityLabel: "Depuración")
+        #expect(button.accessibilityLabel == "Depuración")
+        button.isEnabled = false
+        #expect(button.accessibilityTraits.contains(.notEnabled))
+        #expect(button.alpha < 1)
     }
 
     @Test
-    func `Hide badge removes badge view`() {
+    func `Badge content adds, updates, and removes the badge`() {
         let button = LMKFloatingButton(icon: nil)
-        button.showBadge(count: 3)
-        button.hideBadge()
-
-        let badge = button.subviews.compactMap { $0 as? LMKBadgeView }.first
-        #expect(badge == nil)
+        #expect(button.badgeView == nil)
+        button.badge = .count(3)
+        #expect(button.badgeView?.accessibilityLabel == "3")
+        button.badge = .dot
+        #expect(button.badgeView?.countLabel.text == nil)
+        button.badge = nil
+        #expect(button.badgeView == nil)
+        #expect(button.subviews.contains { $0 is LMKBadgeView } == false)
     }
 
     @Test
-    func `Show dot badge adds badge view`() {
+    func `Gestures and tap handler`() {
         let button = LMKFloatingButton(icon: nil)
-        button.showBadge()
-
-        let badge = button.subviews.compactMap { $0 as? LMKBadgeView }.first
-        #expect(badge != nil)
+        #expect(button.gestureRecognizers?.count(where: { $0 is UIPanGestureRecognizer }) == 1)
+        var taps = 0
+        button.onTap = { taps += 1 }
+        button.sendActions(for: .touchUpInside)
+        button.isEnabled = false
+        #expect(!button.point(inside: CGPoint(x: 10, y: 10), with: nil))
     }
 
-    // MARK: - Gestures
+    @Test
+    func `show installs at the bottom trailing corner inside the safe area and dismiss removes`() async {
+        let (window, host) = Self.makeHost()
+        defer { window.isHidden = true; UIView.setAnimationsEnabled(true) }
+        let button = LMKFloatingButton(icon: nil)
+        button.show(in: host)
+        host.layoutIfNeeded()
+        #expect(button.superview === host)
+        #expect(button.center.x == host.bounds.width - LMKSpacing.large - 28)
+        #expect(button.center.y == host.bounds.height - host.safeAreaInsets.bottom - LMKSpacing.large - 28)
+
+        button.move(to: .topLeading, animated: false)
+        #expect(button.center.x == LMKSpacing.large + 28)
+        #expect(button.center.y == host.safeAreaInsets.top + LMKSpacing.large + 28)
+
+        button.dismiss()
+        try? await Task.sleep(for: .milliseconds(400))
+        #expect(button.superview == nil)
+    }
 
     @Test
-    func `Button has tap and pan gesture recognizers`() {
-        let button = LMKFloatingButton(icon: nil)
+    func `The static show helper installs in the given host and replaces an existing button`() async {
+        let (window, host) = Self.makeHost()
+        defer { window.isHidden = true; UIView.setAnimationsEnabled(true) }
+        let first = LMKFloatingButton.show(icon: nil, in: host) {}
+        let second = LMKFloatingButton.show(icon: nil, in: host) {}
+        try? await Task.sleep(for: .milliseconds(400))
+        #expect(first.superview == nil)
+        #expect(second.superview === host)
+    }
 
-        let tapGestures = button.gestureRecognizers?.filter { $0 is UITapGestureRecognizer }
-        let panGestures = button.gestureRecognizers?.filter { $0 is UIPanGestureRecognizer }
-        #expect(tapGestures?.count == 1)
-        #expect(panGestures?.count == 1)
+    @Test
+    func `positionKey persists the corner`() {
+        let key = "test.floatingButton.\(UUID().uuidString)"
+        defer { UserDefaults.standard.removeObject(forKey: key) }
+        let (window, host) = Self.makeHost()
+        defer { window.isHidden = true; UIView.setAnimationsEnabled(true) }
+        let button = LMKFloatingButton(icon: nil)
+        button.positionKey = key
+        button.show(in: host)
+        button.move(to: .topTrailing, animated: false)
+        #expect(UserDefaults.standard.dictionary(forKey: key)?["corner"] as? String == "topTrailing")
+
+        let restored = LMKFloatingButton(icon: nil)
+        restored.positionKey = key
+        restored.show(in: host)
+        #expect(restored.center.y == host.safeAreaInsets.top + LMKSpacing.large + 28)
+        #expect(restored.center.x == host.bounds.width - LMKSpacing.large - 28)
+    }
+
+    @Test
+    func `theme.floatingButton supplies app-wide defaults`() {
+        var theme = LMKTheme()
+        theme.floatingButton = LMKFloatingButton.Style(size: 40, iconTint: .black)
+        let button = LMKFloatingButton(icon: nil)
+        let window = LMKThemeTesting.host(button, theme: theme)
+        defer { window.isHidden = true }
+        button.layoutIfNeeded()
+        #expect(button.bounds.width == 40)
+        #expect(button.iconView.tintColor == UIColor.black)
     }
 }

@@ -5,6 +5,8 @@
 //  Minimal example app demonstrating LumiKit design system, components, and controls.
 //
 
+import LumiKitCore
+import LumiKitUI
 import UIKit
 
 @MainActor
@@ -17,9 +19,22 @@ final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         options connectionOptions: UIScene.ConnectionOptions
     ) {
         guard let windowScene = scene as? UIWindowScene else { return }
+        // A no-op on iOS; on Mac Catalyst it hides the title bar and floors the window size.
+        LMKScene.configureMacWindow(for: windowScene, minimumSize: CGSize(width: 600, height: 700))
+        // Register the brand theme once, before any view loads; a `-lmk-theme` launch argument overrides it below.
+        LMKTheme.apply(.example)
         let window = UIWindow(windowScene: windowScene)
-        window.rootViewController = UINavigationController(rootViewController: ExampleViewController())
+        let navigation = UINavigationController(rootViewController: ExampleViewController())
+        window.rootViewController = navigation
         window.makeKeyAndVisible()
         self.window = window
+        // Re-tier layouts when the window resizes (iPad multitasking, Mac window drags, iPhone Duo).
+        geometryObservation = LMKDevice.observeScreenSize(of: window) { tier in
+            LMKLogger.debug("Screen size tier: \(tier)", category: .ui)
+        }
+        // Scripted sweep: `-lmk-page`, `-lmk-audit-all`, `-lmk-rtl`, `-lmk-theme` (see ExampleLaunchOptions).
+        ExampleSweepRunner.start(ExampleLaunchOptions.current, window: window, navigation: navigation)
     }
+
+    private var geometryObservation: LMKSceneGeometryObservation?
 }

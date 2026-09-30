@@ -3,7 +3,7 @@
 //  LumiKit
 //
 //  Corner radius tokens.
-//  Proxies to `LMKThemeManager.shared.cornerRadius` for customization.
+//  Proxies to `LMKTheme.current.cornerRadius` for customization.
 //
 
 import UIKit
@@ -12,11 +12,11 @@ import UIKit
 ///
 /// Customize by applying a corner radius theme:
 /// ```swift
-/// LMKThemeManager.shared.apply(cornerRadius: .init(small: 12, medium: 16))
+/// LMKTheme.update { $0.cornerRadius = .init(small: 12, medium: 16) }
 /// ```
-public enum LMKCornerRadius {
+public nonisolated enum LMKCornerRadius {
     private static var config: LMKCornerRadiusTheme {
-        LMKThemeManager.shared.cornerRadius
+        LMKTheme.current.cornerRadius
     }
 
     public static var xs: CGFloat { config.xs }

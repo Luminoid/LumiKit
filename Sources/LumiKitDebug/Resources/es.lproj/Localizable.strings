@@ -1,0 +1,9 @@
+/* LumiKitDebug — Spanish */
+"networkHistory.title" = "Historial de red";
+"networkHistory.empty" = "Aún no se han capturado solicitudes de red";
+"networkHistory.clear.accessibilityLabel" = "Borrar historial";
+"networkDetail.title" = "Detalle de la solicitud";
+"networkDetail.copied" = "Copiado";
+"networkDetail.copy.accessibilityLabel" = "Copiar solicitud";
+"networkRecord.errorStatus" = "Error";
+"networkRecord.pendingStatus" = "Pendiente";

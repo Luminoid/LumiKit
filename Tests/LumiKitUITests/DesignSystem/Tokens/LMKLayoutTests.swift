@@ -36,6 +36,24 @@ struct LMKLayoutTests {
     }
 
     @Test
+    func `pixelAligned rounds a length to whole pixels`() {
+        // 1.5pt is 4.5 pixels at 3x: some edges would render 4 pixels and others 5.
+        #expect(abs(LMKLayout.pixelAligned(1.5, scale: 3) - 5.0 / 3.0) < 0.0001)
+        #expect(LMKLayout.pixelAligned(1.5, scale: 2) == 1.5)
+        #expect(LMKLayout.pixelAligned(1, scale: 3) == 1)
+        #expect(LMKLayout.pixelAligned(2.4, scale: 1) == 2)
+        #expect(abs(LMKLayout.pixelAligned(1.0 / 3.0, scale: 3) - 1.0 / 3.0) < 0.0001)
+    }
+
+    @Test
+    func `pixelAligned keeps a positive length at one pixel or more`() {
+        #expect(abs(LMKLayout.pixelAligned(0.1, scale: 3) - 1.0 / 3.0) < 0.0001)
+        #expect(LMKLayout.pixelAligned(0, scale: 3) == 0)
+        #expect(LMKLayout.pixelAligned(-1, scale: 3) == 0)
+        #expect(LMKLayout.pixelAligned(0.2, scale: 0) == 1)
+    }
+
+    @Test
     func `hairline(forScale:) clamps degenerate scales to a full point`() {
         #expect(LMKLayout.hairline(forScale: 0) == 1)
         #expect(LMKLayout.hairline(forScale: 0.5) == 1)
@@ -48,7 +66,7 @@ struct LMKLayoutTests {
         let hairline = LMKLayout.hairline(for: view)
         #expect(hairline > 0)
         #expect(hairline <= 1)
-        if let scale = LMKSceneUtil.displayScale(of: view) {
+        if let scale = LMKScene.displayScale(of: view) {
             #expect(hairline == LMKLayout.hairline(forScale: scale))
         } else {
             #expect(hairline == LMKLayout.hairline)
@@ -77,31 +95,57 @@ struct LMKLayoutConfigurationTests {
         #expect(config.iconCircle == 36)
         #expect(config.pullThreshold == 80)
         #expect(config.cellHeightMin == 100)
-        #expect(config.searchBarHeight == 36)
-        #expect(config.searchBarIconSize == 18)
-        #expect(config.clearButtonSize == 22)
     }
 
     @Test
     func `Custom layout is applied via proxy`() {
-        let original = LMKThemeManager.shared.layout
-        defer { LMKThemeManager.shared.apply(layout: original) }
+        let original = LMKTheme.current.layout
+        defer { LMKTheme.update { $0.layout = original } }
 
-        LMKThemeManager.shared.apply(layout: .init(iconMedium: 28))
+        LMKTheme.update { $0.layout = .init(iconMedium: 28) }
         #expect(LMKLayout.iconMedium == 28)
         #expect(LMKLayout.iconSmall == 20) // unchanged
-    }
-
-    @Test
-    func `New search bar tokens are accessible`() {
-        #expect(LMKLayout.searchBarHeight == 36)
-        #expect(LMKLayout.searchBarIconSize == 18)
-        #expect(LMKLayout.clearButtonSize == 22)
     }
 
     @Test
     func `Icon circle token is accessible and larger than the icon it wraps`() {
         #expect(LMKLayout.iconCircle == 36)
         #expect(LMKLayout.iconCircle > LMKLayout.iconExtraSmall)
+    }
+}
+
+// MARK: - 1.0 layout additions
+
+@MainActor
+struct LMKLayoutScaleTests {
+    @Test
+    func `Symbol scale is monotonic`() {
+        let scale = [
+            LMKLayout.symbolMicro, LMKLayout.symbolBadge, LMKLayout.symbolAccessory, LMKLayout.symbolInline,
+            LMKLayout.symbolRow, LMKLayout.symbolProminent, LMKLayout.symbolAction, LMKLayout.symbolLarge,
+            LMKLayout.symbolPlaceholder, LMKLayout.symbolIllustration, LMKLayout.symbolHero,
+        ]
+        #expect(scale == scale.sorted())
+        #expect(Set(scale).count == scale.count)
+        #expect(LMKLayout.symbolRow == 16)
+    }
+
+    @Test
+    func `Row heights default to 44 60 72 64 and readable width to 700`() {
+        #expect(LMKLayout.rowHeightCompact == 44)
+        #expect(LMKLayout.rowHeight == 60)
+        #expect(LMKLayout.rowHeightComfortable == 72)
+        #expect(LMKLayout.rowHeightEstimated == 64)
+        #expect(LMKLayout.readableContentMaxWidth == 700)
+    }
+
+    @Test
+    func `Theme override propagates to the symbol and row tokens`() {
+        let original = LMKTheme.current.layout
+        defer { LMKTheme.update { $0.layout = original } }
+        LMKTheme.update { $0.layout = .init(symbolRow: 17, rowHeight: 64, readableContentMaxWidth: 640) }
+        #expect(LMKLayout.symbolRow == 17)
+        #expect(LMKLayout.rowHeight == 64)
+        #expect(LMKLayout.readableContentMaxWidth == 640)
     }
 }

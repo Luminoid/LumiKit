@@ -10,136 +10,124 @@ import UIKit
 @MainActor
 struct LMKPageIndicatorTests {
     @Test
-    func `Default state has zero pages`() {
+    func `Default state has zero pages and no size`() {
         let indicator = LMKPageIndicator()
         #expect(indicator.numberOfPages == 0)
         #expect(indicator.currentPage == 0)
+        #expect(indicator.intrinsicContentSize == .zero)
+        #expect(indicator.maxVisibleDots == 7)
+        #expect(!indicator.expandsActiveDot)
     }
 
     @Test
-    func `Setting numberOfPages rebuilds dots`() {
+    func `Setting numberOfPages rebuilds dots and windows them`() {
         let indicator = LMKPageIndicator()
         indicator.numberOfPages = 5
-        #expect(indicator.numberOfPages == 5)
-        #expect(indicator.subviews.count == 5)
+        #expect(indicator.dotViews.count == 5)
+        indicator.maxVisibleDots = 5
+        indicator.numberOfPages = 12
+        #expect(indicator.dotViews.count == 5)
+        indicator.numberOfPages = 4
+        #expect(indicator.dotViews.count == 4)
     }
 
     @Test
-    func `currentPage can be set`() {
+    func `Intrinsic size follows the style and the pill`() {
         let indicator = LMKPageIndicator()
         indicator.numberOfPages = 3
-        indicator.currentPage = 2
-        #expect(indicator.currentPage == 2)
+        #expect(indicator.intrinsicContentSize == CGSize(width: 8 * 3 + 8 * 2, height: 8))
+        indicator.expandsActiveDot = true
+        #expect(abs(indicator.intrinsicContentSize.width - 56) < 0.001)
+        indicator.style.dotSize = 10
+        indicator.style.spacing = 4
+        #expect(abs(indicator.intrinsicContentSize.width - 52) < 0.001)
+        #expect(indicator.intrinsicContentSize.height == 10)
     }
 
     @Test
-    func `Handler can be set`() {
-        let indicator = LMKPageIndicator()
-        indicator.pageChangedHandler = { _ in }
-        #expect(indicator.pageChangedHandler != nil)
-    }
-
-    @Test
-    func `Intrinsic content size is zero for zero pages`() {
-        let indicator = LMKPageIndicator()
-        #expect(indicator.intrinsicContentSize == .zero)
-    }
-
-    @Test
-    func `Intrinsic content size is positive for pages`() {
+    func `Active and inactive dots take the style colors`() {
         let indicator = LMKPageIndicator()
         indicator.numberOfPages = 3
-        let size = indicator.intrinsicContentSize
-        #expect(size.width > 0)
-        #expect(size.height > 0)
+        indicator.currentPage = 1
+        #expect(indicator.dotViews[1].backgroundColor === LMKColor.primary)
+        #expect(indicator.dotViews[0].backgroundColor === LMKColor.fillStrong)
+        indicator.style.activeColor = .red
+        indicator.style.inactiveColor = .blue
+        #expect(indicator.dotViews[1].backgroundColor == UIColor.red)
+        #expect(indicator.dotViews[2].backgroundColor == UIColor.blue)
     }
 
     @Test
-    func `Accessibility value reflects page`() {
+    func `Accessibility value reflects the page and honors per-instance strings`() {
         let indicator = LMKPageIndicator()
         indicator.numberOfPages = 3
         indicator.currentPage = 1
         #expect(indicator.accessibilityValue == "2 of 3")
+        indicator.strings = LMKPageIndicator.Strings(pageFormat: "%lld / %lld")
+        #expect(indicator.accessibilityValue == "2 / 3")
     }
 
     @Test
-    func `Accessibility traits are adjustable only with a handler`() {
-        let indicator = LMKPageIndicator()
-        #expect(!indicator.accessibilityTraits.contains(.adjustable))
-        indicator.pageChangedHandler = { _ in }
-        #expect(indicator.accessibilityTraits.contains(.adjustable))
-        indicator.pageChangedHandler = nil
-        #expect(!indicator.accessibilityTraits.contains(.adjustable))
-    }
-
-    @Test
-    func `Accessibility increment is ignored without a handler`() {
+    func `Accessibility traits and adjustments require a handler`() {
         let indicator = LMKPageIndicator()
         indicator.numberOfPages = 3
+        #expect(!indicator.accessibilityTraits.contains(.adjustable))
         indicator.accessibilityIncrement()
         #expect(indicator.currentPage == 0)
-    }
 
-    @Test
-    func `Accessibility decrement is ignored without a handler`() {
-        let indicator = LMKPageIndicator()
-        indicator.numberOfPages = 3
-        indicator.currentPage = 2
-        indicator.accessibilityDecrement()
-        #expect(indicator.currentPage == 2)
-    }
-
-    @Test
-    func `Accessibility increment fires handler when set`() {
-        let indicator = LMKPageIndicator()
-        indicator.numberOfPages = 3
         var reported: Int?
-        indicator.pageChangedHandler = { reported = $0 }
+        indicator.onPageChange = { reported = $0 }
+        #expect(indicator.accessibilityTraits.contains(.adjustable))
         indicator.accessibilityIncrement()
         #expect(indicator.currentPage == 1)
         #expect(reported == 1)
-    }
-
-    // MARK: - expandsActiveDot
-
-    @Test
-    func `expandsActiveDot defaults to false`() {
-        let indicator = LMKPageIndicator()
-        #expect(indicator.expandsActiveDot == false)
+        indicator.accessibilityDecrement()
+        #expect(indicator.currentPage == 0)
+        indicator.onPageChange = nil
+        #expect(!indicator.accessibilityTraits.contains(.adjustable))
     }
 
     @Test
-    func `Expanding pill increases intrinsic width`() {
+    func `Taps resolve the page under the point across a 44pt row`() {
         let indicator = LMKPageIndicator()
         indicator.numberOfPages = 3
-        let normalWidth = indicator.intrinsicContentSize.width
-        indicator.expandsActiveDot = true
-        let expandedWidth = indicator.intrinsicContentSize.width
-        #expect(expandedWidth > normalWidth)
-    }
-
-    // MARK: - maxVisibleDots
-
-    @Test
-    func `maxVisibleDots defaults to 7`() {
-        let indicator = LMKPageIndicator()
-        #expect(indicator.maxVisibleDots == 7)
-    }
-
-    @Test
-    func `Windowed mode limits visible dots`() {
-        let indicator = LMKPageIndicator()
-        indicator.maxVisibleDots = 5
-        indicator.numberOfPages = 12
-        // Should only create 5 dot views, not 12
-        #expect(indicator.subviews.count == 5)
+        indicator.frame = CGRect(x: 0, y: 0, width: 200, height: 8)
+        indicator.layoutIfNeeded()
+        #expect(!indicator.point(inside: CGPoint(x: 100, y: -15), with: nil), "display-only indicators use their bounds")
+        indicator.onPageChange = { _ in }
+        #expect(indicator.point(inside: CGPoint(x: 100, y: -15), with: nil))
+        let leftDot = indicator.dotViews[0].center
+        let rightDot = indicator.dotViews[2].center
+        #expect(indicator.page(at: CGPoint(x: leftDot.x, y: -15)) == 0)
+        #expect(indicator.page(at: rightDot) == 2)
+        #expect(indicator.page(at: CGPoint(x: 5, y: 4)) == nil)
     }
 
     @Test
-    func `Non-windowed shows all dots`() {
+    func `Right-to-left layouts mirror the dots`() {
         let indicator = LMKPageIndicator()
-        indicator.maxVisibleDots = 7
-        indicator.numberOfPages = 4
-        #expect(indicator.subviews.count == 4)
+        indicator.numberOfPages = 3
+        indicator.currentPage = 0
+        indicator.frame = CGRect(x: 0, y: 0, width: 200, height: 8)
+        indicator.layoutIfNeeded()
+        let ltrFirst = indicator.dotViews[0].frame.minX
+        indicator.semanticContentAttribute = .forceRightToLeft
+        indicator.setNeedsLayout()
+        indicator.layoutIfNeeded()
+        let rtlFirst = indicator.dotViews[0].frame.minX
+        #expect(rtlFirst > ltrFirst)
+        #expect(indicator.dotViews[0].frame.maxX == 200 - ltrFirst)
+    }
+
+    @Test
+    func `theme.pageIndicator supplies app-wide defaults`() {
+        var theme = LMKTheme()
+        theme.pageIndicator = LMKPageIndicator.Style(dotSize: 6, expandsActiveDot: true)
+        let indicator = LMKPageIndicator()
+        indicator.numberOfPages = 2
+        let window = LMKThemeTesting.host(indicator, theme: theme)
+        defer { window.isHidden = true }
+        #expect(indicator.expandsActiveDot)
+        #expect(indicator.intrinsicContentSize.height == 6)
     }
 }

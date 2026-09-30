@@ -1,0 +1,26 @@
+/* LumiKitPhoto — Spanish */
+"photoBrowser.empty" = "No hay fotos";
+"photoBrowser.counter" = "%lld de %lld";
+"photoBrowser.tapToToggle.accessibilityHint" = "Toca dos veces para hacer zoom, toca para mostrar u ocultar los controles";
+"photoBrowser.livePhoto.accessibilityLabel" = "Live Photo";
+"photoBrowser.liveBadge" = "LIVE";
+"photoBrowser.dismiss.accessibilityLabel" = "Cerrar";
+"photoBrowser.action.accessibilityLabel" = "Más acciones";
+"photoBrowser.previousPhoto" = "Foto anterior";
+"photoBrowser.nextPhoto" = "Foto siguiente";
+"photoGrid.empty" = "No hay fotos";
+"photoGrid.sortAscending" = "Más antiguas primero";
+"photoGrid.sortDescending" = "Más recientes primero";
+"photoGrid.aspectFit" = "Ajustar";
+"photoGrid.aspectFill" = "Rellenar";
+"photoGrid.livePhoto.accessibilityLabel" = "Live Photo";
+"photoGrid.photo.accessibilityLabel" = "Foto %lld de %lld";
+"photoCrop.title" = "Recortar";
+"photoCrop.free" = "Libre";
+"photoCrop.cancel" = "Cancelar";
+"photoCrop.done" = "Hecho";
+"photoCrop.aspectRatio.accessibilityLabel" = "Relación de aspecto";
+"sharePreview.share" = "Compartir";
+"sharePreview.saveImage" = "Guardar imagen";
+"sharePreview.photoPermissionDenied" = "Se necesita acceso a la fototeca para guardar imágenes. Actívalo en Ajustes.";
+"sharePreview.close.accessibilityLabel" = "Cerrar";

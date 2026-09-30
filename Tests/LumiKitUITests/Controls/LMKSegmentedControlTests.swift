@@ -9,262 +9,299 @@ import UIKit
 
 @MainActor
 struct LMKSegmentedControlTests {
+    /// Lays the control out inside a host of the given size, the way a real superview would
+    /// (the control's own height constraint disables autoresizing translation, so a bare
+    /// `layoutIfNeeded` on a superview-less control sizes it to its intrinsic width instead).
+    private func layout(_ control: LMKSegmentedControl, width: CGFloat, height: CGFloat = 44) -> UIView {
+        let host = UIView(frame: CGRect(x: 0, y: 0, width: width, height: height))
+        host.addSubview(control)
+        control.snp.makeConstraints { $0.edges.equalToSuperview() }
+        host.layoutIfNeeded()
+        return host
+    }
+
+    private func near(_ a: CGFloat, _ b: CGFloat) -> Bool {
+        abs(a - b) < 0.01
+    }
+
+    // MARK: - Selection
+
     @Test
-    func `Selecting last in-range index does not crash`() {
+    func `Default selection is the first segment and out-of-range values mean none`() {
         let control = LMKSegmentedControl(items: ["A", "B", "C"])
+        #expect(control.selectedSegmentIndex == 0)
+        #expect(control.numberOfSegments == 3)
         control.selectedSegmentIndex = 2
         #expect(control.selectedSegmentIndex == 2)
+        control.selectedSegmentIndex = -1
+        #expect(control.indicatorView.isHidden)
+        control.selectedSegmentIndex = 99
+        #expect(control.indicatorView.isHidden)
+        control.selectedSegmentIndex = 1
+        #expect(!control.indicatorView.isHidden)
     }
 
     @Test
-    func `Default selected index is 0`() {
-        let control = LMKSegmentedControl(items: ["X", "Y"])
-        #expect(control.selectedSegmentIndex == 0)
-    }
-
-    @Test
-    func `Handler can be set`() {
-        let control = LMKSegmentedControl(items: ["A", "B"])
-        control.valueChangedHandler = { _ in }
-        #expect(control.valueChangedHandler != nil)
-    }
-
-    @Test
-    func `setSelectedSegmentIndex updates index`() {
+    func `setSelectedSegmentIndex is silent, accepts -1, and ignores an index past the end`() {
         let control = LMKSegmentedControl(items: ["A", "B", "C"])
+        var received: [Int] = []
+        control.onValueChange = { received.append($0) }
         control.setSelectedSegmentIndex(2, animated: false)
         #expect(control.selectedSegmentIndex == 2)
-    }
-
-    @Test
-    func `setSelectedSegmentIndex ignores out of bounds`() {
-        let control = LMKSegmentedControl(items: ["A", "B"])
         control.setSelectedSegmentIndex(5, animated: false)
-        #expect(control.selectedSegmentIndex == 0)
+        #expect(control.selectedSegmentIndex == 2)
+        control.setSelectedSegmentIndex(-1, animated: false)
+        #expect(control.selectedSegmentIndex == -1)
+        #expect(control.indicatorView.isHidden)
+        #expect(received.isEmpty)
     }
 
     @Test
-    func `default height constraint yields to a host override`() {
-        // The built-in 44pt height is high priority, not required: a host
-        // pinning its own required height (e.g. a 36pt toolbar) must win
-        // without an unsatisfiable-constraints break.
+    func `A user selection fires the handler and the control event`() {
+        let control = LMKSegmentedControl(items: ["A", "B", "C"])
+        var received: [Int] = []
+        control.onValueChange = { received.append($0) }
+        control.select(1)
+        #expect(control.selectedSegmentIndex == 1)
+        #expect(received == [1])
+        control.select(1)
+        #expect(received == [1], "re-selecting the current segment is a no-op")
+        control.setEnabled(false, forSegmentAt: 2)
+        control.select(2)
+        #expect(received == [1], "a disabled segment cannot be selected")
+        control.isEnabled = false
+        control.select(0)
+        #expect(received == [1], "a disabled control ignores selection")
+    }
+
+    @Test
+    func `Selected label carries the selected trait and the selected text style`() {
+        let control = LMKSegmentedControl(items: ["A", "B"])
+        #expect(control.segmentLabels[0].accessibilityTraits.contains(.selected))
+        #expect(!control.segmentLabels[1].accessibilityTraits.contains(.selected))
+        #expect(control.segmentLabels[0].lmk_textStyle == .bodyMedium)
+        #expect(control.segmentLabels[1].lmk_textStyle == .subbodyMedium)
+        #expect(control.segmentLabels[0].textColor === LMKColor.primary)
+        #expect(control.segmentLabels[1].textColor === LMKColor.textSecondary)
+        control.selectedSegmentIndex = 1
+        #expect(control.segmentLabels[1].lmk_textStyle == .bodyMedium)
+        #expect(control.segmentLabels[0].lmk_textStyle == .subbodyMedium)
+    }
+
+    // MARK: - Items
+
+    @Test
+    func `setItems rebuilds the labels and clears an out-of-range selection`() {
+        let control = LMKSegmentedControl(items: ["A", "B", "C"])
+        control.selectedSegmentIndex = 2
+        control.setItems(["X", "Y"])
+        #expect(control.items == ["X", "Y"])
+        #expect(control.segmentLabels.map(\.text) == ["X", "Y"])
+        #expect(control.selectedSegmentIndex == -1)
+        control.selectedSegmentIndex = 1
+        control.setItems(["P", "Q", "R"])
+        #expect(control.selectedSegmentIndex == 1, "an in-range selection survives")
+        #expect(control.title(forSegmentAt: 2) == "R")
+        #expect(control.title(forSegmentAt: 3) == nil)
+    }
+
+    @Test
+    func `Inserting and removing segments moves the selection with its segment`() {
+        let control = LMKSegmentedControl(items: ["A", "B", "C"])
+        control.selectedSegmentIndex = 1
+        control.setEnabled(false, forSegmentAt: 2)
+        control.insertSegment(withTitle: "Z", at: 0)
+        #expect(control.items == ["Z", "A", "B", "C"])
+        #expect(control.selectedSegmentIndex == 2)
+        #expect(!control.isEnabledForSegment(at: 3))
+        #expect(control.isEnabledForSegment(at: 2))
+
+        control.removeSegment(at: 0)
+        #expect(control.items == ["A", "B", "C"])
+        #expect(control.selectedSegmentIndex == 1)
+        #expect(!control.isEnabledForSegment(at: 2))
+
+        control.removeSegment(at: 1)
+        #expect(control.items == ["A", "C"])
+        #expect(control.selectedSegmentIndex == -1, "removing the selected segment clears the selection")
+        #expect(!control.isEnabledForSegment(at: 1))
+        control.removeSegment(at: 9)
+        #expect(control.items == ["A", "C"])
+    }
+
+    // MARK: - Enabled state
+
+    @Test
+    func `Disabled segments dim and expose the trait; a disabled control dims whole`() {
+        let control = LMKSegmentedControl(items: ["A", "B"])
+        control.setEnabled(false, forSegmentAt: 1)
+        #expect(abs(control.segmentLabels[1].alpha - LMKTheme.current.alpha.disabled) < 0.001)
+        #expect(control.segmentLabels[1].accessibilityTraits.contains(.notEnabled))
+        #expect(control.segmentLabels[0].alpha == 1)
+        control.setEnabled(true, forSegmentAt: 1)
+        #expect(control.segmentLabels[1].alpha == 1)
+
+        control.isEnabled = false
+        #expect(abs(control.alpha - LMKTheme.current.alpha.disabled) < 0.001)
+        #expect(control.segmentLabels[0].accessibilityTraits.contains(.notEnabled))
+        #expect(control.panGesture?.isEnabled == false)
+        control.frame = CGRect(x: 0, y: 0, width: 200, height: 36)
+        #expect(!control.point(inside: CGPoint(x: 100, y: -3), with: nil), "no hit inflation while disabled")
+        control.isEnabled = true
+        #expect(control.alpha == 1)
+        #expect(control.panGesture?.isEnabled == true)
+    }
+
+    // MARK: - Layout
+
+    @Test
+    func `Height constraint yields to a host override and the hit area inflates`() {
         let control = LMKSegmentedControl(items: ["A", "B"])
         let heightConstraints = control.constraints.filter {
             $0.firstAttribute == .height && $0.firstItem === control && $0.secondItem == nil
         }
-        #expect(!heightConstraints.isEmpty)
-        #expect(heightConstraints.allSatisfy { $0.priority.rawValue < UILayoutPriority.required.rawValue })
-    }
+        #expect(heightConstraints.count == 1)
+        #expect(heightConstraints[0].constant == 44)
+        #expect(heightConstraints[0].priority.rawValue < UILayoutPriority.required.rawValue)
 
-    @Test
-    func `hit area inflates to the minimum touch target when constrained shorter`() {
-        let control = LMKSegmentedControl(items: ["A", "B"])
         control.frame = CGRect(x: 0, y: 0, width: 200, height: 36)
-        // 36pt tall leaves a 4pt band above and below inside the 44pt target.
         #expect(control.point(inside: CGPoint(x: 100, y: -3), with: nil))
-        #expect(control.point(inside: CGPoint(x: 100, y: 38), with: nil))
         #expect(!control.point(inside: CGPoint(x: 100, y: -5), with: nil))
-        // At full height the hit area is the bounds, no inflation.
         control.frame = CGRect(x: 0, y: 0, width: 200, height: 44)
         #expect(!control.point(inside: CGPoint(x: 100, y: -1), with: nil))
-        #expect(control.point(inside: CGPoint(x: 100, y: 1), with: nil))
     }
 
     @Test
-    func `isScrollable defaults to false`() {
-        let control = LMKSegmentedControl(items: ["A", "B"])
-        #expect(control.isScrollable == false)
+    func `Equal-width layout installs no per-segment widths and sizes to the widest title`() {
+        let control = LMKSegmentedControl(items: ["A", "Much longer", "B"])
+        #expect(control.resolvedLayout == .equalWidth)
+        #expect(control.segmentWidthConstraints.isEmpty)
+        #expect(control.segmentStack.distribution == .fillEqually)
+        #expect(!control.scrollView.isScrollEnabled)
+        let widest = control.segmentReferenceWidths.max() ?? 0
+        let expected = (widest + LMKSpacing.medium * 2) * 3 + LMKSegmentedControl.defaultContentInset * 2
+        #expect(control.intrinsicContentSize.width == expected)
+        #expect(control.intrinsicContentSize.height == 44)
     }
 
     @Test
-    func `makeScrollableContainer sets isScrollable`() {
-        let control = LMKSegmentedControl(items: ["A", "B", "C"])
-        let scrollView = control.makeScrollableContainer()
-        #expect(control.isScrollable == true)
-        #expect(scrollView.subviews.contains(control))
-        #expect(scrollView.showsHorizontalScrollIndicator == false)
-    }
-
-    @Test
-    func `gestureRecognizerShouldBegin returns true when scrollable`() {
-        let control = LMKSegmentedControl(items: ["A", "B"])
-        control.isScrollable = true
-        let gesture = UIPanGestureRecognizer()
-        #expect(control.gestureRecognizerShouldBegin(gesture) == true)
-    }
-
-    @Test
-    func `Is a UIControl subclass`() {
-        let control = LMKSegmentedControl(items: ["A"])
-        #expect(control as Any is UIControl)
-    }
-
-    @Test
-    func `selectedSegmentIndex = -1 does not crash`() {
-        let control = LMKSegmentedControl(items: ["★", "★★", "★★★"])
-        control.selectedSegmentIndex = -1
-        #expect(control.selectedSegmentIndex == -1)
-    }
-
-    @Test
-    func `selectedSegmentIndex out of upper bound does not crash`() {
-        let control = LMKSegmentedControl(items: ["A", "B"])
-        control.selectedSegmentIndex = 99
-        #expect(control.selectedSegmentIndex == 99)
-    }
-
-    @Test
-    func `Recovering from -1 to a valid index selects that segment`() {
-        let control = LMKSegmentedControl(items: ["A", "B", "C"])
-        control.selectedSegmentIndex = -1
-        control.selectedSegmentIndex = 2
-        #expect(control.selectedSegmentIndex == 2)
-    }
-
-    @Test
-    func `fitsSegmentsToContent intrinsic width stays stable across selection changes`() {
-        let control = LMKSegmentedControl(
-            items: (1 ... 5).map { String(repeating: "\u{2605}", count: $0) }
-        )
-        control.fitsSegmentsToContent = true
+    func `Fit-content layout pins each segment to its title and hugs horizontally`() {
+        let control = LMKSegmentedControl(items: (1 ... 5).map { String(repeating: "\u{2605}", count: $0) }, style: .fitContent)
+        #expect(control.contentHuggingPriority(for: .horizontal) == .required)
+        #expect(control.segmentWidthConstraints.count == 5)
+        let sum = control.segmentReferenceWidths.reduce(0, +)
+        let expected = sum + LMKSpacing.medium * 2 * 5 + LMKSegmentedControl.defaultContentInset * 2
+        #expect(control.intrinsicContentSize.width == expected)
 
         control.selectedSegmentIndex = -1
         let unselected = control.intrinsicContentSize.width
-
-        control.selectedSegmentIndex = 0
-        let firstSelected = control.intrinsicContentSize.width
-
         control.selectedSegmentIndex = 4
-        let lastSelected = control.intrinsicContentSize.width
+        #expect(control.intrinsicContentSize.width == unselected, "selection never shifts the widths")
 
-        #expect(unselected == firstSelected)
-        #expect(firstSelected == lastSelected)
-    }
+        control.style.itemPadding = LMKSpacing.medium + 10
+        #expect(control.intrinsicContentSize.width == expected + 100)
 
-    @Test
-    func `fitsSegmentsToContent hugs content horizontally`() {
-        let control = LMKSegmentedControl(items: ["A", "B"])
-        #expect(control.contentHuggingPriority(for: .horizontal) == .defaultHigh)
-
-        control.fitsSegmentsToContent = true
-        #expect(control.contentHuggingPriority(for: .horizontal) == .required)
-
-        control.fitsSegmentsToContent = false
-        #expect(control.contentHuggingPriority(for: .horizontal) == .defaultHigh)
-    }
-
-    @Test
-    func `itemPadding widens intrinsic width in fit-content mode`() {
-        let control = LMKSegmentedControl(items: ["A", "B", "C"])
-        control.fitsSegmentsToContent = true
-        let basePadding = control.itemPadding
-        let baseWidth = control.intrinsicContentSize.width
-
-        control.itemPadding = basePadding + 10
-        let widerWidth = control.intrinsicContentSize.width
-
-        // Three segments: +10 padding on each side of each segment => +60 total.
-        #expect(widerWidth == baseWidth + 60)
-    }
-
-    @Test
-    func `fitsSegmentsToContent + scrollable lays out without constraint conflict`() {
-        // Labels of wildly different widths inside a scroll view. If fit mode
-        // and the scrollable min-width floor both installed constraints on the
-        // same label, short labels ("A") would break the "== refWidth + pad"
-        // constraint (unsatisfiable vs ">= 44 + scrollablePad*2"). This test
-        // triggers a layout pass and asserts no ambiguity/unsatisfiability.
-        let control = LMKSegmentedControl(items: ["A", "BB", "CCC", "Long Label Here"])
-        control.fitsSegmentsToContent = true
-        let scroll = control.makeScrollableContainer()
-
-        scroll.frame = CGRect(x: 0, y: 0, width: 200, height: 40)
-        scroll.layoutIfNeeded()
-
+        _ = layout(control, width: control.intrinsicContentSize.width)
         #expect(!control.hasAmbiguousLayout)
-        #expect(control.isScrollable == true)
-        // Content must exceed the scroll view viewport so scrolling makes sense.
-        #expect(scroll.contentSize.width >= control.intrinsicContentSize.width)
     }
 
     @Test
-    func `fitsSegmentsToContent + scrollable uses itemPadding not scrollableItemPadding`() {
-        // In combined mode each label is pinned exactly to refWidth + itemPadding*2.
-        // Changing `scrollableItemPadding` must not alter the intrinsic width.
-        let control = LMKSegmentedControl(items: ["A", "BB", "CCC"])
-        control.fitsSegmentsToContent = true
-        _ = control.makeScrollableContainer()
+    func `Scrollable layout scrolls, floors narrow segments, and adds the gap`() {
+        let control = LMKSegmentedControl(items: ["A", "BB", "Long Label Here"], style: .scrollable)
+        #expect(control.scrollView.isScrollEnabled)
+        #expect(control.panGesture?.isEnabled == false, "the indicator drag yields to scrolling")
+        #expect(control.segmentStack.spacing == LMKSpacing.medium)
+        #expect(control.segmentStack.distribution == .fill)
+        #expect(control.contentCompressionResistancePriority(for: .horizontal) == .defaultLow)
+        let floored = control.segmentReferenceWidths.reduce(0) { $0 + max($1, LMKLayout.minimumTouchTarget) }
+        let expected = floored + LMKSpacing.large * 2 * 3 + LMKSpacing.medium * 2 + LMKSegmentedControl.defaultContentInset * 2
+        #expect(control.intrinsicContentSize.width == expected)
 
-        let baseline = control.intrinsicContentSize.width
-        control.scrollableItemPadding += 100
-        #expect(control.intrinsicContentSize.width == baseline)
+        control.style.layout = .scrollable(padding: 10, spacing: 4)
+        #expect(control.segmentStack.spacing == 4)
+        #expect(control.intrinsicContentSize.width == floored + 10 * 2 * 3 + 4 * 2 + LMKSegmentedControl.defaultContentInset * 2)
 
-        // But changing itemPadding should still widen it.
-        control.itemPadding += 10
-        #expect(control.intrinsicContentSize.width == baseline + 60)
+        _ = layout(control, width: 200)
+        #expect(!control.hasAmbiguousLayout)
+        #expect(control.bounds.width == 200, "the host width wins over the content width")
+        #expect(control.scrollView.contentSize.width >= control.intrinsicContentSize.width - 1)
+        #expect(control.containerView.bounds.width > 200, "content is wider than the viewport, so it scrolls")
     }
 
     @Test
-    func `toggling fitsSegmentsToContent after scrollable does not conflict`() {
-        // Reversed order vs the test above: scrollable first, then fit=true,
-        // then fit=false. The min-width floor must reappear when fit is
-        // turned off, and disappear when turned on.
+    func `Switching layouts leaves no stale constraints`() {
         let control = LMKSegmentedControl(items: ["A", "BB"])
-        _ = control.makeScrollableContainer()
-        control.fitsSegmentsToContent = true
-        control.fitsSegmentsToContent = false
-        control.fitsSegmentsToContent = true
-
-        control.frame = CGRect(x: 0, y: 0, width: 300, height: 40)
-        control.layoutIfNeeded()
-
+        control.style.layout = .scrollable()
+        control.style.layout = .fitContent
+        control.style.layout = .equalWidth
+        #expect(control.segmentWidthConstraints.isEmpty)
+        #expect(!control.scrollView.isScrollEnabled)
+        control.style.layout = .fitContent
+        #expect(control.segmentWidthConstraints.count == 2)
+        _ = layout(control, width: 300)
         #expect(!control.hasAmbiguousLayout)
     }
 
-    @Test
-    func `itemSpacing widens intrinsic width only when scrollable`() {
-        // Non-scrollable mode always uses 0 stack spacing, so itemSpacing
-        // changes must not affect intrinsic width there.
-        let control = LMKSegmentedControl(items: ["A", "B", "C"])
-        let nonScrollBase = control.intrinsicContentSize.width
-        control.itemSpacing += 10
-        #expect(control.intrinsicContentSize.width == nonScrollBase)
-
-        // After entering scrollable mode, the gap between adjacent segments
-        // is added (items.count - 1) times to the intrinsic width.
-        _ = control.makeScrollableContainer()
-        let scrollableBase = control.intrinsicContentSize.width
-        control.itemSpacing += 5
-        #expect(control.intrinsicContentSize.width == scrollableBase + 5 * 2)
-    }
+    // MARK: - Style
 
     @Test
-    func `itemSpacing default matches previous hardcoded value`() {
-        // Callers that relied on the old hardcoded LMKSpacing.medium gap in
-        // scrollable mode should see the same intrinsic width out of the box.
+    func `Default surfaces and the rounded corner style`() {
         let control = LMKSegmentedControl(items: ["A", "B"])
-        #expect(control.itemSpacing == LMKSpacing.medium)
+        #expect(control.containerView.backgroundColor === LMKColor.backgroundTertiary)
+        _ = layout(control, width: 200)
+        #expect(near(control.containerView.layer.cornerRadius, 22))
+        #expect(near(control.indicatorView.layer.cornerRadius, 16))
+
+        control.style = .rounded
+        control.layoutIfNeeded()
+        #expect(near(control.containerView.layer.cornerRadius, LMKCornerRadius.medium))
+        #expect(near(control.indicatorView.layer.cornerRadius, LMKCornerRadius.medium - 6))
     }
 
     @Test
-    func `scrollable non-fit intrinsic width stays stable across selection changes`() {
-        // Previously non-fit scrollable sized each segment from its live label
-        // intrinsicContentSize, which differs between the selected (bodyMedium)
-        // and unselected (subbodyMedium) fonts — the selected segment rendered
-        // visibly wider. Per-label widths are now pinned at the wider
-        // selected-state refWidth (+ scrollableItemPadding), so changing
-        // selection must not shift intrinsic width.
-        let control = LMKSegmentedControl(items: ["Month 1", "Month 2", "Month 12"])
-        _ = control.makeScrollableContainer()
+    func `Style overrides colors, insets, and the height floor`() {
+        let style = LMKSegmentedControl.Style(
+            surface: LMKSurfaceStyle(background: .solid(.red)),
+            indicator: LMKSurfaceStyle(background: .solid(.blue)),
+            contentInset: 6,
+            textColor: .green,
+            selectedTextColor: .purple,
+            height: 50
+        )
+        let control = LMKSegmentedControl(items: ["A", "B"], style: style)
+        #expect(control.containerView.backgroundColor == UIColor.red)
+        #expect(control.indicatorView.backgroundColor == UIColor.blue)
+        #expect(control.segmentLabels[0].textColor == UIColor.purple)
+        #expect(control.segmentLabels[1].textColor == UIColor.green)
+        #expect(control.intrinsicContentSize.height == 50)
+        #expect(control.intrinsicContentSize.width == (control.segmentReferenceWidths.max() ?? 0) * 2 + LMKSpacing.medium * 4 + 12)
 
-        control.selectedSegmentIndex = 0
-        let firstSelected = control.intrinsicContentSize.width
-        control.selectedSegmentIndex = 1
-        let middleSelected = control.intrinsicContentSize.width
-        control.selectedSegmentIndex = 2
-        let lastSelected = control.intrinsicContentSize.width
+        control.style.selected = LMKControlStateStyle(background: .solid(.orange), foregroundColor: .brown)
+        #expect(control.indicatorView.backgroundColor == UIColor.orange)
+        #expect(control.segmentLabels[0].textColor == UIColor.brown)
+    }
 
-        #expect(firstSelected == middleSelected)
-        #expect(middleSelected == lastSelected)
+    @Test
+    func `theme.segmentedControl supplies app-wide defaults`() {
+        var theme = LMKTheme()
+        theme.segmentedControl = LMKSegmentedControl.Style(corners: .rounded, textColor: .magenta)
+        let control = LMKSegmentedControl(items: ["A", "B"])
+        let window = LMKThemeTesting.host(control, theme: theme)
+        defer { window.isHidden = true }
+        #expect(control.resolved.corners == .rounded)
+        #expect(control.segmentLabels[1].textColor == UIColor.magenta)
+    }
+
+    @Test
+    func `Dynamic Type grows the height floor and the segment widths`() {
+        let control = LMKSegmentedControl(items: ["Alpha", "Beta"], style: .fitContent)
+        let window = LMKThemeTesting.host(control)
+        defer { window.isHidden = true }
+        let baseWidth = control.intrinsicContentSize.width
+        window.traitOverrides.preferredContentSizeCategory = .accessibilityExtraExtraExtraLarge
+        control.updateTraitsIfNeeded()
+        #expect(control.intrinsicContentSize.height > 44)
+        #expect(control.intrinsicContentSize.width > baseWidth)
+        #expect(control.segmentLabels[0].font.pointSize > 17)
     }
 }

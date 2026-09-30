@@ -13,15 +13,16 @@ import UIKit
 struct LMKAlphaTests {
     @Test
     func `Alpha values are between 0 and 1`() {
-        #expect(LMKAlpha.overlay > 0 && LMKAlpha.overlay <= 1)
-        #expect(LMKAlpha.overlayStrong > 0 && LMKAlpha.overlayStrong <= 1)
-        #expect(LMKAlpha.overlayOpaque > 0 && LMKAlpha.overlayOpaque <= 1)
+        for value in [LMKAlpha.xxs, LMKAlpha.xs, LMKAlpha.small, LMKAlpha.medium, LMKAlpha.large, LMKAlpha.xl, LMKAlpha.xxl, LMKAlpha.dimming, LMKAlpha.disabled] {
+            #expect(value > 0 && value <= 1)
+        }
     }
 
     @Test
-    func `Alpha values are ordered by intensity`() {
-        #expect(LMKAlpha.overlay < LMKAlpha.overlayStrong)
-        #expect(LMKAlpha.overlayStrong < LMKAlpha.overlayOpaque)
+    func `Ramp is strictly increasing`() {
+        let ramp = [LMKAlpha.xxs, LMKAlpha.xs, LMKAlpha.small, LMKAlpha.medium, LMKAlpha.large, LMKAlpha.xl, LMKAlpha.xxl]
+        #expect(ramp == ramp.sorted())
+        #expect(Set(ramp).count == ramp.count)
     }
 }
 
@@ -30,23 +31,33 @@ struct LMKAlphaTests {
 @MainActor
 struct LMKAlphaConfigurationTests {
     @Test
-    func `Default alpha matches original values`() {
+    func `Default alpha keeps the pre 1.0 values`() {
         let config = LMKAlphaTheme()
-        #expect(config.overlay == 0.5)
-        #expect(config.dimmingOverlay == 0.4)
+        #expect(config.xxs == 0.1)
+        #expect(config.xs == 0.15)
+        #expect(config.small == 0.2)
+        #expect(config.medium == 0.3)
+        #expect(config.large == 0.5)
+        #expect(config.xl == 0.7)
+        #expect(config.xxl == 0.8)
+        #expect(config.dimming == 0.4)
         #expect(config.disabled == 0.38)
-        #expect(config.overlayStrong == 0.7)
-        #expect(config.overlayLight == 0.1)
-        #expect(config.overlayOpaque == 0.8)
+    }
+
+    @Test
+    func `Values are clamped to the unit range`() {
+        let config = LMKAlphaTheme(xxs: -1, xxl: 4)
+        #expect(config.xxs == 0)
+        #expect(config.xxl == 1)
     }
 
     @Test
     func `Custom alpha is applied via proxy`() {
-        let original = LMKThemeManager.shared.alpha
-        defer { LMKThemeManager.shared.apply(alpha: original) }
+        let original = LMKTheme.current.alpha
+        defer { LMKTheme.update { $0.alpha = original } }
 
-        LMKThemeManager.shared.apply(alpha: .init(disabled: 0.3))
+        LMKTheme.update { $0.alpha = .init(disabled: 0.3) }
         #expect(LMKAlpha.disabled == 0.3)
-        #expect(LMKAlpha.overlay == 0.5) // unchanged
+        #expect(LMKAlpha.large == 0.5) // unchanged
     }
 }

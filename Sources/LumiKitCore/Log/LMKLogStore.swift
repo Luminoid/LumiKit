@@ -2,27 +2,35 @@
 //  LMKLogStore.swift
 //  LumiKit
 //
-//  Thread-safe in-memory ring buffer for log entries.
+//  Log levels, captured entries, and the thread-safe in-memory ring buffer.
 //  Opt-in via `LMKLogger.enableLogStore()`.
 //
 
 import Foundation
-import os
+import Synchronization
 
 // MARK: - Log Level
 
-/// Log severity level.
-public enum LMKLogLevel: String, Sendable, CaseIterable {
+/// Log severity, ordered from `debug` (lowest) to `error` (highest).
+public enum LMKLogLevel: String, Sendable, CaseIterable, Comparable, Codable {
     case debug
     case info
     case warning
     case error
+
+    public static func < (lhs: Self, rhs: Self) -> Bool {
+        lhs.rank < rhs.rank
+    }
+
+    private var rank: Int {
+        Self.allCases.firstIndex(of: self) ?? 0
+    }
 }
 
 // MARK: - Log Entry
 
 /// A single captured log entry.
-public struct LMKLogEntry: Sendable {
+public struct LMKLogEntry: Sendable, Hashable, Codable {
     /// When the log was recorded.
     public let timestamp: Date
 
@@ -32,16 +40,49 @@ public struct LMKLogEntry: Sendable {
     /// Category name (e.g. "General", "Data", "Network").
     public let category: String
 
-    /// The formatted log message (includes file, line, function).
+    /// The message as passed to the logger (an attached error's description is appended).
     public let message: String
+
+    /// The calling file's last path component; empty when unknown.
+    public let file: String
+
+    /// The calling function; empty when unknown.
+    public let function: String
+
+    /// The calling line; `0` when unknown.
+    public let line: Int
+
+    public init(
+        timestamp: Date = Date(),
+        level: LMKLogLevel,
+        category: String,
+        message: String,
+        file: String = "",
+        function: String = "",
+        line: Int = 0
+    ) {
+        self.timestamp = timestamp
+        self.level = level
+        self.category = category
+        self.message = message
+        self.file = file
+        self.function = function
+        self.line = line
+    }
+
+    /// `[File.swift:12] function - message`, or the message alone when the call site is unknown.
+    public var formattedMessage: String {
+        guard !file.isEmpty else { return message }
+        return "[\(file):\(line)] \(function) - \(message)"
+    }
 }
 
 // MARK: - Log Store
 
 /// Thread-safe, bounded in-memory log store.
 ///
-/// Uses a FIFO ring buffer — when `maxEntries` is reached, the oldest
-/// entry is evicted. All access is serialized via `OSAllocatedUnfairLock`.
+/// A FIFO ring buffer: once `maxEntries` are stored, each new entry overwrites the oldest.
+/// Appends are O(1); `entries` returns a snapshot in insertion order.
 ///
 /// ```swift
 /// LMKLogger.enableLogStore(maxEntries: 500)
@@ -49,61 +90,79 @@ public struct LMKLogEntry: Sendable {
 /// let entries = LMKLogger.logStore?.entries ?? []
 /// ```
 public final class LMKLogStore: Sendable {
+    private struct Ring {
+        var slots: [LMKLogEntry?]
+        var head = 0
+        var count = 0
+    }
+
     // MARK: - Properties
 
-    private let maxEntries: Int
-    private let lock: OSAllocatedUnfairLock<[LMKLogEntry]>
+    /// The capacity the store was created with.
+    public let maxEntries: Int
+
+    private let ring: Mutex<Ring>
 
     // MARK: - Initialization
 
     /// Create a log store with a maximum capacity.
-    /// - Parameter maxEntries: Maximum number of entries to retain. Oldest are evicted first.
+    /// - Parameter maxEntries: Maximum number of entries to retain (must be positive). Oldest are evicted first.
     public init(maxEntries: Int) {
+        precondition(maxEntries > 0, "LMKLogStore needs a positive capacity")
         self.maxEntries = maxEntries
-        self.lock = OSAllocatedUnfairLock(initialState: [])
+        ring = Mutex(Ring(slots: Array(repeating: nil, count: maxEntries)))
     }
 
     // MARK: - Access
 
     /// A snapshot of all stored entries (oldest first).
     public var entries: [LMKLogEntry] {
-        lock.withLock { $0 }
+        ring.withLock { ring in
+            (0 ..< ring.count).compactMap { ring.slots[(ring.head + $0) % maxEntries] }
+        }
     }
 
     /// Number of entries currently stored.
     public var count: Int {
-        lock.withLock { $0.count }
+        ring.withLock { $0.count }
     }
 
     /// Whether the store contains no entries.
     public var isEmpty: Bool {
-        lock.withLock { $0.isEmpty }
+        ring.withLock { $0.count } == 0
     }
 
     // MARK: - Mutation
 
-    /// Append a log entry. Evicts the oldest entry if at capacity.
+    /// Append a log entry. Overwrites the oldest entry when at capacity.
     public func append(_ entry: LMKLogEntry) {
-        lock.withLock { entries in
-            if entries.count >= maxEntries {
-                entries.removeFirst()
+        ring.withLock { ring in
+            if ring.count < maxEntries {
+                ring.slots[(ring.head + ring.count) % maxEntries] = entry
+                ring.count += 1
+            } else {
+                ring.slots[ring.head] = entry
+                ring.head = (ring.head + 1) % maxEntries
             }
-            entries.append(entry)
         }
     }
 
     /// Remove all stored entries.
     public func clear() {
-        lock.withLock { $0.removeAll() }
+        ring.withLock { ring in
+            ring.slots = Array(repeating: nil, count: maxEntries)
+            ring.head = 0
+            ring.count = 0
+        }
     }
 
     // MARK: - Formatting
 
     /// Format all entries as a single string for display.
     ///
-    /// Each line: `[HH:mm:ss.SSS] [LEVEL] [Category] message`
+    /// Each line: `[HH:mm:ss.SSS] [LEVEL] [Category] [File.swift:12] function - message`
     public func formatted() -> String {
-        let entries = self.entries
+        let entries = entries
         guard !entries.isEmpty else { return "(no logs captured)" }
 
         // Local formatter each call — DateFormatter is not thread-safe
@@ -114,7 +173,7 @@ public final class LMKLogStore: Sendable {
         return entries.map { entry in
             let time = formatter.string(from: entry.timestamp)
             let level = entry.level.rawValue.uppercased()
-            return "[\(time)] [\(level)] [\(entry.category)] \(entry.message)"
+            return "[\(time)] [\(level)] [\(entry.category)] \(entry.formattedMessage)"
         }.joined(separator: "\n")
     }
 }

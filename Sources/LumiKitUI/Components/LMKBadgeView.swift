@@ -2,63 +2,147 @@
 //  LMKBadgeView.swift
 //  LumiKit
 //
-//  Small count or status badge component.
+//  Count, text, or dot badge: a capsule whose metrics and colors come from
+//  `theme.badge` and the instance style.
 //
 
 import SnapKit
 import UIKit
 
-// MARK: - Configurable Strings
-
-/// Configurable strings for badge accessibility.
-public nonisolated struct LMKBadgeStrings: Sendable {
-    /// Accessibility label for dot badge (no text).
-    public var dotAccessibilityLabel: String
-
-    public init(dotAccessibilityLabel: String = "New") {
-        self.dotAccessibilityLabel = dotAccessibilityLabel
-    }
-}
-
-public nonisolated(unsafe) var lmkBadgeStrings = LMKBadgeStrings()
-
-/// Small badge for notification counts, "New" labels, or status indicators.
+/// Small badge for notification counts, "New" labels, or status dots.
 ///
 /// ```swift
 /// let badge = LMKBadgeView()
-/// badge.configure(count: 5)
-/// // Or: badge.configure(text: "New")
-/// // Or: badge.configure() // dot-only badge
+/// badge.configure(.count(5))
+/// badge.configure(.text("New"))
+/// badge.configure(.dot)
 /// ```
-public final class LMKBadgeView: UIView {
+public final class LMKBadgeView: UIView, LMKThemeApplying {
+    // MARK: - Content
+
+    /// What the badge shows.
+    public nonisolated enum Content: Sendable, Hashable {
+        /// A number; `0` or less hides the badge, values past 99 show `overflowText`.
+        case count(Int)
+        /// Custom text; empty text hides the badge.
+        case text(String)
+        /// A small dot with no text.
+        case dot
+    }
+
+    // MARK: - Style
+
+    public nonisolated struct Style: Sendable, Equatable, LMKThemeExtension {
+        /// Background (default `error`), corners (capsule), border (`backgroundPrimary`, 1.5pt).
+        public var surface: LMKSurfaceStyle
+        /// `nil` = `onAccent`.
+        public var textColor: UIColor?
+        /// `nil` = `extraSmallSemibold`.
+        public var textStyle: LMKTextStyle?
+        /// `nil` = 18.
+        public var minWidth: CGFloat?
+        /// `nil` = 18.
+        public var height: CGFloat?
+        /// `nil` = 6.
+        public var horizontalPadding: CGFloat?
+        /// Dot diameter as a fraction of `height`; `nil` = 0.5.
+        public var dotSizeRatio: CGFloat?
+        /// Shown for counts above 99; `nil` = "99+".
+        public var overflowText: String?
+
+        public init(
+            surface: LMKSurfaceStyle = LMKSurfaceStyle(),
+            textColor: UIColor? = nil,
+            textStyle: LMKTextStyle? = nil,
+            minWidth: CGFloat? = nil,
+            height: CGFloat? = nil,
+            horizontalPadding: CGFloat? = nil,
+            dotSizeRatio: CGFloat? = nil,
+            overflowText: String? = nil
+        ) {
+            self.surface = surface
+            self.textColor = textColor
+            self.textStyle = textStyle
+            self.minWidth = minWidth
+            self.height = height
+            self.horizontalPadding = horizontalPadding
+            self.dotSizeRatio = dotSizeRatio
+            self.overflowText = overflowText
+        }
+
+        public static let defaultValue = Self()
+
+        /// `other`'s non-nil fields over this style's.
+        public func merging(_ other: Self) -> Self {
+            Self(
+                surface: surface.merging(other.surface),
+                textColor: other.textColor ?? textColor,
+                textStyle: other.textStyle ?? textStyle,
+                minWidth: other.minWidth ?? minWidth,
+                height: other.height ?? height,
+                horizontalPadding: other.horizontalPadding ?? horizontalPadding,
+                dotSizeRatio: other.dotSizeRatio ?? dotSizeRatio,
+                overflowText: other.overflowText ?? overflowText
+            )
+        }
+    }
+
+    // MARK: - Strings
+
+    public nonisolated struct Strings: Sendable, Equatable {
+        /// Accessibility label for a dot badge (no text).
+        public var dotAccessibilityLabel: String
+
+        public init(dotAccessibilityLabel: String = LMKLocalized("badge.dot.accessibilityLabel")) {
+            self.dotAccessibilityLabel = dotAccessibilityLabel
+        }
+    }
+
+    /// Process-wide defaults; set at app launch to override.
+    public nonisolated(unsafe) static var strings = Strings()
+
+    /// Per-instance strings (default `Self.strings`).
+    public var strings: Strings = LMKBadgeView.strings {
+        didSet { updateContent() }
+    }
+
     // MARK: - Properties
 
-    private static var config: LMKBadgeTheme {
-        LMKThemeManager.shared.badge
+    public let countLabel = UILabel()
+
+    /// Per-instance style; `nil` fields resolve from `theme.badge`, then the built-in look.
+    public var style: Style {
+        didSet {
+            guard style != oldValue else { return }
+            applyTheme(traitCollection.lmkTheme)
+        }
     }
 
-    private let countLabel = UILabel()
+    /// The current content (`nil` until configured).
+    public private(set) var content: Content?
 
-    /// Badge background color. Defaults to `LMKColor.error`.
-    public var badgeColor: UIColor = LMKColor.error {
-        didSet { backgroundColor = badgeColor }
+    /// Overrides the derived accessibility label (the count, the text, or the dot label).
+    public var customAccessibilityLabel: String? {
+        didSet { updateContent() }
     }
 
-    /// Badge text color. Defaults to `LMKColor.white`.
-    public var textColor: UIColor = LMKColor.white {
-        didSet { countLabel.textColor = textColor }
-    }
+    /// Called at the end of every `applyTheme`, for tweaks the style does not cover.
+    public var didApplyStyle: ((LMKBadgeView) -> Void)?
 
-    /// Badge border color. Defaults to `LMKColor.backgroundPrimary`.
-    public var borderColor: UIColor = LMKColor.backgroundPrimary {
-        didSet { layer.borderColor = borderColor.cgColor }
-    }
+    private var resolved = Style()
 
     // MARK: - Initialization
 
-    override public init(frame: CGRect) {
-        super.init(frame: frame)
+    public init(style: Style = Style()) {
+        self.style = style
+        super.init(frame: .zero)
         setupUI()
+        lmk_startApplyingTheme()
+    }
+
+    override public convenience init(frame: CGRect) {
+        self.init(style: Style())
+        self.frame = frame
     }
 
     @available(*, unavailable)
@@ -69,69 +153,94 @@ public final class LMKBadgeView: UIView {
     // MARK: - Setup
 
     private func setupUI() {
-        backgroundColor = badgeColor
-        layer.borderColor = borderColor.cgColor
-        layer.borderWidth = Self.config.borderWidth
-        clipsToBounds = true
-
-        countLabel.font = LMKTypography.extraSmallSemibold
-        countLabel.textColor = textColor
         countLabel.textAlignment = .center
         addSubview(countLabel)
-        countLabel.snp.makeConstraints { make in
-            make.center.equalToSuperview()
+        countLabel.snp.makeConstraints { $0.center.equalToSuperview() }
+        // A badge is as wide as its content: a stack or a row never stretches or squeezes it.
+        for axis in [NSLayoutConstraint.Axis.horizontal, .vertical] {
+            setContentHuggingPriority(.required, for: axis)
+            setContentCompressionResistancePriority(.required, for: axis)
         }
-
         isAccessibilityElement = true
         accessibilityTraits = .staticText
-
-        _ = registerForTraitChanges([UITraitUserInterfaceStyle.self], action: #selector(refreshDynamicColors))
-    }
-
-    @objc private func refreshDynamicColors() {
-        layer.borderColor = borderColor.cgColor
     }
 
     override public func layoutSubviews() {
         super.layoutSubviews()
-        layer.cornerRadius = bounds.height / 2
+        lmk_layoutSurfaceIfNeeded()
     }
 
     // MARK: - Configuration
 
-    /// Configure as a count badge. Hides if count is 0.
-    public func configure(count: Int) {
-        isHidden = count <= 0
-        countLabel.text = count > 99 ? "99+" : "\(count)"
-        accessibilityLabel = "\(count)"
+    /// Sets the content; a zero count or empty text hides the badge.
+    public func configure(_ content: Content) {
+        self.content = content
+        updateContent()
+    }
+
+    private func updateContent() {
+        switch content {
+        case let .count(count)?:
+            isHidden = count <= 0
+            countLabel.lmk_setText(count > Self.overflowThreshold ? (resolved.overflowText ?? Self.defaultOverflowText) : "\(count)")
+            accessibilityLabel = customAccessibilityLabel ?? "\(count)"
+        case let .text(text)?:
+            isHidden = text.isEmpty
+            countLabel.lmk_setText(text)
+            accessibilityLabel = customAccessibilityLabel ?? text
+        case .dot?:
+            isHidden = false
+            countLabel.lmk_setText(nil)
+            accessibilityLabel = customAccessibilityLabel ?? strings.dotAccessibilityLabel
+        case nil:
+            isHidden = true
+            countLabel.lmk_setText(nil)
+            accessibilityLabel = customAccessibilityLabel
+        }
         invalidateIntrinsicContentSize()
     }
 
-    /// Configure with custom text (e.g., "New").
-    public func configure(text: String) {
-        isHidden = text.isEmpty
-        countLabel.text = text
-        accessibilityLabel = text
-        invalidateIntrinsicContentSize()
-    }
+    private static let overflowThreshold = 99
+    private static let defaultOverflowText = "99+"
+    private static let defaultMinWidth: CGFloat = 18
+    private static let defaultHeight: CGFloat = 18
+    private static let defaultHorizontalPadding: CGFloat = 6
+    private static let defaultDotSizeRatio: CGFloat = 0.5
+    private static let defaultBorderWidth: CGFloat = 1.5
 
-    /// Configure as a dot badge (no text).
-    public func configure() {
-        isHidden = false
-        countLabel.text = nil
-        accessibilityLabel = lmkBadgeStrings.dotAccessibilityLabel
-        invalidateIntrinsicContentSize()
+    // MARK: - Theme
+
+    public func applyTheme(_ theme: LMKTheme) {
+        resolved = theme.badge.merging(style)
+        let defaults = LMKSurfaceStyle(
+            background: .solid(LMKColor.error),
+            corners: .capsule,
+            border: .solid(LMKColor.backgroundPrimary, width: Self.defaultBorderWidth),
+            shadow: LMKShadowSource.none
+        )
+        let applied = lmk_apply(surface: resolved.surface, defaults: defaults)
+        let fill: UIColor = if case let .solid(color) = applied.background, let color { color } else { LMKColor.error }
+        countLabel.lmk_apply(resolved.textStyle ?? .extraSmallSemibold, color: resolved.textColor ?? LMKColor.onFill(fill, preferred: LMKColor.onAccent))
+        updateContent()
+        didApplyStyle?(self)
     }
 
     override public var intrinsicContentSize: CGSize {
-        let config = Self.config
+        let height = resolved.height ?? Self.defaultHeight
         if let text = countLabel.text, !text.isEmpty {
             let textSize = countLabel.intrinsicContentSize
-            let width = max(config.minWidth, textSize.width + config.horizontalPadding * 2)
-            return CGSize(width: width, height: config.height)
+            let width = max(resolved.minWidth ?? Self.defaultMinWidth, textSize.width + (resolved.horizontalPadding ?? Self.defaultHorizontalPadding) * 2)
+            return CGSize(width: width, height: height)
         }
-        // Dot badge: small circle
-        let dotSize = config.height * config.dotSizeRatio
+        let dotSize = height * (resolved.dotSizeRatio ?? Self.defaultDotSizeRatio)
         return CGSize(width: dotSize, height: dotSize)
+    }
+}
+
+public nonisolated extension LMKTheme {
+    /// App-wide default style for `LMKBadgeView` (also the badge metrics other components reuse).
+    var badge: LMKBadgeView.Style {
+        get { self[LMKBadgeView.Style.self] }
+        set { self[LMKBadgeView.Style.self] = newValue }
     }
 }

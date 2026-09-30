@@ -2,39 +2,28 @@
 //  LMKAlpha.swift
 //  LumiKit
 //
-//  Alpha/opacity tokens.
-//  Proxies to `LMKThemeManager.shared.alpha` for customization.
+//  Opacity tokens. Proxies to `LMKTheme.current.alpha`.
 //
 
 import UIKit
 
-/// Alpha/opacity tokens for the Lumi design system.
+/// Opacity tokens: a seven-step ramp plus `dimming` and `disabled`.
 ///
-/// Customize by applying an alpha theme:
-/// ```swift
-/// LMKThemeManager.shared.apply(alpha: .init(disabled: 0.4))
-/// ```
-public enum LMKAlpha {
+/// Usage: `overlay.backgroundColor = LMKColor.scrim.withAlphaComponent(LMKAlpha.dimming)`
+public nonisolated enum LMKAlpha {
     private static var config: LMKAlphaTheme {
-        LMKThemeManager.shared.alpha
+        LMKTheme.current.alpha
     }
 
-    /// Semi-transparent overlay (default 0.5).
-    public static var overlay: CGFloat { config.overlay }
-    /// Dimming overlay for modal bottom sheets (default 0.4).
-    public static var dimmingOverlay: CGFloat { config.dimmingOverlay }
-    /// Disabled state alpha (default 0.38).
+    public static var xxs: CGFloat { config.xxs }
+    public static var xs: CGFloat { config.xs }
+    public static var small: CGFloat { config.small }
+    public static var medium: CGFloat { config.medium }
+    public static var large: CGFloat { config.large }
+    public static var xl: CGFloat { config.xl }
+    public static var xxl: CGFloat { config.xxl }
+    /// Dimming view behind sheets and panels.
+    public static var dimming: CGFloat { config.dimming }
+    /// Disabled controls.
     public static var disabled: CGFloat { config.disabled }
-    /// Semi-transparent background (default 0.3).
-    public static var semiTransparent: CGFloat { config.semiTransparent }
-    /// Strong overlay for dark backgrounds (e.g. photo overlay buttons) (default 0.7).
-    public static var overlayStrong: CGFloat { config.overlayStrong }
-    /// Light mode highlight overlay (default 0.1).
-    public static var overlayLight: CGFloat { config.overlayLight }
-    /// Dark mode highlight overlay (default 0.2).
-    public static var overlayDark: CGFloat { config.overlayDark }
-    /// Medium overlay for selection highlight (default 0.15).
-    public static var overlayMedium: CGFloat { config.overlayMedium }
-    /// Opaque overlay for loading/shimmer backgrounds (default 0.8).
-    public static var overlayOpaque: CGFloat { config.overlayOpaque }
 }

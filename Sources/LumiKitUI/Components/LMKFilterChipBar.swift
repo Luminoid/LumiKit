@@ -2,75 +2,143 @@
 //  LMKFilterChipBar.swift
 //  LumiKit
 //
-//  Horizontal scrolling filter chip bar.
+//  Horizontally scrolling row of `LMKChipView`s with single or multiple
+//  selection and an optional "All" chip that clears the selection.
 //
 
 import SnapKit
 import UIKit
 
-/// Horizontal scrolling filter chip bar using `LMKChipView`.
+/// Filter chip bar.
 ///
-/// Manages single-select state across chips by default. Optionally includes an
-/// "All" chip that clears the filter selection. Selection callback fires with
-/// the integer index of the filter or `nil` when "All" is selected.
-///
-/// Set `allowsMultipleSelection` for an additive mode where taps toggle chips
-/// independently (no radio behavior) and selection is reported through
-/// `multiSelectionChangedHandler` as a set of filter indices. Deselecting the
-/// last chip is allowed and reports an empty set; consumers decide how to
-/// render it (typically as "show all"). The "All" chip, when configured,
-/// clears the set and stays highlighted while the selection is empty.
-public final class LMKFilterChipBar: UIView {
+/// ```swift
+/// let bar = LMKFilterChipBar()
+/// bar.configure(items: [.init(title: "Indoor", icon: leaf), .init(title: "Outdoor")], allTitle: "All")
+/// bar.onSelectionChange = { indices in filter(indices) }   // empty = "All" / nothing
+/// bar.selectionMode = .multiple
+/// ```
+public final class LMKFilterChipBar: UIView, LMKThemeApplying {
+    // MARK: - Types
+
+    /// One chip.
+    public struct Item {
+        public var title: String
+        public var icon: UIImage?
+
+        public init(title: String, icon: UIImage? = nil) {
+            self.title = title
+            self.icon = icon
+        }
+    }
+
+    /// How taps change the selection.
+    public nonisolated enum SelectionMode: Sendable, Hashable {
+        /// One chip at a time; `allowsEmpty` lets a tap on the selected chip clear it.
+        case single(allowsEmpty: Bool)
+        /// Taps toggle chips independently.
+        case multiple
+    }
+
+    // MARK: - Style
+
+    public nonisolated struct Style: Sendable, Equatable, LMKThemeExtension {
+        /// Style of every chip; `nil` = outlined. A filled style draws the chips that are not
+        /// selected in the soft tint, so the selected one, in the full tint, stands out; set
+        /// `selectedVariant` or `selected` on the style to decide both looks yourself.
+        public var chip: LMKChipView.Style?
+        /// Gap between chips; `nil` = `small`.
+        public var spacing: CGFloat?
+        /// Insets around the row; `nil` = `large` horizontally.
+        public var contentInsets: NSDirectionalEdgeInsets?
+        /// iOS 26 scroll edge effects at both ends; `nil` = yes.
+        public var showsEdgeEffects: Bool?
+        /// Scroll the selected chip into view after a tap; `nil` = yes.
+        public var scrollsSelectionToVisible: Bool?
+
+        public init(chip: LMKChipView.Style? = nil, spacing: CGFloat? = nil, contentInsets: NSDirectionalEdgeInsets? = nil, showsEdgeEffects: Bool? = nil, scrollsSelectionToVisible: Bool? = nil) {
+            self.chip = chip
+            self.spacing = spacing
+            self.contentInsets = contentInsets
+            self.showsEdgeEffects = showsEdgeEffects
+            self.scrollsSelectionToVisible = scrollsSelectionToVisible
+        }
+
+        public static let defaultValue = Self()
+
+        /// `other`'s non-nil fields over this style's.
+        public func merging(_ other: Self) -> Self {
+            Self(
+                chip: other.chip.map { chip?.merging($0) ?? $0 } ?? chip,
+                spacing: other.spacing ?? spacing,
+                contentInsets: other.contentInsets ?? contentInsets,
+                showsEdgeEffects: other.showsEdgeEffects ?? showsEdgeEffects,
+                scrollsSelectionToVisible: other.scrollsSelectionToVisible ?? scrollsSelectionToVisible
+            )
+        }
+    }
+
     // MARK: - Public
 
-    /// Called when selection changes. `nil` means "All" is selected (when `allTitle`
-    /// was provided) or no chip is selected.
-    public var selectionChangedHandler: ((Int?) -> Void)?
+    /// Called after a user tap changes the selection, with the selected item indices
+    /// (empty = "All" / no selection).
+    public var onSelectionChange: ((Set<Int>) -> Void)?
 
-    /// Currently selected filter index, or `nil` for "All" / no selection.
-    /// Tracks single-select mode only.
-    public private(set) var selectedIndex: Int?
+    /// The selected item indices (empty = "All" / no selection).
+    public private(set) var selection: Set<Int> = []
 
-    /// When `true`, taps toggle chips independently (additive multi-select) and
-    /// report through `multiSelectionChangedHandler` / `selectedIndices`;
-    /// `selectionChangedHandler` and `selectedIndex` are not used. Defaults to
-    /// `false` (single-select). Set before `configure(allTitle:filterTitles:style:)`.
-    public var allowsMultipleSelection = false
+    /// Single (default, empty allowed) or multiple selection.
+    public var selectionMode: SelectionMode = .single(allowsEmpty: true) {
+        didSet {
+            guard selectionMode != oldValue else { return }
+            if case .single = selectionMode, selection.count > 1, let first = selection.min() {
+                selection = [first]
+            }
+            updateChipStates()
+        }
+    }
 
-    /// Called when selection changes in multi-select mode, with the full set of
-    /// selected filter indices. Deselecting the last chip is allowed and fires
-    /// with an empty set; consumers decide how to treat it (typically "show all").
-    public var multiSelectionChangedHandler: ((Set<Int>) -> Void)?
+    /// Enables or disables every chip.
+    public var isEnabled = true {
+        didSet {
+            guard isEnabled != oldValue else { return }
+            chips.forEach { $0.isEnabled = isEnabled }
+        }
+    }
 
-    /// Currently selected filter indices. Tracks multi-select mode only; empty
-    /// means no chip is selected.
-    public private(set) var selectedIndices: Set<Int> = []
+    /// Per-instance style; `nil` fields resolve from `theme.filterChipBar`, then the built-in look.
+    public var style: Style {
+        didSet {
+            guard style != oldValue else { return }
+            applyTheme(traitCollection.lmkTheme)
+        }
+    }
 
-    // MARK: - Internal State
+    /// Called at the end of every `applyTheme`, for tweaks the style does not cover.
+    public var didApplyStyle: ((LMKFilterChipBar) -> Void)?
 
-    private var chips: [LMKChipView] = []
+    /// The chips in display order (the "All" chip first when configured).
+    public private(set) var chips: [LMKChipView] = []
+    public let scrollView = UIScrollView()
+    public let chipStack = UIStackView()
+
+    /// The configured items.
+    public private(set) var items: [Item] = []
     private var hasAllChip = false
-
-    // MARK: - UI
-
-    private lazy var scrollView: UIScrollView = {
-        let scroll = UIScrollView()
-        scroll.showsHorizontalScrollIndicator = false
-        return scroll
-    }()
-
-    private lazy var chipStack: UIStackView = {
-        let stack = UIStackView()
-        stack.axis = .horizontal
-        stack.spacing = LMKSpacing.small
-        return stack
-    }()
+    private var resolved = Style()
+    private var insetsConstraint: Constraint?
 
     // MARK: - Init
 
-    override public init(frame: CGRect) {
-        super.init(frame: frame)
+    public init(style: Style = Style()) {
+        self.style = style
+        super.init(frame: .zero)
         setupUI()
+        lmk_startApplyingTheme()
+    }
+
+    override public convenience init(frame: CGRect) {
+        self.init(style: Style())
+        self.frame = frame
     }
 
     @available(*, unavailable)
@@ -79,136 +147,161 @@ public final class LMKFilterChipBar: UIView {
     }
 
     private func setupUI() {
+        scrollView.showsHorizontalScrollIndicator = false
         addSubview(scrollView)
         scrollView.addSubview(chipStack)
-
-        scrollView.snp.makeConstraints { make in
-            make.edges.equalToSuperview()
-        }
-
+        chipStack.axis = .horizontal
+        scrollView.snp.makeConstraints { $0.edges.equalToSuperview() }
         chipStack.snp.makeConstraints { make in
-            make.edges.equalToSuperview().inset(UIEdgeInsets(
-                top: 0,
-                left: LMKSpacing.large,
-                bottom: 0,
-                right: LMKSpacing.large
-            ))
+            insetsConstraint = make.edges.equalToSuperview().inset(0).constraint
             make.height.equalToSuperview()
         }
     }
 
+    // MARK: - Theme
+
+    public func applyTheme(_ theme: LMKTheme) {
+        resolved = theme.filterChipBar.merging(style)
+        chipStack.spacing = resolved.spacing ?? theme.spacing.small
+        let insets = resolved.contentInsets ?? .lmk_symmetric(vertical: 0, horizontal: theme.spacing.large)
+        insetsConstraint?.update(inset: UIEdgeInsets(top: insets.top, left: insets.leading, bottom: insets.bottom, right: insets.trailing))
+        for chip in chips {
+            chip.style = chipStyle
+        }
+        if #available(iOS 26, *) {
+            let showsEdgeEffects = resolved.showsEdgeEffects ?? true
+            scrollView.leftEdgeEffect.isHidden = !showsEdgeEffects
+            scrollView.rightEdgeEffect.isHidden = !showsEdgeEffects
+        }
+        didApplyStyle?(self)
+    }
+
+    /// The style the chips take: the bar's, with a filled style softened while not selected.
+    var chipStyle: LMKChipView.Style {
+        Self.chipStyle(for: resolved.chip)
+    }
+
+    /// In a row where every chip carries the full tint, the selected one is a shade apart and
+    /// hard to pick out. A filled bar keeps the full tint for the selection.
+    static func chipStyle(for style: LMKChipView.Style?) -> LMKChipView.Style {
+        guard var style else { return .outlined }
+        if style.variant == .filled, style.selectedVariant == nil, style.selected?.background == nil {
+            style.variant = .tinted
+            style.selectedVariant = .filled
+        }
+        return style
+    }
+
     // MARK: - Configuration
 
-    /// Configure with filter titles and an optional "All" chip.
-    /// - Parameters:
-    ///   - allTitle: Title for the "All" chip. When non-nil, an "All" chip is prepended and
-    ///     selecting it clears the filter (`selectionChangedHandler(nil)`).
-    ///   - filterTitles: Titles for each filter chip, in display order.
-    ///   - filterIcons: Optional leading icons, positionally matched to `filterTitles`.
-    ///     Entries beyond the array's length (or `nil` entries) render text-only chips.
-    ///     The "All" chip never carries an icon.
-    ///   - style: Chip style applied to every chip. Defaults to `.outlined`.
-    public func configure(
-        allTitle: String? = nil,
-        filterTitles: [String],
-        filterIcons: [UIImage?]? = nil,
-        style: LMKChipStyle = .outlined
-    ) {
+    /// Rebuilds the chips. `allTitle` prepends an "All" chip that clears the selection.
+    public func configure(items: [Item], allTitle: String? = nil) {
         chipStack.arrangedSubviews.forEach { $0.removeFromSuperview() }
         chips.removeAll()
+        self.items = items
         hasAllChip = allTitle != nil
+        selection = []
 
         if let allTitle {
-            let allChip = LMKChipView(text: allTitle, style: style)
-            allChip.tapHandler = { [weak self] in
-                self?.selectAll()
-            }
+            let allChip = makeChip(title: allTitle, icon: nil)
+            allChip.onTap = { [weak self] in self?.selectAll() }
             chipStack.addArrangedSubview(allChip)
             chips.append(allChip)
         }
-
-        for (index, title) in filterTitles.enumerated() {
-            let icon = filterIcons.flatMap { index < $0.count ? $0[index] : nil }
-            let chip = LMKChipView(text: title, icon: icon, style: style)
-            chip.tapHandler = { [weak self] in
-                self?.selectFilter(at: index)
-            }
+        for (index, item) in items.enumerated() {
+            let chip = makeChip(title: item.title, icon: item.icon)
+            chip.onTap = { [weak self] in self?.tapItem(at: index) }
             chipStack.addArrangedSubview(chip)
             chips.append(chip)
         }
-
         updateChipStates()
-        enforceMinimumChipWidth()
     }
 
-    /// Ensure each chip is at least as wide as it is tall so the capsule
-    /// corner radius (`bounds.height / 2`) renders in full on both ends.
-    /// Without this, short labels (e.g. "A", "1") can clip the corners
-    /// because the two rounded ends would otherwise overlap.
-    private func enforceMinimumChipWidth() {
-        for chip in chips {
-            chip.snp.makeConstraints { make in
-                make.width.greaterThanOrEqualTo(chip.snp.height)
-            }
+    /// Rebuilds the chips from titles and positionally matched icons.
+    public func configure(allTitle: String? = nil, filterTitles: [String], filterIcons: [UIImage?]? = nil) {
+        let items = filterTitles.enumerated().map { index, title in
+            Item(title: title, icon: filterIcons.flatMap { index < $0.count ? $0[index] : nil })
         }
+        configure(items: items, allTitle: allTitle)
     }
 
-    /// Programmatically select a filter index, or `nil` for "All" / no selection.
-    /// Does NOT fire `selectionChangedHandler`.
-    public func setSelectedIndex(_ index: Int?) {
-        selectedIndex = index
-        updateChipStates()
+    private func makeChip(title: String, icon: UIImage?) -> LMKChipView {
+        let chip = LMKChipView(text: title, icon: icon, style: chipStyle)
+        chip.isEnabled = isEnabled
+        // At least as wide as tall, so the capsule ends never overlap on one-letter titles.
+        chip.snp.makeConstraints { $0.width.greaterThanOrEqualTo(chip.snp.height) }
+        return chip
     }
 
-    /// Programmatically set the selected filter indices (multi-select mode).
-    /// Does NOT fire `multiSelectionChangedHandler`.
-    public func setSelectedIndices(_ indices: Set<Int>) {
-        selectedIndices = indices
+    /// Sets the selection without firing `onSelectionChange`.
+    public func setSelection(_ indices: Set<Int>, animated: Bool = false, scrollsToVisible: Bool = false) {
+        var indices = indices.filter { $0 >= 0 && $0 < items.count }
+        if case .single = selectionMode, indices.count > 1, let first = indices.min() {
+            indices = [first]
+        }
+        selection = indices
         updateChipStates()
+        if scrollsToVisible, let first = indices.min() {
+            scrollChipToVisible(itemIndex: first, animated: animated)
+        }
     }
 
     // MARK: - Selection
 
     private func selectAll() {
-        if allowsMultipleSelection {
-            selectedIndices.removeAll()
-            updateChipStates()
-            multiSelectionChangedHandler?(selectedIndices)
-        } else {
-            selectedIndex = nil
-            updateChipStates()
-            selectionChangedHandler?(nil)
-        }
+        guard !selection.isEmpty else { return }
+        selection = []
+        updateChipStates()
+        onSelectionChange?(selection)
     }
 
-    private func selectFilter(at index: Int) {
-        if allowsMultipleSelection {
-            if selectedIndices.contains(index) {
-                selectedIndices.remove(index)
+    private func tapItem(at index: Int) {
+        switch selectionMode {
+        case let .single(allowsEmpty):
+            if selection == [index] {
+                guard allowsEmpty else { return }
+                selection = []
             } else {
-                selectedIndices.insert(index)
+                selection = [index]
             }
-            updateChipStates()
-            multiSelectionChangedHandler?(selectedIndices)
-        } else {
-            selectedIndex = index
-            updateChipStates()
-            selectionChangedHandler?(index)
+        case .multiple:
+            if selection.contains(index) {
+                selection.remove(index)
+            } else {
+                selection.insert(index)
+            }
         }
+        updateChipStates()
+        if resolved.scrollsSelectionToVisible ?? true {
+            scrollChipToVisible(itemIndex: index, animated: true)
+        }
+        onSelectionChange?(selection)
     }
 
     private func updateChipStates() {
         for (chipIndex, chip) in chips.enumerated() {
             if hasAllChip, chipIndex == 0 {
-                chip.isChipSelected = allowsMultipleSelection
-                    ? selectedIndices.isEmpty
-                    : selectedIndex == nil
+                chip.isSelected = selection.isEmpty
             } else {
-                let filterIndex = hasAllChip ? chipIndex - 1 : chipIndex
-                chip.isChipSelected = allowsMultipleSelection
-                    ? selectedIndices.contains(filterIndex)
-                    : selectedIndex == filterIndex
+                let itemIndex = hasAllChip ? chipIndex - 1 : chipIndex
+                chip.isSelected = selection.contains(itemIndex)
             }
         }
+    }
+
+    private func scrollChipToVisible(itemIndex: Int, animated: Bool) {
+        let chipIndex = hasAllChip ? itemIndex + 1 : itemIndex
+        guard chips.indices.contains(chipIndex), bounds.width > 0 else { return }
+        layoutIfNeeded()
+        let frame = chips[chipIndex].convert(chips[chipIndex].bounds, to: scrollView)
+        scrollView.scrollRectToVisible(frame.insetBy(dx: -(resolved.spacing ?? traitCollection.lmkTheme.spacing.small), dy: 0), animated: animated && LMKAnimation.shouldAnimate)
+    }
+}
+
+public nonisolated extension LMKTheme {
+    /// App-wide default style for `LMKFilterChipBar`.
+    var filterChipBar: LMKFilterChipBar.Style {
+        get { self[LMKFilterChipBar.Style.self] }
+        set { self[LMKFilterChipBar.Style.self] = newValue }
     }
 }

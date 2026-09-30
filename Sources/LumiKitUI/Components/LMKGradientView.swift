@@ -2,92 +2,115 @@
 //  LMKGradientView.swift
 //  LumiKit
 //
-//  Configurable linear gradient background view.
+//  Gradient background view (linear or radial) backed by `CAGradientLayer`,
+//  re-stamping its colors on trait changes.
 //
 
 import UIKit
 
-/// Direction for a linear gradient.
-public enum LMKGradientDirection: Sendable {
-    case topToBottom
-    case leftToRight
-    case topLeftToBottomRight
-    case topRightToBottomLeft
-
-    var startPoint: CGPoint {
-        switch self {
-        case .topToBottom: CGPoint(x: 0.5, y: 0)
-        case .leftToRight: CGPoint(x: 0, y: 0.5)
-        case .topLeftToBottomRight: CGPoint(x: 0, y: 0)
-        case .topRightToBottomLeft: CGPoint(x: 1, y: 0)
-        }
-    }
-
-    var endPoint: CGPoint {
-        switch self {
-        case .topToBottom: CGPoint(x: 0.5, y: 1)
-        case .leftToRight: CGPoint(x: 1, y: 0.5)
-        case .topLeftToBottomRight: CGPoint(x: 1, y: 1)
-        case .topRightToBottomLeft: CGPoint(x: 0, y: 1)
-        }
-    }
-}
-
-/// Configurable linear gradient view backed by `CAGradientLayer`.
+/// Gradient view.
 ///
 /// ```swift
-/// let gradient = LMKGradientView(
-///     colors: [LMKColor.primary, LMKColor.primaryDark],
-///     direction: .topToBottom
-/// )
+/// let gradient = LMKGradientView(colors: [LMKColor.primary, LMKColor.primaryVariant], direction: .topToBottom)
+/// let diagonal = LMKGradientView(colors: [.red, .blue], direction: .angle(30))
+/// let glow = LMKGradientView(colors: [.white, .clear], kind: .radial)
 /// ```
 public final class LMKGradientView: UIView {
+    // MARK: - Direction
+
+    /// Where a linear gradient runs (also the start and end of a radial gradient's radius).
+    public nonisolated enum Direction: Sendable, Equatable {
+        case topToBottom
+        case leftToRight
+        case topLeftToBottomRight
+        case topRightToBottomLeft
+        /// Degrees clockwise from `topToBottom` (0 = top to bottom, 90 = left to right).
+        case angle(CGFloat)
+        /// Explicit unit-space points.
+        case custom(start: CGPoint, end: CGPoint)
+
+        public static let named: [Self] = [.topToBottom, .leftToRight, .topLeftToBottomRight, .topRightToBottomLeft]
+
+        public var startPoint: CGPoint {
+            switch self {
+            case .topToBottom: CGPoint(x: 0.5, y: 0)
+            case .leftToRight: CGPoint(x: 0, y: 0.5)
+            case .topLeftToBottomRight: CGPoint(x: 0, y: 0)
+            case .topRightToBottomLeft: CGPoint(x: 1, y: 0)
+            case let .angle(degrees): Self.points(for: degrees).start
+            case let .custom(start, _): start
+            }
+        }
+
+        public var endPoint: CGPoint {
+            switch self {
+            case .topToBottom: CGPoint(x: 0.5, y: 1)
+            case .leftToRight: CGPoint(x: 1, y: 0.5)
+            case .topLeftToBottomRight: CGPoint(x: 1, y: 1)
+            case .topRightToBottomLeft: CGPoint(x: 0, y: 1)
+            case let .angle(degrees): Self.points(for: degrees).end
+            case let .custom(_, end): end
+            }
+        }
+
+        /// Unit-space endpoints for a direction `degrees` clockwise from top-to-bottom.
+        private static func points(for degrees: CGFloat) -> (start: CGPoint, end: CGPoint) {
+            let radians = degrees * .pi / 180
+            let dx = sin(radians) / 2
+            let dy = cos(radians) / 2
+            return (CGPoint(x: 0.5 - dx, y: 0.5 - dy), CGPoint(x: 0.5 + dx, y: 0.5 + dy))
+        }
+    }
+
+    /// Linear or radial.
+    public nonisolated enum Kind: Sendable, Hashable, CaseIterable {
+        case linear
+        /// Radiates from the center; `direction` is ignored.
+        case radial
+    }
+
+    // MARK: - Properties
+
     override public static var layerClass: AnyClass { CAGradientLayer.self }
 
-    private var gradientLayer: CAGradientLayer {
-        // Safe: layerClass override guarantees the type.
-        guard let gradient = layer as? CAGradientLayer else {
-            fatalError("LMKGradientView.layer must be CAGradientLayer (layerClass override)")
-        }
-        return gradient
+    private var gradientLayer: CAGradientLayer? { layer as? CAGradientLayer }
+
+    /// Gradient colors (dynamic colors follow the traits).
+    public var colors: [UIColor] {
+        didSet { applyColors() }
     }
 
-    /// Gradient colors.
-    public var colors: [UIColor] = [] {
-        didSet { gradientLayer.colors = colors.map(\.cgColor) }
+    /// Gradient direction (linear only).
+    public var direction: Direction {
+        didSet { applyGeometry() }
     }
 
-    /// Gradient direction.
-    public var direction: LMKGradientDirection = .topToBottom {
-        didSet {
-            gradientLayer.startPoint = direction.startPoint
-            gradientLayer.endPoint = direction.endPoint
-        }
+    /// Linear or radial.
+    public var kind: Kind {
+        didSet { applyGeometry() }
     }
 
-    /// Color stop locations (values in 0...1). `nil` for even distribution.
+    /// Color stop locations (`0...1`); `nil` for even distribution.
     public var locations: [NSNumber]? {
-        didSet { gradientLayer.locations = locations }
+        didSet { gradientLayer?.locations = locations }
     }
 
-    public init(
-        colors: [UIColor],
-        direction: LMKGradientDirection = .topToBottom,
-        locations: [NSNumber]? = nil
-    ) {
-        super.init(frame: .zero)
+    // MARK: - Initialization
+
+    public init(colors: [UIColor], direction: Direction = .topToBottom, kind: Kind = .linear, locations: [NSNumber]? = nil) {
         self.colors = colors
         self.direction = direction
+        self.kind = kind
         self.locations = locations
-        gradientLayer.colors = colors.map(\.cgColor)
-        gradientLayer.startPoint = direction.startPoint
-        gradientLayer.endPoint = direction.endPoint
-        gradientLayer.locations = locations
-
+        super.init(frame: .zero)
         isAccessibilityElement = false
         accessibilityElementsHidden = true
-
-        _ = registerForTraitChanges([UITraitUserInterfaceStyle.self], action: #selector(refreshDynamicColors))
+        gradientLayer?.locations = locations
+        applyGeometry()
+        applyColors()
+        registerForTraitChanges([UITraitUserInterfaceStyle.self, UITraitAccessibilityContrast.self, LMKThemeTrait.self]) { (view: Self, _) in
+            view.applyColors()
+        }
     }
 
     @available(*, unavailable)
@@ -95,7 +118,23 @@ public final class LMKGradientView: UIView {
         fatalError("init(coder:) has not been implemented")
     }
 
-    @objc private func refreshDynamicColors() {
-        gradientLayer.colors = colors.map(\.cgColor)
+    // MARK: - Helpers
+
+    private func applyColors() {
+        gradientLayer?.colors = colors.map { $0.resolvedColor(with: traitCollection).cgColor }
+    }
+
+    private func applyGeometry() {
+        guard let gradientLayer else { return }
+        switch kind {
+        case .linear:
+            gradientLayer.type = .axial
+            gradientLayer.startPoint = direction.startPoint
+            gradientLayer.endPoint = direction.endPoint
+        case .radial:
+            gradientLayer.type = .radial
+            gradientLayer.startPoint = CGPoint(x: 0.5, y: 0.5)
+            gradientLayer.endPoint = CGPoint(x: 1, y: 1)
+        }
     }
 }

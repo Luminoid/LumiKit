@@ -1,0 +1,26 @@
+/* LumiKitPhoto — Simplified Chinese */
+"photoBrowser.empty" = "没有照片";
+"photoBrowser.counter" = "第 %lld 张，共 %lld 张";
+"photoBrowser.tapToToggle.accessibilityHint" = "轻点两下缩放，轻点显示或隐藏控件";
+"photoBrowser.livePhoto.accessibilityLabel" = "实况照片";
+"photoBrowser.liveBadge" = "实况";
+"photoBrowser.dismiss.accessibilityLabel" = "关闭";
+"photoBrowser.action.accessibilityLabel" = "更多操作";
+"photoBrowser.previousPhoto" = "上一张照片";
+"photoBrowser.nextPhoto" = "下一张照片";
+"photoGrid.empty" = "没有照片";
+"photoGrid.sortAscending" = "最早在前";
+"photoGrid.sortDescending" = "最新在前";
+"photoGrid.aspectFit" = "适应";
+"photoGrid.aspectFill" = "填充";
+"photoGrid.livePhoto.accessibilityLabel" = "实况照片";
+"photoGrid.photo.accessibilityLabel" = "第 %lld 张照片，共 %lld 张";
+"photoCrop.title" = "裁剪";
+"photoCrop.free" = "自由";
+"photoCrop.cancel" = "取消";
+"photoCrop.done" = "完成";
+"photoCrop.aspectRatio.accessibilityLabel" = "宽高比";
+"sharePreview.share" = "分享";
+"sharePreview.saveImage" = "保存图片";
+"sharePreview.photoPermissionDenied" = "保存图片需要访问照片图库。请在“设置”中开启。";
+"sharePreview.close.accessibilityLabel" = "关闭";

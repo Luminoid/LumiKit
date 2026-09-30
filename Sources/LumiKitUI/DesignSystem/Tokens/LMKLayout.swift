@@ -2,72 +2,93 @@
 //  LMKLayout.swift
 //  LumiKit
 //
-//  General layout dimension tokens.
-//  Proxies to `LMKThemeManager.shared.layout` for customization.
+//  Layout dimension tokens. Proxies to `LMKTheme.current.layout`, except
+//  `hairline`, which is display physics rather than branding.
 //
 
 import UIKit
 
-/// General layout dimension tokens for the Lumi design system.
+/// Layout dimension tokens.
 ///
-/// Customize by applying a layout theme:
-/// ```swift
-/// LMKThemeManager.shared.apply(layout: .init(iconMedium: 28))
-/// ```
-public enum LMKLayout {
+/// Usage: `button.snp.makeConstraints { $0.size.equalTo(LMKLayout.minimumTouchTarget) }`
+public nonisolated enum LMKLayout {
     private static var config: LMKLayoutTheme {
-        LMKThemeManager.shared.layout
+        LMKTheme.current.layout
     }
 
-    /// Minimum touch target size (44pt per HIG).
+    // MARK: Touch targets and icon frames
+
+    /// HIG minimum hit target (44pt).
     public static var minimumTouchTarget: CGFloat { config.minimumTouchTarget }
-    /// Medium icon size — default 24pt.
     public static var iconMedium: CGFloat { config.iconMedium }
-    /// Large icon size — default 28pt.
     public static var iconLarge: CGFloat { config.iconLarge }
-    /// Small icon size — default 20pt.
     public static var iconSmall: CGFloat { config.iconSmall }
-    /// Extra small icon size (chevrons, compact indicators) — default 16pt.
     public static var iconExtraSmall: CGFloat { config.iconExtraSmall }
-    /// Tinted icon circle behind a list-row symbol — default 36pt.
+    /// Tinted circle behind a list-row symbol.
     public static var iconCircle: CGFloat { config.iconCircle }
-    /// Pull-to-refresh threshold; compact preview height — default 80pt.
-    public static var pullThreshold: CGFloat { config.pullThreshold }
-    /// Minimum cell height — default 100pt.
+
+    // MARK: SF Symbol point sizes
+
+    public static var symbolMicro: CGFloat { config.symbolMicro }
+    public static var symbolBadge: CGFloat { config.symbolBadge }
+    public static var symbolAccessory: CGFloat { config.symbolAccessory }
+    public static var symbolInline: CGFloat { config.symbolInline }
+    public static var symbolRow: CGFloat { config.symbolRow }
+    public static var symbolProminent: CGFloat { config.symbolProminent }
+    public static var symbolAction: CGFloat { config.symbolAction }
+    public static var symbolLarge: CGFloat { config.symbolLarge }
+    public static var symbolPlaceholder: CGFloat { config.symbolPlaceholder }
+    public static var symbolIllustration: CGFloat { config.symbolIllustration }
+    public static var symbolHero: CGFloat { config.symbolHero }
+
+    // MARK: Row heights
+
+    public static var rowHeightCompact: CGFloat { config.rowHeightCompact }
+    public static var rowHeight: CGFloat { config.rowHeight }
+    public static var rowHeightComfortable: CGFloat { config.rowHeightComfortable }
+    public static var rowHeightEstimated: CGFloat { config.rowHeightEstimated }
     public static var cellHeightMin: CGFloat { config.cellHeightMin }
-    /// Search bar container height — default 36pt.
-    public static var searchBarHeight: CGFloat { config.searchBarHeight }
-    /// Search bar magnifying glass icon size — default 18pt.
-    public static var searchBarIconSize: CGFloat { config.searchBarIconSize }
-    /// Clear button size — default 22pt.
-    public static var clearButtonSize: CGFloat { config.clearButtonSize }
 
-    // MARK: - Hairline
+    // MARK: Readable width
 
-    /// One physical pixel at the given display scale (e.g. 0.5 on 2x, ~0.33 on 3x).
-    ///
-    /// Deliberately not a theme axis: a hairline is display physics — the
-    /// thinnest line the screen can draw — not a branding decision, so it does
-    /// not route through ``LMKLayoutTheme``. Scales at or below 1 resolve to a
-    /// full point.
+    /// Maximum content width on wide canvases.
+    public static var readableContentMaxWidth: CGFloat { config.readableContentMaxWidth }
+
+    // MARK: Component metrics
+
+    public static var pullThreshold: CGFloat { config.pullThreshold }
+
+    // MARK: Hairline
+
+    /// One physical pixel at `scale` (1pt at 1x, 0.5pt at 2x, 1/3pt at 3x). Not themeable.
     public static func hairline(forScale scale: CGFloat) -> CGFloat {
         1 / max(1, scale)
     }
 
-    /// One physical pixel at the key window's display scale (fallback 2x).
-    ///
-    /// Reads the window's `displayScale` trait rather than `UIScreen.scale`,
-    /// so the value follows the display the scene is actually on. Prefer
-    /// ``hairline(for:)`` inside a view that may live on another display.
-    public static var hairline: CGFloat {
-        hairline(forScale: LMKSceneUtil.displayScale(of: LMKSceneUtil.getKeyWindow()) ?? 2)
+    /// One physical pixel on the key window's display (falls back to 2x when there is no window).
+    @MainActor public static var hairline: CGFloat {
+        hairline(forScale: LMKScene.displayScale(of: LMKScene.keyWindow) ?? 2)
     }
 
-    /// One physical pixel for the display `view` is rendered on, from its
-    /// trait collection. Falls back to the key window's scale for a view whose
-    /// scale trait is still unspecified (not yet in a hierarchy).
-    public static func hairline(for view: UIView) -> CGFloat {
-        guard let scale = LMKSceneUtil.displayScale(of: view) else { return hairline }
+    /// One physical pixel on the display `view` is rendered on.
+    @MainActor public static func hairline(for view: UIView) -> CGFloat {
+        guard let scale = LMKScene.displayScale(of: view) else { return hairline }
         return hairline(forScale: scale)
+    }
+
+    // MARK: Pixel alignment
+
+    /// `length` rounded to whole physical pixels at `scale`, at least one pixel for a positive
+    /// length. A line whose width is a fraction of a pixel (1.5pt at 3x is 4.5 pixels) renders
+    /// one pixel thicker on some edges than on others.
+    public static func pixelAligned(_ length: CGFloat, scale: CGFloat) -> CGFloat {
+        guard length > 0 else { return 0 }
+        let scale = max(1, scale)
+        return max(1, (length * scale).rounded()) / scale
+    }
+
+    /// `length` rounded to whole physical pixels on the display `view` is rendered on.
+    @MainActor public static func pixelAligned(_ length: CGFloat, for view: UIView) -> CGFloat {
+        pixelAligned(length, scale: LMKScene.displayScale(of: view) ?? LMKScene.screenScale)
     }
 }

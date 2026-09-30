@@ -1,0 +1,26 @@
+/* LumiKitPhoto — English */
+"photoBrowser.empty" = "No photos";
+"photoBrowser.counter" = "%lld of %lld";
+"photoBrowser.tapToToggle.accessibilityHint" = "Double-tap to zoom, tap to show or hide controls";
+"photoBrowser.livePhoto.accessibilityLabel" = "Live Photo";
+"photoBrowser.liveBadge" = "LIVE";
+"photoBrowser.dismiss.accessibilityLabel" = "Close";
+"photoBrowser.action.accessibilityLabel" = "More actions";
+"photoBrowser.previousPhoto" = "Previous Photo";
+"photoBrowser.nextPhoto" = "Next Photo";
+"photoGrid.empty" = "No Photos";
+"photoGrid.sortAscending" = "Oldest First";
+"photoGrid.sortDescending" = "Newest First";
+"photoGrid.aspectFit" = "Fit";
+"photoGrid.aspectFill" = "Fill";
+"photoGrid.livePhoto.accessibilityLabel" = "Live Photo";
+"photoGrid.photo.accessibilityLabel" = "Photo %lld of %lld";
+"photoCrop.title" = "Crop";
+"photoCrop.free" = "Free";
+"photoCrop.cancel" = "Cancel";
+"photoCrop.done" = "Done";
+"photoCrop.aspectRatio.accessibilityLabel" = "Aspect ratio";
+"sharePreview.share" = "Share";
+"sharePreview.saveImage" = "Save Image";
+"sharePreview.photoPermissionDenied" = "Photo library access is required to save images. Please enable it in Settings.";
+"sharePreview.close.accessibilityLabel" = "Close";

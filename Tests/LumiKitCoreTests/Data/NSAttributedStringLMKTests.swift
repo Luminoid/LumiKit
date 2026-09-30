@@ -14,8 +14,14 @@ struct NSAttributedStringLMKTests {
     func `Concatenation operator combines strings`() {
         let a = NSAttributedString(string: "Hello ")
         let b = NSAttributedString(string: "World")
-        let result = a + b
+        let result = a.lmk_appending(b)
         #expect(result.string == "Hello World")
+    }
+
+    @Test
+    func `lmk_appending concatenates two attributed strings`() {
+        let combined = NSAttributedString(string: "Hello ").lmk_appending(NSAttributedString(string: "World"))
+        #expect(combined.string == "Hello World")
     }
 
     @Test

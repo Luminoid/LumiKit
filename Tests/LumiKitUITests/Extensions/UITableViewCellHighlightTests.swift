@@ -85,13 +85,4 @@ struct UITableViewCellHighlightTests {
         #expect(cell.contentView.backgroundColor != nil)
         #expect(cell.contentView.backgroundColor != .clear)
     }
-
-    @Test
-    func `UITableView lmk_configureCellHighlight configures the cell`() {
-        let tableView = UITableView()
-        let cell = UITableViewCell()
-        tableView.lmk_configureCellHighlight(cell)
-
-        #expect(cell.selectedBackgroundView != nil)
-    }
 }

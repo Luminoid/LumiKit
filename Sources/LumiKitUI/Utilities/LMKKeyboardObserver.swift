@@ -16,42 +16,42 @@ import UIKit
 /// }
 /// observer.startObserving()
 /// ```
-public final class LMKKeyboardObserver {
+final class LMKKeyboardObserver {
     /// Keyboard change info.
     ///
     /// - Note: The `height` value comes from `keyboardFrameEndUserInfoKey` and includes the
     ///   home indicator safe area on devices with no physical home button. If adjusting a
     ///   bottom constraint already pinned to `safeAreaLayoutGuide`, subtract
     ///   `view.safeAreaInsets.bottom` to avoid double-compensating.
-    public struct KeyboardInfo {
+    struct KeyboardInfo {
         /// Keyboard height (0 when hidden). Includes the home indicator safe area.
-        public let height: CGFloat
+        let height: CGFloat
         /// Keyboard end frame in screen coordinates (`keyboardFrameEndUserInfoKey`).
         /// Convert into a local view (`view.convert(frameEnd, from: nil)`) and
         /// intersect to get the actual overlap — the raw `height` overstates it
         /// for floating keyboards, short windows, and side-by-side layouts.
-        public let frameEnd: CGRect
+        let frameEnd: CGRect
         /// Animation duration.
-        public let animationDuration: TimeInterval
+        let animationDuration: TimeInterval
         /// Animation curve as animation options.
-        public let animationOptions: UIView.AnimationOptions
+        let animationOptions: UIView.AnimationOptions
         /// Whether the keyboard is visible.
-        public var isVisible: Bool { height > 0 }
+        var isVisible: Bool { height > 0 }
     }
 
     /// Called on keyboard show/hide with animation info.
-    public var onKeyboardChange: ((KeyboardInfo) -> Void)?
+    var onKeyboardChange: ((KeyboardInfo) -> Void)?
 
     /// Current keyboard height (0 when hidden).
-    public private(set) var currentHeight: CGFloat = 0
+    private(set) var currentHeight: CGFloat = 0
 
     // nonisolated(unsafe): accessed from MainActor methods and deinit (exclusive access).
     private nonisolated(unsafe) var observers: [any NSObjectProtocol] = []
 
-    public init() {}
+    init() {}
 
     /// Start observing keyboard notifications.
-    public func startObserving() {
+    func startObserving() {
         stopObserving()
 
         let showObserver = NotificationCenter.default.addObserver(
@@ -78,7 +78,7 @@ public final class LMKKeyboardObserver {
     }
 
     /// Stop observing keyboard notifications.
-    public func stopObserving() {
+    func stopObserving() {
         observers.forEach { NotificationCenter.default.removeObserver($0) }
         observers = []
     }

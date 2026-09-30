@@ -39,10 +39,10 @@ struct LMKCornerRadiusConfigurationTests {
 
     @Test
     func `Custom corner radius is applied via proxy`() {
-        let original = LMKThemeManager.shared.cornerRadius
-        defer { LMKThemeManager.shared.apply(cornerRadius: original) }
+        let original = LMKTheme.current.cornerRadius
+        defer { LMKTheme.update { $0.cornerRadius = original } }
 
-        LMKThemeManager.shared.apply(cornerRadius: .init(small: 12, medium: 16))
+        LMKTheme.update { $0.cornerRadius = .init(small: 12, medium: 16) }
         #expect(LMKCornerRadius.small == 12)
         #expect(LMKCornerRadius.medium == 16)
         #expect(LMKCornerRadius.xs == 4) // unchanged

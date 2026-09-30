@@ -1,0 +1,355 @@
+# LumiKit 0.x -> 1.0 migration rules. Applied by Scripts/migrate-1.0.sh; rendered into
+# docs/MIGRATION-1.0.md by `--print-table`. Tab-separated: kind<TAB>old<TAB>new[<TAB>note].
+#
+# Pass order (the script enforces it):
+#   1. product   literal module/product names (imports, pbxproj, Package.swift, project.yml)
+#   2. path      dotted paths written with the OLD type name on the left of the dot; the type pass
+#                renames the type afterwards, so a rule may map into another old type's namespace
+#                (e.g. LMKCountdownConfirmation.present( -> LMKAlertPresenter.presentCountdownConfirmation()
+#                and must never produce a NEW type name that is also an OLD name (LMKTheme)
+#   3. type      identifiers, one simultaneous word-boundary alternation, longest-first
+#   4. regex     perl patterns applied after the type pass (labels, factory forms, color roles)
+#   5. member    type-blind `.old` -> `.new` member renames (skippable with --no-members)
+#   6. filematch precondition<TAB>pattern<TAB>replacement, applied only in files whose text matches the precondition
+#   7. report    pattern<TAB>recipe: hand edits, printed by file:line; `remove:` recipes fail the run while present
+
+# ---------------------------------------------------------------- 1. products
+product	LumiKitNetwork	LumiKitDebug
+
+# ---------------------------------------------------------------- 2. dotted paths (old type on the left)
+# Theme store: LMKThemeManager becomes the static API on LMKTheme (the type pass renames the identifier).
+path	LMKThemeManager.shared.apply(	LMKThemeManager.apply(
+path	LMKThemeManager.shared.reset()	LMKThemeManager.reset()
+path	LMKThemeManager.shared.current	LMKThemeManager.current.colors
+path	LMKThemeManager.shared.typography	LMKThemeManager.current.typography
+path	LMKThemeManager.shared.spacing	LMKThemeManager.current.spacing
+path	LMKThemeManager.shared.cornerRadius	LMKThemeManager.current.cornerRadius
+path	LMKThemeManager.shared.shadow	LMKThemeManager.current.shadow
+path	LMKThemeManager.shared.alpha	LMKThemeManager.current.alpha
+path	LMKThemeManager.shared.layout	LMKThemeManager.current.layout
+path	LMKThemeManager.shared.animation	LMKThemeManager.current.animation
+# Debug nested records (qualified form first; the type pass catches bare uses)
+path	LMKNetworkRequestRecord.LMKRequestData	LMKNetworkRequestRecord.Request
+path	LMKNetworkRequestRecord.LMKResponseData	LMKNetworkRequestRecord.Response
+# Alerts
+path	LMKAlertPresenter.presentAlert(	LMKAlertPresenter.present(
+path	LMKCountdownConfirmation.present(	LMKAlertPresenter.presentCountdownConfirmation(
+# Utilities folded into subject namespaces
+path	LMKSceneUtil.getKeyWindow()	LMKSceneUtil.keyWindow
+path	LMKImageUtil.getSFSymbolImage(	LMKImageUtil.symbol(
+path	LMKDominantColorExtractor.dominantColors(	LMKImageUtil.dominantColors(
+path	LMKDominantColorExtractor.dominantColor(	LMKImageUtil.dominantColor(
+path	LMKDominantColorExtractor.Strategy	LMKImageUtil.DominantColorStrategy
+path	LMKQRCodeGenerator.generateQRCode(	LMKImageUtil.qrCode(
+path	LMKQRCodeGenerator.CorrectionLevel	LMKImageUtil.QRCorrectionLevel
+path	LMKDateFormatterHelper.formatNumber(	LMKFormatHelper.number(
+path	LMKDateFormatterHelper.numberFormatter()	LMKFormatHelper.numberFormatter()
+path	LMKShareService.shareImage(	LMKShareService.image(
+path	LMKShareService.shareFile(	LMKShareService.file(
+# Toast: ten entry points collapse into LMKToast.show(_ status:, _ message:, …). Longest first.
+path	LMKToast.showSuccessOnWindow(message:	LMKToast.show(.success,
+path	LMKToast.showWarningOnWindow(message:	LMKToast.show(.warning,
+path	LMKToast.showErrorOnWindow(message:	LMKToast.show(.error,
+path	LMKToast.showInfoOnWindow(message:	LMKToast.show(.info,
+path	LMKToast.showSuccess(message:	LMKToast.show(.success,
+path	LMKToast.showWarning(message:	LMKToast.show(.warning,
+path	LMKToast.showError(message:	LMKToast.show(.error,
+path	LMKToast.showInfo(message:	LMKToast.show(.info,
+# Alpha ramp (values unchanged)
+path	LMKAlpha.overlayLight	LMKAlpha.xxs
+path	LMKAlpha.overlayMedium	LMKAlpha.xs
+path	LMKAlpha.overlayDark	LMKAlpha.small
+path	LMKAlpha.semiTransparent	LMKAlpha.medium
+path	LMKAlpha.overlayStrong	LMKAlpha.xl
+path	LMKAlpha.overlayOpaque	LMKAlpha.xxl
+path	LMKAlpha.dimmingOverlay	LMKAlpha.dimming
+path	LMKAlpha.overlay	LMKAlpha.large
+# Shadow presets -> levels (resolved styles keep working everywhere a LMKShadowStyle is expected)
+path	LMKShadow.cellCard()	LMKShadow.style(for: .level2)
+path	LMKShadow.button()	LMKShadow.style(for: .level2)
+path	LMKShadow.small()	LMKShadow.style(for: .level1)
+path	LMKShadow.medium()	LMKShadow.style(for: .level4)
+path	LMKShadow.large()	LMKShadow.style(for: .level5)
+path	LMKShadow.card()	LMKShadow.style(for: .level3)
+path	LMKShadow.opacity	LMKShadow.iconOverlayOpacity
+# Animation durations: thirteen names -> seven steps
+path	LMKAnimationHelper.Duration.buttonPress	LMKAnimationHelper.Duration.instant
+path	LMKAnimationHelper.Duration.uiShort	LMKAnimationHelper.Duration.fast
+path	LMKAnimationHelper.Duration.photoLoad	LMKAnimationHelper.Duration.fast
+path	LMKAnimationHelper.Duration.actionSheet	LMKAnimationHelper.Duration.normal
+path	LMKAnimationHelper.Duration.alert	LMKAnimationHelper.Duration.normal
+path	LMKAnimationHelper.Duration.modalPresentation	LMKAnimationHelper.Duration.moderate
+path	LMKAnimationHelper.Duration.listInsertDelete	LMKAnimationHelper.Duration.moderate
+path	LMKAnimationHelper.Duration.listUpdate	LMKAnimationHelper.Duration.moderate
+path	LMKAnimationHelper.Duration.cardExpand	LMKAnimationHelper.Duration.moderate
+path	LMKAnimationHelper.Duration.screenTransition	LMKAnimationHelper.Duration.slow
+path	LMKAnimationHelper.Duration.errorShake	LMKAnimationHelper.Duration.slow
+path	LMKAnimationHelper.Duration.successFeedback	LMKAnimationHelper.Duration.emphasis
+path	LMKAnimationHelper.Spring.damping	LMKAnimationHelper.spring.damping
+path	LMKAnimationHelper.Curve.easeInOut	LMKAnimationHelper.Curve.easeInOut.options
+path	LMKAnimationHelper.Curve.easeOut	LMKAnimationHelper.Curve.easeOut.options
+path	LMKAnimationHelper.Curve.easeIn	LMKAnimationHelper.Curve.easeIn.options
+# Color roles
+path	LMKColor.primaryDark	LMKColor.primaryVariant
+path	LMKColor.imageBorder	LMKColor.outline
+path	LMKColor.graySoft	LMKColor.fillStrong
+path	LMKColor.grayMuted	LMKColor.fill
+path	LMKColor.white	LMKColor.onAccent
+path	LMKColor.black	LMKColor.scrim
+# Nested enums that were top-level
+path	LMKActionSheet.ActionStyle	LMKActionSheet.Action.Style
+path	LMKGlassView.Style	LMKGlassView.Variant
+path	LMKProgressViewController.Style	LMKProgressViewController.Mode
+path	LMKSegmentedControl.CornerStyle	LMKSegmentedControl.Corners
+# Module-level string globals -> nested Strings
+path	lmkBadgeStrings	LMKBadgeView.strings
+path	lmkCheckboxCellStrings	LMKCheckboxCell.strings
+path	lmkPhotoCropStrings	LMKPhotoCropViewController.strings
+
+# ---------------------------------------------------------------- 3. type identifiers
+# Core
+type	LMKConcurrencyHelpers	LMKConcurrency
+type	LMKDateFormatterHelper	LMKDateFormat
+type	LMKDateHelper	LMKDate
+type	LMKFormatHelper	LMKFormat
+type	LMKFileUtil	LMKFile
+# Debug
+type	LMKRequestData	LMKNetworkRequestRecord.Request
+type	LMKResponseData	LMKNetworkRequestRecord.Response
+# Alerts
+type	LMKAlertPresenter	LMKAlert
+type	LMKCountdownConfirmation	LMKAlert
+# Utilities
+type	LMKAnimationHelper	LMKAnimation
+type	LMKHapticFeedbackHelper	LMKHaptics
+type	LMKDeviceHelper	LMKDevice
+type	LMKDeviceType	LMKDevice.Kind
+type	LMKScreenSize	LMKDevice.ScreenSize
+type	LMKSceneUtil	LMKScene
+type	LMKImageUtil	LMKImage
+type	LMKDominantColorExtractor	LMKImage
+type	LMKQRCodeGenerator	LMKImage
+type	LMKOverscrollFooterHelper	LMKOverscrollFooterView
+type	LMKDatePickerHelper	LMKDatePicker
+# Design system (LMKThemeManager/LMKTheme swap relies on the single simultaneous pass)
+type	LMKThemeManager	LMKTheme
+type	LMKTheme	LMKColorTheme
+type	LMKDefaultTheme	LMKColorTheme
+type	LMKShadowConfig	LMKShadowTheme.Shadow
+type	LMKTypographyType	LMKTypography.Kind
+type	LMKButtonRole	LMKButton.Role
+# Components
+type	LMKBottomSheetController	LMKBottomSheetViewController
+type	LMKCardPageController	LMKCardPageViewController
+type	LMKCardPanelController	LMKCardPanelViewController
+type	LMKSegmentedPageController	LMKSegmentedPageViewController
+type	LMKEnumSelectionBottomSheet	LMKEnumPicker
+type	LMKBannerType	LMKStatus
+type	LMKToastType	LMKStatus
+type	LMKChipStyle	LMKChipView.Variant
+type	LMKEmptyStateStyle	LMKEmptyStateView.Layout
+type	LMKGradientDirection	LMKGradientView.Direction
+type	LMKDividerOrientation	LMKDividerView.Orientation
+type	LMKTipArrowDirection	LMKTipView.ArrowDirection
+type	LMKTipStyle	LMKTipView.Placement
+type	LMKTextFieldState	LMKValidationState
+type	LMKBadgeStrings	LMKBadgeView.Strings
+type	LMKCheckboxCellStrings	LMKCheckboxCell.Strings
+# Share / Photo
+type	LMKShareService	LMKShare
+type	LMKPhotoEXIFService	LMKPhotoMetadata
+type	LMKPhotoGridContentMode	LMKPhotoGridViewController.ContentMode
+type	LMKPhotoGridSortOrder	LMKPhotoGridViewController.SortOrder
+type	LMKPhotoBrowserStrings	LMKPhotoBrowserViewController.Strings
+type	LMKPhotoGridStrings	LMKPhotoGridViewController.Strings
+type	LMKPhotoCropStrings	LMKPhotoCropViewController.Strings
+type	LMKSharePreviewStrings	LMKSharePreviewViewController.Strings
+
+# ---------------------------------------------------------------- 4. regex (after the type pass)
+# Host labels: present(from:) for things that end in host.present, show(in:) for installed views.
+regex	((?:LMKErrorHandler|LMKAlert|LMKActionSheet|LMKEnumPicker|LMKDatePicker)\.present\w*\(\s*)on:	${1}from:
+regex	((?:LMKErrorHandler|LMKAlert|LMKActionSheet|LMKEnumPicker|LMKDatePicker)\.present\w*\(\s*)in:	${1}from:
+regex	(LMKToast\.show\([^\n]*?)\bon:	${1}in:
+regex	(LMKTip\.show\([^\n]*?)\bstyle:	${1}placement:
+regex	(LMKTip\.show\([^\n]*?)\bon:	${1}in:
+regex	\bonShowComplete:	completion:
+regex	\.show\(on:	.show(in:
+regex	\.showOnWindow\(	.show(
+regex	\btapHandler:	onTap:
+# Toast/banner initializers and the remaining generic show(type:)
+regex	LMKToast\.show\(type:\s*(\.\w+),\s*message:	LMKToast.show($1,
+regex	LMKToastView\(type:	LMKToastView(status:
+regex	LMKBannerView\(type:	LMKBannerView(status:
+# Button styles: color argument -> role; the same case names are presets on LMKButton.Style
+regex	\.(filled|outlined|ghost|iconOnly)\(LMKColor\.primary\)	.${1}(.primary)
+regex	\.(filled|outlined|ghost|iconOnly)\(LMKColor\.secondary\)	.${1}(.secondary)
+regex	\.(filled|outlined|ghost|iconOnly)\(LMKColor\.tertiary\)	.${1}(.tertiary)
+regex	\.(filled|outlined|ghost|iconOnly)\(LMKColor\.error\)	.${1}(.destructive)
+regex	\.(filled|outlined|ghost|iconOnly)\(LMKColor\.warning\)	.${1}(.warning)
+regex	\.(filled|outlined|ghost|iconOnly)\(LMKColor\.success\)	.${1}(.success)
+regex	\.(filled|outlined|ghost|iconOnly)\(LMKColor\.info\)	.${1}(.info)
+regex	\.(filled|outlined|ghost|iconOnly)\(LMKColor\.textSecondary\)	.${1}(.neutral)
+regex	\.(filled|outlined|ghost|iconOnly)\(LMKColor\.textPrimary\)	.${1}(.neutral)
+# Factories: role-based buttons become LMKButton initializers; labels become lmk_make
+regex	LMKButtonFactory\.(filled|outlined|ghost)\(\s*role:\s*(\.\w+),\s*title:\s*("[^"]*"|[\w.()]+),	LMKButton(title: $3, style: .${1}(${2}),
+regex	LMKButtonFactory\.iconOnly\(\s*role:\s*(\.\w+),\s*iconName:\s*("[^"]*"|[\w.()]+),	LMKButton(systemImage: $2, style: .iconOnly(${1}),
+regex	LMKLabelFactory\.(body|bodyMedium|bodyBold|subbodyMedium|caption|captionMedium|small|smallMedium|title|subtitle)\(text:	UILabel.lmk_make(.${1}, text:
+regex	LMKCardFactory\.elevatedCardView\(\)	LMKCardView(style: .elevated)
+regex	LMKCardFactory\.flatCardView\(\)	LMKCardView(style: .flat)
+regex	LMKCardFactory\.cardView\(\)	LMKCardView(style: .cell)
+# Controls
+regex	\.lmk_pointInside\(	.lmk_point(inside:
+regex	(LMKProgressViewController\([^\n]*?)\bstyle:	${1}mode:
+
+# ---------------------------------------------------------------- 5. members (type-blind)
+member	tapHandler	onTap
+member	actionHandler	onAction
+member	dismissHandler	onDismiss
+member	valueChangedHandler	onValueChange
+member	stateChangedHandler	onValueChange
+member	textChangedHandler	onTextChange
+member	pageChangedHandler	onPageChange
+member	multiSelectionChangedHandler	onSelectionChange
+member	selectionChangedHandler	onSelectionChange
+member	backAction	onBack
+member	isChipSelected	isSelected
+member	dismissSheet()	dismiss()
+member	dismissPanel(	dismiss(
+member	photoBrowserStrings	browserStrings
+member	lmk_singleLineShrinkToFit(	shrinkingTitleToFit(
+member	lmk_touchAreaEdgeInsets	lmk_hitTestInsets
+member	enableNetworkLogging()	lmk_enableNetworkLogging()
+member	nonEmpty	lmk_nonEmpty
+member	[safe:	[lmk_safe:
+
+# ---------------------------------------------------------------- 6. file-conditional
+filematch	LMKEnumSelectable	var iconName: String \{	var iconName: String? {
+
+# ---------------------------------------------------------------- 7. reports (hand edits)
+regex	\.cornerStyle = \.(pill|rounded)\b	.style.corners = .${1}
+regex	\.pinToTop\(of:	.install(in:
+report	\bLMKTheme\.apply\(	Theme registration: pass a LMKTheme value. Convert `struct XTheme: LMKColorTheme { … }` into `extension LMKTheme { static let x = LMKTheme(colors: LMKColorTheme(primary: …)) }` and call `LMKTheme.apply(.x)`; only the colors that differ from the defaults need arguments.
+report	:\s*LMKColorTheme\s*\{	LMKColorTheme is a struct now: replace the conformance with `extension LMKTheme { static let x = LMKTheme(colors: LMKColorTheme(…)) }` (see the theme recipe in docs/MIGRATION-1.0.md).
+report	LMKTheme\.apply\(\s*(colors|typography|spacing|cornerRadius|shadow|alpha|layout|animation|badge):	reshape: per-category `apply(spacing: x)` became `LMKTheme.update { $0.spacing = x }` (reads: `LMKTheme.current.spacing`).
+report	LMKTheme\.configure\(	remove: `configure(colors:…)` is gone; build one `LMKTheme(colors:typography:spacing:…)` value and call `LMKTheme.apply(_:)`.
+report	LMKColor\.(onAccent|scrim)\b	Review: `white` became `onAccent` (text on a filled accent) and `black` became `scrim` (dimming). Use literal `.white` / `.black` where the old token meant the actual color (forced-dark chrome, `layer.shadowColor`).
+report	LMKColor\.photoBrowserBackground	remove: set `LMKPhotoBrowserViewController.Style.backgroundColor` (per instance or `theme.photoBrowser`) instead.
+report	\.addAsChild\(	remove: `LMKBottomSheetViewController.addAsChild(sheet, in: host)` became the instance method `sheet.present(from: host)`.
+report	LMKCardPanelViewController\.show\(	remove: `LMKCardPanelViewController.show(panel, in:)` became `panel.present(from: hostViewController)`.
+report	LMKSearchBarDelegate|lmkSearchBar\w*\(	remove: the search-bar delegate is gone; set `onTextChange`, `onSearch`, `onBeginEditing`, `onEndEditing`, `onCancel` closures on the bar instead.
+report	LMKPhotoCropDelegate|photoCropViewController\w*\(	remove: the crop delegate is gone; set `onCrop` / `onCancel` on `LMKPhotoCropViewController`.
+report	LMKSharePreviewDelegate|sharePreview\w*\(	remove: the share-preview delegate is gone; set `onShare` / `onSave` / `onFailure` on `LMKSharePreviewViewController`.
+report	\.configure\(count:|\.configure\(text:\s*[^,)]*\)\s*$|badge\.configure\(\)	reshape (LMKBadgeView only): `configure(count: n)` became `configure(.count(n))`, `configure(text: s)` became `configure(.text(s))`, the dot badge is `configure(.dot)`.
+report	\.(badgeColor|borderColor)\s*=|LMKDividerView\.defaultThickness|\.thickness\s*=	reshape: badge and divider colors/thickness are `style` fields (`badge.style.surface.background = .solid(c)`, `divider.style.thickness = t`).
+report	LMKLoadingStateView\([^)]*overlayStyle:	reshape: `LMKLoadingStateView(overlayStyle: true)` became `LMKLoadingStateView(style: .overlay)`.
+report	\.configure\(message:|LMKEmptyStateView\.(inlineCellHeight|cardCellHeight|fullScreenCellHeight|inlineHorizontalInsets)	reshape: `configure(message:icon:style:action:)` became `configure(LMKEmptyStateView.Content(title:message:icon: .system("name"), primaryAction:))` with the layout in `style.layout`; size the row yourself.
+report	LMKGlassView\.makeContainer\(	Review: `makeContainer` now returns `LMKGlassContainerView` (typed; `spacing` is settable).
+report	LMKFloatingButton\.current|LMKFloatingButton\.dismissCurrent\(|\.showBadge\(|\.hideBadge\(	reshape: the floating button has no global; keep the instance from `LMKFloatingButton.show(icon:in:onTap:)` (or `button.show(in:)`), call `dismiss()` on it, and set `badge = .count(n)` / `.dot` / `nil`.
+report	LMKTip\.show\([^)]*\n[^)]*\b(style|on):	Review: multi-line tip call still passes `style:` / `on:`; rename to `placement:` / `in:`.
+report	\.expandsActiveDot\s*=|\.maxVisibleDots\s*=	Review (LMKPageIndicator): `expandsActiveDot` still works as a property (it writes `style.expandsActiveDot`); dot sizes and colors are `style` fields.
+report	\.showsCancelButton\s*=	reshape (LMKSearchBar): `showsCancelButton` is read-only; set `cancelButtonMode = .always | .never | .automatic`.
+report	LMKTextView\(\)[^\n]*\n?[^\n]*\.minimumHeight\s*=\s*\d	Review (LMKTextView): `minimumHeight` is now optional (`CGFloat?`); `maximumHeight` caps growth.
+report	\.chipColor\b	reshape: `chipColor` became `style.tintColor` (`chip.style = .filled.tint(color)` or `chip.style.tintColor = color`).
+report	\.(cardBackgroundColor|cardCornerRadius)\b|LMKCardView\(\)\.contentInsets|card\.contentInsets\s*=	reshape: card appearance is `style.surface` (`card.style.surface.background = .solid(c)`, `.corners = .fixed(r)`, `.contentInsets = …`).
+report	LMKStatus\.\w+\.iconName|status\.iconName|type\.iconName	reshape: `LMKStatus.iconName` became `systemImageName: String?` (`.neutral` has none).
+report	LMKToastView\.defaultDuration|\.showOnWindow\(	reshape: `LMKToast.defaultDuration`; window presentation is `LMKToast.show(.status, message:)` with no `in:` (or `presentation: .inWindowScene(nil)`).
+report	\.didTapHandler\b	remove: `didTapHandler` is gone; use `onTap` and capture the button.
+report	\.applyStyle\(|\.applyIconStyle\(	remove: `applyStyle(.filled(c), title: t)` became `button.style = .filled(.role); button.title = t`; `applyIconStyle` became `button.style = .iconOnly(); button.setSymbol("name")`.
+report	\.configuration\?\.(title|image|imagePlacement|imagePadding|contentInsets)\s*=	Review: LMKButton now exposes `title`, `image`, `setSymbol(_:)`, and `style.imagePlacement` / `style.imagePadding` / `style.surface.contentInsets`; keep `configuration?` only on plain UIButtons.
+report	LMKButtonFactory|LMKLabelFactory|LMKCardFactory	remove: the factories are gone; `LMKButton(title:style:)`, `UILabel.lmk_make(_:text:color:)`, `LMKCardView(style:)` (add subviews to `contentView`).
+report	LMKLabelFactory\.heading\(	remove: `heading(text:level:)` became `UILabel.lmk_make(.h1|.h2|.h3|.h4, text:)`.
+report	\bLMKToggleButton\b|ToggleState|lmkToggleButtonStrings	remove: LMKToggleButton is gone; use `LMKButton` with `isToggle = true`, `selectedTitle` / `selectedImage`, and `onValueChange`.
+report	LMKKeyboardInsetHelper|LMKKeyboardObserver	remove: use `scrollView.lmk_enableKeyboardAdjustment()` / `lmk_disableKeyboardAdjustment()`.
+report	\.lmk_fadeIn\(|\.lmk_fadeOut\(	remove: `view.lmk_fadeIn(…)` became `LMKAnimation.fadeIn(view, …)` (same for fadeOut).
+report	lmk_safeAreaSnp|lmk_setEdgesEqualToSuperview|lmk_centerInSuperview|lmk_setAutoLayoutSize	remove: write the SnapKit constraints directly (`safeAreaLayoutGuide.snp`, `edges.equalToSuperview()`, `center.equalToSuperview()`).
+report	lmk_configureCellHighlight\(	remove: call `cell.lmk_configureCustomHighlight()` on the cell.
+report	lmk_animatePress\(	remove: use `LMKButton` (press animation built in) or `LMKAnimation.animateButtonPress(_:)`.
+report	lmk_configureIconListRow\(	remove: became `cell.lmk_applyListRow(LMKListRowConfiguration(title:) …)`; see the list-row recipe.
+report	lmk_emptyStateCell\(	remove: host the `LMKEmptyStateView` yourself (`wrappedForTableBackground`) and size the row.
+report	LMKPhotoMetadata\.(extractDate|extractLocation)\(	remove: `await LMKPhotoMetadata.read(from: pickerResult).date` / `.coordinate`; pass raw `Data`, never a decoded `UIImage`.
+report	LMKDateFormat\.(dateFormatter|configure)\(	remove: `LMKDateFormat.string(date, date: .medium, time: .none)`; a user-chosen pattern goes through `LMKDateFormat.preferredDatePattern`.
+report	\.presentMultiSelect\(	remove: `LMKEnumPicker.present(from:title:options:selection:onSelect:)` with a `Set<T>` selection (multi-select is chosen by the selection type).
+report	LMKLayout\.(searchBarHeight|searchBarIconSize|clearButtonSize|pullThreshold|cellHeightMin)\b	Review: search-bar metrics moved to `LMKSearchBar.Style`, `pullThreshold` to the refresh control Style, `cellHeightMin` to `LMKLayout.rowHeightCompact`.
+report	\bLMKBadge\.|\bLMKBadgeTheme\b	remove: badge metrics live on `LMKBadgeView.Style` (app-wide via `theme.badge`).
+report	LMKBottomSheetLayout|LMKCardPageLayout|LMKCardPanelLayout|LMKTipLayout|LMKFloatingButtonLayout|LMKPhotoBrowserConfig	remove: the constant bags are gone; themeable values are `Style` fields on the owning component.
+report	override (open |public )?var (headerHeight|showsLeadingButton|showsTrailingButton|showsHeaderSeparator|trailingButtonSymbol|leadingButtonSymbol|cardMaxWidth|cardHorizontalInset|cardMaxHeightRatio|dismissesOnBackgroundTap|stackSpacing|contentInsets|keyboardDismissMode|alwaysBounceVertical|scrollViewUseSafeArea|edgePanBandWidth|commitVelocityThreshold)\b	Review: appearance overrides on the base controllers became `Style` fields (`style.headerHeight = …` in `init`); `dismissesOnBackgroundTap` is an instance property.
+report	override (open |public )?func (dismissSheet|dismissPanel|onDismissTapped)\b	Review: `dismiss()` is the single dismissal; `onDismissTapped()` became `onDismiss: ((DismissReason) -> Void)?`.
+report	\.(selectedIndex|setSelectedIndex\(|selectedIndices|setSelectedIndices\(|allowsMultipleSelection)\b	Review (LMKFilterChipBar only): selection is one `selection: Set<Int>` with `setSelection(_:animated:)`, `selectionMode`, and `onSelectionChange: (Set<Int>) -> Void`.
+report	\.(fitsSegmentsToContent|isScrollable|scrollableItemPadding|itemSpacing|makeScrollableContainer|itemPadding)\b	Review (LMKSegmentedControl only): the layout knobs became `style.layout = .equalWidth | .fitContent | .scrollable(padding:spacing:)` and `itemPadding` moved to `style.itemPadding`; the control owns its scroll view.
+report	\bLMKButton\.Style\b.*=\s*\.(filled|outlined|ghost|iconOnly)\((?!\.)	Review: `LMKButton.Style` presets take a role (`.filled(.primary)`), not a color; use `.tint(_:)` for a custom color.
+report	\blmk_hitTestInsets\s*=	Review: has no effect unless the owner overrides `point(inside:with:)` and calls `lmk_point(inside:with:)`; LumiKit controls enforce 44pt targets themselves, so delete dead assignments.
+report	subscript\(safe|var nonEmpty\b	Review: a local declaration collides with LumiKit's `[lmk_safe:]` / `lmk_nonEmpty`; delete the copy or rename it.
+report	\bLMKLocaleHelper\b	Review: the `LMK` prefix is reserved for LumiKit; rename the app's helper.
+report	(LMKAlert|LMKErrorHandler|LMKActionSheet|LMKEnumPicker|LMKDatePicker)\.\w+\([^)]*\n\s*on:	Review: multi-line call still passes `on:`; rename the label to `from:`.
+report	LMKToast\.show\([^)]*\n\s*on:	Review: multi-line toast call still passes `on:`; rename the label to `in:`.
+report	\.(barBackgroundColor|largeTitleFont|largeTitleColor|inlineTitleFont|inlineTitleColor|buttonTintColor)\b	Review (LMKNavigationBar only): appearance moved to `style` (`surface.background`, `tintColor`, `titleTextStyle` / `titleColor`, `largeTitleTextStyle` / `largeTitleColor`).
+report	\.set(Left|Right)ItemEnabled\(at:	remove: give the item an `identifier` and call `updateItem("id") { $0.isEnabled = ... }`.
+report	\.showsSeparator\s*=	Review (LMKNavigationBar only): `showsSeparator` is a Style field (`style.showsSeparator`).
+report	override (open |public )?func refreshSheetColors\b	Review: `refreshSheetColors()` is gone; override `applyTheme(_:)` (call `super`) and use `style` fields.
+report	\bsuper\.init\(cancelTitle:	Review: `LMKBottomSheetViewController.init(cancelTitle:)` became `init(style:)`; set `strings.cancel` per instance for a custom title.
+report	\bcontainerBottomConstraint\b	remove: the constraint is internal; use `additionalBottomInset` for a manual lift (the keyboard lift is built in).
+report	\bLMKActionSheet\(	remove: build an `LMKActionSheet.Configuration` and call `LMKActionSheet.present(_:from:)` (the class is `LMKActionSheetViewController`).
+report	\bcontentHeight:	Review (LMKActionSheet): custom content is self-sizing; drop `contentHeight:` and give the view an intrinsic size or constraints.
+report	LMKActionSheet\.present\([^)]*\bonDismiss:	Review: the action sheet reports cancellation through `Configuration.onCancel` (or the sheet's `onDismiss(reason)`).
+report	\bcurrentSelection:	Review (LMKEnumPicker): `present(from:title:options:selection:onSelect:)`; a `T?` selection is single-select, a `Set<T>` is multi-select; `showIcons:` became `showsIcons:` (default on).
+report	var iconName: String \{	Review (LMKEnumSelectable): `iconName` is `String?` with a default of `nil`; change the type or delete the property.
+report	LMKDatePicker\.present(DatePickerAlert|DatePicker|FutureDatePicker|PastDatePicker|DateRangePicker|CalendarRangePicker|DatePickerWithTextField)\(	Review: `LMKDatePicker.present(_ configuration:from:onConfirm:)` with `Configuration(...)`, `.past(...)`, `.future(...)`; ranges via `presentRange` / `presentCalendarRange`; notes via `presentWithTextField`.
+report	override (open |public )?(var|func) (leadingButtonSymbol|trailingButtonSymbol|showsLeadingButton|showsTrailingButton|showsHeaderSeparator|refreshCardPageColors|trailingButtonTapped)\b	Review (LMKCardPageViewController): set `leadingItem` / `trailingItem` (`LMKNavigationBarItem`) and `style.showsHeaderSeparator` in `init`; `applyTheme(_:)` replaces the color refresh.
+report	override (open |public )?var dismissesOnBackgroundTap\b	Review (LMKCardPanelViewController): `dismissesOnBackgroundTap` is an instance property now.
+report	override (open |public )?func installSegmentedControl\b	Review (LMKSegmentedPageViewController): set `segmentedControlPlacement = .container(slot)` (build the slot before `super.viewDidLoad()`) or `.manual`.
+report	LMKOverscrollFooterView\(footerView:	remove: `LMKOverscrollFooterView(contentView:height:)` + `attach(to: scrollView)`; it follows the scroll view itself (drop `updatePosition()` calls and the `overscrollProgress` alpha plumbing).
+report	presentActionSheet\([^)]*actions: \[\(	Review (LMKAlert): actions are `[LMKAlert.Action]` (title, image, style, isEnabled, handler); pass `anchor:` for the iPad popover.
+report	presentTextInput\([^)]*\b(autocapitalizationType|autocorrectionType|keyboardType|configureField|saveTitle|cancelTitle):	Review (LMKAlert): the long form became `presentTextInput(LMKAlert.TextInput(...), from:onSave:)` (adds `isSecure` and `validate`).
+report	LMKFormScaffold\.install\([^)]*contentInsets: UIEdgeInsets	Review: `contentInsets` is `NSDirectionalEdgeInsets` now; `widthMode:` adds `.readable` / `.capped`.
+report	\.setSubtitle\(	Review (LMKProgressViewController): `subtitle` is a property; `setState(_:message:)` covers terminal states.
+path	LMKDateFormatterHelper.formatDate(	LMKDateFormat.string(
+report	\bDateFormatters\.|\bTripDateFormatting\.(rangeLabel|residenceLabel|timeLabel|dayTimeLabel|usesTwelveHourClock|widestClockSample|dayLabel|dayLabelWithYear|stripWeekday|stripDayNumber)\b	Review: the app-local date formatter cache is `LMKDateFormat` now (`string(_:date:time:context:)`, `rangeLabel`, `residenceLabel`, `relativeDayString`, `clockTime`, `dateWithClockTime`, `widestClockSample`, `usesTwelveHourClock`, `weekdaySymbols`; a stored time zone or the in-app time format goes through `Context`).
+report	\bMacWindowConfig\b	remove: `LMKScene.configureMacWindow(for:minimumSize:maximumSize:hidesTitleBar:)` from `scene(_:willConnectTo:options:)` (a no-op off Catalyst).
+report	\bfunc formKeyCommands\(|\bformKeyCommands\(save:	Review: `lmk_formKeyCommands(save:cancel:)` (LumiKit) replaces the app copy; Escape defaults to dismissing.
+report	UIScreen\.main\.scale	Review: `view.lmk_displayScale` (or `LMKScene.screenScale` without a view) and `LMKImage.pixelSize(points:scale:)` for pixel-sized image requests.
+report	CGImageSourceCreateThumbnailAtIndex	Review: `LMKImage.downsample(data:maxPixelSize:)` / `downsample(fileURL:maxPixelSize:)` (sync and async) and `downsampledJPEG(data:maxPixelSize:quality:)` cover the ImageIO thumbnail path.
+report	\bembedEXIF\(	remove: `LMKPhotoMetadata.write(date:coordinate:to:)` (Data or file URL).
+report	\b(pinFormContent|pinListHorizontally)\(	Review: `content.lmk_pinReadableWidth(in:)` (or `view.lmk_readableWidthGuide`) with `LMKLayout.readableContentMaxWidth` as the cap.
+report	\b(applyDisclosureIndicator|removeDisclosureIndicator|installRowPointerInteraction|applyListTextStyle|applyThumbnail|applyIcon)\(|\bListTableFactory\b	Review: list rows are `LMKListRowConfiguration` + `cell.lmk_applyListRow(_:)`; rows that stay on `UIListContentConfiguration` use `lmk_applyTextStyle`, `lmk_applyLeadingSymbol`, `lmk_applyThumbnail`, and `lmk_installRowPointerInteraction`; tables come from `LMKListTable.makeInsetGrouped`.
+report	\b(PFListCell|PFActionTile|TDActionTile|TDStarRatingView|PFCopyableLabel|PFPhotoButton|TDCheckboxButton)\b	Review: the app component has a LumiKit counterpart (`LMKListRowConfiguration`, `LMKActionTile`, `LMKRatingControl`, `LMKCopyableLabel`, `LMKPhotoButton`, `LMKCheckbox`); adopt it and delete the copy.
+report	\btripAccentGlyphTint\(	Review: `UIColor.lmk_glyphTint(onLightAccentDarkenBy:)`; `LMKActionTile.accentColor` applies it itself.
+report	\b(TDMonthCalendarView|TDCalendarDayCell|MonthlyCalendarView|CalendarMonthViewController|CalendarDayCell)\b	Review: the app month grid has a LumiKit counterpart: `LMKMonthCalendarView` (+ `LMKCalendarDayCell`, `LMKCalendarDayDecoration`) over Core `LMKCalendarDay` / `LMKCalendarMonth` / `LMKCalendarSelection`; keep the host's month and selection state and feed it through `configure(month:today:selection:decorations:)`.
+report	\b(dayKey\(for:|Day\.dayKey|localTodayKey\()	Review: `LMKCalendarDay.key` ("yyyy-MM-dd") and `LMKCalendarDay.today(calendar:)` replace the app day-key helpers.
+report	\bCalendarLayout\.(headerHeight|weekdayRowHeight|dayCellSide|dayCircleRadius|dotSize|dotSpacing|maxDots|dayLabelCenterOffset)\b	Review: calendar metrics are `LMKMonthCalendarView.Style` fields (`headerHeight`, `weekdayRowHeight`, `dayRowHeight`, `circleRadius`, `dotSize`, `dotSpacing`, `maxDots`, `numeralCenterOffset`).
+report	\b(SortMenuView|SortMenuPresenter)\b	remove: `LMKSortMenu.makeMenu(sortOptions:layoutOptions:state:onSelectSort:onSelectLayout:)` on a `UIMenu`, anchored with `makeBarButtonItem(menu:)`, `makeNavigationBarItem(menu:)`, or `makeButton(menu:)`.
+report	\bPFAppearanceConfigurator\b	remove: `LMKTabBarAppearance.applyGlobally(_:)` (or adopt `LMKTabBarController`, which applies `theme.tabBar` itself).
+report	\bclass \w+: UITabBarController\b	Review: `LMKTabBarController(tabs:style:navigationControllerFactory:)` with `LMKTab`s covers lazy roots, `selectTab(identifier:)`, `reorderTabs(identifiers:)`, badges, ⌘1…N, and the iOS 26 minimize behavior / bottom accessory.
+report	\b(CardDetailViewController|DetailCardBuilder|DetailCardHelper|DetailCardContext|PFItemDetailViewController)\b	Review: the detail chrome is `LMKDetailPageViewController` + `LMKDetailCard` rows rendered by `LMKDetailCardView`; keep pickers and forms app-side, replace label-reference patching with `setValue(_:forRowID:)` / `update(rowID:_:)`.
+report	\b(buildPropertyRow|createInfoRow|makeStatRow|addRow\(label:|addLinkRow\(|makeLinkRow|makeRatingRow|makeExpensesRow|makeSpotRow)\(	Review: these are `LMKDetailCard.Row` kinds (`keyValue`, `link`, `rating`, `navigation`).
+# ---------------------------------------------------------------- M10: Photo, Debug, Lottie
+regex	LMKPhotoCropViewController\(image:\s*([^,)]+),\s*delegate:\s*[^)]+\)	LMKPhotoCropViewController(image: $1)
+report	LMKPhotoPickCropCoordinator\([^)]*\bsave:	Review (LMKPhotoPickCropCoordinator): `save` is `(UIImage, LMKPhotoMetadata) async -> String?` (the picked bytes' capture date and location come along), `onFailure` receives a `Failure`, and `onCancel` reports a dismissed picker or crop.
+report	\.(updatePullProgress|handleEndDragging)\(scrollView:	Review (LMKLottieRefreshControl): `install(on:style:onRefresh:)` tracks the scroll view itself; delete the manual `scrollViewDidScroll` / `scrollViewDidEndDragging` calls.
+report	LMKLottieRefreshControl\(\)	Review: `LMKLottieRefreshControl.install(on:style:onRefresh:)` returns nil under the Mac idiom (drop the `userInterfaceIdiom` guard) and pairs with `makeRefreshKeyCommand(action:)` for Command-R; the control plays the package's tinted ring unless `animation:` is passed.
+report	LMKLottieRefreshControl\.pullThreshold	remove: `LMKLottieRefreshControl.Style.pullThreshold` (per instance or `theme.lottieRefreshControl`), defaulting to `LMKLayout.pullThreshold`.
+report	\.(animationBundle|animationName)\s*=	remove: pass `animation: LottieAnimation.named("file", bundle: .main)` to `LMKLottieRefreshControl(animation:style:)` or `install(on:animation:)`.
+report	\brefresh_spinner\b	Review: LumiKitLottie bundles its own ring animation tinted from `theme.lottieRefreshControl`; delete the app copy unless it is passed as a custom `animation:`.
+report	LMKNetworkLogger\.configure\(maxRecords:	Review (optional): `LMKNetworkLogger.configure(Configuration(maxRecords:redactedHeaderFields:hostFilter:))` adds credential redaction (on by default) and a host allowlist; the `maxRecords:` form still works.
+report	\.photoIsLivePhoto\(at:|\.photoGridIsLivePhoto\(at:	Review: unchanged, but `LMKPhotoGridDataSource` gained optional `photoGridPrefetch(indices:)` / `photoGridCancelPrefetch(indices:)` for image caches.
+report	LMKPhotoBrowserViewController\([^)]*\)\n[^\n]*\n[^\n]*modalPresentationStyle	Review (LMKPhotoBrowserViewController): the browser presents full screen by default and a photo zooms out of `zoomSourceView`; `onDismiss` joins the delegate; `style` / `theme.photoBrowser` replace the fixed chrome.
+# ---------------------------------------------------------------- M11: Platform + accessibility sweep
+report	LMKListRowConfiguration\(	Review (optional): list row titles and subtitles now wrap by default (as `UIListContentConfiguration`); pass `Style(titleLines: 1, subtitleLines: 1)` to keep a single-line row.
+report	LMKPageIndicator\.Strings\(	Review: `Strings` gained `accessibilityLabel` as its first parameter; use labels (`Strings(pageFormat:)`) rather than positional arguments.
+report	UIBarButtonItem\((image|title):[^)]*primaryAction:	Review (optional): `LMKNavigationBarItem.makeBarButtonItem()` and `UINavigationItem.lmk_setItems(leading:trailing:)` bridge kit items to the system bar with the iOS 26 prominent style, badges, and transition identifiers.
+report	navigationItem\.titleView\s*=	Review (optional): `UINavigationItem.lmk_setSubtitle(_:)` gives the system bar a subtitle (`subtitle` on iOS 26, a two-line title view before).
+report	viewWillTransition\(to:	Review (optional): `LMKScene.observeGeometry(of:onChange:)` / `LMKDevice.observeScreenSize(of:onChange:)` report window resizes, folds, and the iOS 26 interactive-resize flag without a transition override.
+report	semanticContentAttribute\s*=\s*\.forceRightToLeft	Review (optional): `lmk_forceLayoutDirection(.rightToLeft)` also flips natural text alignment on iOS 26 for RTL previews.
+# ---------------------------------------------------------------- M12: Core polish
+path	LMKFileUtil.generateTempFileURL(fileExtension:	LMKFileUtil.temporaryURL(extension:
+path	LMKFileUtil.clearTmpDirectory()	LMKFileUtil.clearTemporaryFiles()
+regex	LMKLabelFactory\s*\.heading\(text:\s*("[^"]*"|[^,)]+?),\s*level:\s*([1-4])\)	UILabel.lmk_make(.h$2, text: $1)
+regex	LMKLabelFactory\s*\.heading\(text:\s*	UILabel.lmk_make(.h1, text:
+regex	LMKLabelFactory\s*\.scientificName\(text:\s*	UILabel.lmk_make(.italicBody, text:
+report	lmk_make\(\.italicBody, text:	Review: `scientificName(text:)` used `LMKColor.info`; pass `color: LMKColor.info` after the text to keep it.
+regex	LMKLabelFactory\s*\.(caption|body|small|bodyMedium|bodyBold|subbodyMedium|extraSmall)\(\s*text:	UILabel.lmk_make(.$1, text:
+regex	(?<!try\? )(?<!try )\bLMKConcurrency\.(encode|decode)\(	try? LMKConcurrency.$1(
+report	LMKConcurrency\.(encode|decode)\(	Review: `encode` / `decode` throw now (the script prefixed `try?` to keep the optional result); drop the `try?` where a thrown error is more useful, and pass `encoder:` / `decoder:` for custom strategies.
+report	LMKFile\.temporaryURL\(	Review: `temporaryURL(extension:)` returns a non-optional `URL`; drop the `if let` / `guard let`.
+report	LMKLogger\.logStore\?\.entries|\.formattedMessage|LMKLogEntry\b	Review (optional): `LMKLogEntry.message` is the raw message now (the call site is in `file` / `function` / `line`, `formattedMessage` joins them); the store's `formatted()` output is unchanged.
+report	LMKURLValidator\.validateHTTPSURL\(	Review (optional): `validate(_:maxLength:requiredScheme:)` returns `Result<URL, ValidationError>` with the rejection reason; `validateHTTPSURL` still returns the trimmed string or nil.
+report	\.trimmingCharacters\(in: \.whitespacesAndNewlines\)[^\n]*isEmpty	Review (optional): `lmk_trimmedOrNil` trims and returns nil for a blank string.

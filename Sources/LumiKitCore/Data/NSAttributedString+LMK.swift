@@ -8,14 +8,14 @@
 import Foundation
 
 public extension NSAttributedString {
-    /// Concatenate two attributed strings.
+    /// Returns a copy with `other` appended.
     ///
     /// ```swift
-    /// let combined = boldTitle + regularBody
+    /// let combined = boldTitle.lmk_appending(regularBody)
     /// ```
-    static func + (lhs: NSAttributedString, rhs: NSAttributedString) -> NSAttributedString {
-        let mutable = NSMutableAttributedString(attributedString: lhs)
-        mutable.append(rhs)
+    func lmk_appending(_ other: NSAttributedString) -> NSAttributedString {
+        let mutable = NSMutableAttributedString(attributedString: self)
+        mutable.append(other)
         return mutable
     }
 }

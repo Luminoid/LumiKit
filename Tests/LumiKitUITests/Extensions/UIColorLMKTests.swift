@@ -114,3 +114,62 @@ struct UIColorLMKTests {
         #expect(UIColor.black.lmk_contrastingTextColor == .white)
     }
 }
+
+// MARK: - Glyph tint
+
+struct UIColorGlyphTintTests {
+    @Test
+    func `A dark accent is its own glyph tint; a light one darkens`() {
+        let dark = UIColor(red: 0.1, green: 0.2, blue: 0.6, alpha: 1)
+        #expect(dark.lmk_glyphTint() == dark)
+        let light = UIColor(red: 0.9, green: 0.9, blue: 0.5, alpha: 1)
+        var brightness: CGFloat = 0
+        light.lmk_glyphTint().getHue(nil, saturation: nil, brightness: &brightness, alpha: nil)
+        var original: CGFloat = 0
+        light.getHue(nil, saturation: nil, brightness: &original, alpha: nil)
+        #expect(abs(brightness - original * 0.7) < 0.01)
+        var halved: CGFloat = 0
+        light.lmk_glyphTint(onLightAccentDarkenBy: 0.5).getHue(nil, saturation: nil, brightness: &halved, alpha: nil)
+        #expect(abs(halved - original * 0.5) < 0.01)
+    }
+}
+
+// MARK: - State shade
+
+struct UIColorStateShadeTests {
+    private static func components(_ color: UIColor, style: UIUserInterfaceStyle = .light) -> (brightness: CGFloat, alpha: CGFloat) {
+        var brightness: CGFloat = 0, alpha: CGFloat = 0
+        color.resolvedColor(with: UITraitCollection(userInterfaceStyle: style)).getHue(nil, saturation: nil, brightness: &brightness, alpha: &alpha)
+        return (brightness, alpha)
+    }
+
+    @Test
+    func `A fill darkens by the factor and keeps its alpha`() {
+        let shade = UIColor(white: 0.8, alpha: 0.6).lmk_stateShade(by: 0.9)
+        let result = Self.components(shade)
+        #expect(abs(result.brightness - 0.72) < 0.005)
+        #expect(abs(result.alpha - 0.6) < 0.005)
+    }
+
+    @Test
+    func `A fill that is already dark lightens by the same amount`() {
+        let shade = UIColor(white: 0.2, alpha: 1).lmk_stateShade(by: 0.85)
+        #expect(abs(Self.components(shade).brightness - 0.35) < 0.005)
+        // Black has nowhere darker to go.
+        #expect(abs(Self.components(UIColor.black.lmk_stateShade(by: 0.9)).brightness - 0.1) < 0.005)
+    }
+
+    @Test
+    func `The shade follows a dynamic color through appearance changes`() {
+        let fill = UIColor { $0.userInterfaceStyle == .dark ? UIColor(white: 0.25, alpha: 1) : UIColor(white: 0.85, alpha: 1) }
+        let shade = fill.lmk_stateShade(by: 0.9)
+        #expect(abs(Self.components(shade, style: .light).brightness - 0.765) < 0.005)
+        #expect(abs(Self.components(shade, style: .dark).brightness - 0.35) < 0.005)
+    }
+
+    @Test
+    func `A factor of one leaves the color alone`() {
+        let color = UIColor(red: 0.3, green: 0.6, blue: 0.4, alpha: 1)
+        #expect(color.lmk_stateShade(by: 1).resolvedColor(with: UITraitCollection(userInterfaceStyle: .light)).lmk_hexString == color.lmk_hexString)
+    }
+}

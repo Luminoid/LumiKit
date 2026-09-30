@@ -11,7 +11,7 @@ import UIKit
 ///
 /// Override at app launch to customize radii:
 /// ```swift
-/// LMKThemeManager.shared.apply(cornerRadius: .init(small: 12, medium: 16))
+/// LMKTheme.update { $0.cornerRadius = .init(small: 12, medium: 16) }
 /// ```
 public nonisolated struct LMKCornerRadiusTheme: Sendable {
     public var xs: CGFloat

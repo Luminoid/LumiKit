@@ -11,7 +11,7 @@ import UIKit
 ///
 /// Override at app launch to customize spacing:
 /// ```swift
-/// LMKThemeManager.shared.apply(spacing: .init(large: 20, xxl: 28))
+/// LMKTheme.update { $0.spacing = .init(large: 20, xxl: 28) }
 /// ```
 public nonisolated struct LMKSpacingTheme: Sendable {
     /// Very tight spacing (stacked labels).

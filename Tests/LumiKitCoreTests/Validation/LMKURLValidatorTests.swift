@@ -10,6 +10,34 @@ import Testing
 // MARK: - LMKURLValidator
 
 struct LMKURLValidatorTests {
+    // MARK: - validate
+
+    @Test
+    func `Valid HTTPS URL succeeds with the parsed URL`() throws {
+        let url = try LMKURLValidator.validate("https://example.com/api").get()
+        #expect(url.absoluteString == "https://example.com/api")
+    }
+
+    @Test
+    func `Each rejection carries its reason`() {
+        #expect(LMKURLValidator.validate("") == .failure(.empty))
+        #expect(LMKURLValidator.validate(nil) == .failure(.empty))
+        #expect(LMKURLValidator.validate("   ") == .failure(.empty))
+        #expect(LMKURLValidator.validate("https://example.com/" + String(repeating: "a", count: 500)) == .failure(.tooLong(maximum: 500)))
+        #expect(LMKURLValidator.validate("http://example.com") == .failure(.unexpectedScheme(expected: "https")))
+        #expect(LMKURLValidator.validate("https:///path") == .failure(.missingHost))
+        #expect(LMKURLValidator.validate("https://localhost/api") == .failure(.blockedHost("localhost")))
+        #expect(LMKURLValidator.validate("not a url at all") == .failure(.malformed) || LMKURLValidator.validate("not a url at all") == .failure(.unexpectedScheme(expected: "https")))
+    }
+
+    @Test
+    func `Scheme is compared case-insensitively and can be changed`() {
+        #expect(LMKURLValidator.validate("HTTPS://example.com").map(\.host) == .success("example.com"))
+        #expect(LMKURLValidator.validate("ws://example.com", requiredScheme: "ws").map(\.host) == .success("example.com"))
+    }
+
+    // MARK: - validateHTTPSURL
+
     @Test
     func `Valid HTTPS URL passes`() {
         let result = LMKURLValidator.validateHTTPSURL("https://example.com/api")
@@ -18,8 +46,7 @@ struct LMKURLValidatorTests {
 
     @Test
     func `HTTP URL is rejected`() {
-        let result = LMKURLValidator.validateHTTPSURL("http://example.com")
-        #expect(result == nil)
+        #expect(LMKURLValidator.validateHTTPSURL("http://example.com") == nil)
     }
 
     @Test
@@ -35,32 +62,61 @@ struct LMKURLValidatorTests {
     }
 
     @Test
-    func `Localhost is blocked (SSRF)`() {
+    func `Whitespace is trimmed`() {
+        let result = LMKURLValidator.validateHTTPSURL("  https://example.com  ")
+        #expect(result == "https://example.com")
+    }
+
+    // MARK: - Host blocklist
+
+    @Test
+    func `Localhost is blocked`() {
         #expect(LMKURLValidator.validateHTTPSURL("https://localhost/api") == nil)
         #expect(LMKURLValidator.validateHTTPSURL("https://localhost.localdomain/api") == nil)
     }
 
     @Test
-    func `Private IP ranges are blocked (SSRF)`() {
-        #expect(LMKURLValidator.validateHTTPSURL("https://10.0.0.1/api") == nil)
-        #expect(LMKURLValidator.validateHTTPSURL("https://192.168.1.1/api") == nil)
-        #expect(LMKURLValidator.validateHTTPSURL("https://172.16.0.1/api") == nil)
-        #expect(LMKURLValidator.validateHTTPSURL("https://127.0.0.1/api") == nil)
+    func `Private, loopback, link-local, CGNAT, and unspecified IPv4 ranges are blocked`() {
+        for host in ["10.0.0.1", "192.168.1.1", "172.16.0.1", "172.31.255.254", "127.0.0.1", "169.254.1.1", "100.64.0.1", "100.127.255.254", "0.0.0.0", "0.1.2.3"] {
+            #expect(LMKURLValidator.isBlockedHost(host), "\(host) should be blocked")
+        }
     }
 
     @Test
-    func `Link-local is blocked (SSRF)`() {
-        #expect(LMKURLValidator.validateHTTPSURL("https://169.254.1.1/api") == nil)
+    func `Multicast and reserved IPv4 ranges are blocked`() {
+        for host in ["224.0.0.1", "239.255.255.250", "240.0.0.1", "255.255.255.255"] {
+            #expect(LMKURLValidator.isBlockedHost(host), "\(host) should be blocked")
+        }
     }
 
     @Test
-    func `IPv6 loopback is blocked`() {
-        #expect(LMKURLValidator.isBlockedHost("::1"))
+    func `Public IPv4 addresses and host names pass`() {
+        for host in ["8.8.8.8", "100.63.255.255", "100.128.0.1", "172.32.0.1", "203.0.113.9", "example.com"] {
+            #expect(!LMKURLValidator.isBlockedHost(host), "\(host) should pass")
+        }
     }
+
+    @Test
+    func `IPv6 loopback, unspecified, local, and multicast ranges are blocked`() {
+        for host in ["::1", "::", "fc00::1", "fd12:3456::1", "fe80::1", "ff02::1"] {
+            #expect(LMKURLValidator.isBlockedHost(host), "\(host) should be blocked")
+        }
+    }
+
+    @Test
+    func `IPv4-mapped IPv6 addresses follow the IPv4 rules`() {
+        #expect(LMKURLValidator.isBlockedHost("::ffff:127.0.0.1"))
+        #expect(LMKURLValidator.isBlockedHost("::ffff:10.1.2.3"))
+        #expect(!LMKURLValidator.isBlockedHost("::ffff:8.8.8.8"))
+        #expect(!LMKURLValidator.isBlockedHost("2606:4700::1111"))
+    }
+
+    // MARK: - normalizeBaseURL
 
     @Test
     func `normalizeBaseURL adds trailing slash`() {
         #expect(LMKURLValidator.normalizeBaseURL("https://example.com/path") == "https://example.com/path/")
+        #expect(LMKURLValidator.normalizeBaseURL("https://example.com") == "https://example.com/")
     }
 
     @Test
@@ -69,13 +125,9 @@ struct LMKURLValidatorTests {
     }
 
     @Test
-    func `normalizeBaseURL preserves .json suffix`() {
+    func `normalizeBaseURL preserves file URLs unless asked not to`() {
         #expect(LMKURLValidator.normalizeBaseURL("https://example.com/data.json") == "https://example.com/data.json")
-    }
-
-    @Test
-    func `Whitespace is trimmed`() {
-        let result = LMKURLValidator.validateHTTPSURL("  https://example.com  ")
-        #expect(result == "https://example.com")
+        #expect(LMKURLValidator.normalizeBaseURL("https://example.com/feed.xml") == "https://example.com/feed.xml")
+        #expect(LMKURLValidator.normalizeBaseURL("https://example.com/data.json", preservingPathExtension: false) == "https://example.com/data.json/")
     }
 }

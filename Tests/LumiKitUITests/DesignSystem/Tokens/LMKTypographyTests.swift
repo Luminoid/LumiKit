@@ -63,49 +63,49 @@ struct LMKTypographyConfigurationTests {
 
     @Test
     func `Custom font sizes are applied via proxy`() {
-        let original = LMKThemeManager.shared.typography
-        defer { LMKThemeManager.shared.apply(typography: original) }
+        let original = LMKTheme.current.typography
+        defer { LMKTheme.update { $0.typography = original } }
 
-        LMKThemeManager.shared.apply(typography: .init(h1Size: 32, bodySize: 15))
+        LMKTheme.update { $0.typography = .init(h1Size: 32, bodySize: 15) }
         #expect(LMKTypography.h1.pointSize == 32)
         #expect(LMKTypography.body.pointSize == 15)
     }
 
     @Test
     func `Custom font family is applied`() {
-        let original = LMKThemeManager.shared.typography
-        defer { LMKThemeManager.shared.apply(typography: original) }
+        let original = LMKTheme.current.typography
+        defer { LMKTheme.update { $0.typography = original } }
 
-        LMKThemeManager.shared.apply(typography: .init(fontFamily: "Helvetica Neue"))
+        LMKTheme.update { $0.typography = .init(fontFamily: "Helvetica Neue") }
         let font = LMKTypography.h1
         #expect(font.familyName == "Helvetica Neue")
     }
 
     @Test
     func `Line height multipliers are configurable`() {
-        let original = LMKThemeManager.shared.typography
-        defer { LMKThemeManager.shared.apply(typography: original) }
+        let original = LMKTheme.current.typography
+        defer { LMKTheme.update { $0.typography = original } }
 
-        LMKThemeManager.shared.apply(typography: .init(headingLineHeightMultiplier: 1.5))
+        LMKTheme.update { $0.typography = .init(headingLineHeightMultiplier: 1.5) }
         #expect(LMKTypography.headingLineHeightMultiplier == 1.5)
     }
 
     @Test
     func `Letter spacing is configurable`() {
-        let original = LMKThemeManager.shared.typography
-        defer { LMKThemeManager.shared.apply(typography: original) }
+        let original = LMKTheme.current.typography
+        defer { LMKTheme.update { $0.typography = original } }
 
-        LMKThemeManager.shared.apply(typography: .init(headingLetterSpacing: -1.0))
+        LMKTheme.update { $0.typography = .init(headingLetterSpacing: -1.0) }
         #expect(LMKTypography.headingLetterSpacing == -1.0)
         #expect(LMKTypography.letterSpacing(for: .heading) == -1.0)
     }
 
     @Test
     func `Default font family is system font`() {
-        let original = LMKThemeManager.shared.typography
-        defer { LMKThemeManager.shared.apply(typography: original) }
+        let original = LMKTheme.current.typography
+        defer { LMKTheme.update { $0.typography = original } }
 
-        LMKThemeManager.shared.apply(typography: .init())
+        LMKTheme.update { $0.typography = .init() }
         let font = LMKTypography.body
         // System font family varies by platform but should be non-empty
         #expect(!font.familyName.isEmpty)
