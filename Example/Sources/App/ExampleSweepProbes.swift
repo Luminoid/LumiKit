@@ -7,7 +7,9 @@
 //  and audited too. A probe is a path of control titles or accessibility
 //  labels, tapped in order through `sendActions(for: .touchUpInside)`; it
 //  exercises presentation, not the gesture that would trigger it. The step
-//  `@end` scrolls the page to its end instead, for rows below the fold.
+//  `@end` scrolls the page to its end instead, for rows below the fold;
+//  `@dismiss` dismisses the front-most presentation and `@pop` pops the
+//  front-most stack, for what a screen looks like after coming back.
 //
 
 import LumiKitUI
@@ -46,6 +48,29 @@ enum ExampleSweepProbes {
 
     /// The step that scrolls instead of tapping.
     static let scrollToEnd = "@end"
+    /// The step that dismisses the front-most presented controller, as its Close button would.
+    static let dismissPresented = "@dismiss"
+    /// The step that pops the front-most navigation stack, as its back button would.
+    static let pop = "@pop"
+
+    /// Runs a navigation step (`@dismiss`, `@pop`); `false` when `step` is not one or had nothing to act on.
+    static func performNavigationStep(_ step: String, navigation: UINavigationController) -> Bool {
+        var top = navigation.presentedViewController
+        while let next = top?.presentedViewController {
+            top = next
+        }
+        switch step {
+        case dismissPresented:
+            guard let top else { return false }
+            top.dismiss(animated: true)
+            return true
+        case pop:
+            let stack = (top as? UINavigationController) ?? top?.navigationController ?? (top == nil ? navigation : nil)
+            return stack?.popViewController(animated: true) != nil
+        default:
+            return false
+        }
+    }
 
     /// Scrolls the first vertically scrolling view under `view` to its end; `false` when there is none.
     @discardableResult

@@ -19,6 +19,18 @@ struct LMKNavigationControllerTests {
     }
 
     @Test
+    func `Re-asserting the back button keeps the top item's own choice`() {
+        let navigation = LMKNavigationController(rootViewController: UIViewController())
+        let top = UIViewController()
+        navigation.pushViewController(top, animated: false)
+        navigation.reassertBackButton()
+        #expect(!top.navigationItem.hidesBackButton)
+        top.navigationItem.hidesBackButton = true
+        navigation.reassertBackButton()
+        #expect(top.navigationItem.hidesBackButton, "an item that hides its back button keeps it hidden")
+    }
+
+    @Test
     func `Installs a private delegate on the pop gesture after viewDidLoad`() {
         let navigation = LMKNavigationController(rootViewController: UIViewController())
         navigation.loadViewIfNeeded()

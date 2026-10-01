@@ -23,6 +23,28 @@ struct LMKEmptyStateViewTests {
     }
 
     @Test
+    func `A stacked message takes the view's width, even after a zero-width first pass`() {
+        // A table background starts at zero size; hugging its text, the message kept the width
+        // of that pass and wrapped one word per line.
+        let view = LMKEmptyStateView(style: .card)
+        view.configure(Self.content("No network requests captured yet"), animated: false)
+        let background = view.wrappedForTableBackground()
+        background.frame = .zero
+        background.layoutIfNeeded()
+        background.frame = CGRect(x: 0, y: 0, width: 400, height: 600)
+        background.layoutIfNeeded()
+        let inset = LMKSpacing.large
+        #expect(view.messageLabel.frame.width == 400 - inset * 2)
+        #expect(view.messageLabel.frame.height < LMKTextMeasurement.lineHeight(of: .caption, traits: view.traitCollection) * 1.5, "one line")
+        #expect(view.messageLabel.textAlignment == .center)
+
+        let inline = LMKEmptyStateView(style: LMKEmptyStateView.Style(layout: .inline))
+        inline.configure(Self.content("Short"), animated: false)
+        LMKThemeTesting.fit(inline, width: 400)
+        #expect(inline.messageLabel.frame.width < 200, "the inline row still hugs its content")
+    }
+
+    @Test
     func `configure sets text, icon, and the layout's fonts`() {
         let view = LMKEmptyStateView()
         view.configure(LMKEmptyStateView.Content(title: "Empty", message: "Nothing here", icon: .system("tray")))

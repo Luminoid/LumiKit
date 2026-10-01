@@ -44,7 +44,7 @@ open class LMKCardPageViewController: UIViewController, LMKThemeApplying {
         public var header: LMKSurfaceStyle
         /// Page background; `nil` = `backgroundPrimary`.
         public var backgroundColor: UIColor?
-        /// Header height floor; `nil` = 52. Grows with Dynamic Type.
+        /// Header height floor below the top safe area (and the drag indicator); `nil` = 52. Grows with Dynamic Type.
         public var headerHeight: CGFloat?
         /// `nil` = `bodyBold`.
         public var titleTextStyle: LMKTextStyle?
@@ -297,26 +297,31 @@ open class LMKCardPageViewController: UIViewController, LMKThemeApplying {
         headerTitleLabel.textAlignment = .center
         headerTitleLabel.accessibilityTraits = .header
 
+        // The surface is full-bleed; what it holds stays inside the header's safe area, so a page
+        // that fills the screen keeps its buttons and title clear of the status bar, the Mac
+        // window controls, and the landscape sensor housing. A card away from the edges has none.
         view.addSubview(headerView)
         headerView.snp.makeConstraints { make in
             make.top.leading.trailing.equalToSuperview()
-            headerHeightConstraint = make.height.equalTo(Self.defaultHeaderHeight).constraint
         }
+        let safeArea = headerView.safeAreaLayoutGuide
 
         dragIndicator.isHidden = true
         dragIndicator.isUserInteractionEnabled = false
         dragIndicator.isAccessibilityElement = false
         headerView.addSubview(dragIndicator)
         dragIndicator.snp.makeConstraints { make in
-            dragIndicatorTopConstraint = make.top.equalToSuperview().offset(0).constraint
-            make.centerX.equalToSuperview()
+            dragIndicatorTopConstraint = make.top.equalTo(safeArea).offset(0).constraint
+            make.centerX.equalTo(safeArea)
             dragIndicatorWidthConstraint = make.width.equalTo(Self.defaultDragIndicatorSize.width).constraint
             dragIndicatorHeightConstraint = make.height.equalTo(Self.defaultDragIndicatorSize.height).constraint
         }
         headerView.addLayoutGuide(headerContentGuide)
         headerContentGuide.snp.makeConstraints { make in
-            headerContentTopConstraint = make.top.equalToSuperview().offset(0).constraint
-            make.leading.trailing.bottom.equalToSuperview()
+            headerContentTopConstraint = make.top.equalTo(safeArea).offset(0).constraint
+            make.leading.trailing.equalTo(safeArea)
+            make.bottom.equalToSuperview()
+            headerHeightConstraint = make.height.equalTo(Self.defaultHeaderHeight).constraint
         }
 
         leadingButton.onTap = { [weak self] in self?.leadingTapped() }
@@ -328,13 +333,13 @@ open class LMKCardPageViewController: UIViewController, LMKThemeApplying {
             headerView.addSubview(button)
         }
         leadingButton.snp.makeConstraints { make in
-            buttonEdgeConstraints.append(make.leading.equalToSuperview().inset(0).constraint)
+            buttonEdgeConstraints.append(make.leading.equalTo(headerContentGuide).inset(0).constraint)
             make.centerY.equalTo(headerContentGuide)
             buttonHeightConstraints.append(make.height.equalTo(Self.defaultButtonSize).constraint)
             buttonWidthConstraints.append(make.width.greaterThanOrEqualTo(Self.defaultButtonSize).constraint)
         }
         trailingButton.snp.makeConstraints { make in
-            buttonEdgeConstraints.append(make.trailing.equalToSuperview().inset(0).constraint)
+            buttonEdgeConstraints.append(make.trailing.equalTo(headerContentGuide).inset(0).constraint)
             make.centerY.equalTo(headerContentGuide)
             buttonHeightConstraints.append(make.height.equalTo(Self.defaultButtonSize).constraint)
             buttonWidthConstraints.append(make.width.greaterThanOrEqualTo(Self.defaultButtonSize).constraint)
@@ -342,12 +347,12 @@ open class LMKCardPageViewController: UIViewController, LMKThemeApplying {
 
         headerView.addSubview(headerTitleLabel)
         headerTitleLabel.snp.makeConstraints { make in
-            make.centerX.equalToSuperview()
+            make.centerX.equalTo(headerContentGuide)
             make.centerY.equalTo(headerContentGuide)
             titleLeadingToButton = make.leading.greaterThanOrEqualTo(leadingButton.snp.trailing).offset(0).constraint
-            titleLeadingToEdge = make.leading.greaterThanOrEqualToSuperview().inset(0).constraint
+            titleLeadingToEdge = make.leading.greaterThanOrEqualTo(headerContentGuide).inset(0).constraint
             titleTrailingToButton = make.trailing.lessThanOrEqualTo(trailingButton.snp.leading).offset(0).constraint
-            titleTrailingToEdge = make.trailing.lessThanOrEqualToSuperview().inset(0).constraint
+            titleTrailingToEdge = make.trailing.lessThanOrEqualTo(headerContentGuide).inset(0).constraint
         }
 
         headerView.addSubview(headerSeparator)
@@ -514,9 +519,10 @@ open class LMKCardPageViewController: UIViewController, LMKThemeApplying {
         let indicatorBand = showsIndicator ? theme.spacing.small + indicatorSize.height : 0
         headerContentTopConstraint?.update(offset: indicatorBand)
 
+        // The row the buttons and title center in; the header adds the band and the top safe area.
         let lineHeight = LMKTextMeasurement.lineHeight(of: titleStyle, traits: traitCollection)
         let floor = max(lineHeight, buttonSize) + theme.spacing.small * 2
-        headerHeightConstraint?.update(offset: max(resolved.headerHeight ?? Self.defaultHeaderHeight, floor) + indicatorBand)
+        headerHeightConstraint?.update(offset: max(resolved.headerHeight ?? Self.defaultHeaderHeight, floor))
         applyContentTheme(theme)
         didApplyStyle?(self)
     }

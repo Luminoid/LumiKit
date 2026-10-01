@@ -46,6 +46,10 @@ private final class InspectorPaneViewController: DetailViewController {
     init(role: Role) {
         self.role = role
         super.init()
+        if role == .sidebar {
+            // The column's own material (the iOS 26 floating sidebar) shows through.
+            style.backgroundColor = .clear
+        }
         title = switch role {
         case .sidebar: "Library"
         case .content: "Monstera"

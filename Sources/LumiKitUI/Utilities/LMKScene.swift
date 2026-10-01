@@ -84,6 +84,9 @@ public enum LMKScene {
     ///   - minimumSize: Smallest window size; `nil` leaves the system default.
     ///   - maximumSize: Largest window size; `nil` leaves the window unbounded (full screen and wide tiling keep working).
     ///   - hidesTitleBar: Hides the title bar and removes the toolbar (apps that draw their own bars).
+    ///     Pass `false` when the window shows system navigation bars: under the Mac idiom a
+    ///     navigation bar's back button and title live in the window toolbar, and the title is the
+    ///     one the title bar shows, so hiding it hides every screen's title.
     public static func configureMacWindow(for scene: UIWindowScene, minimumSize: CGSize?, maximumSize: CGSize? = nil, hidesTitleBar: Bool = true) {
         #if targetEnvironment(macCatalyst)
             if hidesTitleBar, let titlebar = scene.titlebar {

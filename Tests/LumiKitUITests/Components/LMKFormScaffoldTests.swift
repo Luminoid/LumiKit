@@ -83,6 +83,23 @@ struct LMKFormScaffoldTests {
     }
 
     @Test
+    func `install keeps the stack clear of the side safe areas and the content as wide as the frame`() {
+        let (host, window) = makeHost()
+        defer { window.isHidden = true }
+        host.additionalSafeAreaInsets = UIEdgeInsets(top: 0, left: 100, bottom: 0, right: 20)
+        let scrollView = LMKFormScaffold.makeScrollView()
+        let stack = LMKFormScaffold.makeContentStack()
+        stack.addArrangedSubview(UILabel.lmk_make(.body, text: "Row"))
+        LMKFormScaffold.install(scrollView: scrollView, stack: stack, in: host.view)
+        host.view.layoutIfNeeded()
+        let padding = LMKSpacing.cardPadding
+        let frame = stack.convert(stack.bounds, to: host.view)
+        #expect(frame.minX == 100 + padding)
+        #expect(frame.maxX == host.view.bounds.width - 20 - padding)
+        #expect(scrollView.contentSize.width == scrollView.bounds.width, "content never scrolls sideways")
+    }
+
+    @Test
     func `install applies token insets by default and honors custom ones`() {
         let (host, window) = makeHost()
         defer { window.isHidden = true }
@@ -128,10 +145,11 @@ struct LMKFormScaffoldTests {
         LMKFormScaffold.install(scrollView: wideScroll, stack: wideStack, in: wide.view, widthMode: .capped(maxWidth: 1000, horizontalInset: 10))
         wide.view.layoutIfNeeded()
         #expect(wideStack.frame.width == 355)
-        // The scroll content edges float, so a required cap against the frame is what keeps a
-        // content-size chain from widening the stack past the screen.
+        // The scroll content edges float, so a required cap against the safe area (a frame-sized
+        // guide) is what keeps a content-size chain from widening the stack past the screen.
         let cap = wideScroll.constraints.first {
-            $0.firstItem === wideStack && $0.firstAttribute == .width && $0.relation == .lessThanOrEqual && $0.secondItem === wideScroll && $0.secondAttribute == .width
+            $0.firstItem === wideStack && $0.firstAttribute == .width && $0.relation == .lessThanOrEqual
+                && $0.secondItem === wideScroll.safeAreaLayoutGuide && $0.secondAttribute == .width
         }
         #expect(cap?.constant == -20)
         #expect(cap?.priority == .required)

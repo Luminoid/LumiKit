@@ -27,11 +27,12 @@ import UIKit
 public enum LMKFormScaffold {
     /// How the content stack takes the scroll view's width.
     public nonisolated enum WidthMode: Sendable, Hashable {
-        /// Full width inside the content insets (the default).
+        /// Full width inside the safe area and the content insets (the default).
         case tokenInsets
         /// The scroll view's readable content guide (wide iPads and Mac windows keep lines short).
         case readable
-        /// Centered, at most `maxWidth` wide, never closer than `horizontalInset` to the edges.
+        /// Centered in the safe area, at most `maxWidth` wide, never closer than `horizontalInset`
+        /// to its edges.
         case capped(maxWidth: CGFloat, horizontalInset: CGFloat)
     }
 
@@ -138,33 +139,42 @@ public enum LMKFormScaffold {
         }
         scrollView.addSubview(stack)
         pin(stack, in: scrollView, insets: contentInsets ?? .lmk_all(LMKSpacing.cardPadding), widthMode: widthMode)
+        // The stack's sides follow the safe area, not the content edges: the content is exactly as
+        // wide as the frame, so the form only scrolls vertically.
+        scrollView.contentLayoutGuide.snp.makeConstraints { $0.width.equalTo(scrollView.frameLayoutGuide) }
     }
 
     /// Pins `stack` inside `container` (a scroll view or its content view) per `widthMode`,
-    /// replacing any constraints it made before. The stack's edges drive the content size.
+    /// replacing any constraints it made before. The stack's top and bottom drive the content
+    /// height; the sides are measured from the container's safe area, so content stays clear of a
+    /// floating sidebar (a tab or split view sidebar on iPad and Mac), an inspector, and the
+    /// landscape sensor housing, while the scroll view and its background stay full-bleed.
     static func pin(_ stack: UIView, in container: UIView, insets: NSDirectionalEdgeInsets, widthMode: WidthMode) {
+        let safeArea = container.safeAreaLayoutGuide
         stack.snp.remakeConstraints { make in
             make.top.equalToSuperview().offset(insets.top)
             make.bottom.equalToSuperview().offset(-insets.bottom)
             switch widthMode {
             case .tokenInsets:
-                make.leading.equalToSuperview().offset(insets.leading)
-                make.trailing.equalToSuperview().offset(-insets.trailing)
-                make.width.equalToSuperview().offset(-(insets.leading + insets.trailing))
+                make.leading.equalTo(safeArea).offset(insets.leading)
+                make.trailing.equalTo(safeArea).offset(-insets.trailing)
+                // Inside a scroll view the content edges float: the width locks to the frame.
+                make.width.equalTo(safeArea).offset(-(insets.leading + insets.trailing))
             case .readable:
+                // The readable guide sits inside the layout margins, which already include the safe area.
                 make.leading.equalTo(container.readableContentGuide.snp.leading).offset(insets.leading)
                 make.trailing.equalTo(container.readableContentGuide.snp.trailing).offset(-insets.trailing)
             case let .capped(maxWidth, horizontalInset):
-                make.centerX.equalToSuperview()
+                make.centerX.equalTo(safeArea)
                 make.width.lessThanOrEqualTo(maxWidth)
-                make.leading.greaterThanOrEqualToSuperview().offset(horizontalInset)
-                make.trailing.lessThanOrEqualToSuperview().offset(-horizontalInset)
+                make.leading.greaterThanOrEqualTo(safeArea).offset(horizontalInset)
+                make.trailing.lessThanOrEqualTo(safeArea).offset(-horizontalInset)
                 // Inside a scroll view the content edges float, so the insets alone do not bound
                 // the width: the cap against the frame does (as `lmk_pinReadableWidth` carries).
-                make.width.lessThanOrEqualToSuperview().offset(-horizontalInset * 2)
+                make.width.lessThanOrEqualTo(safeArea).offset(-horizontalInset * 2)
                 // Just below required: a card's internal content-size chains (required hugging
                 // on a detail label, wrapped labels) must never win over filling the width.
-                make.width.equalToSuperview().offset(-horizontalInset * 2).priority(999)
+                make.width.equalTo(safeArea).offset(-horizontalInset * 2).priority(999)
             }
         }
     }

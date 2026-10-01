@@ -12,21 +12,22 @@ import UIKit
 private nonisolated(unsafe) var lmk_readableWidthGuideKey: UInt8 = 0
 
 public extension UIView {
-    /// Pins the view's horizontal extent inside `container` the readable way: centered, never
-    /// wider than `maxWidth`, never closer than `horizontalInset` to the container's edges, and
-    /// filling the remaining width on narrow screens.
+    /// Pins the view's horizontal extent inside `container` the readable way: centered in the
+    /// container's safe area, never wider than `maxWidth`, never closer than `horizontalInset` to
+    /// the safe area's edges, and filling the remaining width on narrow screens. Measuring from
+    /// the safe area keeps the content clear of a floating sidebar or inspector (iPad and Mac) and
+    /// the landscape sensor housing.
     ///
     /// Vertical constraints are the caller's. The fill constraint sits just below required (999),
     /// so content-size chains (a long single-line label, required hugging beside a wrapped title)
     /// never win over filling the width; the cap, the edge insets, and the bound to the
-    /// container's own width are required. The width bound is what keeps wide content inside
-    /// the viewport when `container` is a scroll view, where the edge constraints describe the
-    /// content area instead of the frame.
+    /// safe area's width are required. The width bound is what keeps wide content inside
+    /// the viewport when `container` is a scroll view.
     ///
     /// - Parameters:
     ///   - container: The view to lay out against; default the superview (the view must already be added).
     ///   - maxWidth: Width cap; `nil` = `LMKLayout.readableContentMaxWidth`.
-    ///   - horizontalInset: Minimum distance to the container's leading and trailing edges; `nil` = `LMKSpacing.large`.
+    ///   - horizontalInset: Minimum distance to the safe area's leading and trailing edges; `nil` = `LMKSpacing.large`.
     ///
     /// A view with neither a container nor a superview is left alone (an assertion in debug builds).
     func lmk_pinReadableWidth(in container: UIView? = nil, maxWidth: CGFloat? = nil, horizontalInset: CGFloat? = nil) {
@@ -36,18 +37,20 @@ public extension UIView {
         }
         let cap = maxWidth ?? LMKLayout.readableContentMaxWidth
         let inset = horizontalInset ?? LMKSpacing.large
+        let safeArea = container.safeAreaLayoutGuide
         snp.makeConstraints { make in
-            make.centerX.equalTo(container)
+            make.centerX.equalTo(safeArea)
             make.width.lessThanOrEqualTo(cap)
-            make.leading.greaterThanOrEqualTo(container).offset(inset)
-            make.trailing.lessThanOrEqualTo(container).offset(-inset)
-            make.width.lessThanOrEqualTo(container).offset(-inset * 2)
-            make.width.equalTo(container).offset(-inset * 2).priority(999)
+            make.leading.greaterThanOrEqualTo(safeArea).offset(inset)
+            make.trailing.lessThanOrEqualTo(safeArea).offset(-inset)
+            make.width.lessThanOrEqualTo(safeArea).offset(-inset * 2)
+            make.width.equalTo(safeArea).offset(-inset * 2).priority(999)
         }
     }
 
-    /// A layout guide centered in the view whose width is the readable width: the view's width
-    /// minus `LMKSpacing.large` on each side, capped at `LMKLayout.readableContentMaxWidth`.
+    /// A layout guide centered in the view's safe area whose width is the readable width: the
+    /// safe area's width minus `LMKSpacing.large` on each side, capped at
+    /// `LMKLayout.readableContentMaxWidth`.
     ///
     /// Installed on first access and reused afterwards. Constrain content to its leading and
     /// trailing anchors to get the same treatment as `lmk_pinReadableWidth(in:maxWidth:horizontalInset:)`
@@ -65,13 +68,14 @@ public extension UIView {
         guide.identifier = "LMKReadableWidthGuide"
         addLayoutGuide(guide)
         let inset = LMKSpacing.large
+        let safeArea = safeAreaLayoutGuide
         guide.snp.makeConstraints { make in
             make.top.bottom.equalToSuperview()
-            make.centerX.equalToSuperview()
+            make.centerX.equalTo(safeArea)
             make.width.lessThanOrEqualTo(LMKLayout.readableContentMaxWidth)
-            make.leading.greaterThanOrEqualToSuperview().offset(inset)
-            make.trailing.lessThanOrEqualToSuperview().offset(-inset)
-            make.width.equalToSuperview().offset(-inset * 2).priority(999)
+            make.leading.greaterThanOrEqualTo(safeArea).offset(inset)
+            make.trailing.lessThanOrEqualTo(safeArea).offset(-inset)
+            make.width.equalTo(safeArea).offset(-inset * 2).priority(999)
         }
         objc_setAssociatedObject(self, &lmk_readableWidthGuideKey, guide, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
         return guide

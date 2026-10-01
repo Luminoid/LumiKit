@@ -19,8 +19,9 @@ final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         options connectionOptions: UIScene.ConnectionOptions
     ) {
         guard let windowScene = scene as? UIWindowScene else { return }
-        // A no-op on iOS; on Mac Catalyst it hides the title bar and floors the window size.
-        LMKScene.configureMacWindow(for: windowScene, minimumSize: CGSize(width: 600, height: 700))
+        // A no-op on iOS; on Mac Catalyst it floors the window size. The title bar stays: the
+        // catalog's system navigation bar shows its back button and title there.
+        LMKScene.configureMacWindow(for: windowScene, minimumSize: CGSize(width: 600, height: 700), hidesTitleBar: false)
         // The theme was applied once in the AppDelegate; every scene shares it.
         let window = UIWindow(windowScene: windowScene)
         // LMKNavigationController keeps the edge swipe back working on pages that hide the system bar.

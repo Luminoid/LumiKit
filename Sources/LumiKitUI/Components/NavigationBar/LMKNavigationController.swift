@@ -27,6 +27,8 @@ public protocol LMKPopGestureConfiguring: AnyObject {
 /// pop gesture, which has no delegate to ask: it is switched off while the rule says no and
 /// back on afterwards (``updateContentPopGesture()``). The top screen also answers for the
 /// status bar, so a forced-dark screen keeps its light status bar under a hidden system bar.
+/// Under the Mac idiom it restores the back button that the window toolbar loses when a
+/// full-screen presentation over the stack is dismissed.
 ///
 /// ```swift
 /// let navigation = LMKNavigationController(rootViewController: homeViewController)
@@ -57,6 +59,25 @@ open class LMKNavigationController: UINavigationController {
     override open func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
         updateContentPopGesture()
+    }
+
+    /// Under the Mac idiom the bar's items live in the window toolbar, and a full-screen
+    /// presentation that is dismissed hands the toolbar back without the back button (the title
+    /// returns, the button does not). This view controller reappears exactly then, so the top
+    /// item's back button is re-asserted.
+    override open func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        if traitCollection.userInterfaceIdiom == .mac {
+            reassertBackButton()
+        }
+    }
+
+    /// Toggles the top item's `hidesBackButton` so the bar rebuilds its back button; an item that
+    /// hides its back button is left alone.
+    func reassertBackButton() {
+        guard !isNavigationBarHidden, viewControllers.count > 1, let item = topViewController?.navigationItem, !item.hidesBackButton else { return }
+        item.hidesBackButton = true
+        item.hidesBackButton = false
     }
 
     /// Applies ``canBeginPopGesture`` to the iOS 26 content-area pop gesture, which has no

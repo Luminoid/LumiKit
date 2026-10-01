@@ -55,6 +55,26 @@ struct LMKCardPageViewControllerTests {
     }
 
     @Test
+    func `A page that fills the screen keeps its header content inside the safe area`() {
+        let page = TestPage(title: "History")
+        page.trailingItem = LMKNavigationBarItem(systemName: "trash")
+        let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 375, height: 600))
+        window.rootViewController = page
+        window.makeKeyAndVisible()
+        defer { window.isHidden = true }
+        // The status bar or the Mac title bar strip on top, the sensor housing at the sides.
+        page.additionalSafeAreaInsets = UIEdgeInsets(top: 30, left: 40, bottom: 0, right: 20)
+        page.view.setNeedsLayout()
+        page.view.layoutIfNeeded()
+        let insets = page.view.safeAreaInsets
+        #expect(page.headerView.frame.minY == 0, "the surface stays full-bleed")
+        #expect(page.headerView.frame.height == insets.top + 52)
+        #expect(page.headerTitleLabel.frame.midY == insets.top + 26)
+        #expect(page.leadingButton.frame.minX == insets.left + LMKSpacing.large)
+        #expect(page.trailingButton.frame.maxX == 375 - insets.right - LMKSpacing.large)
+    }
+
+    @Test
     func `Items configure the buttons and their actions`() {
         let page = TestPage(title: "T")
         var trailingTaps = 0
@@ -296,9 +316,11 @@ struct LMKCardPageViewControllerTests {
         page.view.frame = window.bounds
         window.layoutIfNeeded()
         let spacing = LMKThemeTesting.distinct.spacing
+        // The page fills the window, so the header's content starts below the top safe area.
+        let safeTop = page.view.safeAreaInsets.top
         #expect(page.leadingButton.frame.minX == spacing.large)
-        #expect(page.dragIndicator.frame.minY == spacing.small)
-        #expect(page.headerView.frame.height == 52 + spacing.small + 5)
+        #expect(page.dragIndicator.frame.minY == safeTop + spacing.small)
+        #expect(page.headerView.frame.height == safeTop + 52 + spacing.small + 5)
     }
 
     @Test

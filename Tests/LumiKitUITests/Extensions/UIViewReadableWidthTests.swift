@@ -104,6 +104,29 @@ struct UIViewReadableWidthTests {
     }
 
     @Test
+    func `The pin and the guide measure from the safe area, so a sidebar never covers the content`() {
+        let host = UIViewController()
+        let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 1000, height: 600))
+        window.rootViewController = host
+        window.makeKeyAndVisible()
+        defer { window.isHidden = true }
+        host.additionalSafeAreaInsets = UIEdgeInsets(top: 0, left: 300, bottom: 0, right: 0)
+        let content = UIView()
+        host.view.addSubview(content)
+        content.lmk_pinReadableWidth(maxWidth: 400)
+        content.snp.makeConstraints { make in
+            make.top.bottom.equalToSuperview()
+        }
+        let guide = host.view.lmk_readableWidthGuide
+        host.view.layoutIfNeeded()
+        // The safe area spans 300...1000.
+        #expect(content.frame.width == 400)
+        #expect(content.frame.midX == 650)
+        #expect(guide.layoutFrame.minX >= 300 + LMKSpacing.large)
+        #expect(guide.layoutFrame.midX == 650)
+    }
+
+    @Test
     func `The readable width guide is installed once and tracks the view width`() {
         let view = UIView(frame: CGRect(x: 0, y: 0, width: 1000, height: 100))
         let guide = view.lmk_readableWidthGuide

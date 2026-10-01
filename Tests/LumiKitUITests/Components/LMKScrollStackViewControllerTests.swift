@@ -114,6 +114,36 @@ struct LMKScrollStackViewControllerTests {
     }
 
     @Test
+    func `The stack keeps clear of the side safe areas a sidebar or the sensor housing leaves`() {
+        let controller = TestScrollVC()
+        let window = host(controller)
+        defer { window.isHidden = true }
+        // A floating tab or split view sidebar reports itself as a leading safe area.
+        controller.additionalSafeAreaInsets = UIEdgeInsets(top: 0, left: 120, bottom: 0, right: 30)
+        controller.view.setNeedsLayout()
+        controller.view.layoutIfNeeded()
+        let padding = LMKSpacing.cardPadding
+        let tokenFrame = controller.stackView.convert(controller.stackView.bounds, to: controller.view)
+        #expect(tokenFrame.minX == 120 + padding)
+        #expect(tokenFrame.maxX == 375 - 30 - padding)
+        #expect(controller.scrollView.frame.minX == 0, "the scroll view and its background stay full-bleed")
+        #expect(controller.scrollView.frame.width == 375)
+        #expect(controller.scrollView.contentSize.width == 375, "content never scrolls sideways")
+
+        controller.style.widthMode = .capped(maxWidth: 200, horizontalInset: 10)
+        controller.view.layoutIfNeeded()
+        let cappedFrame = controller.stackView.convert(controller.stackView.bounds, to: controller.view)
+        #expect(abs(cappedFrame.width - 200) < 0.5)
+        #expect(abs(cappedFrame.midX - 232.5) < 1, "centered in the safe area, 120...345")
+
+        controller.style.widthMode = .readable
+        controller.view.layoutIfNeeded()
+        let readableFrame = controller.stackView.convert(controller.stackView.bounds, to: controller.view)
+        #expect(readableFrame.minX >= 120)
+        #expect(readableFrame.maxX <= 345)
+    }
+
+    @Test
     func `Width modes: readable guide and capped width`() {
         let readable = TestScrollVC(style: LMKScrollStackViewController.Style(widthMode: .readable))
         let window = host(readable)

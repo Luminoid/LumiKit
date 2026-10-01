@@ -128,6 +128,14 @@ enum ExampleSweepRunner {
                 try? await Task.sleep(for: .milliseconds(500))
                 continue
             }
+            if step == ExampleSweepProbes.dismissPresented || step == ExampleSweepProbes.pop {
+                guard ExampleSweepProbes.performNavigationStep(step, navigation: navigation) else {
+                    print("AUDIT|\(options.configuration)|\(label)|error|probe|\(step)|nothing to dismiss or pop")
+                    return 1
+                }
+                try? await Task.sleep(for: .milliseconds(1300))
+                continue
+            }
             guard let control = ExampleSweepProbes.control(titled: step, in: ExampleSweepProbes.searchWindows(from: window, navigation: navigation)) else {
                 print("AUDIT|\(options.configuration)|\(label)|error|probe|\(step)|no enabled control with this title or label")
                 return 1

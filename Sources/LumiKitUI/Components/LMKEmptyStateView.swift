@@ -204,6 +204,11 @@ public final class LMKEmptyStateView: UIView, LMKThemeApplying {
     private var resolved = Style()
     private var iconSizeConstraint: Constraint?
     private var containerInsetsConstraint: Constraint?
+    /// The sides of the content: 999 in the stacked layouts, so the text takes its width from the
+    /// view and wraps to it; 249 inline, where the row hugs its content.
+    private var containerSidesConstraint: Constraint?
+    /// The text column fills the stacked content's width (inactive inline).
+    private var textFillConstraint: Constraint?
     /// The 999 guards that keep the content inside the view; they carry the same insets.
     private var containerLeadingTopGuard: Constraint?
     private var containerTrailingBottomGuard: Constraint?
@@ -247,7 +252,10 @@ public final class LMKEmptyStateView: UIView, LMKThemeApplying {
             // instead of breaking constraints); the hugging gives the view its content height when
             // the host imposes none. The hugging stays below UILabel's default vertical hugging (250),
             // so a taller host height centers the content instead of stretching the message.
-            containerInsetsConstraint = make.directionalEdges.equalToSuperview().priority(249).constraint
+            containerInsetsConstraint = make.top.bottom.equalToSuperview().priority(249).constraint
+            // Horizontally a wrapping message must get its width from the view, never from its own
+            // text: hugging it let an early zero-width pass leave the message one word per line.
+            containerSidesConstraint = make.leading.trailing.equalToSuperview().priority(999).constraint
             containerLeadingTopGuard = make.top.leading.greaterThanOrEqualToSuperview().priority(999).constraint
             containerTrailingBottomGuard = make.bottom.trailing.lessThanOrEqualToSuperview().priority(999).constraint
         }
@@ -273,6 +281,9 @@ public final class LMKEmptyStateView: UIView, LMKThemeApplying {
         containerStack.addArrangedSubview(iconView)
         containerStack.addArrangedSubview(textStack)
         containerStack.addArrangedSubview(actionStack)
+        textStack.snp.makeConstraints { make in
+            textFillConstraint = make.width.equalTo(containerStack).priority(999).constraint
+        }
     }
 
     override public func layoutSubviews() {
@@ -324,6 +335,13 @@ public final class LMKEmptyStateView: UIView, LMKThemeApplying {
         let applied = lmk_apply(surface: resolved.surface, defaults: defaults)
         let insets = applied.contentInsets ?? .lmk_all(0)
         containerInsetsConstraint?.update(inset: insets)
+        containerSidesConstraint?.update(inset: insets)
+        containerSidesConstraint?.update(priority: layout.isHorizontal ? 249 : 999)
+        if layout.isHorizontal {
+            textFillConstraint?.deactivate()
+        } else {
+            textFillConstraint?.activate()
+        }
         // The guards hold the insets when the message wraps and the low-priority edges give.
         containerLeadingTopGuard?.update(inset: insets)
         containerTrailingBottomGuard?.update(inset: insets)
