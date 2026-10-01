@@ -16,7 +16,7 @@ public extension Collection {
     /// items[lmk_safe: 1]  // "b"
     /// ```
     subscript(lmk_safe index: Index) -> Element? {
-        indices.contains(index) ? self[index] : nil
+        index >= startIndex && index < endIndex ? self[index] : nil
     }
 }
 

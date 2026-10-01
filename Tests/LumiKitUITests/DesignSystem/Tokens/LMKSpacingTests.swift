@@ -31,14 +31,24 @@ struct LMKSpacingTests {
             #expect(cardPadding == config.cardPaddingMac)
             #expect(cellPadding == config.cellPaddingVerticalMac)
         #else
-            guard let traits = LMKScene.keyWindow?.traitCollection else { return }
-            if traits.horizontalSizeClass == .regular, traits.verticalSizeClass == .regular {
-                let cardTiers = [config.cardPaddingIPadCompact, config.cardPaddingIPadRegular, config.cardPaddingIPadLarge]
-                let cellTiers = [config.cellPaddingVerticalIPadCompact, config.cellPaddingVerticalIPadRegular, config.cellPaddingVerticalIPadLarge]
-                #expect(cardTiers.contains(cardPadding))
-                #expect(cellTiers.contains(cellPadding))
+            if let window = LMKScene.keyWindow {
+                let traits = window.traitCollection
+                if traits.horizontalSizeClass == .regular, traits.verticalSizeClass == .regular {
+                    let shortestSide = min(window.bounds.width, window.bounds.height)
+                    let expectedCard = shortestSide <= 768 ? config.cardPaddingIPadCompact : shortestSide <= 834 ? config.cardPaddingIPadRegular : config.cardPaddingIPadLarge
+                    let expectedCell = shortestSide <= 768 ? config.cellPaddingVerticalIPadCompact : shortestSide <= 834 ? config.cellPaddingVerticalIPadRegular : config.cellPaddingVerticalIPadLarge
+                    #expect(cardPadding == expectedCard)
+                    #expect(cellPadding == expectedCell)
+                } else {
+                    // Phone-class canvas (any iPhone, iPad Slide Over): plain theme values.
+                    #expect(cardPadding == config.large)
+                    #expect(cellPadding == config.small)
+                }
+            } else if UIDevice.current.userInterfaceIdiom == .pad {
+                // No key window (the xctest host): an iPad assumes the regular tier.
+                #expect(cardPadding == config.cardPaddingIPadRegular)
+                #expect(cellPadding == config.cellPaddingVerticalIPadRegular)
             } else {
-                // Phone-class canvas (any iPhone, iPad Slide Over): plain theme values.
                 #expect(cardPadding == config.large)
                 #expect(cellPadding == config.small)
             }

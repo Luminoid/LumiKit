@@ -56,8 +56,8 @@ public extension UIView {
         lmk_surfaceState = state
         let resolved = defaults.merging(surface)
         let background = resolved.background ?? .clear
-        let corners = resolved.corners ?? .none
-        let shadow = resolved.shadow ?? .none
+        let corners = resolved.corners ?? .square
+        let shadow = resolved.shadow ?? .hidden
 
         // Background
         if state.resolved.background != background || (state.backgroundView == nil && background.needsView) {
@@ -72,7 +72,7 @@ public extension UIView {
             case let .blur(blurStyle):
                 state.backgroundView = UIVisualEffectView(effect: UIBlurEffect(style: blurStyle))
             case let .glass(variant, tint):
-                state.backgroundView = LMKGlassView(style: variant, tintColor: tint, cornerRadius: corners.resolvedRadius(for: bounds))
+                state.backgroundView = LMKGlassView(variant: variant, tintColor: tint, cornerRadius: corners.resolvedRadius(for: bounds))
             }
             if let backgroundView = state.backgroundView {
                 backgroundView.isUserInteractionEnabled = false
@@ -88,7 +88,7 @@ public extension UIView {
 
         // Shadow (before the corners: a visible shadow turns clipping off)
         switch shadow {
-        case .none: lmk_removeShadow()
+        case .hidden: lmk_removeShadow()
         case let .level(level): lmk_applyShadow(level)
         case let .custom(style): lmk_applyShadow(style)
         }
@@ -129,7 +129,7 @@ public extension UIView {
         lmk_layoutCornersIfNeeded()
         guard let state = lmk_surfaceState else { return }
         state.backgroundView?.lmk_layoutCornersIfNeeded()
-        let corners = state.resolved.corners ?? .none
+        let corners = state.resolved.corners ?? .square
         let radius = corners.resolvedRadius(for: bounds)
         if let glass = state.backgroundView as? LMKGlassView, corners.tracksBounds {
             glass.cornerRadius = radius
@@ -146,7 +146,7 @@ public extension UIView {
             ).cgPath
             borderLayer.strokeColor = (border.color ?? LMKColor.outline).resolvedColor(with: traitCollection).cgColor
         }
-        if state.backgroundView != nil, (state.resolved.shadow ?? .none).isVisible, !bounds.isEmpty {
+        if state.backgroundView != nil, (state.resolved.shadow ?? .hidden).isVisible, !bounds.isEmpty {
             layer.shadowPath = Self.lmk_roundedPath(in: bounds, radius: radius, corners: corners.maskedCorners).cgPath
         } else {
             layer.shadowPath = nil

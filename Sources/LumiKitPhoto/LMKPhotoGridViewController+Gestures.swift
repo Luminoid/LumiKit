@@ -27,8 +27,8 @@ extension LMKPhotoGridViewController {
     func anchor(atViewportPoint viewportPoint: CGPoint) -> GridAnchor? {
         guard !sortedIndices.isEmpty, collectionView.bounds.width > 0 else { return nil }
         let contentPoint = CGPoint(x: viewportPoint.x + collectionView.contentOffset.x, y: viewportPoint.y + collectionView.contentOffset.y)
-        let item = Self.item(at: contentPoint, columnCount: columnCount, itemCount: sortedIndices.count, width: collectionView.bounds.width, spacing: resolvedStyle.cellSpacing)
-        let frame = Self.frame(ofItem: item, columnCount: columnCount, width: collectionView.bounds.width, spacing: resolvedStyle.cellSpacing)
+        let item = item(atContentPoint: contentPoint)
+        let frame = frame(ofItem: item)
         guard frame.width > 0, frame.height > 0 else { return nil }
         let unit = CGPoint(
             x: min(max((contentPoint.x - frame.minX) / frame.width, 0), 1),
@@ -41,7 +41,7 @@ extension LMKPhotoGridViewController {
     /// layout, clamped to the scrollable range.
     func contentOffset(keeping anchor: GridAnchor) -> CGPoint? {
         guard collectionView.bounds.width > 0, anchor.item < sortedIndices.count else { return nil }
-        let frame = Self.frame(ofItem: anchor.item, columnCount: columnCount, width: collectionView.bounds.width, spacing: resolvedStyle.cellSpacing)
+        let frame = frame(ofItem: anchor.item)
         let target = frame.minY + anchor.unitPoint.y * frame.height - anchor.viewportPoint.y
         let insets = collectionView.adjustedContentInset
         let rows = ceil(CGFloat(sortedIndices.count) / CGFloat(columnCount))
@@ -53,32 +53,45 @@ extension LMKPhotoGridViewController {
 
     // MARK: - Grid geometry
 
+    /// Frame of the cell at a display index in this grid's layout.
+    func frame(ofItem item: Int) -> CGRect {
+        Self.frame(ofItem: item, columnCount: columnCount, width: collectionView.bounds.width, spacing: resolvedStyle.cellSpacing, isRightToLeft: isRightToLeft)
+    }
+
+    /// Display index of the cell at (or nearest to) a content point of this grid.
+    func item(atContentPoint point: CGPoint) -> Int {
+        Self.item(at: point, columnCount: columnCount, itemCount: sortedIndices.count, width: collectionView.bounds.width, spacing: resolvedStyle.cellSpacing, isRightToLeft: isRightToLeft)
+    }
+
     /// Side of a square cell.
     nonisolated static func cellSide(columnCount: Int, width: CGFloat, spacing: CGFloat) -> CGFloat {
         let columns = max(1, columnCount)
         return max(1, floor((width - spacing * CGFloat(columns - 1)) / CGFloat(columns)))
     }
 
-    /// Frame of the cell at a display index, in content coordinates.
-    nonisolated static func frame(ofItem item: Int, columnCount: Int, width: CGFloat, spacing: CGFloat) -> CGRect {
+    /// Frame of the cell at a display index, in content coordinates. A right-to-left layout
+    /// starts each row at the right edge (the flow layout mirrors the columns, not the
+    /// coordinates).
+    nonisolated static func frame(ofItem item: Int, columnCount: Int, width: CGFloat, spacing: CGFloat, isRightToLeft: Bool = false) -> CGRect {
         let columns = max(1, columnCount)
         let side = cellSide(columnCount: columns, width: width, spacing: spacing)
         let row = item / columns
-        let column = item % columns
+        let column = isRightToLeft ? columns - 1 - item % columns : item % columns
         // The flow layout spreads the rounding remainder over the gaps; the last column ends at the edge.
         let gap = columns > 1 ? (width - side * CGFloat(columns)) / CGFloat(columns - 1) : 0
         return CGRect(x: CGFloat(column) * (side + gap), y: CGFloat(row) * (side + spacing), width: side, height: side)
     }
 
-    /// Display index of the cell at (or nearest to) a content point.
-    nonisolated static func item(at point: CGPoint, columnCount: Int, itemCount: Int, width: CGFloat, spacing: CGFloat) -> Int {
+    /// Display index of the cell at (or nearest to) a content point, in either layout direction.
+    nonisolated static func item(at point: CGPoint, columnCount: Int, itemCount: Int, width: CGFloat, spacing: CGFloat, isRightToLeft: Bool = false) -> Int {
         guard itemCount > 0 else { return 0 }
         let columns = max(1, columnCount)
         let side = cellSide(columnCount: columns, width: width, spacing: spacing)
         let gap = columns > 1 ? (width - side * CGFloat(columns)) / CGFloat(columns - 1) : 0
         let lastRow = (itemCount - 1) / columns
         let row = min(max(Int(floor(point.y / (side + spacing))), 0), lastRow)
-        let column = min(max(Int(floor(point.x / (side + gap))), 0), columns - 1)
+        let visualColumn = min(max(Int(floor(point.x / (side + gap))), 0), columns - 1)
+        let column = isRightToLeft ? columns - 1 - visualColumn : visualColumn
         return min(row * columns + column, itemCount - 1)
     }
 
@@ -204,7 +217,7 @@ extension LMKPhotoGridViewController {
 
     func beginDragSelection(atContentPoint point: CGPoint) {
         guard !sortedIndices.isEmpty else { return }
-        let origin = Self.item(at: point, columnCount: columnCount, itemCount: sortedIndices.count, width: collectionView.bounds.width, spacing: resolvedStyle.cellSpacing)
+        let origin = item(atContentPoint: point)
         let selects = !selectedIndices.contains(sortedIndices[origin])
         dragSelection = DragSelection(origin: origin, selects: selects, baseline: selectedIndices, current: origin)
         applyUserSelection(Self.selection(baseline: selectedIndices, origin: origin, current: origin, selects: selects, sortedIndices: sortedIndices))
@@ -212,7 +225,7 @@ extension LMKPhotoGridViewController {
 
     func updateDragSelection(toContentPoint point: CGPoint) {
         guard var drag = dragSelection, !sortedIndices.isEmpty else { return }
-        let current = Self.item(at: point, columnCount: columnCount, itemCount: sortedIndices.count, width: collectionView.bounds.width, spacing: resolvedStyle.cellSpacing)
+        let current = item(atContentPoint: point)
         guard current != drag.current else { return }
         drag.current = current
         dragSelection = drag

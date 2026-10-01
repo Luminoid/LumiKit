@@ -61,21 +61,24 @@ struct LMKThemeTests {
         #expect(received.count == 2)
     }
 
+    /// The store is reset before the suspension: other suites read the process-wide theme
+    /// while this one waits, and the stream has already buffered the applied value.
     @Test
     func `updates stream yields one theme per apply`() async {
-        defer { LMKTheme.reset() }
         let stream = LMKTheme.updates
         var iterator = stream.makeAsyncIterator()
         LMKTheme.apply(Self.purpleTheme)
+        LMKTheme.reset()
         let first = await iterator.next()
         #expect(first?.colors.primary == Self.purple)
     }
 
+    /// Read off the main actor without suspending, so the mutated theme never outlives the test body.
     @Test
-    func `current is readable off the main actor`() async {
+    func `current is readable off the main actor`() {
         defer { LMKTheme.reset() }
         LMKTheme.update { $0.spacing = .init(large: 24) }
-        let large = await Task.detached { LMKTheme.current.spacing.large }.value
+        let large = DispatchQueue.global().sync { LMKTheme.current.spacing.large }
         #expect(large == 24)
     }
 
@@ -193,6 +196,22 @@ struct LMKNonisolatedSurfaceTests {
         }
         #expect(Option.only.iconName == nil)
     }
+
+    @Test
+    func `Device kind, dominant color, QR level, and markdown run off the main actor`() async {
+        let image = UIImage.lmk_solidColor(.red, size: CGSize(width: 8, height: 8))
+        let result = await Task.detached { () -> (LMKDevice.Kind, UIColor?, Set<LMKImage.QRCorrectionLevel>, String) in
+            let kind = LMKDevice.deviceType
+            let color = LMKImage.dominantColor(from: image, strategy: .vibrant)
+            let levels: Set<LMKImage.QRCorrectionLevel> = [.low, .high]
+            let rendered = LMKMarkdownRenderer.renderFull("# Title\nBody").string
+            return (kind, color, levels, rendered)
+        }.value
+        #expect(result.0 == LMKDevice.deviceType)
+        #expect(result.1 != nil)
+        #expect(result.2.count == 2)
+        #expect(result.3 == "Title\nBody")
+    }
 }
 
 struct LMKThemeExtensionSlotTests {
@@ -257,9 +276,33 @@ struct LMKColorThemeTests {
     }
 
     @Test
-    func `highContrastBoost is clamped at zero`() {
+    func `highContrastBoost is clamped to the unit range`() {
         #expect(LMKColorTheme(highContrastBoost: -1).highContrastBoost == 0)
         #expect(LMKColorTheme(highContrastBoost: 0.2).highContrastBoost == 0.2)
+        #expect(LMKColorTheme(highContrastBoost: 1.12).highContrastBoost == 1)
+    }
+
+    /// The regression: the derived roles were computed once at init, so a later
+    /// `LMKTheme.update { $0.colors.primary = … }` kept links and selections in the old accent.
+    @Test
+    func `Derived roles re-derive after primary and divider change, unless overridden`() {
+        let light = UITraitCollection(userInterfaceStyle: .light)
+        var theme = LMKColorTheme()
+        theme.primary = .systemIndigo
+        theme.divider = .systemGray
+        #expect(theme.link == UIColor.systemIndigo)
+        #expect(theme.selection == UIColor.systemIndigo.withAlphaComponent(0.15))
+        #expect(theme.outline == UIColor.systemGray.withAlphaComponent(0.5))
+        let variant = theme.primaryVariant.resolvedColor(with: light)
+        let expectedVariant = UIColor.systemIndigo.resolvedColor(with: light).lmk_adjustedBrightness(by: 0.85)
+        #expect(variant.lmk_hexString == expectedVariant.lmk_hexString)
+
+        theme.link = .systemOrange
+        theme.selection = .yellow
+        theme.primary = .systemPink
+        #expect(theme.link == UIColor.systemOrange, "an assigned role stays")
+        #expect(theme.selection == UIColor.yellow)
+        #expect(theme.primaryVariant.resolvedColor(with: light).lmk_hexString != variant.lmk_hexString, "an unassigned role follows")
     }
 
     @Test

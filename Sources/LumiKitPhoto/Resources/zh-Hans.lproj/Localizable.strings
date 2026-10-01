@@ -20,7 +20,17 @@
 "photoCrop.cancel" = "取消";
 "photoCrop.done" = "完成";
 "photoCrop.aspectRatio.accessibilityLabel" = "宽高比";
+"photoCrop.cropFrame.accessibilityLabel" = "裁剪框";
+"photoCrop.cropFrame.accessibilityHint" = "上下轻扫调整大小，使用操作来移动";
+"photoCrop.cropFrame.accessibilityValue" = "%lld%%";
+"photoCrop.moveUp" = "向上移动";
+"photoCrop.moveDown" = "向下移动";
+"photoCrop.moveLeft" = "向左移动";
+"photoCrop.moveRight" = "向右移动";
 "sharePreview.share" = "分享";
 "sharePreview.saveImage" = "保存图片";
 "sharePreview.photoPermissionDenied" = "保存图片需要访问照片图库。请在“设置”中开启。";
 "sharePreview.close.accessibilityLabel" = "关闭";
+"photoPickCrop.loadFailed" = "无法打开照片。";
+"photoPickCrop.saveFailed" = "无法保存照片。";
+"photoPickCrop.hostUnavailable" = "无法显示裁剪编辑器。";

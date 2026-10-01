@@ -14,7 +14,7 @@ struct LMKCornerStyleTests {
     func `Presets carry their radius rule and all corners`() {
         #expect(LMKCornerStyle.capsule.radius == .capsule)
         #expect(LMKCornerStyle.circle.radius == .circle)
-        #expect(LMKCornerStyle.none.radius == .none)
+        #expect(LMKCornerStyle.square.radius == .square)
         #expect(LMKCornerStyle.capsule.maskedCorners == .lmk_all)
         #expect(LMKCornerStyle.capsule.curve == .continuous)
         #expect(LMKCornerStyle.fixed(8, corners: .lmk_top, curve: .circular) == LMKCornerStyle(radius: .fixed(8), maskedCorners: .lmk_top, curve: .circular))
@@ -24,7 +24,7 @@ struct LMKCornerStyleTests {
     @Test
     func `resolvedRadius follows the bounds only for capsule and circle`() {
         let bounds = CGRect(x: 0, y: 0, width: 60, height: 20)
-        #expect(LMKCornerStyle.none.resolvedRadius(for: bounds) == 0)
+        #expect(LMKCornerStyle.square.resolvedRadius(for: bounds) == 0)
         #expect(LMKCornerStyle.fixed(8).resolvedRadius(for: bounds) == 8)
         #expect(LMKCornerStyle.capsule.resolvedRadius(for: bounds) == 10)
         #expect(LMKCornerStyle.circle.resolvedRadius(for: bounds) == 10)
@@ -199,6 +199,29 @@ struct UIViewCornersTests {
         // Once published, a later fixed radius keeps the configuration consistent.
         container.lmk_applyCornerRadius(14)
         #expect(container.cornerConfiguration == .corners(radius: .fixed(14)))
+    }
+
+    @Test
+    func `Concentric corners honor the mask and keep the curve`() {
+        let style = LMKCornerStyle.concentric(minimum: 8, corners: .lmk_top, curve: .circular)
+        #expect(style.curve == .circular)
+        #expect(style.maskedCorners == .lmk_top)
+        let view = UIView(frame: CGRect(x: 0, y: 0, width: 40, height: 40))
+        view.lmk_applyCornerStyle(style)
+        #expect(view.layer.maskedCorners == .lmk_top)
+        if #available(iOS 26, *) {
+            // UIKit draws a published configuration with its own curve; the mask is what it honors.
+            let expected = UICornerConfiguration.corners(
+                topLeftRadius: .containerConcentric(minimum: 8),
+                topRightRadius: .containerConcentric(minimum: 8),
+                bottomLeftRadius: .fixed(0),
+                bottomRightRadius: .fixed(0)
+            )
+            #expect(view.cornerConfiguration == expected)
+        } else {
+            #expect(view.layer.cornerRadius == 8)
+            #expect(view.layer.cornerCurve == .circular)
+        }
     }
 
     @Test

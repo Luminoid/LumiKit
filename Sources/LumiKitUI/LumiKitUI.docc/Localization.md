@@ -9,13 +9,13 @@ Each product carries its own string tables (`Resources/<locale>.lproj/Localizabl
 ```swift
 public final class LMKSearchBar: UIView {
     public nonisolated struct Strings: Sendable, Equatable {
-        public var placeholder: String
         public var cancel: String
-        public init(placeholder: String = LMKLocalized("searchBar.placeholder"),
-                    cancel: String = LMKLocalized("searchBar.cancel")) { ... }
+        public var clearAccessibilityLabel: String
+        public init(cancel: String = LMKLocalized("searchBar.cancel"),
+                    clearAccessibilityLabel: String = LMKLocalized("searchBar.clear.accessibilityLabel")) { ... }
     }
-    public static var strings = Strings()        // process-wide default
-    public var strings: Strings                  // per instance, on host-created types
+    public nonisolated(unsafe) static var strings = Strings()   // process-wide default, set once at launch
+    public var strings: Strings                                 // per instance, on host-created types
 }
 ```
 
@@ -26,7 +26,7 @@ The app's language decides which table is read. An app in one of the four langua
 Set the process-wide default once at launch, or a single instance:
 
 ```swift
-LMKSearchBar.strings = LMKSearchBar.Strings(placeholder: "Suchen", cancel: "Abbrechen")
+LMKSearchBar.strings = LMKSearchBar.Strings(cancel: "Abbrechen", clearAccessibilityLabel: "Löschen")
 LMKAlert.strings.ok = "OK"
 cropViewController.strings = .init(done: "Fertig")
 ```
@@ -35,7 +35,7 @@ Accessibility labels, hints, and values are fields too (`accessibilityLabel`, `d
 
 ## Formats
 
-Strings with arguments use format specifiers (`%@`, `%lld`) and are resolved with the arguments at display time (`"%lld of %lld"` for a page counter), so word order can differ per language.
+Strings with arguments use format specifiers (`%@`, `%lld`) and are resolved with the arguments at display time (`"%lld of %lld"` for a page counter), so word order can differ per language; positional specifiers let a translation reorder them (`alert.countdownConfirmation.confirmTitleFormat` is `"%1$@ (%2$lld)"` in English and uses full-width parentheses in Chinese). Numbers shown to the user (counts, slider values, durations) go through `LMKFormat` so they follow the locale's digits and grouping. A test per product checks that every format key keeps the same specifiers in every locale and that the keys looked up in the sources match the English table.
 
 ## Contributing a language
 

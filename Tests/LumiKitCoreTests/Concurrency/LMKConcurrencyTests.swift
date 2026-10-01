@@ -79,4 +79,69 @@ struct LMKConcurrencyTests {
         await task.value
         #expect(flag.onMain)
     }
+
+    @Test
+    func `onMainActorAfter clamps delays it cannot sleep for`() async {
+        final class Flag: @unchecked Sendable { var fired = false }
+        let flag = Flag()
+        for delay in [TimeInterval.infinity, .nan, -5] {
+            let task = LMKConcurrency.onMainActorAfter(delay: delay) { flag.fired = true }
+            if delay < 0 || delay.isNaN {
+                await task.value
+                #expect(flag.fired, "a negative or NaN delay runs the work at once")
+                flag.fired = false
+            } else {
+                task.cancel()
+                await task.value
+                #expect(!flag.fired, "an infinite delay waits (a year) instead of trapping, and cancels")
+            }
+        }
+        #expect(LMKConcurrency.maximumDelay == 365 * 24 * 60 * 60)
+    }
+
+    @Test
+    @MainActor
+    func `onMainActor runs with a live object and skips a released one`() async {
+        final class Owner: Sendable {}
+        final class Flag: @unchecked Sendable { var runs = 0 }
+        let flag = Flag()
+        let owner = Owner()
+        await LMKConcurrency.onMainActor(weak: owner) { _ in flag.runs += 1 }.value
+        #expect(flag.runs == 1)
+
+        var released: Owner? = Owner()
+        let task = LMKConcurrency.onMainActor(weak: released ?? owner) { _ in flag.runs += 1 }
+        released = nil
+        await task.value
+        #expect(flag.runs == 1, "the work is skipped once the object is gone")
+    }
+
+    @Test
+    @MainActor
+    func `executeTask runs the operation and swallows its errors`() async {
+        struct Boom: Error {}
+        final class Owner: Sendable {}
+        final class Flag: @unchecked Sendable { var runs = 0 }
+        let flag = Flag()
+        let owner = Owner()
+        await LMKConcurrency.executeTask(weak: owner) { _ in flag.runs += 1 }.value
+        #expect(flag.runs == 1)
+        await LMKConcurrency.executeTask(weak: owner) { _ in
+            flag.runs += 1
+            throw Boom()
+        }.value
+        #expect(flag.runs == 2, "a thrown error is logged, not propagated")
+
+        let cancelled = LMKConcurrency.executeTask(weak: owner) { _ in flag.runs += 1 }
+        cancelled.cancel()
+        await cancelled.value
+        #expect(flag.runs == 2, "a task cancelled before it starts skips the operation")
+    }
+
+    @Test
+    @MainActor
+    func `assertMainActor passes on the main actor`() {
+        LMKConcurrency.assertMainActor(operation: "test")
+        #expect(Thread.isMainThread)
+    }
 }

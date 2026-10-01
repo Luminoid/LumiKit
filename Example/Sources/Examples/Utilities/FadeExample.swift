@@ -14,14 +14,12 @@ import UIKit
 final class FadeDetailViewController: DetailViewController {
     private let targetView = UIView()
 
-    override func viewDidLoad() {
-        super.viewDidLoad()
-
+    override func setupStackContent() {
         addSectionHeader("LMKAnimation.fadeIn / fadeOut")
-        stack.addArrangedSubview(UILabel.lmk_make(.caption, text: "Animated opacity transitions with configurable duration. Respects Reduce Motion."))
+        stackView.addArrangedSubview(UILabel.lmk_make(.caption, text: "Animated opacity transitions with configurable duration. Respects Reduce Motion."))
 
         targetView.backgroundColor = LMKColor.primary
-        targetView.layer.cornerRadius = LMKCornerRadius.medium
+        targetView.lmk_applyCornerRadius(LMKCornerRadius.medium)
         targetView.snp.makeConstraints { $0.height.equalTo(100) }
 
         let label = UILabel.lmk_make(.body, text: "Fade Target")
@@ -29,7 +27,7 @@ final class FadeDetailViewController: DetailViewController {
         label.textAlignment = .center
         targetView.addSubview(label)
         label.snp.makeConstraints { $0.center.equalToSuperview() }
-        stack.addArrangedSubview(targetView)
+        stackView.addArrangedSubview(targetView)
 
         let buttonRow = UIStackView(lmk_axis: .horizontal, spacing: LMKSpacing.small)
         buttonRow.distribution = .fillEqually
@@ -40,7 +38,7 @@ final class FadeDetailViewController: DetailViewController {
         let fadeInButton = LMKButton(title: "Fade In", style: .outlined(.success), target: self, action: #selector(fadeIn))
         buttonRow.addArrangedSubview(fadeInButton)
 
-        stack.addArrangedSubview(buttonRow)
+        stackView.addArrangedSubview(buttonRow)
     }
 
     @objc private func fadeOut() {

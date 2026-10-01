@@ -5,17 +5,28 @@ on:
     branches: [main]
   pull_request:
 
+permissions:
+  contents: read
+
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
+# An explicit `bash` runs with `-eo pipefail`, so a failing xcodebuild fails its step even through
+# `| tee | tail`; the implicit default shell (`bash -e`) would report tail's status instead.
+defaults:
+  run:
+    shell: bash
+
 env:
   LUMIKIT_WARNINGS_AS_ERRORS: "1"
   XCB: xcodebuild -scheme LumiKit-Package -skipPackagePluginValidation CODE_SIGNING_ALLOWED=NO
+  XCB_EXAMPLE: xcodebuild -project Example/LumiKitExample.xcodeproj -scheme LumiKitExample -skipPackagePluginValidation CODE_SIGNING_ALLOWED=NO
 
 jobs:
   lint:
     runs-on: macos-26
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
       - name: Install tools
@@ -25,48 +36,63 @@ jobs:
       - name: SwiftFormat
         run: swiftformat --lint .
 
+  # Xcode 26 (Swift 6.2) on the macos-26 image and Xcode 27 (Swift 6.4, the toolchain that isolates
+  # extension members and needs `isolated deinit`) on the xcode-27 image (a GitHub preview label),
+  # which the macos-26 image does not carry.
   test-ios:
-    runs-on: macos-26
+    name: test-ios (Xcode ${{ matrix.xcode }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - xcode: "26"
+            runner: macos-26
+          - xcode: "27"
+            runner: xcode-27
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
-      - name: Select Xcode
-        run: |
-          XCODE=$(ls -d /Applications/Xcode_26*.app | sort -V | tail -1)
-          echo "Using $XCODE"
-          sudo xcode-select -s "$XCODE"
-          xcodebuild -version
+      - uses: ./.github/actions/select-xcode
+        with:
+          major: ${{ matrix.xcode }}
       - name: Test (iOS Simulator)
         run: |
+          mkdir -p build
           $XCB test -destination 'platform=iOS Simulator,name=iPhone 17' \
             -resultBundlePath build/ios.xcresult 2>&1 | tee build/test-ios.log | tail -40
       - name: Upload result bundle
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: ios-test-results
+          name: ios-test-results-xcode-${{ matrix.xcode }}
           path: |
             build/ios.xcresult
             build/test-ios.log
 
   build-catalyst:
     runs-on: macos-26
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
-      - name: Select Xcode
-        run: |
-          XCODE=$(ls -d /Applications/Xcode_26*.app | sort -V | tail -1)
-          sudo xcode-select -s "$XCODE"
+      - uses: ./.github/actions/select-xcode
       - name: Build (Mac Catalyst)
-        run: $XCB build -destination 'platform=macOS,variant=Mac Catalyst' 2>&1 | tail -40
+        run: |
+          mkdir -p build
+          $XCB build -destination 'platform=macOS,variant=Mac Catalyst' 2>&1 | tee build/build-catalyst.log | tail -40
+      - name: Upload build log
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: catalyst-build-log
+          path: build/build-catalyst.log
 
   native-macos:
     runs-on: macos-26
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
-      - name: Select Xcode
-        run: |
-          XCODE=$(ls -d /Applications/Xcode_26*.app | sort -V | tail -1)
-          sudo xcode-select -s "$XCODE"
+      - uses: ./.github/actions/select-xcode
       # `swift test` links every test target into one bundle, so the UIKit targets keep native
       # macOS tests off the table; this lane proves the Foundation-only targets still build there.
       - name: Build Foundation-only targets
@@ -76,36 +102,56 @@ jobs:
 
   example:
     runs-on: macos-26
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
-      - name: Select Xcode
-        run: |
-          XCODE=$(ls -d /Applications/Xcode_26*.app | sort -V | tail -1)
-          sudo xcode-select -s "$XCODE"
+      - uses: ./.github/actions/select-xcode
       - name: Install XcodeGen
         run: brew install xcodegen
-      - name: Build Example app
+      - name: Regenerate the Example project
+        run: cd Example && xcodegen generate
+      # The project file is tracked so the Example opens without XcodeGen; it must match the spec.
+      - name: Check the tracked project is current
         run: |
-          cd Example && xcodegen generate && cd ..
-          xcodebuild build -project Example/LumiKitExample.xcodeproj -scheme LumiKitExample \
-            -destination 'platform=iOS Simulator,name=iPhone 17' \
-            -skipPackagePluginValidation CODE_SIGNING_ALLOWED=NO 2>&1 | tail -40
+          if ! git diff --exit-code -- Example/LumiKitExample.xcodeproj/project.pbxproj; then
+            echo "::error::Example/LumiKitExample.xcodeproj is out of date: run 'cd Example && xcodegen generate' and commit the result"
+            exit 1
+          fi
+      - name: Build Example app (iOS Simulator)
+        run: |
+          mkdir -p build
+          $XCB_EXAMPLE build -destination 'platform=iOS Simulator,name=iPhone 17' 2>&1 | tee build/build-example-ios.log | tail -40
+      # The Example builds for the Mac idiom (docs/PLATFORM.md rule 5).
+      - name: Build Example app (Mac Catalyst)
+        run: |
+          $XCB_EXAMPLE build -destination 'platform=macOS,variant=Mac Catalyst' 2>&1 | tee build/build-example-catalyst.log | tail -40
+      - name: Upload build logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: example-build-logs
+          path: build/build-example-*.log
 
   docs:
     runs-on: macos-26
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
-      - name: Select Xcode
-        run: |
-          XCODE=$(ls -d /Applications/Xcode_26*.app | sort -V | tail -1)
-          sudo xcode-select -s "$XCODE"
+      - uses: ./.github/actions/select-xcode
       - name: Build DocC archives
         run: |
+          mkdir -p build
           xcodebuild docbuild -scheme LumiKit-Package -destination 'generic/platform=iOS' \
-            -derivedDataPath build/docc -skipPackagePluginValidation CODE_SIGNING_ALLOWED=NO 2>&1 | tail -20
+            -derivedDataPath build/docc -skipPackagePluginValidation CODE_SIGNING_ALLOWED=NO 2>&1 | tee build/docs.log | tail -20
       - name: Upload DocC archives
         uses: actions/upload-artifact@v4
         with:
           name: docc-archives
           path: build/docc/Build/Products/**/*.doccarchive
           if-no-files-found: warn
+      - name: Upload build log
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: docs-build-log
+          path: build/docs.log

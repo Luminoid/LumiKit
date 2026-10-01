@@ -94,4 +94,40 @@ struct LMKDateTests {
         let now = Date()
         #expect(now.lmk_isSameDay(as: now))
     }
+
+    // MARK: - Time zone
+
+    @Test
+    func `The shared calendar is in the current time zone with or without initialize()`() {
+        #expect(LMKDate.calendar.timeZone.identifier == TimeZone.current.identifier)
+        LMKDate.initialize()
+        LMKDate.initialize()
+        #expect(LMKDate.calendar.timeZone.identifier == TimeZone.current.identifier)
+    }
+
+    @Test
+    func `The calendar follows a time-zone change from creation, not from initialize()`() throws {
+        final class ZoneBox: @unchecked Sendable {
+            var zone: TimeZone
+            init(zone: TimeZone) {
+                self.zone = zone
+            }
+        }
+        let utc = try #require(TimeZone(identifier: "UTC"))
+        let tokyo = try #require(TimeZone(identifier: "Asia/Tokyo"))
+        let box = ZoneBox(zone: utc)
+        let center = NotificationCenter()
+        let following = LMKDate.FollowingCalendar(center: center) {
+            var calendar = Calendar(identifier: .gregorian)
+            calendar.timeZone = box.zone
+            return calendar
+        }
+        #expect(following.calendar.timeZone == utc)
+
+        box.zone = tokyo
+        #expect(following.calendar.timeZone == utc, "the snapshot holds until the system says the zone changed")
+        center.post(name: .NSSystemTimeZoneDidChange, object: nil)
+        #expect(following.calendar.timeZone == tokyo)
+        #expect(LMKDate.calendar.timeZone.identifier == TimeZone.current.identifier, "another center's notification leaves the shared calendar alone")
+    }
 }

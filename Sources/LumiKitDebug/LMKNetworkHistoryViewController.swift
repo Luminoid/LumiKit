@@ -4,10 +4,10 @@
 //
 //  List of captured network requests, kept current from the store's change
 //  notification. Tap a row for the request and response details.
-//  DEBUG builds only — zero footprint in release.
+//  Debug builds only (`LMK_ENABLE_NETWORK_LOGGING`) — zero footprint in release.
 //
 
-#if DEBUG && canImport(UIKit)
+#if LMK_ENABLE_NETWORK_LOGGING && canImport(UIKit)
 
     import LumiKitCore
     import LumiKitUI
@@ -54,7 +54,6 @@
             table.separatorStyle = .singleLine
             table.separatorColor = LMKColor.divider
             table.rowHeight = UITableView.automaticDimension
-            table.estimatedRowHeight = LMKLayout.rowHeightEstimated
             return table
         }()
 
@@ -68,6 +67,8 @@
 
         private let emptyStateView = LMKEmptyStateView(style: .card)
         private var recordsByID: [UUID: LMKNetworkRequestRecord] = [:]
+        /// Reloads once per burst of store changes; released with the screen.
+        private var changeObserver: LMKNetworkLogger.ChangeObserver?
 
         /// The records currently listed (newest first).
         public private(set) var records: [LMKNetworkRequestRecord] = []
@@ -93,13 +94,7 @@
             tableView.backgroundView = emptyStateView.wrappedForTableBackground(backgroundColor: LMKColor.backgroundPrimary)
             _ = dataSource
             reload()
-            // Selector observers unregister themselves on deallocation.
-            NotificationCenter.default.addObserver(self, selector: #selector(recordsDidChange), name: LMKNetworkLogger.recordsDidChangeNotification, object: nil)
-        }
-
-        /// Posted on the capturing queue; the reload hops to the main actor.
-        @objc private nonisolated func recordsDidChange() {
-            Task { @MainActor [weak self] in
+            changeObserver = LMKNetworkLogger.ChangeObserver { [weak self] in
                 self?.reload()
             }
         }
@@ -113,6 +108,13 @@
             reload()
         }
 
+        // MARK: - Theme
+
+        override public func applyTheme(_ theme: LMKTheme) {
+            tableView.estimatedRowHeight = theme.layout.rowHeightEstimated
+            super.applyTheme(theme)
+        }
+
         // MARK: - Data
 
         /// Reads the store and applies a diffable snapshot; rows whose record changed (a
@@ -124,14 +126,14 @@
             snapshot.appendItems(latest.map(\.id))
             let changed = latest.filter { record in
                 guard let previous = recordsByID[record.id] else { return false }
-                return previous != record
+                return !previous.hasSameOutcome(as: record)
             }.map(\.id)
             recordsByID = Dictionary(uniqueKeysWithValues: latest.map { ($0.id, $0) })
             records = latest
             if !changed.isEmpty {
                 snapshot.reconfigureItems(changed)
             }
-            dataSource.apply(snapshot, animatingDifferences: false)
+            dataSource.lmk_apply(snapshot, animatingDifferences: false, in: tableView)
             emptyStateView.isHidden = !latest.isEmpty
         }
 

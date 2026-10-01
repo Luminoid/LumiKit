@@ -130,7 +130,7 @@ public final class LMKFloatingButton: UIControl, LMKThemeApplying {
         didSet { iconView.image = icon }
     }
 
-    /// Badge content (`nil` hides the badge).
+    /// Badge content (`nil` hides the badge). VoiceOver reads it as the button's value.
     public var badge: LMKBadgeView.Content? {
         didSet { updateBadge() }
     }
@@ -143,13 +143,23 @@ public final class LMKFloatingButton: UIControl, LMKThemeApplying {
         }
     }
 
-    /// `UserDefaults` key under which the resting corner and vertical position persist.
+    /// `UserDefaults` key under which the resting corner and vertical position persist. Setting
+    /// it on a shown button moves the button to the stored place.
     public var positionKey: String? {
-        didSet { restorePositionIfNeeded() }
+        didSet {
+            restorePositionIfNeeded()
+            place(animated: false)
+        }
     }
 
     /// Called at the end of every `applyTheme`, for tweaks the style does not cover.
     public var didApplyStyle: ((LMKFloatingButton) -> Void)?
+
+    /// VoiceOver label: the host's, or `strings.accessibilityLabel`.
+    override public var accessibilityLabel: String? {
+        get { super.accessibilityLabel ?? strings.accessibilityLabel }
+        set { super.accessibilityLabel = newValue }
+    }
 
     public let iconView = UIImageView()
     public private(set) var badgeView: LMKBadgeView?
@@ -162,11 +172,17 @@ public final class LMKFloatingButton: UIControl, LMKThemeApplying {
     private var restingCorner: Corner = .bottomTrailing
     /// Vertical position as a fraction of the available height, so it survives resizes.
     private var restingFraction: CGFloat = 1
+    /// Re-places the button when the superview resizes (rotation, a window resize, a fold).
+    private weak var placementSentinel: LMKFloatingButtonPlacementSentinelView?
 
     private var buttonSize: CGFloat { resolved.size ?? Self.defaultSize }
     private var edgeMargin: CGFloat { resolved.edgeMargin ?? traitCollection.lmkTheme.spacing.large }
     private static let defaultSize: CGFloat = 56
     private static let defaultDragScale: CGFloat = 0.95
+    /// Scale the button shrinks to while showing or dismissing.
+    private static let dismissedScale: CGFloat = 0.5
+    /// Brightness factor for `lmk_stateShade(by:)` of the pressed fill (15% darker).
+    private static let highlightedFillDelta: CGFloat = 0.85
     private static let badgeOffset: CGFloat = -4
 
     // MARK: - Initialization
@@ -218,9 +234,19 @@ public final class LMKFloatingButton: UIControl, LMKThemeApplying {
         lmk_layoutSurfaceIfNeeded()
     }
 
+    override public func willMove(toSuperview newSuperview: UIView?) {
+        super.willMove(toSuperview: newSuperview)
+        placementSentinel?.removeFromSuperview()
+        placementSentinel = nil
+    }
+
     override public func didMoveToSuperview() {
         super.didMoveToSuperview()
-        guard superview != nil else { return }
+        guard let superview else { return }
+        let sentinel = LMKFloatingButtonPlacementSentinelView(frame: superview.bounds)
+        sentinel.button = self
+        superview.insertSubview(sentinel, at: 0)
+        placementSentinel = sentinel
         restorePositionIfNeeded()
         place(animated: false)
     }
@@ -245,8 +271,11 @@ public final class LMKFloatingButton: UIControl, LMKThemeApplying {
         }
     }
 
+    /// Hidden: no touch. Disabled: the bounds absorb the touch (UIKit's behavior for a disabled
+    /// control). Enabled: the minimum touch target.
     override public func point(inside point: CGPoint, with event: UIEvent?) -> Bool {
-        guard isEnabled, !isHidden else { return false }
+        guard !isHidden else { return false }
+        guard isEnabled else { return bounds.contains(point) }
         return lmk_hitTestBounds(minimumSide: traitCollection.lmkTheme.layout.minimumTouchTarget).contains(point)
     }
 
@@ -254,36 +283,52 @@ public final class LMKFloatingButton: UIControl, LMKThemeApplying {
 
     public func applyTheme(_ theme: LMKTheme) {
         resolved = theme.floatingButton.merging(style)
-        var defaults = LMKSurfaceStyle(
+        let defaults = LMKSurfaceStyle(
             background: .solid(LMKColor.primary),
             corners: .circle,
             shadow: .level(.level2)
         )
         var surface = resolved.surface
+        var foreground = resolved.iconTint ?? LMKColor.onAccent
         var stateAlpha: CGFloat = 1
         var scale: CGFloat = isDragging ? (resolved.dragScale ?? Self.defaultDragScale) : 1
-        if isHighlighted, let highlighted = resolved.highlighted {
-            if let background = highlighted.background { surface.background = background }
-            if let border = highlighted.border { surface.border = border }
-            if let shadow = highlighted.shadow { surface.shadow = shadow }
-            if let alpha = highlighted.alpha { stateAlpha = min(stateAlpha, alpha) }
-            if let value = highlighted.scale { scale = value }
-        } else if isHighlighted {
-            defaults.background = .solid(LMKColor.primaryVariant)
+        if isHighlighted {
+            let highlighted = resolved.highlighted ?? LMKControlStateStyle()
+            if highlighted.background == nil, highlighted.alpha == nil, highlighted.scale == nil {
+                // Pressed: a solid fill shades itself; a glass, gradient, or blur fill has no
+                // shade to take, so the button presses in like a card.
+                if case let .solid(color) = surface.background ?? defaults.background {
+                    surface.background = .solid((color ?? LMKColor.primary).lmk_stateShade(by: Self.highlightedFillDelta))
+                } else {
+                    scale = theme.animation.pressScale
+                }
+            }
+            apply(highlighted, to: &surface, &foreground, &stateAlpha, &scale)
         }
         if !isEnabled {
-            let disabled = resolved.disabled ?? LMKControlStateStyle(alpha: theme.alpha.disabled)
-            if let background = disabled.background { surface.background = background }
-            stateAlpha = min(stateAlpha, disabled.alpha ?? theme.alpha.disabled)
+            var disabled = resolved.disabled ?? LMKControlStateStyle()
+            if disabled.alpha == nil { disabled.alpha = theme.alpha.disabled }
+            apply(disabled, to: &surface, &foreground, &stateAlpha, &scale)
         }
         lmk_apply(surface: surface, defaults: defaults, clipsContent: false)
         alpha = stateAlpha
         transform = scale == 1 ? .identity : CGAffineTransform(scaleX: scale, y: scale)
         sizeConstraint?.update(offset: buttonSize)
-        iconView.tintColor = resolved.iconTint ?? LMKColor.onAccent
+        iconView.tintColor = foreground
         iconSizeConstraint?.update(offset: resolved.iconSize ?? theme.layout.iconMedium)
         badgeView?.style = resolved.badge ?? LMKBadgeView.Style()
+        // A new size or edge margin moves the resting place.
+        place(animated: false)
         didApplyStyle?(self)
+    }
+
+    private func apply(_ state: LMKControlStateStyle, to surface: inout LMKSurfaceStyle, _ foreground: inout UIColor, _ alpha: inout CGFloat, _ scale: inout CGFloat) {
+        if let value = state.background { surface.background = value }
+        if let value = state.border { surface.border = value }
+        if let value = state.shadow { surface.shadow = value }
+        if let value = state.foregroundColor { foreground = value }
+        if let value = state.alpha { alpha = min(alpha, value) }
+        if let value = state.scale { scale = value }
     }
 
     // MARK: - Show / Dismiss
@@ -298,7 +343,7 @@ public final class LMKFloatingButton: UIControl, LMKThemeApplying {
         place(animated: false)
         guard LMKAnimation.shouldAnimate else { return }
         alpha = 0
-        transform = CGAffineTransform(scaleX: 0.5, y: 0.5)
+        transform = CGAffineTransform(scaleX: Self.dismissedScale, y: Self.dismissedScale)
         UIView.animate(
             withDuration: LMKAnimation.Duration.moderate,
             delay: 0,
@@ -325,7 +370,7 @@ public final class LMKFloatingButton: UIControl, LMKThemeApplying {
             withDuration: duration,
             animations: {
                 self.alpha = 0
-                self.transform = CGAffineTransform(scaleX: 0.5, y: 0.5)
+                self.transform = CGAffineTransform(scaleX: Self.dismissedScale, y: Self.dismissedScale)
             },
             completion: { _ in
                 self.removeFromSuperview()
@@ -336,10 +381,18 @@ public final class LMKFloatingButton: UIControl, LMKThemeApplying {
     }
 
     /// Shows a floating button in `hostView` (`nil` = the key window) and returns it.
+    ///
+    /// - Parameters:
+    ///   - icon: The button's glyph.
+    ///   - hostView: The view to install the button in; `nil` installs it in the key window.
+    ///   - positionKey: `UserDefaults` key for the resting corner; the button starts
+    ///     where it was last left.
+    ///   - onTap: Called when the button is tapped.
     @discardableResult
-    public static func show(icon: UIImage?, in hostView: UIView? = nil, onTap: @escaping () -> Void) -> LMKFloatingButton {
+    public static func show(icon: UIImage?, in hostView: UIView? = nil, positionKey: String? = nil, onTap: @escaping () -> Void) -> LMKFloatingButton {
         let button = LMKFloatingButton(icon: icon)
         button.onTap = onTap
+        button.positionKey = positionKey
         if let hostView {
             button.show(in: hostView)
         } else {
@@ -354,6 +407,7 @@ public final class LMKFloatingButton: UIControl, LMKThemeApplying {
         guard let badge else {
             badgeView?.removeFromSuperview()
             badgeView = nil
+            accessibilityValue = nil
             return
         }
         let view = badgeView ?? {
@@ -369,11 +423,12 @@ public final class LMKFloatingButton: UIControl, LMKThemeApplying {
             return view
         }()
         view.configure(badge)
+        accessibilityValue = view.isHidden ? nil : view.accessibilityLabel
     }
 
     // MARK: - Position
 
-    /// Moves the button to `corner` (the vertical fraction stays), optionally animated.
+    /// Moves the button to `corner`, snapping it to that edge's top or bottom, optionally animated.
     public func move(to corner: Corner, animated: Bool = true) {
         restingCorner = corner
         restingFraction = corner == .topLeading || corner == .topTrailing ? 0 : 1
@@ -381,8 +436,9 @@ public final class LMKFloatingButton: UIControl, LMKThemeApplying {
         place(animated: animated)
     }
 
-    private func place(animated: Bool) {
-        guard let superview else { return }
+    /// Puts the button at its resting place inside the superview's safe area; a no-op mid-drag.
+    fileprivate func place(animated: Bool) {
+        guard let superview, !isDragging else { return }
         let safeArea = superview.safeAreaInsets
         let bounds = superview.bounds
         let half = buttonSize / 2
@@ -395,6 +451,7 @@ public final class LMKFloatingButton: UIControl, LMKThemeApplying {
         let maxY = bounds.height - safeArea.bottom - edgeMargin - half
         let y = minY + (maxY - minY) * restingFraction
         let target = CGPoint(x: x, y: clampY(y, in: bounds, safeArea: safeArea))
+        guard target != center else { return }
         if animated, LMKAnimation.shouldAnimate {
             UIView.animate(
                 withDuration: LMKAnimation.Duration.fast,
@@ -493,7 +550,6 @@ public final class LMKFloatingButton: UIControl, LMKThemeApplying {
     // MARK: - Accessibility
 
     private func updateAccessibility() {
-        accessibilityLabel = strings.accessibilityLabel
         var traits: UIAccessibilityTraits = .button
         if !isEnabled { traits.insert(.notEnabled) }
         accessibilityTraits = traits
@@ -503,6 +559,31 @@ public final class LMKFloatingButton: UIControl, LMKThemeApplying {
             UIAccessibilityCustomAction(name: strings.moveToBottomLeading) { [weak self] _ in self?.move(to: .bottomLeading); return true },
             UIAccessibilityCustomAction(name: strings.moveToBottomTrailing) { [weak self] _ in self?.move(to: .bottomTrailing); return true },
         ]
+    }
+}
+
+/// A hidden view that resizes with the button's superview: its layout pass is the moment the
+/// superview's bounds or safe area changed, so the button is re-placed there.
+private final class LMKFloatingButtonPlacementSentinelView: UIView {
+    weak var button: LMKFloatingButton?
+
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+        isHidden = true
+        isUserInteractionEnabled = false
+        isAccessibilityElement = false
+        accessibilityElementsHidden = true
+        autoresizingMask = [.flexibleWidth, .flexibleHeight]
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        button?.place(animated: false)
     }
 }
 

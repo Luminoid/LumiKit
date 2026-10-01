@@ -5,51 +5,45 @@
 //  Photo Crop: Crop frame with aspect ratios and zoom.
 //
 
-import LumiKitCore
 import LumiKitPhoto
 import LumiKitUI
-import PhotosUI
 import SnapKit
 import UIKit
-import UniformTypeIdentifiers
 
 // MARK: - Photo Crop
 
 final class PhotoCropDetailViewController: DetailViewController {
     private var sampleImage: UIImage?
 
-    override func viewDidLoad() {
-        super.viewDidLoad()
-
+    override func setupStackContent() {
         sampleImage = createSampleImage()
 
         addSectionHeader("Photo Crop")
-        stack.addArrangedSubview(UILabel.lmk_make(.body, text: "Resizable crop frame with aspect ratio presets, pinch-to-zoom, and rule-of-thirds grid."))
+        stackView.addArrangedSubview(UILabel.lmk_make(.body, text: "Resizable crop frame with aspect ratio presets, pinch-to-zoom, and rule-of-thirds grid."))
 
         if let sampleImage {
             let preview = UIImageView(image: sampleImage)
             preview.contentMode = .scaleAspectFill
-            preview.clipsToBounds = true
-            preview.layer.cornerRadius = LMKCornerRadius.medium
+            preview.lmk_applyCornerRadius(LMKCornerRadius.medium)
             preview.snp.makeConstraints { $0.height.equalTo(200) }
-            stack.addArrangedSubview(preview)
+            stackView.addArrangedSubview(preview)
         }
 
         let cropButton = LMKButton(title: "Open Photo Crop", style: .filled(.primary), target: self, action: #selector(openCrop))
-        stack.addArrangedSubview(cropButton)
+        stackView.addArrangedSubview(cropButton)
         let widescreenButton = LMKButton(title: "Open 16:9 Crop (custom style)", style: .outlined(.primary), target: self, action: #selector(openWidescreenCrop))
-        stack.addArrangedSubview(widescreenButton)
+        stackView.addArrangedSubview(widescreenButton)
 
         addDivider()
         addSectionHeader("Aspect Ratios")
-        stack.addArrangedSubview(UILabel.lmk_make(.caption, text: "The standard six presets; 16:9 and 9:16 are opt-in through aspectRatios."))
+        stackView.addArrangedSubview(UILabel.lmk_make(.caption, text: "The standard six presets; 16:9 and 9:16 are opt-in through aspectRatios."))
         let ratioRow = UIStackView(lmk_axis: .horizontal, spacing: LMKSpacing.small)
         for ratio in LMKCropAspectRatio.standard {
             let chip = LMKChipView(text: ratio.displayName, style: .outlined)
             ratioRow.addArrangedSubview(chip)
         }
         ratioRow.addArrangedSubview(UIView())
-        stack.addArrangedSubview(makeScrollingRow(ratioRow))
+        stackView.addArrangedSubview(makeScrollingRow(ratioRow))
 
         addDivider()
         addSectionHeader("Features")
@@ -63,7 +57,7 @@ final class PhotoCropDetailViewController: DetailViewController {
         ]
         for feature in features {
             let label = UILabel.lmk_make(.caption, text: "\u{2022} \(feature)")
-            stack.addArrangedSubview(label)
+            stackView.addArrangedSubview(label)
         }
     }
 

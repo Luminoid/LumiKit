@@ -29,9 +29,8 @@ public struct LMKTab {
 
     public var identifier: String
     public var title: String
+    /// The glyph; a tab bar renders the selected state itself (an SF Symbol takes its filled variant).
     public var image: UIImage?
-    /// `nil` = the same glyph as `image`.
-    public var selectedImage: UIImage?
     /// Builds the root view controller (before the navigation wrapper).
     public var makeRoot: @MainActor () -> UIViewController
     /// `false` builds the root as soon as the tab bar loads.
@@ -47,7 +46,6 @@ public struct LMKTab {
         identifier: String,
         title: String,
         image: UIImage?,
-        selectedImage: UIImage? = nil,
         isLazy: Bool = true,
         badge: LMKBadgeView.Content? = nil,
         accessibilityLabel: String? = nil,
@@ -57,7 +55,6 @@ public struct LMKTab {
         self.identifier = identifier
         self.title = title
         self.image = image
-        self.selectedImage = selectedImage
         self.isLazy = isLazy
         self.badge = badge
         self.accessibilityLabel = accessibilityLabel
@@ -70,7 +67,6 @@ public struct LMKTab {
         identifier: String,
         title: String,
         systemImage: String,
-        selectedSystemImage: String? = nil,
         isLazy: Bool = true,
         badge: LMKBadgeView.Content? = nil,
         accessibilityLabel: String? = nil,
@@ -81,7 +77,6 @@ public struct LMKTab {
             identifier: identifier,
             title: title,
             image: UIImage(systemName: systemImage),
-            selectedImage: selectedSystemImage.flatMap(UIImage.init(systemName:)),
             isLazy: isLazy,
             badge: badge,
             accessibilityLabel: accessibilityLabel,

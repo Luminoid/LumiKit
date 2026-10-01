@@ -33,7 +33,7 @@
 "datePicker.confirm" = "OK";
 "datePicker.from" = "From";
 "datePicker.to" = "To";
-"datePicker.textFieldPlaceholder" = "Add notes...";
+"datePicker.textFieldPlaceholder" = "Add notes…";
 "datePicker.selectDatesPrompt" = "Select dates";
 "toast.dismiss.accessibilityLabel" = "Dismiss";
 "toast.undo" = "Undo";
@@ -51,6 +51,7 @@
 "alert.delete" = "Delete";
 "alert.deleteConfirmation.title" = "Delete “%@”?";
 "alert.deleteConfirmation.message" = "This action can’t be undone.";
+"alert.countdownConfirmation.confirmTitleFormat" = "%1$@ (%2$lld)";
 "formKeyCommands.save" = "Save";
 "formKeyCommands.cancel" = "Cancel";
 "ratingControl.accessibilityLabel" = "Rating";
@@ -58,6 +59,8 @@
 "copyableLabel.copy" = "Copy";
 "photoButton.add.accessibilityLabel" = "Add photo";
 "photoButton.change.accessibilityLabel" = "Change photo";
+"textField.clear.accessibilityLabel" = "Clear";
+"textInput.counter.accessibilityLabel" = "%lld of %lld characters";
 "monthCalendar.today" = "Today";
 "monthCalendar.previousMonth.accessibilityLabel" = "Previous month";
 "monthCalendar.nextMonth.accessibilityLabel" = "Next month";

@@ -22,7 +22,8 @@ import UIKit
 /// ```
 ///
 /// The cancel button renders only while `onCancel` is set; wire it to dismiss as well as
-/// cancel, since an early-exit path may never reach the flow's own dismiss.
+/// cancel, since an early-exit path may never reach the flow's own dismiss. The VoiceOver
+/// escape gesture and the Escape key (iPad, Mac) run `onCancel` too.
 public final class LMKProgressViewController: UIViewController, LMKThemeApplying {
     // MARK: - Vocabulary
 
@@ -44,7 +45,7 @@ public final class LMKProgressViewController: UIViewController, LMKThemeApplying
     // MARK: - Style
 
     public nonisolated struct Style: Sendable, Equatable, LMKThemeExtension {
-        /// Container background (`backgroundPrimary`; `.glass` on iOS 26), corners (large), shadow (`level3`), content insets.
+        /// Container background (`backgroundPrimary`), corners (large), shadow (`level3`), content insets.
         public var surface: LMKSurfaceStyle
         /// `nil` = 280.
         public var containerWidth: CGFloat?
@@ -215,12 +216,21 @@ public final class LMKProgressViewController: UIViewController, LMKThemeApplying
     /// The style last resolved against the theme.
     public private(set) var resolvedStyle = Style()
 
+    /// `present(from:)` has started and the modal has not appeared yet; a `dismiss` in that
+    /// window is deferred, since UIKit drops a dismissal that overlaps its presentation.
+    private(set) var isPresentationInFlight = false
+    /// Whether a `dismiss` is waiting for the presentation to land.
+    private(set) var hasPendingDismiss = false
+    private var pendingDismissCompletion: (() -> Void)?
+
     private var progressObservation: NSKeyValueObservation?
     private var descriptionObservation: NSKeyValueObservation?
     private var lastAnnouncementTime: Date = .distantPast
     private var containerWidthConstraint: Constraint?
     private var barHeightConstraint: Constraint?
     private var contentInsetsConstraint: Constraint?
+    private var horizontalSafeAreaInsetConstraints: [Constraint] = []
+    private var verticalSafeAreaInsetConstraints: [Constraint] = []
 
     static let defaultContainerWidth: CGFloat = 280
     static let defaultBarHeight: CGFloat = 4
@@ -259,31 +269,97 @@ public final class LMKProgressViewController: UIViewController, LMKThemeApplying
         lmk_startApplyingTheme()
     }
 
-    // MARK: - Presentation
-
-    /// Presents the modal over `host`.
-    public func present(from host: UIViewController) {
-        host.present(self, animated: true)
+    override public func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        UIAccessibility.post(notification: .screenChanged, argument: titleLabel)
+        // Hardware keyboards matter on the iPad and the Mac; claiming first responder on a phone
+        // buys nothing (and stalls the xctest host).
+        if traitCollection.userInterfaceIdiom != .phone {
+            becomeFirstResponder()
+        }
+        presentationDidLand()
     }
 
-    /// Stops observing and dismisses the modal.
+    override public var canBecomeFirstResponder: Bool { onCancel != nil }
+
+    override public var keyCommands: [UIKeyCommand]? {
+        guard onCancel != nil else { return nil }
+        let escape = UIKeyCommand(input: UIKeyCommand.inputEscape, modifierFlags: [], action: #selector(escapePressed))
+        escape.discoverabilityTitle = strings.cancel
+        return [escape]
+    }
+
+    override public func accessibilityPerformEscape() -> Bool {
+        guard let onCancel else { return false }
+        onCancel()
+        return true
+    }
+
+    // MARK: - Presentation
+
+    /// Presents the modal over `host`. A `dismiss` before the presentation lands is deferred,
+    /// not dropped. A host that is already presenting cannot take it; the call is logged and skipped.
+    public func present(from host: UIViewController) {
+        guard host.presentedViewController == nil else {
+            LMKLogger.warning("Progress modal not presented: \(type(of: host)) is already presenting", category: .ui)
+            return
+        }
+        isPresentationInFlight = true
+        host.present(self, animated: true) { [weak self] in
+            self?.presentationDidLand()
+        }
+    }
+
+    /// Stops observing and dismisses the modal; `completion` runs after the dismissal, at once
+    /// for a modal that was never presented, and once the presentation lands for a call made
+    /// while it is still animating.
     public func dismiss(completion: (() -> Void)? = nil) {
         progressObservation?.invalidate()
         progressObservation = nil
         descriptionObservation?.invalidate()
         descriptionObservation = nil
+        guard !isPresentationInFlight else {
+            hasPendingDismiss = true
+            pendingDismissCompletion = completion
+            return
+        }
+        guard presentingViewController != nil else {
+            completion?()
+            return
+        }
         dismiss(animated: true, completion: completion)
+    }
+
+    /// Clears the in-flight presentation and runs a dismiss that waited for it.
+    private func presentationDidLand() {
+        guard isPresentationInFlight else { return }
+        isPresentationInFlight = false
+        guard hasPendingDismiss else { return }
+        let completion = pendingDismissCompletion
+        hasPendingDismiss = false
+        pendingDismissCompletion = nil
+        dismiss(completion: completion)
     }
 
     // MARK: - Setup
 
     private func setupUI() {
+        view.accessibilityViewIsModal = true
         view.addSubview(containerView)
         containerView.snp.makeConstraints { make in
-            make.center.equalToSuperview()
+            make.centerX.equalToSuperview()
+            // Below required, so a container taller than the safe area keeps its top and bottom
+            // (the cancel button) on screen instead of centering off it.
+            make.centerY.equalToSuperview().priority(.high)
             containerWidthConstraint = make.width.equalTo(Self.defaultContainerWidth).constraint
-            make.leading.greaterThanOrEqualTo(view.safeAreaLayoutGuide).inset(LMKSpacing.large).priority(.required)
-            make.trailing.lessThanOrEqualTo(view.safeAreaLayoutGuide).inset(LMKSpacing.large).priority(.required)
+            horizontalSafeAreaInsetConstraints = [
+                make.leading.greaterThanOrEqualTo(view.safeAreaLayoutGuide).inset(0).constraint,
+                make.trailing.lessThanOrEqualTo(view.safeAreaLayoutGuide).inset(0).constraint,
+            ]
+            verticalSafeAreaInsetConstraints = [
+                make.top.greaterThanOrEqualTo(view.safeAreaLayoutGuide).inset(0).constraint,
+                make.bottom.lessThanOrEqualTo(view.safeAreaLayoutGuide).inset(0).constraint,
+            ]
         }
         containerWidthConstraint?.update(priority: .high)
 
@@ -319,12 +395,13 @@ public final class LMKProgressViewController: UIViewController, LMKThemeApplying
             contentStack.addArrangedSubview(taskLabel)
             contentStack.addArrangedSubview(progressView)
             contentStack.addArrangedSubview(progressLabel)
-            progressLabel.text = LMKFormat.progressPercent(0)
+            progressView.progress = progress
+            progressLabel.text = LMKFormat.progressPercent(progress)
         }
         contentStack.addArrangedSubview(cancelButton)
         containerView.addSubview(contentStack)
         contentStack.snp.makeConstraints { make in
-            contentInsetsConstraint = make.edges.equalToSuperview().inset(0).constraint
+            contentInsetsConstraint = make.directionalEdges.equalToSuperview().inset(0).constraint
         }
         activityIndicator.startAnimating()
     }
@@ -345,8 +422,11 @@ public final class LMKProgressViewController: UIViewController, LMKThemeApplying
             )
         )
         let insets = applied.contentInsets ?? .lmk_all(theme.spacing.xl)
-        contentInsetsConstraint?.update(inset: UIEdgeInsets(top: insets.top, left: insets.leading, bottom: insets.bottom, right: insets.trailing))
+        contentInsetsConstraint?.update(inset: insets)
         containerWidthConstraint?.update(offset: resolved.containerWidth ?? Self.defaultContainerWidth)
+        for constraint in horizontalSafeAreaInsetConstraints + verticalSafeAreaInsetConstraints {
+            constraint.update(inset: theme.spacing.large)
+        }
 
         let spacing = resolved.spacing ?? theme.spacing.large
         contentStack.spacing = spacing
@@ -381,7 +461,7 @@ public final class LMKProgressViewController: UIViewController, LMKThemeApplying
         }
     }
 
-    /// Updates the bar and the percentage.
+    /// Updates the bar and the percentage (kept for the load when called before the view exists).
     public func updateProgress(_ progress: Float) {
         self.progress = min(max(progress, 0), 1)
         progressView.setProgress(self.progress, animated: isViewLoaded && view.window != nil && LMKAnimation.shouldAnimate)
@@ -422,6 +502,10 @@ public final class LMKProgressViewController: UIViewController, LMKThemeApplying
         }
     }
 
+    @objc private func escapePressed() {
+        onCancel?()
+    }
+
     private func applyState() {
         let theme = traitCollection.lmkTheme
         let symbolSize = theme.layout.symbolLarge
@@ -432,7 +516,8 @@ public final class LMKProgressViewController: UIViewController, LMKThemeApplying
             subtitleLabel.isHidden = subtitle == nil
             progressView.isHidden = false
             progressLabel.isHidden = false
-            taskLabel.isHidden = false
+            // The spinner layout has no task line; a failure message from an earlier state goes away.
+            taskLabel.isHidden = mode == .indeterminate
         case .succeeded, .failed:
             activityIndicator.stopAnimating()
             let name = state == .succeeded ? "checkmark.circle.fill" : "xmark.circle.fill"

@@ -30,10 +30,14 @@ final class PhotoBrowserDetailViewController: DetailViewController, LMKPhotoBrow
     private var pickedStill: UIImage?
     private var livePhotoMode = false
     private var didOpenLaunchLivePhoto = false
+    /// Loads a picked Live Photo; cancelled when the page goes away.
+    private var loadTask: Task<Void, Never>?
 
-    override func viewDidLoad() {
-        super.viewDidLoad()
+    isolated deinit {
+        loadTask?.cancel()
+    }
 
+    override func setupStackContent() {
         // Generate sample images using SF Symbols
         let symbols = ["star.fill", "camera.fill", "sun.max.fill", "drop.fill", "flame.fill"]
         let colors: [UIColor] = [LMKColor.success, LMKColor.primary, LMKColor.warning, LMKColor.info, LMKColor.error]
@@ -42,14 +46,14 @@ final class PhotoBrowserDetailViewController: DetailViewController, LMKPhotoBrow
             if let image = LMKImage.makeSymbolImage(
                 symbol, size: CGSize(width: 300, height: 300),
                 symbolPointSize: 80, tintColor: color,
-                backgroundColor: color.withAlphaComponent(0.2)
+                backgroundColor: color.withAlphaComponent(LMKAlpha.small)
             ) {
                 sampleImages.append(image)
             }
         }
 
         addSectionHeader("Photo Browser")
-        stack.addArrangedSubview(UILabel.lmk_make(
+        stackView.addArrangedSubview(UILabel.lmk_make(
             .body,
             text: "Full-screen photo viewer with swipe navigation, pinch-to-zoom, HDR rendering, and swipe-to-dismiss. "
                 + "Tapping a thumbnail zooms the photo out of it, and the dismiss zooms back to the current photo; the page behind holds still."
@@ -60,8 +64,7 @@ final class PhotoBrowserDetailViewController: DetailViewController, LMKPhotoBrow
         for (index, image) in sampleImages.enumerated() {
             let imageView = UIImageView(image: image)
             imageView.contentMode = .scaleAspectFill
-            imageView.clipsToBounds = true
-            imageView.layer.cornerRadius = LMKCornerRadius.small
+            imageView.lmk_applyCornerRadius(LMKCornerRadius.small)
             imageView.isUserInteractionEnabled = true
             imageView.tag = index
             imageView.snp.makeConstraints { $0.height.equalTo(80) }
@@ -71,23 +74,23 @@ final class PhotoBrowserDetailViewController: DetailViewController, LMKPhotoBrow
             previewRow.addArrangedSubview(imageView)
             previewImageViews.append(imageView)
         }
-        stack.addArrangedSubview(previewRow)
+        stackView.addArrangedSubview(previewRow)
 
         addDivider()
         let openButton = LMKButton(title: "Open Photo Browser", style: .filled(.primary), target: self, action: #selector(openBrowser))
-        stack.addArrangedSubview(openButton)
+        stackView.addArrangedSubview(openButton)
         let styleRow = UIStackView(lmk_axis: .horizontal, spacing: LMKSpacing.medium, alignment: .center, arrangedSubviews: [
             UILabel.lmk_make(.body, text: "Custom style (warm chrome, SDR, no orientation lock)"), UIView(), styledSwitch,
         ])
-        stack.addArrangedSubview(styleRow)
+        stackView.addArrangedSubview(styleRow)
 
         addDivider()
         addSectionHeader("Live Photo")
-        stack.addArrangedSubview(UILabel.lmk_make(.body, text: "Pick a Live Photo from your library, then long-press anywhere in the browser to play the paired video."))
+        stackView.addArrangedSubview(UILabel.lmk_make(.body, text: "Pick a Live Photo from your library, then long-press anywhere in the browser to play the paired video."))
         let pickLiveButton = LMKButton(title: "Pick a Live Photo", style: .filled(.primary),
                                        target: self,
                                        action: #selector(pickLivePhoto))
-        stack.addArrangedSubview(pickLiveButton)
+        stackView.addArrangedSubview(pickLiveButton)
 
         addDivider()
         addSectionHeader("Gestures")
@@ -103,7 +106,7 @@ final class PhotoBrowserDetailViewController: DetailViewController, LMKPhotoBrow
         ]
         for feature in features {
             let label = UILabel.lmk_make(.caption, text: "\u{2022} \(feature)")
-            stack.addArrangedSubview(label)
+            stackView.addArrangedSubview(label)
         }
     }
 
@@ -174,7 +177,7 @@ final class PhotoBrowserDetailViewController: DetailViewController, LMKPhotoBrow
     }
 
     /// These images are generated up front and held decoded in memory, so this
-    /// async source just returns immediately — the other valid conformance
+    /// async source just returns immediately: the other valid conformance
     /// shape (see the photo grid page for the off-main decode pattern).
     func photo(at index: Int) async -> UIImage? {
         if livePhotoMode {
@@ -214,32 +217,37 @@ final class PhotoBrowserDetailViewController: DetailViewController, LMKPhotoBrow
 
 extension PhotoBrowserDetailViewController: PHPickerViewControllerDelegate {
     func picker(_ picker: PHPickerViewController, didFinishPicking results: [PHPickerResult]) {
-        picker.dismiss(animated: true)
-        guard let result = results.first,
-              result.itemProvider.canLoadObject(ofClass: PHLivePhoto.self)
-        else {
-            LMKToast.show(.info, "Not a Live Photo. Try another.", in: self)
-            return
-        }
-
-        Task { @MainActor [weak self] in
+        // Load and present only once the picker is gone: presenting while its dismissal still
+        // animates is refused ("already presenting") and the browser would never open.
+        picker.dismiss(animated: true) { [weak self] in
             guard let self else { return }
-            let livePhoto = await Self.loadPickedLivePhoto(from: result.itemProvider)
-            let still = await Self.loadPickedStill(from: result.itemProvider)
-            guard let livePhoto, let still else {
-                LMKToast.show(.info, "Couldn't load the Live Photo", in: self)
+            guard let result = results.first,
+                  result.itemProvider.canLoadObject(ofClass: PHLivePhoto.self)
+            else {
+                if !results.isEmpty {
+                    LMKToast.show(.info, "Not a Live Photo. Try another.", in: self)
+                }
                 return
             }
-            pickedLivePhoto = livePhoto
-            pickedStill = still
-            livePhotoMode = true
-            presentBrowser(at: 0)
+            loadTask?.cancel()
+            loadTask = Task { [weak self] in
+                let livePhoto = await Self.loadPickedLivePhoto(from: result.itemProvider)
+                let still = await Self.loadPickedStill(from: result.itemProvider)
+                guard let self, !Task.isCancelled else { return }
+                guard let livePhoto, let still else {
+                    LMKToast.show(.info, "Couldn't load the Live Photo", in: self)
+                    return
+                }
+                pickedLivePhoto = livePhoto
+                pickedStill = still
+                livePhotoMode = true
+                presentBrowser(at: 0)
+            }
         }
     }
 
     /// `PHLivePhoto` conforms to `NSItemProviderReading`, so the picker can vend
-    /// it directly via `loadObject(ofClass:)`. The completion may fire multiple
-    /// times with progressive loads; we resolve once the continuation permits.
+    /// it directly via `loadObject(ofClass:)`, whose completion runs once.
     private static func loadPickedLivePhoto(
         from provider: sending NSItemProvider
     ) async -> PHLivePhoto? {

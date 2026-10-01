@@ -49,6 +49,32 @@ struct LMKOverscrollFooterViewTests {
     }
 
     @Test
+    func `Short content under a top inset parks the footer at the visible bottom`() {
+        let scrollView = makeScrollView(contentHeight: 200)
+        scrollView.contentInsetAdjustmentBehavior = .never
+        scrollView.contentInset.top = 100
+        scrollView.contentOffset = CGPoint(x: 0, y: -100)
+        let footer = LMKOverscrollFooterView(contentView: UIView(), height: 160)
+        footer.attach(to: scrollView)
+        #expect(footer.frame.origin.y == 380, "bounds height less the top inset")
+        #expect(footer.overscrollAmount == 0, "at rest nothing is revealed")
+        scrollView.contentOffset = CGPoint(x: 0, y: -20)
+        #expect(footer.overscrollAmount == 80)
+        #expect(footer.revealProgress == 0.5)
+    }
+
+    @Test
+    func `updatePosition re-parks the footer after a layout the observations cannot see`() {
+        let scrollView = makeScrollView()
+        let footer = LMKOverscrollFooterView(contentView: UIView(), height: 160)
+        footer.attach(to: scrollView)
+        footer.frame = CGRect(x: 0, y: 0, width: 10, height: 10)
+        footer.updatePosition()
+        #expect(footer.frame == CGRect(x: 0, y: 1000, width: 320, height: 160))
+        #expect(footer.contentView.frame == footer.bounds)
+    }
+
+    @Test
     func `Reveal callbacks fire with progress and once per pull past the threshold`() {
         let scrollView = makeScrollView()
         let footer = LMKOverscrollFooterView(contentView: UIView(), height: 160)

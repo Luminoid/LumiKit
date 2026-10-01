@@ -193,7 +193,7 @@ struct LMKNavigationBarTests {
     }
 
     @Test
-    func `Replacing items rebuilds the buttons and drops stale badges`() {
+    func `Replacing items rebuilds the buttons, drops stale badges, and keeps one size constraint per button`() {
         let bar = LMKNavigationBar()
         bar.setRightItems([.init(identifier: "a", systemName: "plus", badge: .count(3))])
         #expect(bar.badgeViews["a"] != nil)
@@ -204,8 +204,43 @@ struct LMKNavigationBarTests {
         #expect(first.superview == nil)
         #expect(bar.badgeViews["a"] == nil)
         #expect(bar.rightItemButtons.count == 1)
+        for _ in 0 ..< 5 {
+            bar.setRightItems([.init(identifier: "b", systemName: "gear"), .init(identifier: "c", systemName: "plus")])
+        }
+        bar.setLeftItems([.init(identifier: "l", title: "L")])
+        #expect(bar.rightItemSizeConstraints.count == 2, "a side's constraints are replaced, not appended")
+        #expect(bar.leftItemSizeConstraints.count == 1)
         bar.setRightItems([])
         #expect(bar.rightItemsStack.arrangedSubviews.isEmpty)
+        #expect(bar.rightItemSizeConstraints.isEmpty)
+    }
+
+    @Test
+    func `Rows, items, and badges keep clear of the side safe areas while the surface stays full-bleed`() throws {
+        let host = UIViewController()
+        host.additionalSafeAreaInsets = UIEdgeInsets(top: 0, left: 62, bottom: 0, right: 62)
+        let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 375, height: 812))
+        window.rootViewController = host
+        window.makeKeyAndVisible()
+        defer { window.isHidden = true }
+        let bar = LMKNavigationBar(style: LMKNavigationBar.Style(appearance: .classic))
+        bar.title = "Inbox"
+        bar.largeTitleEnabled = true
+        bar.showsBackButton = true
+        bar.setRightItems([.init(identifier: "compose", systemName: "square.and.pencil", badge: .count(3))])
+        bar.install(in: host.view)
+        host.view.layoutIfNeeded()
+
+        #expect(bar.frame.minX == 0)
+        #expect(bar.frame.width == 375)
+        #expect(bar.buttonRow.frame.minX == 62)
+        #expect(bar.buttonRow.frame.maxX == 313)
+        #expect(bar.largeTitleRow.frame.minX == 62)
+        #expect(abs(bar.backButton.convert(bar.backButton.bounds, to: bar).minX - (62 + LMKSpacing.small)) < 0.5)
+        #expect(abs(bar.rightItemsStack.convert(bar.rightItemsStack.bounds, to: bar).maxX - (375 - 62 - LMKSpacing.large)) < 0.5)
+        #expect(abs(bar.largeTitleLabel.convert(bar.largeTitleLabel.bounds, to: bar).minX - (62 + LMKSpacing.large)) < 0.5)
+        let badge = try #require(bar.badgeViews["compose"])
+        #expect(badge.convert(badge.bounds, to: bar).maxX <= 375 - 62 + 0.5)
     }
 
     @Test
@@ -356,6 +391,59 @@ struct LMKNavigationBarTests {
     }
 
     @Test
+    func `Style controls the items' text, spacing, the back chevron, the large title font, and the prominent look`() throws {
+        let bar = LMKNavigationBar(style: LMKNavigationBar.Style(
+            appearance: .classic,
+            largeTitleTextStyle: .h4,
+            itemTextStyle: .caption,
+            prominentItem: LMKButton.Style(minimumHeight: 60),
+            itemSize: 40,
+            itemSpacing: 14,
+            backSymbol: "arrow.left",
+            backSymbolPointSize: 25,
+            backChevronLeading: 33
+        ))
+        bar.title = "T"
+        bar.largeTitleEnabled = true
+        bar.showsBackButton = true
+        bar.setRightItems([.init(identifier: "a", title: "A"), .init(identifier: "save", title: "Save", role: .prominent)])
+        let parent = UIView(frame: CGRect(x: 0, y: 0, width: 390, height: 844))
+        bar.install(in: parent)
+        parent.layoutIfNeeded()
+
+        #expect(bar.largeTitleLabel.font.pointSize == LMKTypography.font(for: .h4, compatibleWith: bar.traitCollection).pointSize)
+        #expect(bar.rightItemButtons[0].style.textStyle == .caption)
+        #expect(bar.button(forItem: "save")?.style.minimumHeight == 60)
+        #expect(bar.rightItemsStack.spacing == 14)
+        #expect(abs(bar.backButton.frame.minX - 33) < 0.5)
+        #expect(bar.backButton.bounds.width == 40)
+        #expect(bar.rightItemButtons[0].bounds.width >= 40)
+        let chevron = try #require(LMKNavigationBar().backButton.image)
+        let arrow = try #require(bar.backButton.image)
+        #expect(arrow.size != chevron.size, "a different symbol at a different point size")
+        #expect(arrow.size.height > chevron.size.height)
+    }
+
+    @Test
+    func `Gaps between the title, the items, and the accessories follow the passed theme`() {
+        var theme = LMKTheme()
+        theme.spacing = LMKSpacingTheme(small: 11)
+        let bar = LMKNavigationBar(style: LMKNavigationBar.Style(appearance: .classic))
+        bar.title = "Items"
+        bar.setRightItems([.init(identifier: "add", systemName: "plus")])
+        let accessory = UIView()
+        accessory.snp.makeConstraints { $0.width.height.equalTo(10) }
+        bar.setRightAccessoryView(accessory)
+        let window = LMKThemeTesting.host(bar, theme: theme, size: CGSize(width: 390, height: 100))
+        defer { window.isHidden = true }
+        bar.install(in: window)
+        window.layoutIfNeeded()
+        let accessoryFrame = accessory.convert(accessory.bounds, to: bar)
+        let itemsFrame = bar.rightItemsStack.convert(bar.rightItemsStack.bounds, to: bar)
+        #expect(abs(itemsFrame.minX - accessoryFrame.maxX - 11) < 0.5, "\(accessoryFrame) \(itemsFrame)")
+    }
+
+    @Test
     func `theme.navigationBar supplies app-wide defaults`() {
         var theme = LMKTheme()
         theme.navigationBar = LMKNavigationBar.Style(tintColor: .magenta, titleColor: .purple)
@@ -460,10 +548,15 @@ struct LMKNavigationBarAppearanceTests {
         #expect(save.style.variant == .ghost)
         #expect(bar.itemGlassViews[1].style.tintColor === LMKColor.primary)
         #expect(bar.itemGlassViews[0].style.tintColor == nil)
+        #expect(bar.itemGlassViews[0].style.isInteractive == true)
 
         // The chevron's circle starts at the content margin.
         #expect(abs(bar.backButton.frame.minX - LMKSpacing.large) < 0.5)
         #expect(abs(bar.itemGlassViews[2].frame.width - LMKLayout.minimumTouchTarget) < 0.5)
+
+        bar.style.itemGlass = LMKGlassView.Style(isInteractive: false)
+        #expect(bar.itemGlassViews.count == 3)
+        #expect(bar.itemGlassViews.allSatisfy { $0.style.isInteractive == false }, "itemGlass layers on the capsules")
     }
 
     @Test

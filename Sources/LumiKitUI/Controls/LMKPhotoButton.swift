@@ -185,10 +185,18 @@ public final class LMKPhotoButton: UIControl, LMKThemeApplying {
         super.layoutSubviews()
         imageView.frame = bounds
         lmk_layoutSurfaceIfNeeded()
+        imageView.lmk_layoutCornersIfNeeded()
     }
 
     override public var intrinsicContentSize: CGSize {
         CGSize(width: size, height: size)
+    }
+
+    /// A small well still answers the minimum touch target; a disabled one absorbs a touch inside its bounds.
+    override public func point(inside point: CGPoint, with event: UIEvent?) -> Bool {
+        guard !isHidden else { return false }
+        guard isEnabled else { return bounds.contains(point) }
+        return lmk_hitTestBounds(minimumSide: traitCollection.lmkTheme.layout.minimumTouchTarget, insets: lmk_hitTestInsets).contains(point)
     }
 
     override public var isEnabled: Bool {
@@ -225,7 +233,9 @@ public final class LMKPhotoButton: UIControl, LMKThemeApplying {
             if let background = resolved.disabled?.background { surface.background = background }
             stateAlpha = min(stateAlpha, resolved.disabled?.alpha ?? theme.alpha.disabled)
         }
-        lmk_apply(surface: surface, defaults: LMKSurfaceStyle(background: .solid(LMKColor.backgroundSecondary), corners: corners))
+        let applied = lmk_apply(surface: surface, defaults: LMKSurfaceStyle(background: .solid(LMKColor.backgroundSecondary), corners: corners))
+        // A visible shadow turns the well's own masking off, so the photo clips itself.
+        imageView.lmk_applyCornerStyle(applied.corners ?? corners, masking: true)
         alpha = stateAlpha
         updateImage()
         invalidateIntrinsicContentSize()

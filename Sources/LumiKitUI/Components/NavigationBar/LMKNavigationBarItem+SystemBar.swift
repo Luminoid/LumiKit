@@ -66,10 +66,15 @@ public extension UINavigationItem {
     /// Installs `LMKNavigationBarItem`s on the system navigation bar through `makeBarButtonItem(tintColor:)`.
     ///
     /// Both arrays are in leading-to-trailing order (the reverse of UIKit's trailing-first
-    /// `rightBarButtonItems`), so a definition reads the way the bar looks.
-    func lmk_setItems(leading: [LMKNavigationBarItem] = [], trailing: [LMKNavigationBarItem] = [], tintColor: UIColor? = nil) {
-        leftBarButtonItems = leading.isEmpty ? nil : leading.map { $0.makeBarButtonItem(tintColor: tintColor) }
-        rightBarButtonItems = trailing.isEmpty ? nil : trailing.reversed().map { $0.makeBarButtonItem(tintColor: tintColor) }
+    /// `rightBarButtonItems`), so a definition reads the way the bar looks. A side that is
+    /// omitted (`nil`) is left as it is; an empty array clears it.
+    func lmk_setItems(leading: [LMKNavigationBarItem]? = nil, trailing: [LMKNavigationBarItem]? = nil, tintColor: UIColor? = nil) {
+        if let leading {
+            leftBarButtonItems = leading.isEmpty ? nil : leading.map { $0.makeBarButtonItem(tintColor: tintColor) }
+        }
+        if let trailing {
+            rightBarButtonItems = trailing.isEmpty ? nil : trailing.reversed().map { $0.makeBarButtonItem(tintColor: tintColor) }
+        }
     }
 
     /// A secondary line under the title: `subtitle` on iOS 26 (the system stacks it under the
@@ -125,8 +130,9 @@ final class LMKTwoLineTitleView: UIView, LMKThemeApplying {
     }
 
     func applyTheme(_ theme: LMKTheme) {
-        titleLabel.lmk_apply(LMKNavigationBar.defaultTitleTextStyle, color: theme.navigationBar.titleColor ?? LMKColor.textPrimary)
-        subtitleLabel.lmk_apply(theme.navigationBar.subtitleTextStyle ?? .caption, color: theme.navigationBar.subtitleColor ?? LMKColor.textSecondary)
+        let bar = theme.navigationBar
+        titleLabel.lmk_apply(bar.titleTextStyle ?? LMKNavigationBar.defaultTitleTextStyle, color: bar.titleColor ?? LMKColor.textPrimary)
+        subtitleLabel.lmk_apply(bar.subtitleTextStyle ?? .caption, color: bar.subtitleColor ?? LMKColor.textSecondary)
         invalidateIntrinsicContentSize()
     }
 

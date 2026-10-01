@@ -12,8 +12,9 @@ import UIKit
 
 /// The bottom sheet behind `LMKActionSheet.present(_:from:)`.
 ///
-/// Hosts keep the returned controller to `dismiss()` it early or to update it; the
-/// namespace's `current(in:)` finds one already on screen.
+/// Hosts keep the returned controller to `dismiss()` it early, to navigate it, or to
+/// restyle its chrome through `style`; the namespace's `current(in:)` finds one already
+/// on screen.
 public final class LMKActionSheetViewController: LMKBottomSheetViewController {
     // MARK: - Properties
 
@@ -37,10 +38,12 @@ public final class LMKActionSheetViewController: LMKBottomSheetViewController {
 
     private var pageStack: [LMKActionSheet.Page] = []
     private var currentPageView: UIView?
+    private var renderedMetrics: PageMetrics?
     private var isTransitioning = false
     private var pendingHandler: (() -> Void)?
-    private var isApplyingTheme = false
     private var contentTopConstraint: Constraint?
+    private var backButtonTopConstraint: Constraint?
+    private var backButtonLeadingConstraint: Constraint?
     private var backButtonSizeConstraint: Constraint?
 
     // MARK: - Initialization
@@ -48,7 +51,7 @@ public final class LMKActionSheetViewController: LMKBottomSheetViewController {
     public init(configuration: LMKActionSheet.Configuration) {
         self.configuration = configuration
         self.currentPage = configuration.rootPage
-        super.init(style: configuration.style.sheet)
+        super.init()
     }
 
     // MARK: - Sheet content
@@ -59,9 +62,9 @@ public final class LMKActionSheetViewController: LMKBottomSheetViewController {
         backButton.onTap = { [weak self] in self?.goBack() }
         containerView.addSubview(backButton)
         backButton.snp.makeConstraints { make in
-            make.top.equalTo(dragIndicator.snp.bottom).offset(LMKSpacing.xs)
-            make.leading.equalToSuperview().offset(LMKSpacing.small)
-            backButtonSizeConstraint = make.width.height.equalTo(LMKLayout.minimumTouchTarget).constraint
+            backButtonTopConstraint = make.top.equalTo(dragIndicator.snp.bottom).offset(0).constraint
+            backButtonLeadingConstraint = make.leading.equalTo(containerView.safeAreaLayoutGuide).offset(0).constraint
+            backButtonSizeConstraint = make.width.height.equalTo(0).constraint
         }
 
         contentContainerView.clipsToBounds = true
@@ -70,32 +73,36 @@ public final class LMKActionSheetViewController: LMKBottomSheetViewController {
             contentTopConstraint = make.top.equalTo(contentLayoutGuide.snp.top).offset(0).constraint
             make.leading.trailing.bottom.equalTo(contentLayoutGuide)
         }
-
-        render(currentPage, direction: .none, animated: false)
+        // The root page is rendered by the first `applyContentTheme`, once the resolved
+        // style and the content insets it is built from exist.
     }
 
     // MARK: - Theme
 
-    override public func applyTheme(_ theme: LMKTheme) {
-        resolvedActionSheetStyle = theme.actionSheet.merging(configuration.style)
-        // The sheet chrome resolves theme.bottomSheet <- theme.actionSheet.sheet <- configuration.style.sheet.
-        let sheetStyle = theme.actionSheet.sheet.merging(configuration.style.sheet)
-        if style != sheetStyle, !isApplyingTheme {
-            isApplyingTheme = true
-            style = sheetStyle
-            isApplyingTheme = false
-        }
-        super.applyTheme(theme)
+    override public func resolveStyle(for theme: LMKTheme) -> Style {
+        theme.bottomSheet.merging(theme.actionSheet.sheet).merging(configuration.style.sheet).merging(style)
+    }
 
+    override public func applyContentTheme(_ theme: LMKTheme) {
+        resolvedActionSheetStyle = theme.actionSheet.merging(configuration.style)
         backButton.style = LMKButton.Style(variant: .ghost, surface: LMKSurfaceStyle(corners: .circle), pressAnimation: false, haptics: false)
             .merging(resolvedActionSheetStyle.backButton)
         backButton.setSymbol("chevron.backward", pointSize: theme.layout.symbolProminent, weight: .medium)
+        backButtonTopConstraint?.update(offset: theme.spacing.xs)
+        backButtonLeadingConstraint?.update(offset: theme.spacing.small)
         backButtonSizeConstraint?.update(offset: theme.layout.minimumTouchTarget)
-        confirmButton?.style = confirmButtonStyle()
-        for row in currentRows {
-            row.style = resolvedActionSheetStyle.row
+
+        let metrics = pageMetrics(for: theme)
+        if currentPageView == nil || renderedMetrics != metrics {
+            // The page is built from the metrics, so a changed style or inset rebuilds it in place.
+            render(currentPage, direction: .none, animated: false)
+        } else {
+            confirmButton?.style = confirmButtonStyle()
+            for row in currentRows {
+                row.style = resolvedActionSheetStyle.row
+            }
         }
-        updateContentTop()
+        updateContentTop(theme: theme)
     }
 
     private func confirmButtonStyle() -> LMKButton.Style {
@@ -134,14 +141,36 @@ public final class LMKActionSheetViewController: LMKBottomSheetViewController {
 
     // MARK: - Rendering
 
+    /// Everything a page's layout is built from; a change re-renders the page.
+    private struct PageMetrics: Equatable {
+        var style: LMKActionSheet.Style
+        var horizontalInset: CGFloat
+        var sectionSpacing: CGFloat
+        var rowSpacing: CGFloat
+        var labelGap: CGFloat
+    }
+
+    private func pageMetrics(for theme: LMKTheme) -> PageMetrics {
+        let resolved = resolvedActionSheetStyle
+        return PageMetrics(
+            style: resolved,
+            horizontalInset: resolvedStyle.surface.contentInsets?.leading ?? theme.spacing.xl,
+            sectionSpacing: resolved.sectionSpacing ?? theme.spacing.medium,
+            rowSpacing: resolved.rowSpacing ?? theme.spacing.xs,
+            labelGap: theme.spacing.small
+        )
+    }
+
     private func render(_ page: LMKActionSheet.Page, direction: LMKPageTransition.Direction, animated: Bool) {
-        let built = buildPageView(for: page)
+        let metrics = pageMetrics(for: traitCollection.lmkTheme)
+        let built = buildPageView(for: page, metrics: metrics)
+        renderedMetrics = metrics
         currentRows = built.rows
         confirmButton = built.confirmButton
         let oldView = currentPageView
         currentPageView = built.view
         backButton.isHidden = pageStack.isEmpty
-        updateContentTop()
+        updateContentTop(theme: traitCollection.lmkTheme)
 
         isTransitioning = true
         settleInFlightAnimation()
@@ -156,13 +185,12 @@ public final class LMKActionSheetViewController: LMKBottomSheetViewController {
         ) { [weak self] in
             self?.isTransitioning = false
         }
-        if pageStack.isEmpty == false || direction != .none {
+        if direction != .none {
             UIAccessibility.post(notification: .screenChanged, argument: built.titleLabel ?? built.rows.first)
         }
     }
 
-    private func updateContentTop() {
-        let theme = traitCollection.lmkTheme
+    private func updateContentTop(theme: LMKTheme) {
         let gap = theme.spacing.xs * 2 + theme.layout.minimumTouchTarget
         let insetTop = resolvedStyle.surface.contentInsets?.top ?? theme.spacing.large
         // The content guide already sits `insetTop` below the drag indicator; with a back
@@ -177,12 +205,9 @@ public final class LMKActionSheetViewController: LMKBottomSheetViewController {
         let titleLabel: UILabel?
     }
 
-    private func buildPageView(for page: LMKActionSheet.Page) -> PageView {
-        let theme = traitCollection.lmkTheme
-        let resolved = resolvedActionSheetStyle
-        let sectionSpacing = resolved.sectionSpacing ?? theme.spacing.medium
-        let rowSpacing = resolved.rowSpacing ?? theme.spacing.xs
-        let horizontalInset = resolvedStyle.surface.contentInsets?.leading ?? theme.spacing.xl
+    private func buildPageView(for page: LMKActionSheet.Page, metrics: PageMetrics) -> PageView {
+        let resolved = metrics.style
+        let horizontalInset = metrics.horizontalInset
 
         let wrapper = UIView()
         let scrollView = UIScrollView()
@@ -203,19 +228,19 @@ public final class LMKActionSheetViewController: LMKBottomSheetViewController {
             titleLabel = label
             let insetLabel = inset(label, by: horizontalInset)
             stack.addArrangedSubview(insetLabel)
-            stack.setCustomSpacing(theme.spacing.small, after: insetLabel)
+            stack.setCustomSpacing(metrics.labelGap, after: insetLabel)
         }
         if let message = page.message {
             let label = UILabel.lmk_make(resolved.messageTextStyle ?? .caption, text: message, color: resolved.messageColor ?? LMKColor.textSecondary)
             let insetLabel = inset(label, by: horizontalInset)
             stack.addArrangedSubview(insetLabel)
-            stack.setCustomSpacing(sectionSpacing, after: insetLabel)
+            stack.setCustomSpacing(metrics.sectionSpacing, after: insetLabel)
         }
         if let contentView = page.contentView {
             contentView.removeFromSuperview()
             let insetContent = inset(contentView, by: horizontalInset)
             stack.addArrangedSubview(insetContent)
-            stack.setCustomSpacing(sectionSpacing, after: insetContent)
+            stack.setCustomSpacing(metrics.sectionSpacing, after: insetContent)
         }
 
         var rows: [LMKActionSheetRowView] = []
@@ -228,7 +253,7 @@ public final class LMKActionSheetViewController: LMKBottomSheetViewController {
             let insetRow = inset(row, by: horizontalInset)
             stack.addArrangedSubview(insetRow)
             if index < page.actions.count - 1 {
-                stack.setCustomSpacing(rowSpacing, after: insetRow)
+                stack.setCustomSpacing(metrics.rowSpacing, after: insetRow)
             }
         }
 
@@ -244,7 +269,7 @@ public final class LMKActionSheetViewController: LMKBottomSheetViewController {
             }
             scrollView.snp.makeConstraints { make in
                 make.top.leading.trailing.equalToSuperview()
-                make.bottom.equalTo(button.snp.top).offset(-theme.spacing.small)
+                make.bottom.equalTo(button.snp.top).offset(-metrics.labelGap)
             }
             confirmButton = button
         } else {
@@ -271,7 +296,8 @@ public final class LMKActionSheetViewController: LMKBottomSheetViewController {
     // MARK: - Actions
 
     func actionTapped(at index: Int) {
-        guard let action = currentPage.actions[lmk_safe: index], action.isEnabled else { return }
+        // Rows stay in place during a page slide; a second tap must not land on the new page.
+        guard !isTransitioning, let action = currentPage.actions[lmk_safe: index], action.isEnabled else { return }
         if let page = action.page {
             navigate(to: page)
         } else {
@@ -281,6 +307,7 @@ public final class LMKActionSheetViewController: LMKBottomSheetViewController {
     }
 
     func confirmTapped() {
+        guard !isTransitioning else { return }
         pendingHandler = currentPage.onConfirm
         dismiss(reason: .programmatic)
     }

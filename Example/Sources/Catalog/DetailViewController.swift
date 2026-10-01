@@ -2,7 +2,8 @@
 //  DetailViewController.swift
 //  LumiKitExample
 //
-//  Base class for all example detail pages. Uses LMKScrollStackViewController.
+//  Base class for all example detail pages. Uses LMKScrollStackViewController:
+//  pages override `setupStackContent()` and add their views to `stackView`.
 //
 
 import LumiKitUI
@@ -11,9 +12,6 @@ import UIKit
 
 /// Base class for all example detail pages.
 class DetailViewController: LMKScrollStackViewController {
-    /// Convenience alias so existing subclasses can keep using `stack`.
-    var stack: UIStackView { stackView }
-
     /// A horizontally scrolling host for a row whose content must never compress (a chip row at
     /// accessibility text sizes): the row keeps its natural width and scrolls sideways instead.
     func makeScrollingRow(_ content: UIView) -> UIView {

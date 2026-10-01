@@ -5,66 +5,68 @@
 //  Date Picker: Single date, range, calendar range, and notes.
 //
 
+import LumiKitCore
 import LumiKitUI
-import SnapKit
 import UIKit
 
 // MARK: - Date Picker
 
 final class DatePickerDetailViewController: DetailViewController {
-    override func viewDidLoad() {
-        super.viewDidLoad()
-
+    override func setupStackContent() {
         addSectionHeader("Single Date")
-        stack.addArrangedSubview(UILabel.lmk_make(.caption, text: "A Configuration picks mode, style, bounds, and the initial date. No bounds here: past and future dates allowed."))
+        stackView.addArrangedSubview(UILabel.lmk_make(
+            .caption,
+            text: "A Configuration picks mode, style, bounds, and the initial date. No bounds here: past and future dates allowed. onCancel reports a dismissal without a choice."
+        ))
         let singleButton = LMKButton(title: "Pick a Date", style: .filled(.primary), target: self, action: #selector(showSinglePicker))
-        stack.addArrangedSubview(singleButton)
+        stackView.addArrangedSubview(singleButton)
 
         addDivider()
         addSectionHeader("Future Date")
-        stack.addArrangedSubview(UILabel.lmk_make(.caption, text: ".future(title:excludingToday:) restricts to future dates, for scheduling."))
+        stackView.addArrangedSubview(UILabel.lmk_make(.caption, text: ".future(title:excludingToday:) restricts to future dates, for scheduling."))
         let futureButton = LMKButton(title: "Pick Future Date", style: .filled(.secondary), target: self, action: #selector(showFuturePicker))
-        stack.addArrangedSubview(futureButton)
+        stackView.addArrangedSubview(futureButton)
 
         addDivider()
         addSectionHeader("Past Date")
-        stack.addArrangedSubview(UILabel.lmk_make(.caption, text: ".past(title:) restricts to past dates, for logging events."))
+        stackView.addArrangedSubview(UILabel.lmk_make(.caption, text: ".past(title:) restricts to past dates, for logging events."))
         let pastButton = LMKButton(title: "Pick Past Date", style: .filled(.secondary), target: self, action: #selector(showPastPicker))
-        stack.addArrangedSubview(pastButton)
+        stackView.addArrangedSubview(pastButton)
 
         addDivider()
         addSectionHeader("Date Range")
-        stack.addArrangedSubview(UILabel.lmk_make(.caption, text: "Two compact pickers for From / To with live enforcement: the dates keep start before end."))
+        stackView.addArrangedSubview(UILabel.lmk_make(.caption, text: "Two compact pickers for From / To with live enforcement: the dates keep start before end."))
         let rangeButton = LMKButton(title: "Pick Date Range", style: .filled(.primary), target: self, action: #selector(showRangePicker))
-        stack.addArrangedSubview(rangeButton)
+        stackView.addArrangedSubview(rangeButton)
 
         addDivider()
         addSectionHeader("Calendar Range")
-        stack.addArrangedSubview(UILabel.lmk_make(
+        stackView.addArrangedSubview(UILabel.lmk_make(
             .caption,
             text: "One calendar for the whole range. Tap to set the start, tap again to set the end; once a range exists, any tap resets and starts over."
         ))
         let calendarRangeButton = LMKButton(title: "Pick Calendar Range", style: .filled(.primary), target: self, action: #selector(showCalendarRangePicker))
-        stack.addArrangedSubview(calendarRangeButton)
+        stackView.addArrangedSubview(calendarRangeButton)
 
         addDivider()
         addSectionHeader("Date with Notes")
-        stack.addArrangedSubview(UILabel.lmk_make(.caption, text: "A date picker with a text field above it for context."))
+        stackView.addArrangedSubview(UILabel.lmk_make(.caption, text: "A date picker with a text field above it for context."))
         let notesButton = LMKButton(title: "Pick Date with Notes", style: .filled(.secondary), target: self, action: #selector(showDateWithNotes))
-        stack.addArrangedSubview(notesButton)
+        stackView.addArrangedSubview(notesButton)
     }
 
-    private func format(_ date: Date, style: DateFormatter.Style = .long) -> String {
-        let formatter = DateFormatter()
-        formatter.dateStyle = style
-        return formatter.string(from: date)
+    private func format(_ date: Date, style: LMKDateFormat.DateStyle = .long) -> String {
+        LMKDateFormat.string(date, date: style)
     }
 
     @objc private func showSinglePicker() {
-        LMKDatePicker.present(LMKDatePicker.Configuration(title: "Select Date", message: "Choose any date"), from: self) { [weak self] date in
+        LMKDatePicker.present(LMKDatePicker.Configuration(title: "Select Date", message: "Choose any date"), from: self, onConfirm: { [weak self] date in
             guard let self else { return }
             LMKToast.show(.success, "Selected: \(format(date))", in: self)
-        }
+        }, onCancel: { [weak self] in
+            guard let self else { return }
+            LMKToast.show(.info, "Cancelled", in: self)
+        })
     }
 
     @objc private func showFuturePicker() {

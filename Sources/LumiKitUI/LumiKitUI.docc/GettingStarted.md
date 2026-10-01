@@ -17,7 +17,7 @@ targets: [
 ]
 ```
 
-`LumiKitDebug` (network capture and the request inspector) belongs in debug builds only. `LumiKitCore` comes with `LumiKitUI`; link it on its own for a target without UIKit.
+`LumiKitDebug` (network capture and the request inspector) belongs in debug builds only. `LumiKitCore` is linked with `LumiKitUI` but not re-exported: add `import LumiKitCore` in files that name its types (`LMKLogger`, `LMKDateFormat`, `LMKCalendarDay`), and link it on its own for a target without UIKit.
 
 ## Apply a theme
 
@@ -56,7 +56,7 @@ Components take a `Style`; content and state are properties; callbacks are `on<E
 ```swift
 let save = LMKButton(title: "Save", style: .filled(.primary)) { save() }
 let chip = LMKChipView(text: "Outdoor", style: .outlined.tint(.systemGreen))
-chip.onTap = { chip.isSelected.toggle() }
+chip.onTap = { [weak chip] in chip?.isSelected.toggle() }
 
 let row = LMKListRowConfiguration(
     title: "Watering",

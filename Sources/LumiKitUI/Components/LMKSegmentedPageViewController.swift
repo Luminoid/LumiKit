@@ -35,8 +35,8 @@ import UIKit
 /// }
 /// ```
 ///
-/// Inside an `LMKNavigationController`, the interactive pop gesture stays enabled on
-/// the first page and yields to the page pan on later pages.
+/// Inside a navigation stack, the pop gesture stays with the first page and yields to
+/// the page pan on later pages (the iOS 26 content-area pop gesture included).
 open class LMKSegmentedPageViewController: UIViewController, LMKThemeApplying, LMKPopGestureConfiguring {
     // MARK: - Vocabulary
 
@@ -106,7 +106,13 @@ open class LMKSegmentedPageViewController: UIViewController, LMKThemeApplying, L
     }
 
     /// Index of the visible page.
-    public private(set) var currentPageIndex = 0
+    public private(set) var currentPageIndex = 0 {
+        didSet {
+            // `prefersPopGestureDisabled` changed: the iOS 26 content pop gesture has no delegate to ask.
+            guard currentPageIndex != oldValue else { return }
+            (navigationController as? LMKNavigationController)?.updateContentPopGesture()
+        }
+    }
 
     /// The visible page.
     public var currentViewController: UIViewController? { currentChild }
@@ -144,11 +150,17 @@ open class LMKSegmentedPageViewController: UIViewController, LMKThemeApplying, L
     open var pageContainerView: UIView { view }
 
     private var currentChild: UIViewController?
-    private var isAnimatingPageChange = false
-    private var isInteractiveDragActive = false
+    /// A page change (tap, `setPage`, or a drag settling) is animating.
+    private(set) var isAnimatingPageChange = false
+    /// The finger is dragging the pages.
+    private(set) var isInteractiveDragActive = false
     private var interactiveDirection = 0
     private var interactiveNeighborIndex: Int?
     private var interactiveNeighborVC: UIViewController?
+    /// Pages handed to `setPages` mid-transition, applied once it settles.
+    private var pendingPages: (pages: [UIViewController], titles: [String]?)?
+    /// The iOS 26 content-area pop gesture this pan has been arbitrated against.
+    private weak var arbitratedContentPopGesture: UIGestureRecognizer?
     private lazy var panDelegate = LMKSegmentedPagePanDelegate(owner: self)
     private lazy var pagePanGesture: UIPanGestureRecognizer = {
         let pan = UIPanGestureRecognizer(target: self, action: #selector(handlePagePan(_:)))
@@ -158,7 +170,9 @@ open class LMKSegmentedPageViewController: UIViewController, LMKThemeApplying, L
 
     static let defaultEdgePanBandWidth: CGFloat = 24
     static let defaultCommitVelocityThreshold: CGFloat = 800
-    private static let rubberBandFactor: CGFloat = 0.3
+    private nonisolated static let rubberBandFactor: CGFloat = 0.3
+    /// Movement (pt) before a pan locks its direction.
+    private static let dragActivationDistance: CGFloat = 2
 
     private var isRightToLeft: Bool {
         view.effectiveUserInterfaceLayoutDirection == .rightToLeft
@@ -193,18 +207,33 @@ open class LMKSegmentedPageViewController: UIViewController, LMKThemeApplying, L
     /// Called after the visible page changes (not for the initial page).
     open func didChangePage(to _: Int) {}
 
+    /// Subclass hook, called at the end of every `applyTheme(_:)` just before `didApplyStyle`, so
+    /// a subclass's own theming never has to follow `super.applyTheme` and `didApplyStyle` always
+    /// runs last. The base implementation does nothing.
+    open func applyContentTheme(_ theme: LMKTheme) {}
+
     // MARK: - Lifecycle
 
     override open func viewDidLoad() {
         super.viewDidLoad()
         segmentedControl.selectedSegmentIndex = 0
         segmentedControl.onValueChange = { [weak self] index in
-            self?.setPage(index, animated: true)
+            guard let self else { return }
+            setPage(index, animated: true)
+            // The control moved before asking; a rejected change (mid-slide, mid-drag) snaps it back.
+            if currentPageIndex != index {
+                segmentedControl.setSelectedSegmentIndex(currentPageIndex, animated: true)
+            }
         }
         installSegmentedControl()
         view.addGestureRecognizer(pagePanGesture)
         lmk_startApplyingTheme()
         setPages(makePages())
+    }
+
+    override open func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        arbitrateContentPopGesture()
     }
 
     override open var childForStatusBarStyle: UIViewController? {
@@ -225,6 +254,7 @@ open class LMKSegmentedPageViewController: UIViewController, LMKThemeApplying, L
         resolvedStyle = theme.segmentedPage.merging(style)
         view.backgroundColor = resolvedStyle.backgroundColor ?? LMKColor.backgroundPrimary
         segmentedControl.style = LMKSegmentedControl.Style(itemPadding: theme.spacing.xl).merging(resolvedStyle.segmentedControl)
+        applyContentTheme(theme)
         didApplyStyle?(self)
     }
 
@@ -249,9 +279,15 @@ open class LMKSegmentedPageViewController: UIViewController, LMKThemeApplying, L
     // MARK: - Pages
 
     /// Replaces the pages (and, when given, the segment titles). The current index is kept
-    /// when still in range, else the first page shows.
+    /// when still in range, else the first page shows. Loads the view first; pages handed
+    /// over while a page change or a drag is in flight are applied once it settles.
     public func setPages(_ pages: [UIViewController], titles: [String]? = nil) {
-        guard !isInteractiveDragActive, !isAnimatingPageChange else { return }
+        loadViewIfNeeded()
+        guard !isInteractiveDragActive, !isAnimatingPageChange else {
+            pendingPages = (pages, titles)
+            return
+        }
+        pendingPages = nil
         if let titles {
             segmentedControl.setItems(titles)
         }
@@ -273,8 +309,11 @@ open class LMKSegmentedPageViewController: UIViewController, LMKThemeApplying, L
     }
 
     /// Moves to `index`, sliding when `animated`. Keeps the segmented control in sync without
-    /// re-entering its handler. Safe to call programmatically (deep links).
+    /// re-entering its handler. Safe to call programmatically (deep links), before the view
+    /// loads included. Ignored for an unknown index and while a page change or a drag is in
+    /// flight (`currentPageIndex` then stays where it was).
     open func setPage(_ index: Int, animated: Bool) {
+        loadViewIfNeeded()
         guard pages.indices.contains(index), index != currentPageIndex, !isAnimatingPageChange, !isInteractiveDragActive else { return }
         let direction = index > currentPageIndex ? 1 : -1
         transition(to: index, direction: direction, animated: animated)
@@ -313,7 +352,7 @@ open class LMKSegmentedPageViewController: UIViewController, LMKThemeApplying, L
                 oldVC.view.removeFromSuperview()
                 oldVC.removeFromParent()
                 newVC.didMove(toParent: self)
-                self?.isAnimatingPageChange = false
+                self?.finishPageChange()
             }
             animator.addCompletion { _ in once.fire() }
             animator.startAnimation()
@@ -330,6 +369,15 @@ open class LMKSegmentedPageViewController: UIViewController, LMKThemeApplying, L
         currentPageIndex = index
         setNeedsStatusBarAppearanceUpdate()
         didChangePage(to: index)
+    }
+
+    /// Ends an animated page change and applies pages that arrived while it ran.
+    private func finishPageChange() {
+        isAnimatingPageChange = false
+        if let pendingPages {
+            self.pendingPages = nil
+            setPages(pendingPages.pages, titles: pendingPages.titles)
+        }
     }
 
     /// The frame to install a page with: the container's bounds, or the controller's own size
@@ -371,7 +419,7 @@ open class LMKSegmentedPageViewController: UIViewController, LMKThemeApplying, L
         let width = container.bounds.width
 
         if !isInteractiveDragActive {
-            guard abs(translation) > 2 else { return }
+            guard abs(translation) > Self.dragActivationDistance else { return }
             beginInteractiveDrag(translation: translation, width: width)
         }
 
@@ -402,13 +450,29 @@ open class LMKSegmentedPageViewController: UIViewController, LMKThemeApplying, L
 
     /// Tracks the finger toward the locked neighbor; resists the wrong way and at the ends.
     private func interactiveOffset(for translation: CGFloat, width: CGFloat) -> CGFloat {
-        guard interactiveNeighborVC != nil else {
-            return translation * Self.rubberBandFactor
+        Self.interactiveOffset(for: translation, direction: interactiveDirection, width: width, hasNeighbor: interactiveNeighborVC != nil)
+    }
+
+    /// The logical page offset for a drag `translation` locked toward `direction` (1 = next,
+    /// -1 = previous): clamped to one page width toward the neighbor and to zero the other
+    /// way; a rubber band when there is no neighbor.
+    nonisolated static func interactiveOffset(for translation: CGFloat, direction: Int, width: CGFloat, hasNeighbor: Bool) -> CGFloat {
+        guard hasNeighbor else {
+            return translation * rubberBandFactor
         }
-        if interactiveDirection > 0 {
+        if direction > 0 {
             return max(min(translation, 0), -width)
         }
         return min(max(translation, 0), width)
+    }
+
+    /// Whether a released drag commits the page change: the pages sit past half the width
+    /// (measured from the clamped offset, so a drag reversed past its start does not count) or
+    /// the finger flicked toward the neighbor faster than `commitVelocityThreshold`.
+    nonisolated static func commitsInteractiveDrag(offset: CGFloat, velocity: CGFloat, direction: Int, width: CGFloat, commitVelocityThreshold: CGFloat) -> Bool {
+        let movedEnough = abs(offset) > width * 0.5
+        let flicked = abs(velocity) > commitVelocityThreshold && (velocity < 0) == (direction > 0)
+        return movedEnough || flicked
     }
 
     private func handlePagePanEnded(_ gesture: UIPanGestureRecognizer) {
@@ -417,10 +481,14 @@ open class LMKSegmentedPageViewController: UIViewController, LMKThemeApplying, L
         let translation = logicalTranslation(of: gesture)
         let velocity = visual(gesture.velocity(in: view).x)
 
-        let movedEnough = abs(translation) > width * 0.5
-        let flicked = abs(velocity) > commitVelocityThreshold && (velocity < 0) == (interactiveDirection > 0)
-        let shouldCommit = interactiveNeighborVC != nil && gesture.state == .ended && (movedEnough || flicked)
-        if shouldCommit {
+        let commits = Self.commitsInteractiveDrag(
+            offset: interactiveOffset(for: translation, width: width),
+            velocity: velocity,
+            direction: interactiveDirection,
+            width: width,
+            commitVelocityThreshold: commitVelocityThreshold
+        )
+        if interactiveNeighborVC != nil, gesture.state == .ended, commits {
             commitInteractiveDrag(width: width)
         } else {
             revertInteractiveDrag(width: width)
@@ -449,9 +517,9 @@ open class LMKSegmentedPageViewController: UIViewController, LMKThemeApplying, L
             currentPageIndex = neighborIndex
             segmentedControl.setSelectedSegmentIndex(neighborIndex, animated: true)
             clearInteractiveState()
-            isAnimatingPageChange = false
             setNeedsStatusBarAppearanceUpdate()
             didChangePage(to: neighborIndex)
+            finishPageChange()
         }
     }
 
@@ -468,7 +536,7 @@ open class LMKSegmentedPageViewController: UIViewController, LMKThemeApplying, L
             neighbor?.view.removeFromSuperview()
             neighbor?.removeFromParent()
             self?.clearInteractiveState()
-            self?.isAnimatingPageChange = false
+            self?.finishPageChange()
         }
     }
 
@@ -504,16 +572,56 @@ open class LMKSegmentedPageViewController: UIViewController, LMKThemeApplying, L
         let logicalX = isRightToLeft ? width - startX : startX
         let inLeadingBand = logicalX <= edgePanBandWidth
         let inTrailingBand = logicalX >= width - edgePanBandWidth
-        // A leading-edge drag toward the previous page on the first page is the navigation
-        // controller's pop gesture, when one is available.
-        if currentPageIndex == 0, inLeadingBand, visual(velocity.x) > 0,
-           (navigationController as? LMKNavigationController)?.canBeginPopGesture == true {
-            return false
+        // A drag toward the previous page on the first page is the navigation controller's pop
+        // gesture when the stack can pop: from the leading band everywhere, and from the whole
+        // content area on iOS 26, whose content pop gesture covers it.
+        if currentPageIndex == 0, visual(velocity.x) > 0, navigationStackCanPop {
+            if inLeadingBand { return false }
+            if #available(iOS 26, *) { return false }
         }
         if !usesFullWidthSwipe(forPageAt: currentPageIndex) {
             return inLeadingBand || inTrailingBand
         }
         return true
+    }
+
+    /// Whether the page pan may take a touch that landed on `view`: never one inside the
+    /// segmented control (its indicator drags) or a control that owns horizontal drags.
+    func pagePanShouldReceiveTouch(on view: UIView?) -> Bool {
+        var current = view
+        while let candidate = current, candidate !== self.view {
+            if candidate === segmentedControl || candidate is UISlider || candidate is UISegmentedControl {
+                return false
+            }
+            current = candidate.superview
+        }
+        return true
+    }
+
+    /// Whether the page pan may run alongside `other`: only a scroll view's own pan, so a
+    /// vertical scroller under the pages keeps scrolling while a horizontal drag pages.
+    func pagePanRecognizesSimultaneously(with other: UIGestureRecognizer) -> Bool {
+        guard let scrollView = other.view as? UIScrollView else { return false }
+        return other === scrollView.panGestureRecognizer
+    }
+
+    /// Whether the hosting navigation stack has a screen to pop to (and, in an
+    /// `LMKNavigationController`, the top screen is not opting out).
+    private var navigationStackCanPop: Bool {
+        guard let navigationController else { return false }
+        if let configuring = navigationController as? LMKNavigationController {
+            return configuring.canBeginPopGesture
+        }
+        return navigationController.viewControllers.count > 1
+    }
+
+    /// Makes the iOS 26 content-area pop gesture wait for the page pan, so a horizontal drag on
+    /// a later page pages instead of popping the container. Once per navigation controller.
+    private func arbitrateContentPopGesture() {
+        guard #available(iOS 26, *), let contentPop = navigationController?.interactiveContentPopGestureRecognizer,
+              contentPop !== arbitratedContentPopGesture else { return }
+        contentPop.require(toFail: pagePanGesture)
+        arbitratedContentPopGesture = contentPop
     }
 
     var pagePanRecognizer: UIPanGestureRecognizer { pagePanGesture }
@@ -529,9 +637,9 @@ private final class LMKSegmentedPagePanDelegate: NSObject, UIGestureRecognizerDe
     }
 
     func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldReceive touch: UITouch) -> Bool {
-        if let owner, gestureRecognizer === owner.pagePanRecognizer {
-            startX = touch.location(in: owner.view).x
-        }
+        guard let owner, gestureRecognizer === owner.pagePanRecognizer else { return true }
+        guard owner.pagePanShouldReceiveTouch(on: touch.view) else { return false }
+        startX = touch.location(in: owner.view).x
         return true
     }
 
@@ -540,9 +648,9 @@ private final class LMKSegmentedPagePanDelegate: NSObject, UIGestureRecognizerDe
         return owner.shouldBeginPagePan(startX: startX)
     }
 
-    func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldRecognizeSimultaneouslyWith _: UIGestureRecognizer) -> Bool {
-        // Coexist with a child's vertical scroll view; shouldBegin already rejects vertical drags.
-        gestureRecognizer === owner?.pagePanRecognizer
+    func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldRecognizeSimultaneouslyWith other: UIGestureRecognizer) -> Bool {
+        guard let owner, gestureRecognizer === owner.pagePanRecognizer else { return false }
+        return owner.pagePanRecognizesSimultaneously(with: other)
     }
 }
 

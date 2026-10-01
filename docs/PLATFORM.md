@@ -1,6 +1,6 @@
 # Platform support
 
-LumiKit 1.0 targets iOS 18, iPadOS 18, and Mac Catalyst 18. `LumiKitCore` and `LumiKitDebug` also build natively for macOS 15. The package is built and tested with Xcode 26 (Swift 6.2) and Xcode 27 (Swift 6.4), on the iOS 26 simulator.
+LumiKit 1.0 targets iOS 18, iPadOS 18, and Mac Catalyst 18. `LumiKitCore` and `LumiKitDebug` also build natively for macOS 15. The package is built and tested with Xcode 26 (Swift 6.2) and Xcode 27 (Swift 6.4), on the iOS 26 simulator; CI runs the test suite under both.
 
 ## Rules
 
@@ -8,7 +8,7 @@ LumiKit 1.0 targets iOS 18, iPadOS 18, and Mac Catalyst 18. `LumiKitCore` and `L
 2. **Layout comes from size classes and window bounds**, never from `UIScreen.main`, the device idiom, or the interface orientation. Resizable windows, Slide Over, Stage Manager, and foldable displays all change size at runtime; `LMKDevice.screenSize(for:)`, `LMKScene.observeGeometry(of:onChange:)`, and `LMKDevice.observeScreenSize(of:onChange:)` report those changes.
 3. **Safe areas per edge.** Overlays clamp against the leading and trailing insets as well as top and bottom.
 4. **Every gated path has a test** that runs the new branch on a current simulator and asserts the fallback's configuration where the fallback can be reached.
-5. **Mac Catalyst is a first-class target.** The Example app builds for the Mac idiom (`TARGETED_DEVICE_FAMILY` 1, 2, 6). Pointer effects go through `LMKPointerStyle`, forms and sheets carry key commands, and the two UIKit behaviors that differ under the Mac idiom are handled in the kit: `UISlider` track and thumb tints throw (only `tintColor` is applied), and `UIRefreshControl` subclasses are unsupported (`LMKLottieRefreshControl.install(on:)` returns `nil` and `makeRefreshKeyCommand` offers Command-R instead).
+5. **Mac Catalyst is a first-class target.** The Example app builds for the Mac idiom (`TARGETED_DEVICE_FAMILY` 1, 2, 6). Pointer effects go through `LMKPointerStyle`, forms and sheets carry key commands, and the four UIKit behaviors that differ under the Mac idiom are handled in the kit: `UISlider` track and thumb tints throw (only `tintColor` is applied); a wheel `UIDatePicker` throws, so `LMKDatePicker` applies `Configuration.resolvedPickerStyle(for:)`, which turns `.wheels` into `.inline` for the date and date-and-time modes and `.compact` for time under the Mac idiom (hosts that build their own picker go through `LMKDatePicker.makePicker(_:)` or the resolver); `UIRefreshControl` subclasses are unsupported (`LMKLottieRefreshControl.install(on:)` returns `nil` and `makeRefreshKeyCommand` offers Command-R instead); and a `UIButton` draws as a bare title, so `LMKButton` and the chip's dismiss button set `preferredBehavioralStyle = .pad` to keep their iOS look. CI builds the Example for the Mac idiom (`make example-catalyst`).
 
 ## iOS 26 adoptions
 
@@ -22,17 +22,18 @@ LumiKit 1.0 targets iOS 18, iPadOS 18, and Mac Catalyst 18. `LumiKitCore` and `L
 | `tabBarMinimizeBehavior`, `UITabAccessory`, `UISearchTab.automaticallyActivatesSearch` | `LMKTabBarController.Style.minimizesOnScroll`, `setBottomAccessory(_:)`, `automaticallyActivatesSearch` | ignored |
 | `UINavigationItem.subtitle` | `UINavigationItem.lmk_setSubtitle(_:)`, `LMKDetailPageViewController` | a two-line title view |
 | `UIBarButtonItem.Style.prominent`, `hidesSharedBackground`, `identifier`, `UIBarButtonItem.Badge` | `LMKNavigationBarItem.makeBarButtonItem()`, `UINavigationItem.lmk_setItems(leading:trailing:)` | `.done` style, no badge |
-| `UISliderTrackConfiguration` (ticks, `neutralValue`) | `LMKSlider.step`, `neutralValue` | no ticks |
-| `UISymbolContentTransition` | `LMKButton.Style.animatesSymbolChanges`, `LMKCheckbox` | `setImage` without a transition |
+| `UISlider.TrackConfiguration` (ticks, `neutralValue`) | `LMKSlider.step` (ticks when the steps divide the range evenly into at most 50 stops), `neutralValue` | no ticks |
+| `UISymbolContentTransition` | `LMKButton.Style.animatesSymbolChanges` | `setImage` without a transition |
 | `UIImage.SymbolConfiguration(variableValueMode:)`, `(colorRenderingMode:)` | `LMKImage.SymbolOptions` | the plain configuration |
 | `UISplitViewController.Column.inspector` | `UISplitViewController.lmk_setInspector(_:)`, `lmk_toggleInspector()` | inert |
 | `UITraitHDRHeadroomUsageLimit` | photo browser HDR (with `preferredImageDynamicRange` from iOS 17) | SDR |
 | `UITraitResolvesNaturalAlignmentWithBaseWritingDirection` | `UIView.lmk_forceLayoutDirection(_:)` | `semanticContentAttribute` only |
 | `UIWindowSceneGeometry.isInteractivelyResizing` | `LMKScene.Geometry.isInteractivelyResizing` | always `false` |
-| `prefersInterfaceOrientationLocked` | photo browser and crop editor | `supportedInterfaceOrientations` |
+| `prefersInterfaceOrientationLocked` | crop editor (on by default), photo browser (opt-in), both through `Style.locksOrientation` | no lock: the host's orientations apply; on rotation the browser re-aligns its page and the crop editor re-fits its frame |
+| `UINavigationController.interactiveContentPopGestureRecognizer` | `LMKNavigationController` enables it from `canBeginPopGesture` (it has no delegate) after every push, pop, and layout pass; `LMKSegmentedPageViewController` makes it wait for its page pan and calls `updateContentPopGesture()` when its page changes | the edge-swipe pop gesture alone |
 | `UIBackgroundExtensionView` | `LMKNavigationBar.backgroundContentView` | a plain host view |
 
-APIs at or below the floor that LumiKit uses without a gate: `UIImageReader` and `UIContentUnavailableConfiguration` (iOS 17), `UITab` and `UISearchTab` (iOS 18), `Mutex` from Synchronization (iOS 18, macOS 15).
+APIs at or below the floor that LumiKit uses without a gate: `UIImageReader`, `UIContentUnavailableConfiguration`, and `UIImageView.setSymbolImage(_:contentTransition:)` (`LMKCheckbox`'s glyph swap) from iOS 17, `UITab` and `UISearchTab` (iOS 18), `Mutex` from Synchronization (iOS 18, macOS 15).
 
 Two iOS 26 APIs were reviewed and not adopted: `UIView.updateProperties()` (the trait-driven `applyTheme` path already re-renders on the same triggers) and `UIMenuElement.RepeatBehavior` (no LumiKit menu has a repeatable element).
 

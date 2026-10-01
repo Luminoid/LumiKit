@@ -127,6 +127,29 @@ struct LMKShareItemsTests {
         #expect(host.lastPresentedViewController is UIActivityViewController)
         #expect(FileManager.default.fileExists(atPath: url.path))
     }
+
+    @Test
+    func `A shared file is kept by default and removed only when asked`() throws {
+        let host = makeHost()
+        let kept = FileManager.default.temporaryDirectory.appendingPathComponent("share_kept_\(UUID().uuidString).txt")
+        try "x".write(to: kept, atomically: true, encoding: .utf8)
+        defer { try? FileManager.default.removeItem(at: kept) }
+        var results: [LMKShareResult] = []
+
+        LMKShare.file(at: kept, from: host) { results.append($0) }
+        let keeping = try #require(host.lastPresentedViewController as? UIActivityViewController)
+        keeping.completionWithItemsHandler?(nil, false, nil, nil)
+        #expect(FileManager.default.fileExists(atPath: kept.path))
+        if case .cancelled = results.last {} else { Issue.record("expected .cancelled") }
+
+        let temporary = FileManager.default.temporaryDirectory.appendingPathComponent("share_temp_\(UUID().uuidString).txt")
+        try "x".write(to: temporary, atomically: true, encoding: .utf8)
+        LMKShare.file(at: temporary, from: host, deletesAfterShare: true) { results.append($0) }
+        let deleting = try #require(host.lastPresentedViewController as? UIActivityViewController)
+        deleting.completionWithItemsHandler?(.copyToPasteboard, true, nil, nil)
+        #expect(!FileManager.default.fileExists(atPath: temporary.path))
+        if case .completed(.copyToPasteboard) = results.last {} else { Issue.record("expected .completed") }
+    }
 }
 
 // MARK: - Test Helper

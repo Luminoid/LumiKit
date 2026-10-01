@@ -65,6 +65,19 @@ struct LMKBottomSheetViewControllerTests {
     }
 
     @Test
+    func `Drag thresholds come from the style`() {
+        let sheet = TestBottomSheet()
+        sheet.loadViewIfNeeded()
+        #expect(sheet.dismissesOnDragEnd(velocity: 501, offset: 0, containerHeight: 400))
+        #expect(!sheet.dismissesOnDragEnd(velocity: 499, offset: 100, containerHeight: 400))
+        #expect(sheet.dismissesOnDragEnd(velocity: 0, offset: 121, containerHeight: 400), "30% of the height")
+        sheet.style.dismissVelocityThreshold = 1000
+        sheet.style.dismissDistanceRatio = 0.5
+        #expect(!sheet.dismissesOnDragEnd(velocity: 900, offset: 150, containerHeight: 400))
+        #expect(sheet.dismissesOnDragEnd(velocity: 0, offset: 201, containerHeight: 400))
+    }
+
+    @Test
     func `present adds the sheet as a child and animates in once, even on a container host`() {
         let (host, window) = makeHost()
         defer { window.isHidden = true }
@@ -88,22 +101,87 @@ struct LMKBottomSheetViewControllerTests {
     }
 
     @Test
-    func `dismiss removes the sheet and reports the reason`() async {
+    func `present ends editing on the host so the sheet is not hidden behind the keyboard`() {
+        let (host, window) = makeHost()
+        defer { window.isHidden = true }
+        let field = UITextField(frame: CGRect(x: 0, y: 100, width: 375, height: 44))
+        host.view.addSubview(field)
+        field.becomeFirstResponder()
+        #expect(field.isFirstResponder)
+        let sheet = TestBottomSheet()
+        sheet.present(from: host)
+        #expect(!field.isFirstResponder)
+    }
+
+    @Test
+    func `dismiss removes the sheet, reports the reason once, and runs every completion`() async {
+        let (host, window) = makeHost()
+        defer { window.isHidden = true }
+        let sheet = TestBottomSheet()
+        var reasons: [LMKBottomSheetViewController.DismissReason] = []
+        var order: [String] = []
+        sheet.onDismiss = { reasons.append($0); order.append("onDismiss") }
+        sheet.present(from: host)
+        // Dismissing during the slide-in must still complete (a fast tap on the dimming).
+        sheet.dismiss(reason: .dimmingTap) { order.append("first") }
+        sheet.dismiss { order.append("second") }
+        await LMKWait.until { order.count == 3 }
+        #expect(host.children.isEmpty)
+        #expect(sheet.view.superview == nil)
+        #expect(reasons == [.dimmingTap], "a second dismiss during the slide-out is ignored")
+        #expect(order == ["onDismiss", "first", "second"], "completions run after onDismiss, the ignored call's too")
+        #expect(sheet.willDismissReasons == [.dimmingTap])
+        #expect(sheet.didDismissReasons == [.dimmingTap])
+    }
+
+    @Test
+    func `A dismissed sheet can be presented again`() async {
         let (host, window) = makeHost()
         defer { window.isHidden = true }
         let sheet = TestBottomSheet()
         var reasons: [LMKBottomSheetViewController.DismissReason] = []
         sheet.onDismiss = { reasons.append($0) }
         sheet.present(from: host)
-        // Dismissing during the slide-in must still complete (a fast tap on the dimming).
-        sheet.dismiss(reason: .dimmingTap)
-        sheet.dismiss()
+        sheet.dismiss(reason: .cancelButton)
         await LMKWait.until { host.children.isEmpty }
-        #expect(host.children.isEmpty)
-        #expect(sheet.view.superview == nil)
-        #expect(reasons == [.dimmingTap], "a second dismiss during the slide-out is ignored")
-        #expect(sheet.willDismissReasons == [.dimmingTap])
-        #expect(sheet.didDismissReasons == [.dimmingTap])
+
+        sheet.present(from: host)
+        sheet.view.layoutIfNeeded()
+        #expect(host.children.first === sheet)
+        #expect(sheet.dimmingView.alpha == 1, "the second slide-in ran")
+        #expect(abs(sheet.containerView.frame.maxY - 812) < 0.5, "the container is back on screen")
+        sheet.dismiss(reason: .keyCommand)
+        await LMKWait.until { host.children.isEmpty }
+        #expect(reasons == [.cancelButton, .keyCommand])
+    }
+
+    @Test
+    func `UIKit's dismiss on a presented sheet closes the sheet, not the host's modal`() async {
+        let (host, window) = makeHost()
+        defer { window.isHidden = true }
+        let sheet = TestBottomSheet()
+        var reasons: [LMKBottomSheetViewController.DismissReason] = []
+        var completed = false
+        sheet.onDismiss = { reasons.append($0) }
+        sheet.present(from: host)
+        sheet.dismiss(animated: true) { completed = true }
+        await LMKWait.until { host.children.isEmpty && completed }
+        #expect(reasons == [.programmatic])
+        #expect(window.rootViewController === host, "the host stays where it was")
+    }
+
+    @Test
+    func `The sheet is a VoiceOver modal with an escape gesture`() async {
+        let (host, window) = makeHost()
+        defer { window.isHidden = true }
+        let sheet = TestBottomSheet()
+        var reasons: [LMKBottomSheetViewController.DismissReason] = []
+        sheet.onDismiss = { reasons.append($0) }
+        sheet.present(from: host)
+        #expect(sheet.view.accessibilityViewIsModal)
+        #expect(sheet.view.accessibilityPerformEscape())
+        await LMKWait.until { host.children.isEmpty }
+        #expect(reasons == [.keyCommand])
     }
 
     @Test
@@ -135,14 +213,47 @@ struct LMKBottomSheetViewControllerTests {
     }
 
     @Test
-    func `theme.bottomSheet supplies app-wide defaults`() {
-        var theme = LMKTheme()
-        theme.bottomSheet = LMKBottomSheetViewController.Style(dragIndicatorColor: .magenta)
+    func `Content and the cancel button keep clear of the side safe areas`() {
+        let (host, window) = makeHost()
+        defer { window.isHidden = true }
+        host.additionalSafeAreaInsets = UIEdgeInsets(top: 0, left: 62, bottom: 0, right: 62)
         let sheet = TestBottomSheet()
+        sheet.present(from: host)
+        sheet.view.layoutIfNeeded()
+        #expect(sheet.containerView.frame.minX == 0, "the surface stays full-bleed")
+        #expect(sheet.containerView.frame.width == 375)
+        #expect(sheet.cancelButton.frame.minX >= 62 + LMKSpacing.xl - 0.5)
+        #expect(sheet.cancelButton.frame.maxX <= 375 - 62 - LMKSpacing.xl + 0.5)
+        #expect(sheet.contentLayoutGuide.layoutFrame.minX >= 62 - 0.5)
+        #expect(sheet.contentLayoutGuide.layoutFrame.maxX <= 375 - 62 + 0.5)
+    }
+
+    @Test
+    func `theme.bottomSheet supplies app-wide defaults and the subclass layers its own style between`() {
+        var theme = LMKTheme()
+        theme.bottomSheet = LMKBottomSheetViewController.Style(dimmingColor: .blue, dragIndicatorColor: .magenta)
+        theme.spacing = LMKSpacingTheme(small: 11)
+        let sheet = LayeredSheet()
+        sheet.style.dimmingColor = .green
         let window = LMKThemeTesting.host(sheet.view, theme: theme)
         defer { window.isHidden = true }
         sheet.applyTheme(theme)
-        #expect(sheet.dragIndicator.backgroundColor == UIColor.magenta)
+        #expect(sheet.dragIndicator.backgroundColor == UIColor.magenta, "from the theme")
+        #expect(sheet.resolvedStyle.dimmingAlpha == 1, "from the subclass resolver")
+        #expect(sheet.resolvedStyle.dimmingColor == UIColor.green, "the instance style wins")
+        sheet.view.layoutIfNeeded()
+        #expect(sheet.dragIndicator.frame.minY == 11, "the indicator gap reads the passed theme's spacing")
+    }
+
+    @Test
+    func `applyContentTheme runs after the chrome and before didApplyStyle`() {
+        let sheet = LayeredSheet()
+        var order: [String] = []
+        sheet.contentThemeHook = { order.append("content") }
+        sheet.didApplyStyle = { _ in order.append("didApplyStyle") }
+        sheet.loadViewIfNeeded()
+        #expect(order == ["content", "didApplyStyle"])
+        #expect(sheet.contentThemeSawCancelStyle, "the chrome is styled when the hook runs")
     }
 }
 
@@ -162,9 +273,9 @@ struct LMKBottomSheetKeyboardTests {
         )
     }
 
-    private func makeHostedSheet(_ sheet: LMKBottomSheetViewController) -> UIWindow {
+    private func makeHostedSheet(_ sheet: LMKBottomSheetViewController, windowFrame: CGRect = CGRect(x: 0, y: 0, width: 375, height: 812)) -> UIWindow {
         let parent = UIViewController()
-        let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 375, height: 812))
+        let window = UIWindow(frame: windowFrame)
         window.rootViewController = parent
         window.makeKeyAndVisible()
         sheet.present(from: parent)
@@ -198,6 +309,44 @@ struct LMKBottomSheetKeyboardTests {
         postKeyboard(name: UIResponder.keyboardWillHideNotification, frame: CGRect(x: 0, y: height, width: 375, height: 300))
         sheet.view.layoutIfNeeded()
         #expect(abs(sheet.containerView.frame.maxY - height) < 0.5)
+    }
+
+    @Test
+    func `The keyboard frame is read in screen coordinates, so an offset window lifts the right amount`() {
+        let sheet = TestBottomSheet()
+        // A window 100pt down the screen (Stage Manager, Slide Over), 600pt tall.
+        let window = makeHostedSheet(sheet, windowFrame: CGRect(x: 0, y: 100, width: 375, height: 600))
+        defer { window.isHidden = true }
+        let screenHeight = window.screen.bounds.height
+        // The keyboard covers the bottom 300pt of the screen: the window's last 126pt when
+        // the screen is 874pt tall (it is what overlaps the window, never the raw height).
+        let keyboardTop = screenHeight - 300
+        let overlap = (window.frame.maxY - keyboardTop).rounded()
+        #expect(overlap > 0 && overlap < 300)
+        postKeyboard(name: UIResponder.keyboardWillShowNotification, frame: CGRect(x: 0, y: keyboardTop, width: 375, height: 300))
+        sheet.view.layoutIfNeeded()
+        #expect(abs(sheet.containerView.frame.maxY - (600 - overlap)) < 0.5, "maxY \(sheet.containerView.frame.maxY), overlap \(overlap)")
+    }
+
+    @Test
+    func `A tall sheet lifted by the keyboard stays below the top safe area`() {
+        let parent = UIViewController()
+        let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 375, height: 812))
+        window.rootViewController = parent
+        window.makeKeyAndVisible()
+        defer { window.isHidden = true }
+        let sheet = LMKActionSheet.present(from: parent, title: "Move to", actions: (0 ..< 40).map { index in .init(title: "Day \(index)") {} })
+        sheet.view.layoutIfNeeded()
+        let restingHeight = sheet.containerView.frame.height
+        #expect(restingHeight > 812 * 0.8, "the fixture reaches the cap")
+
+        postKeyboard(name: UIResponder.keyboardWillShowNotification, frame: CGRect(x: 0, y: 512, width: 375, height: 300))
+        sheet.view.layoutIfNeeded()
+        let top = sheet.view.safeAreaInsets.top
+        #expect(sheet.containerView.frame.minY >= top - 0.5, "the sheet was pushed off the top: \(sheet.containerView.frame)")
+        #expect(abs(sheet.containerView.frame.maxY - 512) < 0.5, "still lifted above the keyboard")
+        #expect(sheet.containerView.frame.height < restingHeight, "the list gave up the height, not the chrome")
+        postKeyboard(name: UIResponder.keyboardWillHideNotification, frame: CGRect(x: 0, y: 812, width: 375, height: 300))
     }
 
     @Test
@@ -271,5 +420,20 @@ private final class AnimationCountingSheet: LMKBottomSheetViewController {
     override func animateIn() {
         animateInCount += 1
         super.animateIn()
+    }
+}
+
+/// A subclass with a style layer of its own (a fully opaque dimming) between the theme and the instance.
+private final class LayeredSheet: LMKBottomSheetViewController {
+    var contentThemeHook: (() -> Void)?
+    var contentThemeSawCancelStyle = false
+
+    override func resolveStyle(for theme: LMKTheme) -> Style {
+        theme.bottomSheet.merging(Style(dimmingAlpha: 1)).merging(style)
+    }
+
+    override func applyContentTheme(_ theme: LMKTheme) {
+        contentThemeSawCancelStyle = cancelButton.style.variant == .filled
+        contentThemeHook?()
     }
 }

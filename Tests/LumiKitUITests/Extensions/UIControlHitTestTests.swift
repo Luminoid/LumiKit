@@ -1,5 +1,5 @@
 //
-//  UIControlTouchAreaTests.swift
+//  UIControlHitTestTests.swift
 //  LumiKit
 //
 
@@ -7,10 +7,10 @@ import Testing
 import UIKit
 @testable import LumiKitUI
 
-// MARK: - UIControl+LMKTouchArea
+// MARK: - UIControl+LMKHitTest
 
 @MainActor
-struct UIControlTouchAreaTests {
+struct UIControlHitTestTests {
     @Test
     func `Default touchAreaEdgeInsets is zero`() {
         let control = UIControl()
@@ -73,7 +73,8 @@ struct UIControlTouchAreaTests {
         control.lmk_hitTestInsets = UIEdgeInsets(top: -10, left: -10, bottom: -10, right: -10)
         control.isHidden = true
 
-        #expect(control.lmk_point(inside: CGPoint(x: 22, y: 22), with: nil))
+        // A hidden control takes no touch, inside its bounds or in the expanded area.
+        #expect(!control.lmk_point(inside: CGPoint(x: 22, y: 22), with: nil))
         #expect(!control.lmk_point(inside: CGPoint(x: -5, y: -5), with: nil))
     }
 

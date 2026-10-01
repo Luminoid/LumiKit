@@ -5,26 +5,21 @@
 //  Share: Share preview sheet and LMKShare.
 //
 
-import LumiKitCore
 import LumiKitPhoto
 import LumiKitUI
-import PhotosUI
 import SnapKit
 import UIKit
-import UniformTypeIdentifiers
 
 // MARK: - Share Preview
 
 final class ShareDetailViewController: DetailViewController {
     private var sampleImage: UIImage?
 
-    override func viewDidLoad() {
-        super.viewDidLoad()
-
+    override func setupStackContent() {
         sampleImage = createSampleImage()
 
         addSectionHeader("LMKSharePreviewViewController")
-        stack.addArrangedSubview(UILabel.lmk_make(
+        stackView.addArrangedSubview(UILabel.lmk_make(
             .body,
             text: "Image preview sheet with Share and Save to Photos actions (LMKButtons styled from theme.sharePreview). Saving needs NSPhotoLibraryAddUsageDescription in the host's Info.plist."
         ))
@@ -32,21 +27,20 @@ final class ShareDetailViewController: DetailViewController {
         if let sampleImage {
             let preview = UIImageView(image: sampleImage)
             preview.contentMode = .scaleAspectFit
-            preview.clipsToBounds = true
-            preview.layer.cornerRadius = LMKCornerRadius.medium
+            preview.lmk_applyCornerRadius(LMKCornerRadius.medium)
             preview.snp.makeConstraints { $0.height.equalTo(200) }
-            stack.addArrangedSubview(preview)
+            stackView.addArrangedSubview(preview)
         }
 
         let previewButton = LMKButton(title: "Show Share Preview", style: .filled(.primary), target: self, action: #selector(showSharePreview))
-        stack.addArrangedSubview(previewButton)
+        stackView.addArrangedSubview(previewButton)
 
         addDivider()
         addSectionHeader("LMKShare")
-        stack.addArrangedSubview(UILabel.lmk_make(.caption, text: "Direct share sheet for images and files with iPad popover support."))
+        stackView.addArrangedSubview(UILabel.lmk_make(.caption, text: "Direct share sheet for images and files with iPad popover support."))
 
-        let shareImageButton = LMKButton(title: "Share Image Directly", style: .outlined(.secondary), target: self, action: #selector(shareImageDirectly))
-        stack.addArrangedSubview(shareImageButton)
+        let shareImageButton = LMKButton(title: "Share Image Directly", style: .outlined(.secondary), target: self, action: #selector(shareImageDirectly(_:)))
+        stackView.addArrangedSubview(shareImageButton)
     }
 
     @objc private func showSharePreview() {
@@ -71,9 +65,10 @@ final class ShareDetailViewController: DetailViewController {
         present(previewVC, animated: true)
     }
 
-    @objc private func shareImageDirectly() {
+    /// Takes the tapped button so the share sheet anchors to it as a popover on iPad and Mac.
+    @objc private func shareImageDirectly(_ sender: UIView) {
         guard let sampleImage else { return }
-        LMKShare.image(sampleImage, from: self) { [weak self] result in
+        LMKShare.image(sampleImage, from: self, sourceView: sender) { [weak self] result in
             guard let self else { return }
             switch result {
             case let .completed(activityType):

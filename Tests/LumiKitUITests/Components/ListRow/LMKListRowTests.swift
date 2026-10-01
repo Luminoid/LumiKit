@@ -123,7 +123,7 @@ struct LMKListRowTests {
     @Test
     func `A toggle row hosts an LMKSwitch that forwards changes and keeps its own accessibility`() {
         var changes: [Bool] = []
-        let (view, window) = makeRow(LMKListRowConfiguration(title: "Notifications", trailing: .toggle(isOn: true, onChange: { changes.append($0) })))
+        let (view, window) = makeRow(LMKListRowConfiguration(title: "Notifications", trailing: .toggle(isOn: true, onValueChange: { changes.append($0) })))
         defer { window.isHidden = true }
         let toggle = view.toggle
         #expect(toggle?.isOn == true)
@@ -131,9 +131,138 @@ struct LMKListRowTests {
         #expect(!view.isAccessibilityElement)
         toggle?.onValueChange?(false)
         #expect(changes == [false])
-        view.configuration = LMKListRowConfiguration(title: "Sound", trailing: .toggle(isOn: false, onChange: { _ in }))
+        view.configuration = LMKListRowConfiguration(title: "Sound", trailing: .toggle(isOn: false, onValueChange: { _ in }))
         #expect(view.toggle === toggle, "the switch is reused")
         #expect(toggle?.isOn == false)
+    }
+
+    @Test
+    func `A flipped switch keeps its value across the next configuration pass`() throws {
+        // Standalone: a theme pass re-applies the configuration, which now carries the flip.
+        var changes: [Bool] = []
+        let (view, window) = makeRow(LMKListRowConfiguration(title: "Notifications", trailing: .toggle(isOn: false, onValueChange: { changes.append($0) })))
+        defer { window.isHidden = true }
+        let toggle = try #require(view.toggle)
+        toggle.isOn = true
+        toggle.onValueChange?(true)
+        #expect(changes == [true])
+        if case let .toggle(isOn, _) = view.current.trailing { #expect(isOn) } else { Issue.record("trailing must stay a toggle") }
+        view.applyTheme(view.traitCollection.lmkTheme)
+        #expect(toggle.isOn, "a theme or Dynamic Type pass keeps the flip")
+
+        // In a table cell: the flip is written back into the cell's stored configuration, so the
+        // highlight pass UIKit runs when the row is touched keeps it too.
+        let cell = UITableViewCell(style: .default, reuseIdentifier: nil)
+        cell.frame = CGRect(x: 0, y: 0, width: 375, height: 60)
+        cell.lmk_applyListRow(LMKListRowConfiguration(title: "Sound", trailing: .toggle(isOn: false, onValueChange: { changes.append($0) })))
+        cell.layoutIfNeeded()
+        let content = try #require((cell.contentView as? LMKListRowContentView) ?? cell.contentView.subviews.compactMap { $0 as? LMKListRowContentView }.first)
+        let cellToggle = try #require(content.toggle)
+        cellToggle.isOn = true
+        cellToggle.onValueChange?(true)
+        #expect(changes == [true, true])
+        if case let .toggle(isOn, _)? = (cell.contentConfiguration as? LMKListRowConfiguration)?.trailing { #expect(isOn) } else { Issue.record("the stored configuration must carry the flip") }
+        cell.isHighlighted = true
+        cell.setNeedsUpdateConfiguration()
+        cell.updateConfiguration(using: cell.configurationState)
+        cell.layoutIfNeeded()
+        #expect(content.current.isHighlighted, "the state pass reached the content view")
+        #expect(cellToggle.isOn, "and the switch stayed on")
+        // The host can still reject the change by reapplying the old value.
+        cell.lmk_applyListRow(LMKListRowConfiguration(title: "Sound", trailing: .toggle(isOn: false, onValueChange: { _ in })))
+        #expect(content.toggle?.isOn == false)
+
+        // The same for a collection list cell.
+        let listCell = UICollectionViewListCell()
+        listCell.frame = CGRect(x: 0, y: 0, width: 375, height: 60)
+        listCell.lmk_applyListRow(LMKListRowConfiguration(title: "Sound", trailing: .toggle(isOn: false, onValueChange: { _ in })))
+        listCell.layoutIfNeeded()
+        let listContent = try #require((listCell.contentView as? LMKListRowContentView) ?? listCell.contentView.subviews.compactMap { $0 as? LMKListRowContentView }.first)
+        listContent.toggle?.isOn = true
+        listContent.toggle?.onValueChange?(true)
+        if case let .toggle(isOn, _)? = (listCell.contentConfiguration as? LMKListRowConfiguration)?.trailing { #expect(isOn) } else { Issue.record("the stored configuration must carry the flip") }
+        listCell.isHighlighted = true
+        listCell.setNeedsUpdateConfiguration()
+        listCell.updateConfiguration(using: listCell.configurationState)
+        listCell.layoutIfNeeded()
+        #expect(listContent.current.isHighlighted)
+        #expect(listContent.toggle?.isOn == true)
+    }
+
+    @Test
+    func `A reused row removes only the custom views it still owns`() {
+        let leading = UIView()
+        let trailing = UIView()
+        let (a, windowA) = makeRow(LMKListRowConfiguration(title: "A", leading: .view(leading), trailing: .view(trailing)))
+        defer { windowA.isHidden = true }
+        #expect(leading.superview === a.leadingContainer)
+        #expect(trailing.superview === a.trailingStack)
+        // Row B takes both views (a reload handed row 0's views to another cell).
+        let (b, windowB) = makeRow(LMKListRowConfiguration(title: "B", leading: .view(leading), trailing: .view(trailing)))
+        defer { windowB.isHidden = true }
+        #expect(leading.superview === b.leadingContainer)
+        #expect(trailing.superview === b.trailingStack)
+        // Row A is reconfigured for another row: it must not pull the views out of B.
+        a.configuration = LMKListRowConfiguration(title: "Other", leading: .symbol("star"), trailing: .disclosure)
+        #expect(leading.superview === b.leadingContainer)
+        #expect(trailing.superview === b.trailingStack)
+        #expect(b.trailingStack.arrangedSubviews.contains { $0 === trailing })
+        // Re-applying the same views to B keeps them in place.
+        b.configuration = LMKListRowConfiguration(title: "B", leading: .view(leading), trailing: .view(trailing))
+        #expect(leading.superview === b.leadingContainer)
+        #expect(b.trailingStack.arrangedSubviews.count(where: { $0 === trailing }) == 1)
+    }
+
+    @Test
+    func `Highlighted and selected styles reach the row through the cell state`() {
+        let style = LMKListRowConfiguration.Style(
+            highlighted: LMKControlStateStyle(background: .solid(.yellow), foregroundColor: .red, alpha: 0.8),
+            selected: LMKControlStateStyle(background: .solid(.green), foregroundColor: .blue)
+        )
+        let base = LMKListRowConfiguration(title: "Row", subtitle: "S", detail: "D", trailing: .disclosure, style: style)
+        let (view, window) = makeRow(base)
+        defer { window.isHidden = true }
+        #expect(view.stateBackgroundView.isHidden)
+        #expect(view.titleLabel.textColor == LMKColor.textPrimary)
+
+        var state = UICellConfigurationState(traitCollection: .current)
+        state.isSelected = true
+        view.configuration = base.updated(for: state)
+        #expect(view.stateBackgroundView.isHidden == false)
+        #expect(view.stateBackgroundView.backgroundColor == UIColor.green)
+        #expect(view.titleLabel.textColor == UIColor.blue)
+        #expect(view.subtitleLabel.textColor == UIColor.blue)
+        #expect(view.detailLabel.textColor == UIColor.blue)
+        #expect(view.accessoryImageView.tintColor == UIColor.blue)
+        #expect(view.alpha == 1)
+
+        state.isHighlighted = true
+        view.configuration = base.updated(for: state)
+        #expect(view.stateBackgroundView.backgroundColor == UIColor.yellow, "highlighted layers over selected")
+        #expect(view.titleLabel.textColor == UIColor.red)
+        #expect(abs(view.alpha - 0.8) < 0.001)
+
+        view.configuration = base
+        #expect(view.titleLabel.textColor == LMKColor.textPrimary)
+        #expect(view.accessoryImageView.tintColor == LMKColor.textTertiary)
+        #expect(view.alpha == 1)
+        // Without a state style the flags change nothing visible.
+        let (plain, plainWindow) = makeRow(LMKListRowConfiguration(title: "Plain").updated(for: state))
+        defer { plainWindow.isHidden = true }
+        #expect(plain.current.isHighlighted && plain.current.isSelected)
+        #expect(plain.stateBackgroundView.isHidden)
+        #expect(plain.titleLabel.textColor == LMKColor.textPrimary)
+    }
+
+    @Test
+    func `The title takes the width back when the row grows`() {
+        let view = LMKListRowContentView(configuration: LMKListRowConfiguration(title: "A title that needs the whole row to stay on one line", trailing: .none))
+        LMKThemeTesting.fit(view, width: 200)
+        let lineHeight = view.titleLabel.font.lineHeight
+        #expect(view.titleLabel.frame.height > lineHeight * 1.5, "wraps at 200")
+        LMKThemeTesting.fit(view, width: 420)
+        #expect(view.titleLabel.frame.height < lineHeight * 1.5, "one line at 420: \(view.titleLabel.frame)")
+        #expect(abs(view.textStack.frame.maxX - (420 - LMKSpacing.large)) < 0.5, "the text stack is pinned to the trailing inset")
     }
 
     @Test
@@ -170,25 +299,52 @@ struct LMKListRowTests {
         let style = LMKListRowConfiguration.Style(
             titleTextStyle: .bodyBold,
             subtitleTextStyle: .small,
+            detailTextStyle: .h4,
             titleColor: .purple,
             subtitleColor: .brown,
+            detailColor: .cyan,
+            titleLines: 2,
+            subtitleLines: 3,
             leadingSize: 40,
+            leadingSymbolPointSize: 9,
+            leadingCircleAlpha: 0.5,
+            leadingCorners: .fixed(3),
             leadingSpacing: 4,
+            textSpacing: 6,
+            trailingSpacing: 12,
+            accessoryChevronSize: 21,
             accessoryTint: .orange,
+            checkmarkTint: .magenta,
             contentInsets: NSDirectionalEdgeInsets(top: 2, leading: 10, bottom: 2, trailing: 6),
-            minimumHeight: 70
+            minimumHeight: 70,
+            disabled: LMKControlStateStyle(alpha: 0.3)
         )
-        let (view, window) = makeRow(LMKListRowConfiguration(title: "T", subtitle: "S", leading: .symbol("star"), style: style))
+        let (view, window) = makeRow(LMKListRowConfiguration(title: "T", subtitle: "S", detail: "D", leading: .symbol("star", tint: .blue), style: style))
         defer { window.isHidden = true }
         #expect(view.titleLabel.textColor == UIColor.purple)
         #expect(view.subtitleLabel.textColor == UIColor.brown)
         #expect(view.subtitleLabel.font == LMKTypography.font(for: .small, compatibleWith: view.traitCollection))
+        #expect(view.detailLabel.font == LMKTypography.font(for: .h4, compatibleWith: view.traitCollection))
+        #expect(view.detailLabel.textColor == UIColor.cyan)
+        #expect(view.titleLabel.numberOfLines == 2)
+        #expect(view.subtitleLabel.numberOfLines == 3)
         #expect(view.leadingContainer.frame.width == 40)
         #expect(view.leadingContainer.frame.minX == 10)
+        #expect(view.leadingImageView.image == UIImage(systemName: "star", withConfiguration: UIImage.SymbolConfiguration(pointSize: 9)))
+        #expect(view.leadingContainer.backgroundColor == UIColor.blue.withAlphaComponent(0.5))
         #expect(abs(view.textStack.frame.minX - 54) < 0.01)
+        #expect(view.textStack.spacing == 6)
+        #expect(view.trailingStack.spacing == 12)
+        #expect(abs(view.textStack.frame.maxX - (view.trailingStack.frame.minX - 12)) < 0.5)
+        #expect(view.accessoryImageView.image == UIImage(systemName: "chevron.forward", withConfiguration: UIImage.SymbolConfiguration(pointSize: 21, weight: .semibold)))
         #expect(view.accessoryImageView.tintColor == UIColor.orange)
         #expect(view.trailingStack.frame.maxX == 369)
         #expect(view.frame.height == 70)
+        view.configuration = LMKListRowConfiguration(title: "T", leading: .image(UIImage.lmk_solidColor(.red, size: CGSize(width: 4, height: 4))), trailing: .checkmark, style: style, isEnabled: false)
+        #expect(view.leadingContainer.layer.cornerRadius == 3)
+        #expect(view.accessoryImageView.tintColor == UIColor.magenta)
+        #expect(abs(view.alpha - 0.3) < 0.001)
+        #expect(LMKListRowConfiguration.Style().merging(style) == style, "merging over an empty style keeps every field")
 
         var theme = LMKTheme()
         theme.listRow = LMKListRowConfiguration.Style(titleColor: .magenta, minimumHeight: 60)
@@ -223,12 +379,18 @@ struct LMKListRowTests {
         #expect(cell.selectedBackgroundView?.backgroundColor?.resolvedColor(with: cell.traitCollection) == LMKHighlightConstants.highlightOverlayColor.resolvedColor(with: cell.traitCollection))
         #expect(cell.lmk_hasRowPointerInteraction)
         let interactions = cell.interactions.count(where: { $0 is UIPointerInteraction })
+        let selectedBackground = cell.selectedBackgroundView
         cell.lmk_applyListRow(LMKListRowConfiguration(title: "Again"))
         #expect(cell.interactions.count(where: { $0 is UIPointerInteraction }) == interactions)
+        #expect(cell.selectedBackgroundView === selectedBackground, "the highlight view is installed once")
         #expect(cell.backgroundColor == UIColor.red, "nil leaves the background")
         #expect(cell.selectionStyle == .default)
 
-        cell.lmk_applyListRow(LMKListRowConfiguration(title: "Toggle", trailing: .toggle(isOn: false, onChange: { _ in })))
+        cell.lmk_applyListRow(LMKListRowConfiguration(title: "Toggle", trailing: .toggle(isOn: false, onValueChange: { _ in })))
+        #expect(cell.selectionStyle == .none)
+        cell.lmk_applyListRow(LMKListRowConfiguration(title: "Disclosure again"))
+        #expect(cell.selectionStyle == .default, "a reused cell gets its highlight back")
+        cell.lmk_applyListRow(LMKListRowConfiguration(title: "Off", isEnabled: false))
         #expect(cell.selectionStyle == .none)
         let plain = UITableViewCell(style: .default, reuseIdentifier: nil)
         plain.lmk_applyListRow(LMKListRowConfiguration(title: "No pointer"), pointer: nil)
@@ -272,6 +434,10 @@ struct LMKListRowTests {
         #expect(content.image != nil)
         #expect(content.imageProperties.cornerRadius == LMKLayout.iconCircle / 2)
         #expect(content.imageProperties.reservedLayoutSize == CGSize(width: LMKLayout.iconCircle, height: LMKLayout.iconCircle))
+        let asset = content.image?.imageAsset
+        let light = asset?.image(with: UITraitCollection(userInterfaceStyle: .light))
+        let dark = asset?.image(with: UITraitCollection(userInterfaceStyle: .dark))
+        #expect(light != nil && dark != nil && light !== dark, "a variant per appearance is registered")
 
         content.lmk_applyLeadingSymbol("gearshape", circle: false)
         #expect(content.imageProperties.cornerRadius == 0)

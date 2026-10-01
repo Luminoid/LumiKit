@@ -9,3 +9,8 @@ builder:
         - LumiKitLottie
       platform: ios
       scheme: LumiKit-Package
+    # Only the Foundation-only products build natively on macOS; LumiKitDebug pulls in LumiKitCore.
+    - platform: macos-spm
+      target: LumiKitDebug
+    - platform: macos-xcodebuild
+      scheme: LumiKitDebug

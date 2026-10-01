@@ -19,19 +19,19 @@ public nonisolated enum LMKSpacing {
         LMKTheme.current.spacing
     }
 
-    /// Very tight spacing (stacked labels) — default 2pt.
+    /// Very tight spacing (stacked labels): default 2pt.
     public static var xxs: CGFloat { config.xxs }
-    /// Tight spacing (icon to text) — default 4pt.
+    /// Tight spacing (icon to text): default 4pt.
     public static var xs: CGFloat { config.xs }
-    /// Standard spacing (elements in cards) — default 8pt.
+    /// Standard spacing (elements in cards): default 8pt.
     public static var small: CGFloat { config.small }
-    /// Comfortable spacing (between sections) — default 12pt.
+    /// Comfortable spacing (between sections): default 12pt.
     public static var medium: CGFloat { config.medium }
-    /// Section spacing (card padding) — default 16pt.
+    /// Section spacing (card padding): default 16pt.
     public static var large: CGFloat { config.large }
-    /// Large spacing (between major sections) — default 20pt.
+    /// Large spacing (between major sections): default 20pt.
     public static var xl: CGFloat { config.xl }
-    /// Screen margins, large gaps — default 24pt.
+    /// Screen margins, large gaps: default 24pt.
     public static var xxl: CGFloat { config.xxl }
 
     // MARK: - Expanded-Canvas Breakpoints
@@ -66,15 +66,13 @@ public nonisolated enum LMKSpacing {
     @MainActor public static var cardPadding: CGFloat {
         #if targetEnvironment(macCatalyst)
             return config.cardPaddingMac
-        #elseif os(iOS)
+        #else
             switch canvasTier {
             case .compact: return config.cardPaddingIPadCompact
             case .regular: return config.cardPaddingIPadRegular
             case .large: return config.cardPaddingIPadLarge
             case nil: return config.large
             }
-        #else
-            return config.large
         #endif
     }
 
@@ -86,15 +84,13 @@ public nonisolated enum LMKSpacing {
     @MainActor public static var cellPaddingVertical: CGFloat {
         #if targetEnvironment(macCatalyst)
             return config.cellPaddingVerticalMac
-        #elseif os(iOS)
+        #else
             switch canvasTier {
             case .compact: return config.cellPaddingVerticalIPadCompact
             case .regular: return config.cellPaddingVerticalIPadRegular
             case .large: return config.cellPaddingVerticalIPadLarge
             case nil: return config.small
             }
-        #else
-            return config.medium
         #endif
     }
 
@@ -122,12 +118,12 @@ public nonisolated enum LMKSpacing {
 
     public static var buttonPaddingVertical: CGFloat { config.buttonPaddingVertical }
     public static var buttonPaddingHorizontal: CGFloat { config.buttonPaddingHorizontal }
-    /// Between icons — default 6pt.
+    /// Between icons: default 6pt.
     public static var iconSpacing: CGFloat { config.iconSpacing }
-    /// Icon to text — default 8pt.
+    /// Icon to text: default 8pt.
     public static var iconToText: CGFloat { config.iconToText }
-    /// Text view vertical content inset — default 8pt.
+    /// Text view vertical content inset: default 8pt.
     public static var textViewPaddingVertical: CGFloat { config.textViewPaddingVertical }
-    /// Text view horizontal content inset — default 12pt.
+    /// Text view horizontal content inset: default 10pt.
     public static var textViewPaddingHorizontal: CGFloat { config.textViewPaddingHorizontal }
 }

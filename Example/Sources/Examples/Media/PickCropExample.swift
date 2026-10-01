@@ -8,10 +8,8 @@
 import LumiKitCore
 import LumiKitPhoto
 import LumiKitUI
-import PhotosUI
 import SnapKit
 import UIKit
-import UniformTypeIdentifiers
 
 // MARK: - Pick & Crop
 
@@ -28,8 +26,7 @@ final class PickCropDetailViewController: DetailViewController {
     private lazy var preview: UIImageView = {
         let imageView = UIImageView()
         imageView.contentMode = .scaleAspectFit
-        imageView.clipsToBounds = true
-        imageView.layer.cornerRadius = LMKCornerRadius.medium
+        imageView.lmk_applyCornerRadius(LMKCornerRadius.medium)
         imageView.backgroundColor = LMKColor.backgroundSecondary
         imageView.snp.makeConstraints { $0.height.equalTo(200) }
         return imageView
@@ -37,11 +34,9 @@ final class PickCropDetailViewController: DetailViewController {
 
     private lazy var identifierLabel = UILabel.lmk_make(.caption, text: "No photo stored yet.")
 
-    override func viewDidLoad() {
-        super.viewDidLoad()
-
+    override func setupStackContent() {
         addSectionHeader("LMKPhotoPickCropCoordinator")
-        stack.addArrangedSubview(UILabel.lmk_make(
+        stackView.addArrangedSubview(UILabel.lmk_make(
             .caption,
             text: "Pick, square-crop, and store a single photo using a permission-free PHPicker. "
                 + "The picked bytes are read once, so the capture date and location reach save as LMKPhotoMetadata. "
@@ -49,21 +44,21 @@ final class PickCropDetailViewController: DetailViewController {
         ))
 
         let pickButton = LMKButton(title: "Pick & Crop Photo", style: .filled(.primary), target: self, action: #selector(startPickCrop))
-        stack.addArrangedSubview(pickButton)
+        stackView.addArrangedSubview(pickButton)
 
-        stack.addArrangedSubview(preview)
-        stack.addArrangedSubview(identifierLabel)
+        stackView.addArrangedSubview(preview)
+        stackView.addArrangedSubview(identifierLabel)
 
         addDivider()
         addSectionHeader("LMKSinglePhotoViewer")
-        stack.addArrangedSubview(UILabel.lmk_make(
+        stackView.addArrangedSubview(UILabel.lmk_make(
             .caption,
             text: "Presents one image full-screen in LMKPhotoBrowserViewController: data source and delegate in a single retained object, "
                 + "zooming out of the preview. The action button is backed by the optional onAction callback."
         ))
 
         let viewButton = LMKButton(title: "View Full Screen", style: .outlined(.primary), target: self, action: #selector(viewFullScreen))
-        stack.addArrangedSubview(viewButton)
+        stackView.addArrangedSubview(viewButton)
     }
 
     @objc private func startPickCrop() {
@@ -80,7 +75,7 @@ final class PickCropDetailViewController: DetailViewController {
                 storedIdentifier = identifier
                 preview.image = storedImage
                 let taken = storedMetadata?.date.map { LMKDateFormat.string($0) } ?? "no capture date"
-                identifierLabel.text = "Stored as \(identifier) (\(taken))"
+                identifierLabel.lmk_setText("Stored as \(identifier) (\(taken))")
                 LMKToast.show(.success, "Photo stored", in: self)
             },
             onCancel: { [weak self] in
@@ -89,7 +84,7 @@ final class PickCropDetailViewController: DetailViewController {
             },
             onFailure: { [weak self] failure in
                 guard let self else { return }
-                LMKToast.show(.error, "Could not store photo: \(failure)", in: self)
+                LMKToast.show(.error, failure.localizedDescription, in: self)
             }
         )
         pickCropCoordinator = coordinator
@@ -105,8 +100,9 @@ final class PickCropDetailViewController: DetailViewController {
             image: storedImage,
             subtitle: storedIdentifier,
             onAction: { [weak self] in
+                // The viewer's browser is the screen on top while the action runs.
                 guard let self else { return }
-                LMKToast.show(.info, "Action button tapped", in: presentedViewController ?? self)
+                LMKToast.show(.info, "Action button tapped", in: photoViewer?.browser ?? self)
             }
         )
         viewer.zoomSourceView = { [weak self] in self?.preview }

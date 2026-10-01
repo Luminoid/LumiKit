@@ -33,7 +33,8 @@ public final class LMKSearchBar: UIView, LMKThemeApplying {
     // MARK: - Style
 
     public nonisolated struct Style: Sendable, Equatable, LMKThemeExtension {
-        /// Field surface: background (`backgroundTertiary`), corners (`medium`), insets (`medium` / `small`).
+        /// Field surface: background (`backgroundTertiary`), corners (`medium`), insets (horizontal
+        /// `medium`, vertical 0; vertical insets add to the height floor).
         public var surface: LMKSurfaceStyle
         /// `nil` = `textTertiary`.
         public var iconTint: UIColor?
@@ -132,7 +133,8 @@ public final class LMKSearchBar: UIView, LMKThemeApplying {
     public var onEndEditing: (() -> Void)?
     /// The cancel button (the field is cleared and resigned first).
     public var onCancel: (() -> Void)?
-    /// `onTextChange` coalesced by `debounceInterval`.
+    /// `onTextChange` coalesced by `debounceInterval`. A pending call is dropped by Cancel, by
+    /// Return (which reports through `onSearch`), and by setting `text`.
     public var onDebouncedTextChange: ((String) -> Void)?
 
     /// Seconds to wait after the last keystroke before `onDebouncedTextChange`; `nil` disables it.
@@ -156,6 +158,7 @@ public final class LMKSearchBar: UIView, LMKThemeApplying {
         get { textField.text }
         set {
             textField.text = newValue
+            debounceTask?.cancel()
             updateClearButtonVisibility()
         }
     }
@@ -179,12 +182,17 @@ public final class LMKSearchBar: UIView, LMKThemeApplying {
     /// Called at the end of every `applyTheme`, for tweaks the style does not cover.
     public var didApplyStyle: ((LMKSearchBar) -> Void)?
 
+    /// Whether a debounced text change is still waiting to fire (a test hook).
+    var isDebouncePending: Bool { debounceTask.map { !$0.isCancelled } ?? false }
+
     private var resolved = Style()
     private var heightConstraint: Constraint?
     private var iconSizeConstraint: Constraint?
     private var clearSizeConstraint: Constraint?
     private var cancelSpacingConstraint: Constraint?
-    private var cancelWidthConstraint: Constraint?
+    private var cancelCollapsedConstraint: Constraint?
+    private var fieldTopConstraint: Constraint?
+    private var fieldBottomConstraint: Constraint?
     private var debounceTask: Task<Void, Never>?
     private var isEditing = false
     private static let defaultHeight: CGFloat = 36
@@ -225,6 +233,7 @@ public final class LMKSearchBar: UIView, LMKThemeApplying {
         textField.autocorrectionType = .no
         textField.autocapitalizationType = .none
         textField.clearButtonMode = .never
+        textField.accessibilityTraits.insert(.searchField)
         textField.delegate = self
         textField.addTarget(self, action: #selector(textFieldDidChange), for: .editingChanged)
 
@@ -234,7 +243,9 @@ public final class LMKSearchBar: UIView, LMKThemeApplying {
 
         cancelButton.isHidden = true
         cancelButton.setContentHuggingPriority(.required, for: .horizontal)
-        cancelButton.setContentCompressionResistancePriority(.required, for: .horizontal)
+        // Below required: the hidden button is pinned to zero width, which a required
+        // resistance would fight on every layout pass.
+        cancelButton.setContentCompressionResistancePriority(UILayoutPriority(999), for: .horizontal)
         cancelButton.onTap = { [weak self] in self?.cancelButtonTapped() }
 
         addSubview(containerView)
@@ -253,7 +264,8 @@ public final class LMKSearchBar: UIView, LMKThemeApplying {
             iconSizeConstraint = make.width.height.equalTo(Self.defaultIconSize).constraint
         }
         textField.snp.makeConstraints { make in
-            make.top.bottom.equalToSuperview()
+            fieldTopConstraint = make.top.equalToSuperview().constraint
+            fieldBottomConstraint = make.bottom.equalToSuperview().constraint
             make.trailing.equalTo(clearButton.snp.leading)
             make.leading.equalTo(iconView.snp.trailing)
         }
@@ -265,7 +277,8 @@ public final class LMKSearchBar: UIView, LMKThemeApplying {
         cancelButton.snp.makeConstraints { make in
             cancelSpacingConstraint = make.leading.equalTo(containerView.snp.trailing).offset(0).constraint
             make.centerY.equalToSuperview()
-            cancelWidthConstraint = make.width.equalTo(0).constraint
+            // Active only while the button is hidden; a shown button takes its intrinsic width.
+            cancelCollapsedConstraint = make.width.equalTo(0).constraint
             make.trailing.equalToSuperview()
         }
         applyStrings()
@@ -295,12 +308,14 @@ public final class LMKSearchBar: UIView, LMKThemeApplying {
         let defaults = LMKSurfaceStyle(
             background: .solid(LMKColor.backgroundTertiary),
             corners: .fixed(theme.cornerRadius.medium),
-            shadow: LMKShadowSource.none,
+            shadow: LMKShadowSource.hidden,
             contentInsets: .lmk_symmetric(vertical: 0, horizontal: theme.spacing.medium)
         )
         let applied = containerView.lmk_apply(surface: resolved.surface, defaults: defaults)
         let insets = applied.contentInsets ?? .lmk_symmetric(vertical: 0, horizontal: theme.spacing.medium)
         let spacing = resolved.spacing ?? theme.spacing.small
+        fieldTopConstraint?.update(inset: insets.top)
+        fieldBottomConstraint?.update(inset: insets.bottom)
         iconView.snp.updateConstraints { $0.leading.equalToSuperview().offset(insets.leading) }
         clearButton.snp.updateConstraints { $0.trailing.equalToSuperview().offset(-insets.trailing + theme.spacing.xs) }
         textField.snp.updateConstraints { make in
@@ -316,8 +331,9 @@ public final class LMKSearchBar: UIView, LMKThemeApplying {
         clearButton.style = LMKButton.Style.iconOnly(.neutral).size(.small).tint(resolved.clearButtonTint ?? LMKColor.textTertiary)
         clearSizeConstraint?.update(offset: resolved.clearButtonSize ?? Self.defaultClearButtonSize)
         cancelButton.style = resolved.cancelButton ?? .ghost()
-        let lineHeight = ceil(theme.typography.font(for: resolved.textStyle ?? .body, compatibleWith: traitCollection).lineHeight) + theme.spacing.small
-        heightConstraint?.update(offset: max(resolved.height ?? Self.defaultHeight, lineHeight))
+        let lineHeight = ceil(theme.typography.font(for: resolved.textStyle ?? .body, compatibleWith: traitCollection).lineHeight)
+        let textFloor = lineHeight + max(theme.spacing.small, insets.top + insets.bottom)
+        heightConstraint?.update(offset: max(resolved.height ?? Self.defaultHeight, textFloor))
         updateCancelButton(animated: false)
         didApplyStyle?(self)
     }
@@ -350,8 +366,13 @@ public final class LMKSearchBar: UIView, LMKThemeApplying {
         case .never: false
         }
         cancelButton.isHidden = !shows
-        cancelButton.layoutIfNeeded()
-        cancelWidthConstraint?.update(offset: shows ? cancelButton.intrinsicContentSize.width : 0)
+        // No layout pass here: `init` gets here before the bar has a frame, and laying it out
+        // then solves the row against a zero width.
+        if shows {
+            cancelCollapsedConstraint?.deactivate()
+        } else {
+            cancelCollapsedConstraint?.activate()
+        }
         cancelSpacingConstraint?.update(offset: shows ? (resolved.spacing ?? traitCollection.lmkTheme.spacing.small) : 0)
         guard animated, LMKAnimation.shouldAnimate, window != nil else { return }
         UIView.animate(withDuration: LMKAnimation.Duration.normal) { [weak self] in self?.layoutIfNeeded() }
@@ -362,7 +383,8 @@ public final class LMKSearchBar: UIView, LMKThemeApplying {
         guard let debounceInterval, let onDebouncedTextChange else { return }
         debounceTask = Task { [weak self] in
             try? await Task.sleep(for: .seconds(debounceInterval))
-            guard !Task.isCancelled, self != nil else { return }
+            guard !Task.isCancelled, let self else { return }
+            debounceTask = nil
             onDebouncedTextChange(text)
         }
     }
@@ -384,6 +406,7 @@ public final class LMKSearchBar: UIView, LMKThemeApplying {
     }
 
     private func cancelButtonTapped() {
+        debounceTask?.cancel()
         textField.text = ""
         textField.resignFirstResponder()
         updateClearButtonVisibility()
@@ -409,6 +432,7 @@ extension LMKSearchBar: UITextFieldDelegate {
     }
 
     public func textFieldShouldReturn(_ textField: UITextField) -> Bool {
+        debounceTask?.cancel()
         textField.resignFirstResponder()
         onSearch?(textField.text ?? "")
         return true

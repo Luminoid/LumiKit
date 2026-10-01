@@ -73,6 +73,31 @@ struct LMKURLValidatorTests {
     func `Localhost is blocked`() {
         #expect(LMKURLValidator.validateHTTPSURL("https://localhost/api") == nil)
         #expect(LMKURLValidator.validateHTTPSURL("https://localhost.localdomain/api") == nil)
+        #expect(LMKURLValidator.validateHTTPSURL("https://app.localhost/") == nil, "*.localhost resolves to loopback")
+        #expect(LMKURLValidator.validateHTTPSURL("https://LOCALHOST./") == nil, "a trailing dot is the same name")
+    }
+
+    @Test
+    func `Shorthand IPv4 forms the resolver accepts are blocked`() {
+        for host in ["127.1", "2130706433", "0x7f.0.0.1", "0177.0.0.1", "10.1", "192.168.1", "127.0.0.1."] {
+            #expect(LMKURLValidator.isBlockedHost(host), "\(host) should be blocked")
+            #expect(LMKURLValidator.validate("https://\(host)/") == .failure(.blockedHost(host)), "\(host) through validate")
+        }
+        #expect(!LMKURLValidator.isBlockedHost("8.8.8.8."))
+    }
+
+    @Test
+    func `Bracketed IPv6 literals are read without the brackets`() {
+        #expect(LMKURLValidator.isBlockedHost("[::1]"))
+        #expect(LMKURLValidator.isBlockedHost("[fe80::1]"))
+        #expect(!LMKURLValidator.isBlockedHost("[2606:4700::1111]"))
+        #expect(LMKURLValidator.validate("https://[::1]/") == .failure(.blockedHost("::1")))
+    }
+
+    @Test
+    func `Validation errors are hashable`() {
+        let errors: Set<LMKURLValidator.ValidationError> = [.empty, .malformed, .tooLong(maximum: 500), .tooLong(maximum: 500), .blockedHost("a")]
+        #expect(errors.count == 4)
     }
 
     @Test

@@ -23,11 +23,9 @@ final class ImageUtilitiesDetailViewController: DetailViewController {
         loadTask?.cancel()
     }
 
-    override func viewDidLoad() {
-        super.viewDidLoad()
-
+    override func setupStackContent() {
         addSectionHeader("LMKImage.downsample")
-        stack.addArrangedSubview(UILabel.lmk_make(
+        stackView.addArrangedSubview(UILabel.lmk_make(
             .caption,
             text: "Decodes straight to the target pixel size through ImageIO thumbnailing, never a full-resolution decode, with the EXIF orientation baked in. "
                 + "pixelSize(points:scale:) turns a point size into the pixel cap; the async overload runs on the global executor."
@@ -38,8 +36,8 @@ final class ImageUtilitiesDetailViewController: DetailViewController {
         thumbnailView.snp.makeConstraints { make in
             make.width.height.equalTo(120)
         }
-        stack.addArrangedSubview(UIStackView(lmk_axis: .horizontal, arrangedSubviews: [thumbnailView, UIView()]))
-        stack.addArrangedSubview(resultsStack)
+        stackView.addArrangedSubview(UIStackView(lmk_axis: .horizontal, arrangedSubviews: [thumbnailView, UIView()]))
+        stackView.addArrangedSubview(resultsStack)
 
         loadTask = Task { [weak self] in
             await self?.run()
@@ -70,11 +68,12 @@ final class ImageUtilitiesDetailViewController: DetailViewController {
             ("metadata.coordinate", metadata.coordinate.map { String(format: "%.4f, %.4f", $0.latitude, $0.longitude) } ?? "nil"),
             ("metadata.pixelSize", metadata.pixelSize.map { "\(Int($0.width)) × \(Int($0.height))" } ?? "nil"),
         ]
+        // The call above its result, as on the Date Formatting page: two wrapping labels side by
+        // side would size each other differently on every layout pass.
         for (api, value) in rows {
             let apiLabel = UILabel.lmk_make(.small, text: api, color: LMKColor.textSecondary)
             let valueLabel = UILabel.lmk_make(.body, text: value)
-            valueLabel.textAlignment = .right
-            resultsStack.addArrangedSubview(UIStackView(lmk_axis: .horizontal, spacing: LMKSpacing.medium, alignment: .firstBaseline, arrangedSubviews: [apiLabel, valueLabel]))
+            resultsStack.addArrangedSubview(UIStackView(lmk_axis: .vertical, spacing: LMKSpacing.xxs, arrangedSubviews: [apiLabel, valueLabel]))
         }
     }
 
@@ -88,6 +87,7 @@ final class ImageUtilitiesDetailViewController: DetailViewController {
                 context.cgContext.drawLinearGradient(gradient, start: .zero, end: CGPoint(x: size.width, y: size.height), options: [])
             }
         }
-        return LMKImage.encodeJPEG(image, maxDimension: CGFloat(max(width, height)), quality: 0.9) ?? Data()
+        // The image was drawn at scale 1, so its pixel size is its point size; the cap keeps it whole.
+        return LMKImage.encodeJPEG(image, maxPixelSize: CGFloat(max(width, height)), quality: 0.9) ?? Data()
     }
 }

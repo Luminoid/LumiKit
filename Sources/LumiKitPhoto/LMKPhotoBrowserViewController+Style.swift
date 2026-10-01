@@ -55,7 +55,9 @@ public extension LMKPhotoBrowserViewController {
         /// Photos render their extended range (`preferredImageDynamicRange = .high`, constrained
         /// while the iOS 26 headroom limit is active); `nil` = true.
         public var prefersHDR: Bool?
-        /// iOS 26: asks the scene to lock its interface orientation while the browser is up; `nil` = false.
+        /// iOS 26 only: asks the scene to lock its interface orientation while the browser is
+        /// up; `nil` = false. Inert before iOS 26 (no per-controller lock exists there; the
+        /// browser re-aligns its page on rotation instead).
         public var locksOrientation: Bool?
         /// Selection and impact haptics; `nil` = enabled.
         public var haptics: Bool?
@@ -222,7 +224,7 @@ extension LMKPhotoBrowserViewController.Style {
             surface: LMKSurfaceStyle(
                 background: .solid(stageColor.withAlphaComponent(theme.alpha.large)),
                 corners: .circle,
-                shadow: LMKShadowSource.none
+                shadow: LMKShadowSource.hidden
             ),
             tintColor: stageColor,
             foregroundColor: chrome,

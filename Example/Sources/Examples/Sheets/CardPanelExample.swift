@@ -12,31 +12,29 @@ import UIKit
 // MARK: - Card Panel
 
 final class CardPanelDetailViewController: DetailViewController {
-    override func viewDidLoad() {
-        super.viewDidLoad()
-
+    override func setupStackContent() {
         addSectionHeader("Tap to Dismiss")
-        stack.addArrangedSubview(UILabel.lmk_make(.body, text: "A floating card panel in its own overlay window with a light dimming. Tap outside the card or tap dismiss to close."))
+        stackView.addArrangedSubview(UILabel.lmk_make(.body, text: "A floating card panel in its own overlay window with a light dimming. Tap outside the card or tap dismiss to close."))
         let basicButton = LMKButton(title: "Show Card Panel", style: .filled(.primary), target: self, action: #selector(showBasicPanel))
-        stack.addArrangedSubview(basicButton)
+        stackView.addArrangedSubview(basicButton)
 
         addDivider()
         addSectionHeader("No Background Dismiss")
-        stack.addArrangedSubview(UILabel.lmk_make(.caption, text: "dismissesOnBackgroundTap = false: no dimming, touches outside the card pass through. Dismiss via the button inside the card."))
+        stackView.addArrangedSubview(UILabel.lmk_make(.caption, text: "dismissesOnBackgroundTap = false: no dimming, touches outside the card pass through. Dismiss via the button inside the card."))
         let noDismissButton = LMKButton(title: "Show No-Dismiss Panel", style: .filled(.secondary), target: self, action: #selector(showNoDismissPanel))
-        stack.addArrangedSubview(noDismissButton)
+        stackView.addArrangedSubview(noDismissButton)
 
         addDivider()
         addSectionHeader("Modal Presentation")
-        stack.addArrangedSubview(UILabel.lmk_make(.caption, text: "presentation = .modal shows the panel as a full-screen modal over the host, so it stacks with other modals."))
+        stackView.addArrangedSubview(UILabel.lmk_make(.caption, text: "presentation = .modal shows the panel as a full-screen modal over the host, so it stacks with other modals."))
         let modalButton = LMKButton(title: "Show Modal Panel", style: .filled(.secondary), target: self, action: #selector(showModalPanel))
-        stack.addArrangedSubview(modalButton)
+        stackView.addArrangedSubview(modalButton)
 
         addDivider()
         addSectionHeader("Panel + Card Page")
-        stack.addArrangedSubview(UILabel.lmk_make(.caption, text: "A card panel hosting an LMKCardPageViewController with multi-page navigation inside; the close item dismisses the panel."))
+        stackView.addArrangedSubview(UILabel.lmk_make(.caption, text: "A card panel hosting an LMKCardPageViewController with multi-page navigation inside; the close item dismisses the panel."))
         let combinedButton = LMKButton(title: "Show Combined", style: .filled(.secondary), target: self, action: #selector(showCombinedPanel))
-        stack.addArrangedSubview(combinedButton)
+        stackView.addArrangedSubview(combinedButton)
     }
 
     @objc private func showBasicPanel() {
@@ -78,21 +76,21 @@ private final class BasicPanelContentViewController: UIViewController {
         super.viewDidLoad()
         view.backgroundColor = LMKColor.backgroundPrimary
 
-        let stack = UIStackView(lmk_axis: .vertical, spacing: LMKSpacing.large)
-        stack.alignment = .center
+        let column = UIStackView(lmk_axis: .vertical, spacing: LMKSpacing.large)
+        column.alignment = .center
 
         let imageView = UIImageView(image: UIImage(systemName: "rectangle.inset.filled", withConfiguration: UIImage.SymbolConfiguration(pointSize: LMKLayout.symbolHero, weight: .regular)))
         imageView.tintColor = LMKColor.primary
         imageView.contentMode = .scaleAspectFit
-        stack.addArrangedSubview(imageView)
+        column.addArrangedSubview(imageView)
 
         let label = UILabel.lmk_make(.body, text: "This is a card panel. Tap outside the card (when allowed) or tap dismiss to close.")
         label.textAlignment = .center
-        stack.addArrangedSubview(label)
-        stack.addArrangedSubview(LMKButton(title: "Dismiss", style: .filled(.destructive)) { [weak self] in self?.panel?.dismiss() })
+        column.addArrangedSubview(label)
+        column.addArrangedSubview(LMKButton(title: "Dismiss", style: .filled(.destructive)) { [weak self] in self?.panel?.dismiss() })
 
-        view.addSubview(stack)
-        stack.snp.makeConstraints {
+        view.addSubview(column)
+        column.snp.makeConstraints {
             $0.center.equalToSuperview()
             $0.leading.trailing.equalToSuperview().inset(LMKSpacing.large)
         }
@@ -111,12 +109,12 @@ private final class PanelCardPageExample: LMKCardPageViewController {
     }
 
     override func setupContent() {
-        let stack = UIStackView(lmk_axis: .vertical, spacing: LMKSpacing.large)
-        stack.addArrangedSubview(UILabel.lmk_make(.body, text: "Card page inside a card panel. Navigate between pages, and dismiss with the close item."))
-        stack.addArrangedSubview(LMKButton(title: "Push Settings", style: .outlined(.primary)) { [weak self] in self?.pushDetailPage(title: "Settings", icon: "gearshape") })
-        stack.addArrangedSubview(LMKButton(title: "Push Profile", style: .outlined(.secondary)) { [weak self] in self?.pushDetailPage(title: "Profile", icon: "person.circle") })
-        contentContainerView.addSubview(stack)
-        stack.snp.makeConstraints { $0.top.leading.trailing.equalToSuperview().inset(LMKSpacing.large) }
+        let column = UIStackView(lmk_axis: .vertical, spacing: LMKSpacing.large)
+        column.addArrangedSubview(UILabel.lmk_make(.body, text: "Card page inside a card panel. Navigate between pages, and dismiss with the close item."))
+        column.addArrangedSubview(LMKButton(title: "Push Settings", style: .outlined(.primary)) { [weak self] in self?.pushDetailPage(title: "Settings", icon: "gearshape") })
+        column.addArrangedSubview(LMKButton(title: "Push Profile", style: .outlined(.secondary)) { [weak self] in self?.pushDetailPage(title: "Profile", icon: "person.circle") })
+        contentContainerView.addSubview(column)
+        column.snp.makeConstraints { $0.top.leading.trailing.equalToSuperview().inset(LMKSpacing.large) }
     }
 
     private func pushDetailPage(title: String, icon: String) {

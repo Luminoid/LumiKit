@@ -86,6 +86,15 @@ struct LMKLogStoreTests {
     }
 
     @Test
+    func `A capacity below one keeps one entry`() {
+        let store = LMKLogStore(maxEntries: -3)
+        #expect(store.maxEntries == 1)
+        store.append(makeEntry(message: "a"))
+        store.append(makeEntry(message: "b"))
+        #expect(store.entries.map(\.message) == ["b"])
+    }
+
+    @Test
     func `Max entries of 1 keeps only the latest`() {
         let store = LMKLogStore(maxEntries: 1)
         store.append(makeEntry(message: "a"))
@@ -121,6 +130,19 @@ struct LMKLogStoreTests {
         #expect(output.contains("[WARNING]"))
         #expect(output.contains("[Network]"))
         #expect(output.contains("[Fetch.swift:7] load() - timeout"))
+    }
+
+    @Test
+    func `Formatted output stamps a fixed 24-hour ASCII time`() throws {
+        let store = LMKLogStore(maxEntries: 10)
+        store.append(LMKLogEntry(timestamp: Date(timeIntervalSince1970: 0), level: .info, category: "General", message: "m"))
+
+        let line = try #require(store.formatted().split(separator: "\n").first)
+
+        let stamp = try #require(line.split(separator: "]").first?.dropFirst())
+        #expect(stamp.count == 12, "HH:mm:ss.SSS")
+        #expect(stamp.utf8.count == stamp.count, "digits stay ASCII whatever the user locale")
+        #expect(stamp.hasSuffix(".000"))
     }
 
     @Test

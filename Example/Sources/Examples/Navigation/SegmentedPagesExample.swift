@@ -12,11 +12,9 @@ import UIKit
 // MARK: - Segmented Pages
 
 final class SegmentedPagesDetailViewController: DetailViewController {
-    override func viewDidLoad() {
-        super.viewDidLoad()
-
+    override func setupStackContent() {
         addSectionHeader("Tab container with interactive swipe paging")
-        stack.addArrangedSubview(UILabel.lmk_make(.caption, text: "LMKSegmentedPageViewController pages between child view controllers selected by a "
+        stackView.addArrangedSubview(UILabel.lmk_make(.caption, text: "LMKSegmentedPageViewController pages between child view controllers selected by a "
                 + "top LMKSegmentedControl. Drag horizontally and both pages track your finger; "
                 + "release past the halfway point (or flick) to commit, otherwise it springs back. "
                 + "Tapping a segment slides without the drag. Pages can opt into edge-only panning "
@@ -25,7 +23,7 @@ final class SegmentedPagesDetailViewController: DetailViewController {
         let presentButton = LMKButton(title: "Present Segmented Pages", style: .filled(.primary),
                                       target: self,
                                       action: #selector(presentDemo))
-        stack.addArrangedSubview(presentButton)
+        stackView.addArrangedSubview(presentButton)
     }
 
     @objc private func presentDemo() {

@@ -12,11 +12,9 @@ import UIKit
 // MARK: - Navigation Controller
 
 final class NavigationControllerDetailViewController: DetailViewController {
-    override func viewDidLoad() {
-        super.viewDidLoad()
-
+    override func setupStackContent() {
         addSectionHeader("Swipe back with the system bar hidden")
-        stack.addArrangedSubview(UILabel.lmk_make(
+        stackView.addArrangedSubview(UILabel.lmk_make(
             .caption,
             text: "LMKNavigationController keeps the edge swipe working when the system navigation bar is hidden, which is every screen that draws an LMKNavigationBar. "
                 + "The demo stack's bars follow the OS: glass capsules on iOS 26, tinted items over a hairline before. Push a few screens, then swipe from the left edge to pop."
@@ -25,7 +23,7 @@ final class NavigationControllerDetailViewController: DetailViewController {
         let presentButton = LMKButton(title: "Present Demo Stack", style: .filled(.primary),
                                       target: self,
                                       action: #selector(presentDemoStack))
-        stack.addArrangedSubview(presentButton)
+        stackView.addArrangedSubview(presentButton)
     }
 
     @objc private func presentDemoStack() {

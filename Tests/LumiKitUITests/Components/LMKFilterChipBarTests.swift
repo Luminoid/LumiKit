@@ -150,6 +150,14 @@ struct LMKFilterChipBarTests {
         #expect(LMKFilterChipBar.chipStyle(for: .outlined) == .outlined)
         #expect(LMKFilterChipBar.chipStyle(for: .tinted) == .tinted)
 
+        let partial = LMKFilterChipBar.chipStyle(for: LMKChipView.Style().tint(.systemGreen))
+        #expect(partial.variant == .outlined, "a partial style keeps the outlined default")
+        #expect(partial.tintColor == UIColor.systemGreen)
+        let bar = LMKFilterChipBar(style: LMKFilterChipBar.Style(chip: LMKChipView.Style().tint(.systemGreen)))
+        bar.configure(filterTitles: ["A"])
+        #expect(bar.chips[0].backgroundColor == UIColor.clear)
+        #expect(bar.chips[0].layer.borderWidth > 0)
+
         let softened = LMKFilterChipBar.chipStyle(for: .filled.tint(.blue))
         #expect(softened.variant == .tinted)
         #expect(softened.selectedVariant == .filled)
@@ -162,6 +170,41 @@ struct LMKFilterChipBarTests {
         var colored = LMKChipView.Style.filled
         colored.selected = LMKControlStateStyle(background: .solid(.black))
         #expect(LMKFilterChipBar.chipStyle(for: colored) == colored)
+    }
+
+    @Test
+    func `Vertical insets shrink the row instead of scrolling it`() {
+        let bar = LMKFilterChipBar(style: LMKFilterChipBar.Style(contentInsets: .lmk_symmetric(vertical: 8, horizontal: 16)))
+        bar.frame = CGRect(x: 0, y: 0, width: 400, height: 48)
+        bar.configure(filterTitles: ["A", "B"])
+        bar.layoutIfNeeded()
+        #expect(bar.chipStack.frame.minY == 8)
+        #expect(bar.chipStack.frame.height == 32)
+        #expect(bar.chipStack.frame.minX == 16)
+        #expect(bar.scrollView.contentSize.height <= 48, "no vertical scrolling")
+        #expect(bar.chips.allSatisfy { $0.frame.maxY <= 40.5 }, "chips stay inside the bottom inset")
+    }
+
+    @Test
+    func `A right-to-left bar opens on its first chips`() {
+        let bar = LMKFilterChipBar()
+        for view in [bar, bar.scrollView, bar.chipStack] {
+            view.lmk_forceLayoutDirection(.rightToLeft)
+        }
+        bar.frame = CGRect(x: 0, y: 0, width: 200, height: 44)
+        bar.configure(allTitle: "All", filterTitles: (1 ... 10).map { "Filter \($0)" })
+        bar.layoutIfNeeded()
+        let contentWidth = bar.scrollView.contentSize.width
+        #expect(contentWidth > 200, "the row overflows")
+        #expect(bar.scrollView.contentOffset.x == contentWidth - 200, "scrolled to the leading (right) edge")
+        let allFrame = bar.chips[0].convert(bar.chips[0].bounds, to: bar)
+        #expect(allFrame.minX >= 0 && allFrame.maxX <= 200, "the All chip is on screen")
+
+        let plain = LMKFilterChipBar()
+        plain.frame = CGRect(x: 0, y: 0, width: 200, height: 44)
+        plain.configure(allTitle: "All", filterTitles: (1 ... 10).map { "Filter \($0)" })
+        plain.layoutIfNeeded()
+        #expect(plain.scrollView.contentOffset.x == 0, "left-to-right starts at the left as before")
     }
 
     @Test

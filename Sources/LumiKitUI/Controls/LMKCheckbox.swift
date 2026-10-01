@@ -3,7 +3,7 @@
 //  LumiKit
 //
 //  Checkbox control: a symbol that toggles between checked and unchecked,
-//  with a 44pt hit target and a symbol content transition on iOS 26.
+//  with a 44pt hit target and a symbol content transition on every supported OS.
 //
 
 import UIKit
@@ -12,7 +12,7 @@ import UIKit
 ///
 /// ```swift
 /// let checkbox = LMKCheckbox()
-/// checkbox.onToggle = { isChecked in item.isDone = isChecked }
+/// checkbox.onValueChange = { isChecked in item.isDone = isChecked }
 /// checkbox.setChecked(true, animated: true)
 /// ```
 public final class LMKCheckbox: UIControl, LMKThemeApplying {
@@ -101,17 +101,15 @@ public final class LMKCheckbox: UIControl, LMKThemeApplying {
 
     // MARK: - Public API
 
-    /// Whether the box is checked. Setting it is silent (no handler, no `.valueChanged`).
-    public var isChecked = false {
-        didSet {
-            guard isChecked != oldValue else { return }
-            updateGlyph(animated: false)
-            updateAccessibility()
-        }
+    /// Whether the box is checked. Setting it is silent (no handler, no `.valueChanged`) and
+    /// not animated; `setChecked(_:animated:)` cross-fades the symbol.
+    public var isChecked: Bool {
+        get { storedIsChecked }
+        set { setChecked(newValue, animated: false) }
     }
 
     /// Called when the user toggles the box.
-    public var onToggle: ((Bool) -> Void)?
+    public var onValueChange: ((Bool) -> Void)?
 
     /// Per-instance style; `nil` fields resolve from `theme.checkbox`, then the built-in look.
     public var style: Style {
@@ -128,11 +126,13 @@ public final class LMKCheckbox: UIControl, LMKThemeApplying {
 
     /// Sets the checked state (silent), animating the symbol swap when possible.
     public func setChecked(_ checked: Bool, animated: Bool) {
-        guard checked != isChecked else { return }
-        isChecked = checked
+        guard checked != storedIsChecked else { return }
+        storedIsChecked = checked
         updateGlyph(animated: animated)
+        updateAccessibility()
     }
 
+    private var storedIsChecked = false
     private var resolved = Style()
     private var glyphSize: CGFloat { resolved.glyphSize ?? traitCollection.lmkTheme.layout.iconMedium }
 
@@ -162,10 +162,10 @@ public final class LMKCheckbox: UIControl, LMKThemeApplying {
         glyphView.isUserInteractionEnabled = false
         addSubview(glyphView)
         addTarget(self, action: #selector(handleTap), for: .touchUpInside)
+        addInteraction(UIPointerInteraction(delegate: self))
         setContentHuggingPriority(.required, for: .horizontal)
         setContentHuggingPriority(.required, for: .vertical)
         isAccessibilityElement = true
-        accessibilityTraits = .button
         updateAccessibility()
     }
 
@@ -178,8 +178,10 @@ public final class LMKCheckbox: UIControl, LMKThemeApplying {
         CGSize(width: glyphSize, height: glyphSize)
     }
 
+    /// A disabled box absorbs a touch inside its bounds, like every UIKit control; an enabled one answers the minimum touch target.
     override public func point(inside point: CGPoint, with event: UIEvent?) -> Bool {
-        guard isEnabled, !isHidden else { return false }
+        guard !isHidden else { return false }
+        guard isEnabled else { return bounds.contains(point) }
         return lmk_hitTestBounds(minimumSide: traitCollection.lmkTheme.layout.minimumTouchTarget, insets: lmk_hitTestInsets).contains(point)
     }
 
@@ -221,7 +223,7 @@ public final class LMKCheckbox: UIControl, LMKThemeApplying {
         let image = UIImage(systemName: name)
         // Set the image directly, never via a cross-dissolve: a reused cell would animate from
         // whatever glyph it last held, flashing a checkmark on unrelated rows.
-        if animated, LMKAnimation.shouldAnimate, let image, #available(iOS 17, *) {
+        if animated, LMKAnimation.shouldAnimate, let image {
             glyphView.setSymbolImage(image, contentTransition: .replace)
         } else {
             glyphView.image = image
@@ -232,10 +234,9 @@ public final class LMKCheckbox: UIControl, LMKThemeApplying {
 
     @objc private func handleTap() {
         guard isEnabled else { return }
-        isChecked.toggle()
-        updateGlyph(animated: true)
+        setChecked(!isChecked, animated: true)
         if resolved.haptics ?? true { LMKHaptics.light() }
-        onToggle?(isChecked)
+        onValueChange?(isChecked)
         sendActions(for: .valueChanged)
     }
 
@@ -243,10 +244,18 @@ public final class LMKCheckbox: UIControl, LMKThemeApplying {
 
     private func updateAccessibility() {
         accessibilityValue = isChecked ? strings.onAccessibilityValue : strings.offAccessibilityValue
-        var traits: UIAccessibilityTraits = .button
+        var traits: UIAccessibilityTraits = [.button, .toggleButton]
         if isChecked { traits.insert(.selected) }
         if !isEnabled { traits.insert(.notEnabled) }
         accessibilityTraits = traits
+    }
+}
+
+// MARK: - UIPointerInteractionDelegate
+
+extension LMKCheckbox: UIPointerInteractionDelegate {
+    public func pointerInteraction(_: UIPointerInteraction, styleFor _: UIPointerRegion) -> UIPointerStyle? {
+        LMKPointerStyle.hover(for: self)
     }
 }
 

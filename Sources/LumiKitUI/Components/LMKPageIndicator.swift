@@ -40,6 +40,8 @@ public final class LMKPageIndicator: UIView, LMKThemeApplying {
         public var expandsActiveDot: Bool?
         /// Height of the tappable row; `nil` = `minimumTouchTarget`.
         public var rowHeight: CGFloat?
+        /// Selection feedback when the user changes the page; `nil` = yes.
+        public var haptics: Bool?
 
         public init(
             dotSize: CGFloat? = nil,
@@ -49,7 +51,8 @@ public final class LMKPageIndicator: UIView, LMKThemeApplying {
             activeColor: UIColor? = nil,
             inactiveColor: UIColor? = nil,
             expandsActiveDot: Bool? = nil,
-            rowHeight: CGFloat? = nil
+            rowHeight: CGFloat? = nil,
+            haptics: Bool? = nil
         ) {
             self.dotSize = dotSize
             self.smallDotSize = smallDotSize
@@ -59,6 +62,7 @@ public final class LMKPageIndicator: UIView, LMKThemeApplying {
             self.inactiveColor = inactiveColor
             self.expandsActiveDot = expandsActiveDot
             self.rowHeight = rowHeight
+            self.haptics = haptics
         }
 
         public static let defaultValue = Self()
@@ -73,7 +77,8 @@ public final class LMKPageIndicator: UIView, LMKThemeApplying {
                 activeColor: other.activeColor ?? activeColor,
                 inactiveColor: other.inactiveColor ?? inactiveColor,
                 expandsActiveDot: other.expandsActiveDot ?? expandsActiveDot,
-                rowHeight: other.rowHeight ?? rowHeight
+                rowHeight: other.rowHeight ?? rowHeight,
+                haptics: other.haptics ?? haptics
             )
         }
     }
@@ -108,18 +113,23 @@ public final class LMKPageIndicator: UIView, LMKThemeApplying {
 
     // MARK: - Public API
 
-    /// Number of pages.
+    /// Number of pages (never below 0). With no pages the indicator is empty and invisible to
+    /// VoiceOver; `currentPage` is clamped into the new range.
     public var numberOfPages = 0 {
         didSet {
+            numberOfPages = max(0, numberOfPages)
             guard numberOfPages != oldValue else { return }
+            isAccessibilityElement = numberOfPages > 0
+            currentPage = min(currentPage, lastPageIndex)
             rebuildDots()
             invalidateIntrinsicContentSize()
         }
     }
 
-    /// Currently active page.
+    /// Currently active page, clamped to the pages that exist.
     public var currentPage = 0 {
         didSet {
+            currentPage = min(max(0, currentPage), lastPageIndex)
             guard currentPage != oldValue else { return }
             updateDots(animated: true)
         }
@@ -131,9 +141,11 @@ public final class LMKPageIndicator: UIView, LMKThemeApplying {
         set { style.expandsActiveDot = newValue }
     }
 
-    /// Maximum dots shown at once (odd, for symmetry); more pages slide a window. Default `7`.
+    /// Maximum dots shown at once (at least 1; odd counts center the active dot); more pages
+    /// slide a window. Default `7`.
     public var maxVisibleDots = 7 {
         didSet {
+            maxVisibleDots = max(1, maxVisibleDots)
             guard maxVisibleDots != oldValue else { return }
             rebuildDots()
             invalidateIntrinsicContentSize()
@@ -162,29 +174,28 @@ public final class LMKPageIndicator: UIView, LMKThemeApplying {
     // MARK: - Private
 
     private var resolved = Style()
-    private var dotSize: CGFloat { resolved.dotSize ?? 8 }
-    private var smallDotSize: CGFloat { resolved.smallDotSize ?? 5 }
-    private var activePillWidth: CGFloat { resolved.activePillWidth ?? 24 }
-    private var spacing: CGFloat { resolved.spacing ?? 8 }
+    private var dotSize: CGFloat { resolved.dotSize ?? Self.defaultDotSize }
+    private var smallDotSize: CGFloat { resolved.smallDotSize ?? Self.defaultSmallDotSize }
+    private var activePillWidth: CGFloat { resolved.activePillWidth ?? Self.defaultActivePillWidth }
+    private var spacing: CGFloat { resolved.spacing ?? Self.defaultSpacing }
     private var isWindowed: Bool { numberOfPages > maxVisibleDots }
     private var isRightToLeft: Bool { effectiveUserInterfaceLayoutDirection == .rightToLeft }
+    private var lastPageIndex: Int { max(0, numberOfPages - 1) }
+    /// Dots on screen: every page, or the window.
+    private var visibleCount: Int { min(numberOfPages, maxVisibleDots) }
 
-    /// The visible page range for the current page.
+    private static let defaultDotSize: CGFloat = 8
+    private static let defaultSmallDotSize: CGFloat = 5
+    private static let defaultActivePillWidth: CGFloat = 24
+    private static let defaultSpacing: CGFloat = 8
+
+    /// The visible page range for the current page: the window starts so the active page sits
+    /// at its center (or as close as the ends allow) and always holds `visibleCount` pages.
     private var visibleRange: ClosedRange<Int> {
-        guard isWindowed else { return 0 ... max(0, numberOfPages - 1) }
-        let half = maxVisibleDots / 2
-        var start = currentPage - half
-        var end = currentPage + half
-        if start < 0 {
-            end -= start
-            start = 0
-        }
-        if end >= numberOfPages {
-            start -= (end - numberOfPages + 1)
-            end = numberOfPages - 1
-        }
-        start = max(0, start)
-        return start ... end
+        let count = visibleCount
+        guard count > 0 else { return 0 ... 0 }
+        let start = min(max(0, currentPage - count / 2), numberOfPages - count)
+        return start ... start + count - 1
     }
 
     // MARK: - Initialization
@@ -210,7 +221,6 @@ public final class LMKPageIndicator: UIView, LMKThemeApplying {
 
     override public var intrinsicContentSize: CGSize {
         guard numberOfPages > 0 else { return .zero }
-        let visibleCount = min(numberOfPages, maxVisibleDots)
         let activeWidth = expandsActiveDot ? activePillWidth : dotSize
         let inactiveTotalWidth = CGFloat(visibleCount - 1) * dotSize
         let spacingTotal = CGFloat(visibleCount - 1) * spacing
@@ -222,9 +232,9 @@ public final class LMKPageIndicator: UIView, LMKThemeApplying {
     private func setupUI() {
         let tap = UITapGestureRecognizer(target: self, action: #selector(handleTap(_:)))
         addGestureRecognizer(tap)
-        isAccessibilityElement = true
+        // An element once it has pages; `.adjustable` arrives with `onPageChange` (see its `didSet`).
+        isAccessibilityElement = false
         accessibilityLabel = strings.accessibilityLabel
-        // `.adjustable` arrives with `onPageChange` (see its `didSet`).
     }
 
     // MARK: - Theme
@@ -241,8 +251,7 @@ public final class LMKPageIndicator: UIView, LMKThemeApplying {
     private func rebuildDots() {
         dotViews.forEach { $0.removeFromSuperview() }
         dotViews.removeAll()
-        let count = min(numberOfPages, maxVisibleDots)
-        for _ in 0 ..< count {
+        for _ in 0 ..< visibleCount {
             let dot = UIView()
             dot.clipsToBounds = true
             dot.isUserInteractionEnabled = false
@@ -260,19 +269,25 @@ public final class LMKPageIndicator: UIView, LMKThemeApplying {
     }
 
     /// Frames for the visible dots in layout order (`viewIndex`), honoring the layout direction.
+    /// The row is centered on the dots as drawn (a windowed row's edge dots are smaller), so it
+    /// does not shift as the active dot reaches an end.
     private func dotFrames() -> [CGRect] {
         let range = visibleRange
         let centerY = bounds.midY - dotSize / 2
-        var x = (bounds.width - intrinsicContentSize.width) / 2
-        var frames: [CGRect] = []
+        var sizes: [CGSize] = []
         for viewIndex in dotViews.indices {
             let pageIndex = range.lowerBound + viewIndex
             let isActive = pageIndex == currentPage
             let isEdge = isWindowed && !isActive && (viewIndex == 0 || viewIndex == dotViews.count - 1)
             let width: CGFloat = if expandsActiveDot, isActive { activePillWidth } else if isEdge { smallDotSize } else { dotSize }
-            let height = isEdge ? smallDotSize : dotSize
-            frames.append(CGRect(x: x, y: centerY + (dotSize - height) / 2, width: width, height: height))
-            x += width + spacing
+            sizes.append(CGSize(width: width, height: isEdge ? smallDotSize : dotSize))
+        }
+        let rowWidth = sizes.reduce(0) { $0 + $1.width } + CGFloat(max(0, sizes.count - 1)) * spacing
+        var x = (bounds.width - rowWidth) / 2
+        var frames: [CGRect] = []
+        for size in sizes {
+            frames.append(CGRect(x: x, y: centerY + (dotSize - size.height) / 2, width: size.width, height: size.height))
+            x += size.width + spacing
         }
         if isRightToLeft {
             return frames.map { CGRect(x: bounds.width - $0.maxX, y: $0.minY, width: $0.width, height: $0.height) }
@@ -341,29 +356,32 @@ public final class LMKPageIndicator: UIView, LMKThemeApplying {
 
     @objc private func handleTap(_ gesture: UITapGestureRecognizer) {
         guard onPageChange != nil, let page = page(at: gesture.location(in: self)), page != currentPage else { return }
+        userDidChangePage(to: page)
+    }
+
+    /// A page change the user made: moves the highlight, plays the haptic, reports it.
+    private func userDidChangePage(to page: Int) {
         currentPage = page
-        LMKHaptics.selection()
+        if resolved.haptics ?? true {
+            LMKHaptics.selection()
+        }
         onPageChange?(currentPage)
     }
 
     // MARK: - Accessibility
 
     override public func accessibilityIncrement() {
-        guard onPageChange != nil, currentPage < numberOfPages - 1 else { return }
-        currentPage += 1
-        LMKHaptics.selection()
-        onPageChange?(currentPage)
+        guard onPageChange != nil, currentPage < lastPageIndex else { return }
+        userDidChangePage(to: currentPage + 1)
     }
 
     override public func accessibilityDecrement() {
         guard onPageChange != nil, currentPage > 0 else { return }
-        currentPage -= 1
-        LMKHaptics.selection()
-        onPageChange?(currentPage)
+        userDidChangePage(to: currentPage - 1)
     }
 
     private func updateAccessibilityValue() {
-        accessibilityValue = String(format: strings.pageFormat, currentPage + 1, numberOfPages)
+        accessibilityValue = String(format: strings.pageFormat, min(currentPage + 1, numberOfPages), numberOfPages)
     }
 }
 

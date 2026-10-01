@@ -21,9 +21,12 @@ public protocol LMKPopGestureConfiguring: AnyObject {
 /// Apps that replace the system bar with ``LMKNavigationBar`` hide it on every pushed
 /// screen, and UIKit's default gesture delegate then disables the swipe. This controller
 /// takes over as the gesture's delegate and enables it whenever the stack has at least
-/// two view controllers and the top one does not opt out through
-/// ``LMKPopGestureConfiguring``. It never enables the gesture on the root (which can
-/// leave UIKit ignoring later pushes).
+/// two view controllers, no push or pop is in flight, and the top one does not opt out
+/// through ``LMKPopGestureConfiguring``. It never enables the gesture on the root (which
+/// can leave UIKit ignoring later pushes). On iOS 26 the same rule governs the content-area
+/// pop gesture, which has no delegate to ask: it is switched off while the rule says no and
+/// back on afterwards (``updateContentPopGesture()``). The top screen also answers for the
+/// status bar, so a forced-dark screen keeps its light status bar under a hidden system bar.
 ///
 /// ```swift
 /// let navigation = LMKNavigationController(rootViewController: homeViewController)
@@ -31,10 +34,14 @@ public protocol LMKPopGestureConfiguring: AnyObject {
 /// ```
 open class LMKNavigationController: UINavigationController {
     private lazy var popGestureDelegate = LMKPopGestureDelegate(owner: self)
+    /// Whether this controller switched the content pop gesture off (a host's own `isEnabled = false` is left alone).
+    private var disabledContentPopGesture = false
 
-    /// Whether the pop gesture may begin now: a screen below the top, and the top not opting out.
+    /// Whether the pop gesture may begin now: a screen below the top, no transition in flight,
+    /// and the top not opting out.
     public var canBeginPopGesture: Bool {
-        guard viewControllers.count > 1 else { return false }
+        // A swipe during a push or pop is the classic corrupted-stack case UIKit's own delegate blocks.
+        guard viewControllers.count > 1, transitionCoordinator == nil else { return false }
         if let configuring = topViewController as? LMKPopGestureConfiguring, configuring.prefersPopGestureDisabled {
             return false
         }
@@ -44,7 +51,72 @@ open class LMKNavigationController: UINavigationController {
     override open func viewDidLoad() {
         super.viewDidLoad()
         interactivePopGestureRecognizer?.delegate = popGestureDelegate
+        updateContentPopGesture()
     }
+
+    override open func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        updateContentPopGesture()
+    }
+
+    /// Applies ``canBeginPopGesture`` to the iOS 26 content-area pop gesture, which has no
+    /// delegate to ask on each touch. Runs after every stack change and layout pass; a top screen
+    /// whose `prefersPopGestureDisabled` changes between layouts calls it. A gesture a host
+    /// disabled itself stays disabled.
+    public func updateContentPopGesture() {
+        guard #available(iOS 26, *), let recognizer = interactiveContentPopGestureRecognizer else { return }
+        if canBeginPopGesture {
+            guard disabledContentPopGesture else { return }
+            disabledContentPopGesture = false
+            recognizer.isEnabled = true
+        } else if recognizer.isEnabled {
+            disabledContentPopGesture = true
+            recognizer.isEnabled = false
+        }
+    }
+
+    override open func pushViewController(_ viewController: UIViewController, animated: Bool) {
+        super.pushViewController(viewController, animated: animated)
+        updateContentPopGestureAfterTransition()
+    }
+
+    @discardableResult
+    override open func popViewController(animated: Bool) -> UIViewController? {
+        let popped = super.popViewController(animated: animated)
+        updateContentPopGestureAfterTransition()
+        return popped
+    }
+
+    @discardableResult
+    override open func popToViewController(_ viewController: UIViewController, animated: Bool) -> [UIViewController]? {
+        let popped = super.popToViewController(viewController, animated: animated)
+        updateContentPopGestureAfterTransition()
+        return popped
+    }
+
+    @discardableResult
+    override open func popToRootViewController(animated: Bool) -> [UIViewController]? {
+        let popped = super.popToRootViewController(animated: animated)
+        updateContentPopGestureAfterTransition()
+        return popped
+    }
+
+    override open func setViewControllers(_ viewControllers: [UIViewController], animated: Bool) {
+        super.setViewControllers(viewControllers, animated: animated)
+        updateContentPopGestureAfterTransition()
+    }
+
+    /// The rule says no while a transition runs; re-evaluate when it ends.
+    private func updateContentPopGestureAfterTransition() {
+        updateContentPopGesture()
+        transitionCoordinator?.animate(alongsideTransition: nil) { [weak self] _ in
+            self?.updateContentPopGesture()
+        }
+    }
+
+    override open var childForStatusBarStyle: UIViewController? { topViewController }
+
+    override open var childForStatusBarHidden: UIViewController? { topViewController }
 }
 
 /// The pop gesture's delegate, kept off the controller's public surface.

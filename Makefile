@@ -1,9 +1,10 @@
-SHELL := /bin/bash
-.SHELLFLAGS := -o pipefail -c
+# pipefail rides on SHELL: macOS ships GNU Make 3.81, which ignores .SHELLFLAGS.
+SHELL := /bin/bash -o pipefail
 
-.PHONY: lint lint-fix format check setup-hooks build build-catalyst build-host test test-filter example docs migrate clean
+.PHONY: lint lint-fix format check setup-hooks build build-catalyst build-host test test-filter example example-catalyst docs migrate clean
 
-# Local default matches the workspace rule; CI omits OS= so the image's newest runtime is used.
+# The local default pins the iOS 26.2 simulator runtime: with only Xcode 27 installed, add that runtime
+# (Xcode > Settings > Components) or override DEST. CI omits OS= so the image's newest runtime is used.
 DEST ?= platform=iOS Simulator,name=iPhone 17,OS=26.2
 CATALYST_DEST = platform=macOS,variant=Mac Catalyst
 XCB = xcodebuild -scheme LumiKit-Package -skipPackagePluginValidation CODE_SIGNING_ALLOWED=NO
@@ -58,12 +59,19 @@ example:
 	cd Example && xcodegen generate
 	$(XCB_EXAMPLE) build -destination '$(DEST)' 2>&1 | tee $(LOG_DIR)/build-example.log | tail -5
 
-docs:
-	xcodebuild docbuild -scheme LumiKit-Package -destination 'generic/platform=iOS' -derivedDataPath build/docc -skipPackagePluginValidation CODE_SIGNING_ALLOWED=NO 2>&1 | tail -5
+# The Example app builds for the Mac idiom too (docs/PLATFORM.md rule 5); CI runs both lanes.
+example-catalyst:
+	@mkdir -p $(LOG_DIR)
+	cd Example && xcodegen generate
+	$(XCB_EXAMPLE) build -destination '$(CATALYST_DEST)' 2>&1 | tee $(LOG_DIR)/build-example-catalyst.log | tail -5
 
-# CONSUMER=../Plantfolio ARGS=--dry-run
+docs:
+	@mkdir -p $(LOG_DIR)
+	xcodebuild docbuild -scheme LumiKit-Package -destination 'generic/platform=iOS' -derivedDataPath build/docc -skipPackagePluginValidation CODE_SIGNING_ALLOWED=NO 2>&1 | tee $(LOG_DIR)/docs.log | tail -5
+
+# CONSUMER=../MyApp ARGS=--dry-run
 migrate:
-	Scripts/migrate-1.0.sh $(CONSUMER) $(ARGS)
+	Scripts/migrate-1.0.sh "$(CONSUMER)" $(ARGS)
 
 clean:
 	rm -rf .build build Example/build

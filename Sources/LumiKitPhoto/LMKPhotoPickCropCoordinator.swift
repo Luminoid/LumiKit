@@ -19,6 +19,10 @@ import UniformTypeIdentifiers
 /// it back with `LMKPhotoMetadata.write(date:coordinate:to:)` when storing). Storage is
 /// injected via `save`, so the coordinator stays storage-agnostic.
 ///
+/// The crop editor is presented once the picker's dismissal has finished and the photo is
+/// decoded, whichever comes last. Every failure is logged; with no `onFailure` it is shown
+/// to the user through `LMKErrorHandler` on the host.
+///
 /// Retain the coordinator for the flow's duration: the host holds it in a property, since the
 /// picker and the crop editor only weakly reference it.
 /// ```swift
@@ -30,8 +34,9 @@ import UniformTypeIdentifiers
 /// coordinator?.start()
 /// ```
 public final class LMKPhotoPickCropCoordinator: NSObject {
-    /// Why a flow ended without a stored photo.
-    public nonisolated enum Failure: Error {
+    /// Why a flow ended without a stored photo. `errorDescription` is the user-facing message
+    /// from the process-wide `strings`.
+    public nonisolated enum Failure: LocalizedError {
         /// The picked item has no image representation.
         case unsupportedItem
         /// Reading the picked bytes failed.
@@ -40,9 +45,46 @@ public final class LMKPhotoPickCropCoordinator: NSObject {
         case decodeFailed
         /// `save` returned `nil`.
         case saveFailed
+        /// The host could not present the crop editor: it went away, is off screen, or is
+        /// already presenting something else.
+        case hostUnavailable
+
+        public var errorDescription: String? {
+            switch self {
+            case .unsupportedItem, .loadFailed, .decodeFailed: LMKPhotoPickCropCoordinator.strings.loadFailedMessage
+            case .saveFailed: LMKPhotoPickCropCoordinator.strings.saveFailedMessage
+            case .hostUnavailable: LMKPhotoPickCropCoordinator.strings.hostUnavailableMessage
+            }
+        }
     }
 
+    /// User-visible strings of the coordinator, defaulting to the package's localized values.
+    public nonisolated struct Strings: Sendable, Equatable {
+        /// Shown when the picked item cannot be read or decoded.
+        public var loadFailedMessage: String
+        /// Shown when `save` fails.
+        public var saveFailedMessage: String
+        /// Shown when the crop editor cannot be presented.
+        public var hostUnavailableMessage: String
+
+        public init(
+            loadFailedMessage: String = LMKLocalized("photoPickCrop.loadFailed"),
+            saveFailedMessage: String = LMKLocalized("photoPickCrop.saveFailed"),
+            hostUnavailableMessage: String = LMKLocalized("photoPickCrop.hostUnavailable")
+        ) {
+            self.loadFailedMessage = loadFailedMessage
+            self.saveFailedMessage = saveFailedMessage
+            self.hostUnavailableMessage = hostUnavailableMessage
+        }
+    }
+
+    /// Process-wide strings, read when a coordinator is created. Override at app launch to localize.
+    public nonisolated(unsafe) static var strings = Strings()
+
     // MARK: - Properties
+
+    /// This coordinator's strings.
+    public var strings: Strings = LMKPhotoPickCropCoordinator.strings
 
     private weak var host: UIViewController?
     private weak var cropController: LMKPhotoCropViewController?
@@ -56,8 +98,16 @@ public final class LMKPhotoPickCropCoordinator: NSObject {
     private let maximumPixelSize: CGFloat?
     private let cropStyle: LMKPhotoCropViewController.Style
     private var pickedMetadata = LMKPhotoMetadata.empty
+    /// The item provider's load, cancelled with the flow.
+    private var loadProgress: Progress?
     private var loadTask: Task<Void, Never>?
     private var saveTask: Task<Void, Never>?
+    /// Bumped by `cancel()`; a load completion from an earlier flow compares it and stops.
+    private var flowGeneration: UInt64 = 0
+    /// True from the picker's dismissal until it has completed; the crop editor waits for it.
+    private var isPickerDismissing = false
+    /// The decoded photo waiting for the picker's dismissal to complete.
+    private var pendingCropImage: UIImage?
 
     // MARK: - Init
 
@@ -74,7 +124,8 @@ public final class LMKPhotoPickCropCoordinator: NSObject {
     ///   - onSaved: Called with the identifier returned by `save`.
     ///   - onPicked: Called with the decoded photo and its metadata before the crop or save.
     ///   - onCancel: Called when the picker or the crop editor is dismissed without a photo.
-    ///   - onFailure: Called when loading, decoding, or saving fails.
+    ///   - onFailure: Called when loading, decoding, presenting, or saving fails. While `nil`,
+    ///     the failure is shown to the user through `LMKErrorHandler` on the host.
     public init(
         host: UIViewController,
         croppingEnabled: Bool = true,
@@ -101,6 +152,7 @@ public final class LMKPhotoPickCropCoordinator: NSObject {
     }
 
     deinit {
+        loadProgress?.cancel()
         loadTask?.cancel()
         saveTask?.cancel()
     }
@@ -117,12 +169,17 @@ public final class LMKPhotoPickCropCoordinator: NSObject {
         host?.present(picker, animated: true)
     }
 
-    /// Cancels an in-flight decode or save; nothing is reported.
+    /// Cancels an in-flight load, decode, or save; nothing is reported, and a crop editor
+    /// waiting to be presented is dropped.
     public func cancel() {
+        flowGeneration &+= 1
+        loadProgress?.cancel()
+        loadProgress = nil
         loadTask?.cancel()
         loadTask = nil
         saveTask?.cancel()
         saveTask = nil
+        pendingCropImage = nil
     }
 
     /// Decodes the picked bytes (and their metadata) off the main actor, then crops or commits.
@@ -133,13 +190,14 @@ public final class LMKPhotoPickCropCoordinator: NSObject {
             let (image, metadata) = await Self.decode(data, maximumPixelSize: maximumPixelSize)
             guard let self, !Task.isCancelled else { return }
             guard let image else {
-                onFailure?(.decodeFailed)
+                report(.decodeFailed)
                 return
             }
             pickedMetadata = metadata
             onPicked?(image, metadata)
             if croppingEnabled {
-                presentCrop(image)
+                pendingCropImage = image
+                presentCropIfReady()
             } else {
                 commit(image)
             }
@@ -158,12 +216,19 @@ public final class LMKPhotoPickCropCoordinator: NSObject {
         onCancel?()
     }
 
-    private func presentCrop(_ image: UIImage) {
+    /// Presents the crop editor once both the decode and the picker's dismissal are done.
+    private func presentCropIfReady() {
+        guard !isPickerDismissing, let image = pendingCropImage else { return }
+        pendingCropImage = nil
+        guard let host, host.presentedViewController == nil, host.viewIfLoaded?.window != nil else {
+            report(.hostUnavailable)
+            return
+        }
         let crop = LMKPhotoCropViewController(image: image, initialAspectRatio: aspectRatio, style: cropStyle)
         crop.onCrop = { [weak self] cropped in self?.handleCropped(cropped) }
         crop.onCancel = { [weak self] in self?.handleCropCancelled() }
         cropController = crop
-        host?.present(crop, animated: true)
+        host.present(crop, animated: true)
     }
 
     private func commit(_ image: UIImage) {
@@ -176,8 +241,32 @@ public final class LMKPhotoPickCropCoordinator: NSObject {
             if let identifier {
                 onSaved(identifier)
             } else {
-                onFailure?(.saveFailed)
+                report(.saveFailed)
             }
+        }
+    }
+
+    /// The one path every failure takes: logged, then handed to `onFailure`, or shown to the
+    /// user on the host when there is none.
+    private func report(_ failure: Failure) {
+        switch failure {
+        case let .loadFailed(error):
+            LMKLogger.error("Photo pick failed to load the picked item", error: error, category: .error)
+        default:
+            LMKLogger.error("Photo pick-and-crop failed: \(failure)", category: .error)
+        }
+        if let onFailure {
+            onFailure(failure)
+        } else if let host {
+            LMKErrorHandler.present(from: host, message: message(for: failure), severity: .error)
+        }
+    }
+
+    private func message(for failure: Failure) -> String {
+        switch failure {
+        case .unsupportedItem, .loadFailed, .decodeFailed: strings.loadFailedMessage
+        case .saveFailed: strings.saveFailedMessage
+        case .hostUnavailable: strings.hostUnavailableMessage
         }
     }
 
@@ -198,25 +287,43 @@ public final class LMKPhotoPickCropCoordinator: NSObject {
 
 extension LMKPhotoPickCropCoordinator: PHPickerViewControllerDelegate {
     public func picker(_ picker: PHPickerViewController, didFinishPicking results: [PHPickerResult]) {
-        picker.dismiss(animated: true)
         guard let provider = results.first?.itemProvider else {
+            picker.dismiss(animated: true)
             onCancel?()
             return
         }
         guard provider.hasItemConformingToTypeIdentifier(UTType.image.identifier) else {
-            onFailure?(.unsupportedItem)
+            picker.dismiss(animated: true)
+            report(.unsupportedItem)
             return
         }
-        // Raw bytes, never `loadObject(ofClass: UIImage.self)`: the decode strips the metadata.
-        _ = provider.loadDataRepresentation(for: UTType.image) { [weak self] data, error in
+        // The crop editor waits for this dismissal to complete: presenting while the picker
+        // is still on its way out is refused by UIKit, and the flow would end silently.
+        isPickerDismissing = true
+        picker.dismiss(animated: true) { [weak self] in
+            guard let self else { return }
+            isPickerDismissing = false
+            presentCropIfReady()
+        }
+        handleLoad(from: provider)
+    }
+
+    /// Reads the raw bytes of `provider`'s image (never `loadObject(ofClass: UIImage.self)`:
+    /// the decode strips the metadata), then decodes them. The load is cancelled with the flow,
+    /// and a load from a cancelled flow that completes anyway is ignored.
+    func handleLoad(from provider: NSItemProvider) {
+        loadProgress?.cancel()
+        let generation = flowGeneration
+        loadProgress = provider.loadDataRepresentation(for: UTType.image) { [weak self] data, error in
             Task { @MainActor in
-                guard let self else { return }
+                guard let self, generation == self.flowGeneration else { return }
+                self.loadProgress = nil
                 if let data {
                     self.handlePicked(data: data)
                 } else if let error {
-                    self.onFailure?(.loadFailed(error))
+                    self.report(.loadFailed(error))
                 } else {
-                    self.onFailure?(.unsupportedItem)
+                    self.report(.unsupportedItem)
                 }
             }
         }

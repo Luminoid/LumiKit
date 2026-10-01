@@ -32,6 +32,74 @@ struct LMKPageIndicatorTests {
     }
 
     @Test
+    func `Counts and the current page are clamped instead of trapping`() {
+        let indicator = LMKPageIndicator()
+        indicator.numberOfPages = -1
+        #expect(indicator.numberOfPages == 0)
+        #expect(indicator.dotViews.isEmpty)
+        #expect(!indicator.isAccessibilityElement, "nothing to read with no pages")
+        indicator.maxVisibleDots = 0
+        #expect(indicator.maxVisibleDots == 1)
+        indicator.maxVisibleDots = 7
+        indicator.numberOfPages = 5
+        #expect(indicator.isAccessibilityElement)
+        indicator.currentPage = 9
+        #expect(indicator.currentPage == 4)
+        #expect(indicator.dotViews[4].backgroundColor === LMKColor.primary)
+        indicator.currentPage = -3
+        #expect(indicator.currentPage == 0)
+        indicator.currentPage = 4
+        indicator.numberOfPages = 2
+        #expect(indicator.currentPage == 1, "the page follows a shrinking count")
+        #expect(indicator.accessibilityValue == "2 of 2")
+        indicator.numberOfPages = 0
+        #expect(indicator.currentPage == 0)
+        #expect(indicator.accessibilityValue == "0 of 0")
+    }
+
+    @Test
+    func `A window always holds maxVisibleDots pages, even and at the ends`() {
+        let indicator = LMKPageIndicator()
+        indicator.maxVisibleDots = 6
+        indicator.numberOfPages = 10
+        indicator.onPageChange = { _ in }
+        indicator.frame = CGRect(x: 0, y: 0, width: 200, height: 8)
+        indicator.layoutIfNeeded()
+        #expect(indicator.dotViews.count == 6)
+        indicator.currentPage = 9
+        indicator.layoutIfNeeded()
+        #expect(indicator.dotViews.last?.backgroundColor === LMKColor.primary, "the last page has its active dot")
+        #expect(indicator.page(at: indicator.dotViews[5].center) == 9)
+        #expect(indicator.page(at: indicator.dotViews[0].center) == 4)
+        indicator.currentPage = 0
+        indicator.layoutIfNeeded()
+        #expect(indicator.dotViews.first?.backgroundColor === LMKColor.primary)
+        #expect(indicator.page(at: indicator.dotViews[5].center) == 5)
+        indicator.currentPage = 5
+        indicator.layoutIfNeeded()
+        #expect(indicator.page(at: indicator.dotViews[0].center) == 2, "centered as far as the ends allow")
+        #expect(indicator.page(at: indicator.dotViews[5].center) == 7)
+    }
+
+    @Test
+    func `A windowed row is centered on the dots as drawn`() {
+        let indicator = LMKPageIndicator()
+        indicator.maxVisibleDots = 5
+        indicator.numberOfPages = 10
+        indicator.frame = CGRect(x: 0, y: 0, width: 200, height: 8)
+        indicator.layoutIfNeeded()
+        func rowCenter() -> CGFloat {
+            let minX = indicator.dotViews.map(\.frame.minX).min() ?? 0
+            let maxX = indicator.dotViews.map(\.frame.maxX).max() ?? 0
+            return (minX + maxX) / 2
+        }
+        #expect(abs(rowCenter() - 100) < 0.001)
+        indicator.currentPage = 9
+        indicator.layoutIfNeeded()
+        #expect(abs(rowCenter() - 100) < 0.001, "the row does not shift as the active dot reaches an end")
+    }
+
+    @Test
     func `Intrinsic size follows the style and the pill`() {
         let indicator = LMKPageIndicator()
         indicator.numberOfPages = 3
@@ -121,6 +189,15 @@ struct LMKPageIndicatorTests {
 
     @Test
     func `theme.pageIndicator supplies app-wide defaults`() {
+        let sized = LMKPageIndicator(style: LMKPageIndicator.Style(smallDotSize: 3, activePillWidth: 30, expandsActiveDot: true, haptics: false))
+        sized.maxVisibleDots = 3
+        sized.numberOfPages = 5
+        sized.frame = CGRect(x: 0, y: 0, width: 200, height: 8)
+        sized.layoutIfNeeded()
+        #expect(sized.dotViews[0].frame.width == 30, "the active dot is the pill")
+        #expect(sized.dotViews[2].frame.size == CGSize(width: 3, height: 3), "the edge dot of a window is small")
+        #expect(LMKPageIndicator.Style().merging(LMKPageIndicator.Style(haptics: false)).haptics == false)
+
         var theme = LMKTheme()
         theme.pageIndicator = LMKPageIndicator.Style(dotSize: 6, expandsActiveDot: true)
         let indicator = LMKPageIndicator()

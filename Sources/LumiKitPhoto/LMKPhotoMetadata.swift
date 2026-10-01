@@ -8,7 +8,7 @@
 
 import CoreLocation
 import ImageIO
-import LumiKitUI
+import LumiKitCore
 @preconcurrency import PhotosUI
 import UIKit
 import UniformTypeIdentifiers
@@ -22,7 +22,9 @@ import UniformTypeIdentifiers
 /// let stamped = LMKPhotoMetadata.write(date: metadata.date, coordinate: metadata.coordinate, to: jpegData)
 /// ```
 public nonisolated struct LMKPhotoMetadata: Sendable, Equatable {
-    /// The capture date, walking EXIF, TIFF, IPTC, and XMP in capture-fidelity order.
+    /// The capture date, walking EXIF, TIFF, IPTC, and XMP in capture-fidelity order. An EXIF
+    /// date is an instant when the file carries its `OffsetTime` tag; without one it is read as
+    /// wall time in the device's current time zone.
     public var date: Date?
     /// The GPS position, `nil` when absent or invalid.
     public var coordinate: CLLocationCoordinate2D?
@@ -84,9 +86,14 @@ public nonisolated struct LMKPhotoMetadata: Sendable, Equatable {
 
     // MARK: - Writing
 
-    /// A copy of `data` with `date` written to the EXIF and TIFF date fields and `coordinate` to
-    /// the GPS dictionary. A `nil` field leaves what the file already carries. The pixels are
-    /// copied through without re-encoding.
+    /// A copy of `data` with `date` written to the EXIF capture dates (`DateTimeOriginal` and
+    /// `DateTimeDigitized`, with their subsecond and time-zone offset tags, so the instant is
+    /// unambiguous wherever the file is read) and `coordinate` to the GPS tags. A `nil` field
+    /// leaves what the file already carries.
+    ///
+    /// The encoded pixels are copied through untouched (every frame, and a gain map where the
+    /// file has one). Only when ImageIO cannot copy the container does the write fall back to
+    /// re-encoding the first image at maximum quality; that fallback is logged.
     ///
     /// - Returns: `nil` when the bytes are not an image or the write fails.
     public static func write(date: Date?, coordinate: CLLocationCoordinate2D?, to data: Data) -> Data? {
@@ -94,7 +101,9 @@ public nonisolated struct LMKPhotoMetadata: Sendable, Equatable {
         return write(date: date, coordinate: coordinate, source: source)
     }
 
-    /// `write(date:coordinate:to:)` for a file, rewritten in place.
+    /// `write(date:coordinate:to:)` for a file, rewritten in place through an atomic write. The
+    /// file is left as it was when the bytes are not an image or the write fails (the error is
+    /// thrown), so an original is never replaced by a broken or re-encoded copy silently.
     public static func write(date: Date?, coordinate: CLLocationCoordinate2D?, to fileURL: URL) throws {
         let data = try Data(contentsOf: fileURL)
         guard let stamped = write(date: date, coordinate: coordinate, to: data) else {
@@ -136,32 +145,82 @@ public nonisolated struct LMKPhotoMetadata: Sendable, Equatable {
         return metadata
     }
 
+    /// The tags a write sets, grouped by ImageIO property dictionary (EXIF, GPS).
+    private static func tags(date: Date?, coordinate: CLLocationCoordinate2D?) -> [CFString: [CFString: Any]] {
+        var tags: [CFString: [CFString: Any]] = [:]
+        if let date {
+            let wallTime = makeEXIFDateFormatter().string(from: date)
+            let subseconds = subsecondString(for: date)
+            let offset = offsetString(for: date)
+            tags[kCGImagePropertyExifDictionary] = [
+                kCGImagePropertyExifDateTimeOriginal: wallTime,
+                kCGImagePropertyExifDateTimeDigitized: wallTime,
+                kCGImagePropertyExifSubsecTimeOriginal: subseconds,
+                kCGImagePropertyExifSubsecTimeDigitized: subseconds,
+                kCGImagePropertyExifOffsetTimeOriginal: offset,
+                kCGImagePropertyExifOffsetTimeDigitized: offset,
+            ]
+        }
+        if let coordinate, CLLocationCoordinate2DIsValid(coordinate) {
+            tags[kCGImagePropertyGPSDictionary] = [
+                kCGImagePropertyGPSLatitude: abs(coordinate.latitude),
+                kCGImagePropertyGPSLatitudeRef: coordinate.latitude >= 0 ? "N" : "S",
+                kCGImagePropertyGPSLongitude: abs(coordinate.longitude),
+                kCGImagePropertyGPSLongitudeRef: coordinate.longitude >= 0 ? "E" : "W",
+            ]
+        }
+        return tags
+    }
+
     private static func write(date: Date?, coordinate: CLLocationCoordinate2D?, source: CGImageSource) -> Data? {
         guard let uti = CGImageSourceGetType(source) else { return nil }
-        var properties = (CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any]) ?? [:]
-
-        if let date {
-            let dateString = makeEXIFDateFormatter().string(from: date)
-            var exif = (properties[kCGImagePropertyExifDictionary] as? [CFString: Any]) ?? [:]
-            exif[kCGImagePropertyExifDateTimeOriginal] = dateString
-            exif[kCGImagePropertyExifDateTimeDigitized] = dateString
-            properties[kCGImagePropertyExifDictionary] = exif
-            var tiff = (properties[kCGImagePropertyTIFFDictionary] as? [CFString: Any]) ?? [:]
-            tiff[kCGImagePropertyTIFFDateTime] = dateString
-            properties[kCGImagePropertyTIFFDictionary] = tiff
+        let tags = tags(date: date, coordinate: coordinate)
+        if let copied = copyingSource(source, type: uti, merging: tags) {
+            return copied
         }
+        return reencodingSource(source, type: uti, merging: tags)
+    }
 
-        if let coordinate, CLLocationCoordinate2DIsValid(coordinate) {
-            var gps = (properties[kCGImagePropertyGPSDictionary] as? [CFString: Any]) ?? [:]
-            gps[kCGImagePropertyGPSLatitude] = abs(coordinate.latitude)
-            gps[kCGImagePropertyGPSLatitudeRef] = coordinate.latitude >= 0 ? "N" : "S"
-            gps[kCGImagePropertyGPSLongitude] = abs(coordinate.longitude)
-            gps[kCGImagePropertyGPSLongitudeRef] = coordinate.longitude >= 0 ? "E" : "W"
-            properties[kCGImagePropertyGPSDictionary] = gps
-        }
-
+    /// The container copied through with `tags` merged into its metadata: the encoded pixels,
+    /// every frame, and the rest of the metadata stay as they were. `nil` when ImageIO cannot
+    /// copy this container.
+    private static func copyingSource(_ source: CGImageSource, type: CFString, merging tags: [CFString: [CFString: Any]]) -> Data? {
         let output = NSMutableData()
-        guard let destination = CGImageDestinationCreateWithData(output, uti, 1, nil) else { return nil }
+        guard let destination = CGImageDestinationCreateWithData(output, type, max(1, CGImageSourceGetCount(source)), nil) else { return nil }
+        let metadata = CGImageMetadataCreateMutable()
+        for (dictionary, values) in tags {
+            for (key, value) in values {
+                guard CGImageMetadataSetValueMatchingImageProperty(metadata, dictionary, key, value as CFTypeRef) else {
+                    LMKLogger.warning("Photo metadata tag \(key) has no XMP counterpart; re-encoding to write it", category: .data)
+                    return nil
+                }
+            }
+        }
+        let options: [CFString: Any] = [kCGImageDestinationMetadata: metadata, kCGImageDestinationMergeMetadata: true]
+        var error: Unmanaged<CFError>?
+        guard CGImageDestinationCopyImageSource(destination, source, options as CFDictionary, &error) else {
+            let reason = error?.takeRetainedValue().localizedDescription ?? "unknown error"
+            LMKLogger.warning("Photo metadata could not be copied through (\(reason)); re-encoding the first image", category: .data)
+            return nil
+        }
+        return output as Data
+    }
+
+    /// The fallback: the first image re-encoded at maximum quality (a gain map preserved) with
+    /// `tags` merged into its property dictionaries.
+    private static func reencodingSource(_ source: CGImageSource, type: CFString, merging tags: [CFString: [CFString: Any]]) -> Data? {
+        var properties = (CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any]) ?? [:]
+        for (dictionary, values) in tags {
+            var group = (properties[dictionary] as? [CFString: Any]) ?? [:]
+            for (key, value) in values {
+                group[key] = value
+            }
+            properties[dictionary] = group
+        }
+        properties[kCGImageDestinationLossyCompressionQuality] = 1.0
+        properties[kCGImageDestinationPreserveGainMap] = true
+        let output = NSMutableData()
+        guard let destination = CGImageDestinationCreateWithData(output, type, 1, nil) else { return nil }
         CGImageDestinationAddImageFromSource(destination, source, 0, properties as CFDictionary)
         guard CGImageDestinationFinalize(destination) else { return nil }
         return output as Data
@@ -170,6 +229,7 @@ public nonisolated struct LMKPhotoMetadata: Sendable, Equatable {
     // MARK: Dates
 
     /// A thread-local EXIF date formatter (`DateFormatter` is not thread-safe, so one per call).
+    /// Wall time in the device's zone; the offset tags carry the zone.
     private static func makeEXIFDateFormatter() -> DateFormatter {
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy:MM:dd HH:mm:ss"
@@ -177,24 +237,62 @@ public nonisolated struct LMKPhotoMetadata: Sendable, Equatable {
         return formatter
     }
 
+    /// EXIF `SubsecTime`: the fraction of a second as decimal digits ("250" is a quarter second).
+    private static func subsecondString(for date: Date) -> String {
+        let fraction = date.timeIntervalSince1970 - date.timeIntervalSince1970.rounded(.down)
+        return String(format: "%03d", Int((fraction * 1000).rounded(.down)))
+    }
+
+    /// EXIF `OffsetTime`: the device zone's UTC offset at `date`, as `±HH:MM`.
+    private static func offsetString(for date: Date) -> String {
+        let seconds = TimeZone.current.secondsFromGMT(for: date)
+        let magnitude = abs(seconds)
+        return String(format: "%@%02d:%02d", seconds < 0 ? "-" : "+", magnitude / 3600, magnitude % 3600 / 60)
+    }
+
+    /// The seconds from GMT in an EXIF `OffsetTime` (`±HH:MM`); `nil` for anything else.
+    private static func secondsFromGMT(offset: String) -> Int? {
+        let parts = offset.dropFirst().split(separator: ":", omittingEmptySubsequences: false)
+        guard let sign = offset.first, sign == "+" || sign == "-", parts.count == 2,
+              let hours = Int(parts[0]), let minutes = Int(parts[1]), hours < 24, minutes < 60 else { return nil }
+        return (sign == "-" ? -1 : 1) * (hours * 3600 + minutes * 60)
+    }
+
+    /// An EXIF wall time made an instant: in the zone its `offset` tag names when the file has
+    /// one (the device zone otherwise), plus the `subseconds` tag.
+    private static func exifDate(_ wallTime: String, offset: String?, subseconds: String?) -> Date? {
+        let formatter = makeEXIFDateFormatter()
+        if let offset, let seconds = secondsFromGMT(offset: offset), let zone = TimeZone(secondsFromGMT: seconds) {
+            formatter.timeZone = zone
+        }
+        guard let date = formatter.date(from: wallTime) else { return nil }
+        guard let subseconds, !subseconds.isEmpty, subseconds.allSatisfy(\.isNumber), let fraction = Double("0." + subseconds) else { return date }
+        return date.addingTimeInterval(fraction)
+    }
+
     /// Tried in capture-fidelity order: EXIF `DateTimeOriginal`, EXIF `DateTimeDigitized`
     /// (scanned film), TIFF `DateTime` (last modification), IPTC `DateCreated` + `TimeCreated`
     /// (editorial stamping that often survives an EXIF strip), IPTC digital creation.
     private static func date(fromProperties metadata: [String: Any]) -> Date? {
-        let formatter = makeEXIFDateFormatter()
-
-        if let exif = metadata[kCGImagePropertyExifDictionary as String] as? [String: Any] {
-            if let original = exif[kCGImagePropertyExifDateTimeOriginal as String] as? String, let date = formatter.date(from: original) {
+        let exif = metadata[kCGImagePropertyExifDictionary as String] as? [String: Any]
+        if let exif {
+            if let original = exif[kCGImagePropertyExifDateTimeOriginal as String] as? String,
+               let date = exifDate(original, offset: exif[kCGImagePropertyExifOffsetTimeOriginal as String] as? String, subseconds: exif[kCGImagePropertyExifSubsecTimeOriginal as String] as? String) {
                 return date
             }
-            if let digitized = exif[kCGImagePropertyExifDateTimeDigitized as String] as? String, let date = formatter.date(from: digitized) {
+            if let digitized = exif[kCGImagePropertyExifDateTimeDigitized as String] as? String,
+               let date = exifDate(
+                   digitized,
+                   offset: exif[kCGImagePropertyExifOffsetTimeDigitized as String] as? String,
+                   subseconds: exif[kCGImagePropertyExifSubsecTimeDigitized as String] as? String
+               ) {
                 return date
             }
         }
 
         if let tiff = metadata[kCGImagePropertyTIFFDictionary as String] as? [String: Any],
            let dateTime = tiff[kCGImagePropertyTIFFDateTime as String] as? String,
-           let date = formatter.date(from: dateTime) {
+           let date = exifDate(dateTime, offset: exif?[kCGImagePropertyExifOffsetTime as String] as? String, subseconds: exif?[kCGImagePropertyExifSubsecTime as String] as? String) {
             return date
         }
 

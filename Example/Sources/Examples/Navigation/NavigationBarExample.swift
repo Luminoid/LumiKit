@@ -12,17 +12,15 @@ import UIKit
 // MARK: - Navigation Bar
 
 final class NavigationBarDetailViewController: DetailViewController {
-    override func viewDidLoad() {
-        super.viewDidLoad()
-
+    override func setupStackContent() {
         addSectionHeader("Appearance")
-        stack.addArrangedSubview(UILabel.lmk_make(
+        stackView.addArrangedSubview(UILabel.lmk_make(
             .caption,
             text: "Style.appearance is .automatic by default: Liquid Glass capsules on iOS 26 (neighbours share one, a prominent item takes its own in the tint, "
                 + "no hairline), tinted items over a hairline before. .classic and .glass pin one look; theme.navigationBar sets it app-wide."
         ))
         for (name, appearance) in [("Automatic", LMKNavigationBar.Appearance.automatic), ("Classic", .classic), ("Glass", .glass)] {
-            stack.addArrangedSubview(UILabel.lmk_make(.captionMedium, text: name, color: LMKColor.textSecondary))
+            stackView.addArrangedSubview(UILabel.lmk_make(.captionMedium, text: name, color: LMKColor.textSecondary))
             let bar = LMKNavigationBar(style: LMKNavigationBar.Style(appearance: appearance))
             bar.title = "Trip"
             bar.showsBackButton = true
@@ -36,7 +34,7 @@ final class NavigationBarDetailViewController: DetailViewController {
 
         addDivider()
         addSectionHeader("Large Title")
-        stack.addArrangedSubview(UILabel.lmk_make(.caption, text: "Bold left-aligned title with button row above. Used on root screens."))
+        stackView.addArrangedSubview(UILabel.lmk_make(.caption, text: "Bold left-aligned title with button row above. Used on root screens."))
 
         let largeBar = LMKNavigationBar()
         largeBar.title = "My Items"
@@ -49,7 +47,7 @@ final class NavigationBarDetailViewController: DetailViewController {
 
         addDivider()
         addSectionHeader("Standard (Inline) Title")
-        stack.addArrangedSubview(UILabel.lmk_make(.caption, text: "Centered title with back button. Used on pushed screens."))
+        stackView.addArrangedSubview(UILabel.lmk_make(.caption, text: "Centered title with back button. Used on pushed screens."))
 
         let standardBar = LMKNavigationBar()
         standardBar.title = "Item Details"
@@ -61,7 +59,7 @@ final class NavigationBarDetailViewController: DetailViewController {
 
         addDivider()
         addSectionHeader("Left Items")
-        stack.addArrangedSubview(UILabel.lmk_make(.caption, text: "Custom left items replace the back button."))
+        stackView.addArrangedSubview(UILabel.lmk_make(.caption, text: "Custom left items replace the back button."))
 
         let leftItemsBar = LMKNavigationBar()
         leftItemsBar.title = "Calendar"
@@ -75,7 +73,7 @@ final class NavigationBarDetailViewController: DetailViewController {
 
         addDivider()
         addSectionHeader("Custom Colors")
-        stack.addArrangedSubview(UILabel.lmk_make(.caption, text: "Customizable background, title color, and button tint."))
+        stackView.addArrangedSubview(UILabel.lmk_make(.caption, text: "Customizable background, title color, and button tint."))
 
         let customBar = LMKNavigationBar(style: LMKNavigationBar.Style(
             surface: LMKSurfaceStyle(background: .solid(LMKColor.primary)),
@@ -92,7 +90,7 @@ final class NavigationBarDetailViewController: DetailViewController {
 
         addDivider()
         addSectionHeader("Subtitle, Roles, and Badges")
-        stack.addArrangedSubview(UILabel.lmk_make(
+        stackView.addArrangedSubview(UILabel.lmk_make(
             .caption,
             text: "subtitle adds a caption under either title. Items carry a role (.plain, .prominent, .destructive), "
                 + "an optional menu, and a badge; give them an identifier and change one later with updateItem(_:_:)."
@@ -116,7 +114,7 @@ final class NavigationBarDetailViewController: DetailViewController {
 
         addDivider()
         addSectionHeader("No Separator")
-        stack.addArrangedSubview(UILabel.lmk_make(.caption, text: "style.showsSeparator = false for clean content-heavy screens."))
+        stackView.addArrangedSubview(UILabel.lmk_make(.caption, text: "style.showsSeparator = false for clean content-heavy screens."))
 
         let noSepBar = LMKNavigationBar()
         noSepBar.title = "Photos"
@@ -128,7 +126,7 @@ final class NavigationBarDetailViewController: DetailViewController {
 
         addDivider()
         addSectionHeader("Right Accessory View")
-        stack.addArrangedSubview(UILabel.lmk_make(.caption, text: "Place a non-tappable view (sync indicator, status icon) "
+        stackView.addArrangedSubview(UILabel.lmk_make(.caption, text: "Place a non-tappable view (sync indicator, status icon) "
                 + "to the left of the right items via setRightAccessoryView(_:). "
                 + "It survives later setRightItems(_:) calls."))
 
@@ -145,7 +143,7 @@ final class NavigationBarDetailViewController: DetailViewController {
 
         addDivider()
         addSectionHeader("Large Title Accessory")
-        stack.addArrangedSubview(UILabel.lmk_make(.caption, text: "iOS Mail / Notes pattern: hang an inline accessory off the "
+        stackView.addArrangedSubview(UILabel.lmk_make(.caption, text: "iOS Mail / Notes pattern: hang an inline accessory off the "
                 + "trailing edge of the large title via setLargeTitleAccessoryView(_:). "
                 + "Useful for sync state next to a section title."))
 
@@ -165,10 +163,9 @@ final class NavigationBarDetailViewController: DetailViewController {
     private func wrapInContainer(_ bar: LMKNavigationBar, background: UIColor? = nil) {
         let container = UIView()
         container.backgroundColor = background ?? LMKColor.backgroundSecondary
-        container.layer.cornerRadius = LMKCornerRadius.medium
-        container.clipsToBounds = true
+        container.lmk_applyCornerRadius(LMKCornerRadius.medium)
         container.addSubview(bar)
         bar.snp.makeConstraints { $0.edges.equalToSuperview() }
-        stack.addArrangedSubview(container)
+        stackView.addArrangedSubview(container)
     }
 }

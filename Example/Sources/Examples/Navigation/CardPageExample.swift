@@ -12,46 +12,44 @@ import UIKit
 // MARK: - Card Page
 
 final class CardPageDetailViewController: DetailViewController {
-    override func viewDidLoad() {
-        super.viewDidLoad()
-
+    override func setupStackContent() {
         addSectionHeader("Basic Card Page")
-        stack.addArrangedSubview(UILabel.lmk_make(
+        stackView.addArrangedSubview(UILabel.lmk_make(
             .body,
             text: "Header with a leading back item, a centered title, and an optional trailing item. Designed for a UINavigationController with a hidden system nav bar."
         ))
         let basicButton = LMKButton(title: "Show Basic Card Page", style: .filled(.primary), target: self, action: #selector(showBasic))
-        stack.addArrangedSubview(basicButton)
+        stackView.addArrangedSubview(basicButton)
 
         addDivider()
         addSectionHeader("Custom Items")
-        stack.addArrangedSubview(UILabel.lmk_make(.caption, text: "leadingItem with an xmark symbol, no trailing item, and style.showsHeaderSeparator."))
+        stackView.addArrangedSubview(UILabel.lmk_make(.caption, text: "leadingItem with an xmark symbol, no trailing item, and style.showsHeaderSeparator."))
         let customButton = LMKButton(title: "Show Custom Items", style: .filled(.secondary), target: self, action: #selector(showCustomItems))
-        stack.addArrangedSubview(customButton)
+        stackView.addArrangedSubview(customButton)
 
         addDivider()
         addSectionHeader("Drag Indicator")
-        stack.addArrangedSubview(UILabel.lmk_make(
+        stackView.addArrangedSubview(UILabel.lmk_make(
             .caption,
             text: "style.showsDragIndicator puts a grabber at the top of the header, for a page in a sheet that a drag down dismisses. The header grows by the room it takes."
         ))
         let indicatorButton = LMKButton(title: "Show Drag Indicator", style: .filled(.primary), target: self, action: #selector(showDragIndicator))
-        stack.addArrangedSubview(indicatorButton)
+        stackView.addArrangedSubview(indicatorButton)
 
         addDivider()
         addSectionHeader("No Items")
-        stack.addArrangedSubview(UILabel.lmk_make(
+        stackView.addArrangedSubview(UILabel.lmk_make(
             .caption,
-            text: "leadingItem = nil and no trailing item: a standalone info page with the title spanning the header, and the drag indicator as the way out."
+            text: "leadingItem = nil and no trailing item: a standalone info page with the title spanning the header; the drag indicator, or Escape on a hardware keyboard, is the way out."
         ))
         let noItemsButton = LMKButton(title: "Show No Items", style: .filled(.secondary), target: self, action: #selector(showNoItems))
-        stack.addArrangedSubview(noItemsButton)
+        stackView.addArrangedSubview(noItemsButton)
 
         addDivider()
         addSectionHeader("Multi-Page Navigation")
-        stack.addArrangedSubview(UILabel.lmk_make(.caption, text: "Push and pop content views with a slide animation. The back button shows while pages are stacked."))
+        stackView.addArrangedSubview(UILabel.lmk_make(.caption, text: "Push and pop content views with a slide animation. The back button shows while pages are stacked."))
         let multiPageButton = LMKButton(title: "Show Multi-Page", style: .filled(.primary), target: self, action: #selector(showMultiPage))
-        stack.addArrangedSubview(multiPageButton)
+        stackView.addArrangedSubview(multiPageButton)
     }
 
     private func presentCardPage(_ page: LMKCardPageViewController) {
@@ -136,6 +134,12 @@ private final class DragIndicatorExampleCardPage: LMKCardPageViewController {
 
 /// No items: a standalone info page.
 private final class NoItemsExampleCardPage: LMKCardPageViewController {
+    /// With no close item, Escape is the way out where a sheet cannot be dragged down (the Mac idiom);
+    /// `lmk_cancelFromKeyCommand` dismisses the presented navigation controller.
+    override var keyCommands: [UIKeyCommand]? {
+        lmk_formKeyCommands(save: nil)
+    }
+
     override init(title: String, style: Style = Style()) {
         super.init(title: title, style: style)
         leadingItem = nil
@@ -144,7 +148,7 @@ private final class NoItemsExampleCardPage: LMKCardPageViewController {
     }
 
     override func setupContent() {
-        let label = UILabel.lmk_make(.body, text: "No header items. The title spans the header. Swipe down to dismiss this sheet.")
+        let label = UILabel.lmk_make(.body, text: "No header items. The title spans the header. Swipe down (or press Escape) to dismiss this sheet.")
         contentContainerView.addSubview(label)
         label.snp.makeConstraints { $0.top.leading.trailing.equalToSuperview().inset(LMKSpacing.large) }
     }
@@ -162,13 +166,13 @@ private final class MultiPageExampleCardPage: LMKCardPageViewController {
     }
 
     override func setupContent() {
-        let stack = UIStackView(lmk_axis: .vertical, spacing: LMKSpacing.large)
-        stack.addArrangedSubview(UILabel.lmk_make(.body, text: "Tap a button to push a new content page with a slide animation. The back button appears for navigation."))
-        stack.addArrangedSubview(LMKButton(title: "Push Settings Page", style: .outlined(.primary)) { [weak self] in self?.pushPage(title: "Settings", icon: "gearshape") })
-        stack.addArrangedSubview(LMKButton(title: "Push Profile Page", style: .outlined(.secondary)) { [weak self] in self?.pushPage(title: "Profile", icon: "person.circle") })
-        stack.addArrangedSubview(LMKButton(title: "Push About Page", style: .outlined(.info)) { [weak self] in self?.pushPage(title: "About", icon: "info.circle") })
-        contentContainerView.addSubview(stack)
-        stack.snp.makeConstraints { $0.top.leading.trailing.equalToSuperview().inset(LMKSpacing.large) }
+        let column = UIStackView(lmk_axis: .vertical, spacing: LMKSpacing.large)
+        column.addArrangedSubview(UILabel.lmk_make(.body, text: "Tap a button to push a new content page with a slide animation. The back button appears for navigation."))
+        column.addArrangedSubview(LMKButton(title: "Push Settings Page", style: .outlined(.primary)) { [weak self] in self?.pushPage(title: "Settings", icon: "gearshape") })
+        column.addArrangedSubview(LMKButton(title: "Push Profile Page", style: .outlined(.secondary)) { [weak self] in self?.pushPage(title: "Profile", icon: "person.circle") })
+        column.addArrangedSubview(LMKButton(title: "Push About Page", style: .outlined(.info)) { [weak self] in self?.pushPage(title: "About", icon: "info.circle") })
+        contentContainerView.addSubview(column)
+        column.snp.makeConstraints { $0.top.leading.trailing.equalToSuperview().inset(LMKSpacing.large) }
     }
 
     override func leadingButtonTapped() {

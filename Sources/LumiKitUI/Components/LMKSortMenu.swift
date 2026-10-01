@@ -169,25 +169,6 @@ public enum LMKSortMenu {
         return sections
     }
 
-    /// The menu's sections for a given state (what the deferred element rebuilds on each open).
-    static func makeSections<Sort: Hashable & Sendable, Layout: Hashable & Sendable>(
-        sortOptions: [Option<Sort>],
-        layoutOptions: [Option<Layout>],
-        strings: Strings,
-        state: State<Sort, Layout>,
-        onSelectSort: @escaping @MainActor (Sort, Direction) -> Void,
-        onSelectLayout: (@MainActor (Layout) -> Void)?
-    ) -> [UIMenuElement] {
-        LMKMenu.makeElements(sections: makeMenuSections(
-            sortOptions: sortOptions,
-            layoutOptions: layoutOptions,
-            strings: strings,
-            state: { state },
-            onSelectSort: onSelectSort,
-            onSelectLayout: onSelectLayout
-        ))
-    }
-
     // MARK: - Anchors
 
     /// A system bar button that presents `menu`; `image` replaces the sort glyph at the anchor size.
@@ -214,6 +195,8 @@ public enum LMKSortMenu {
     ///   - strings: The button's accessibility label.
     public static func makeButton(menu: UIMenu, style: LMKButton.Style = LMKButton.Style(), strings: Strings = Self.strings) -> LMKButton {
         var base = LMKButton.Style.iconOnly()
+        // A static builder: the button it returns re-resolves its style against its own traits.
+        // swiftlint:disable:next no_global_token_proxies_in_components
         base.symbolPointSize = LMKLayout.symbolRow
         base.symbolWeight = .medium
         let button = LMKButton(systemImage: systemImageName, style: base.merging(style))

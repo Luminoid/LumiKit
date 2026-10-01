@@ -43,13 +43,17 @@ public enum LMKConcurrency {
         }
     }
 
-    /// Runs `work` on the main actor after `delay` seconds. Cancel the returned task to skip it.
-    /// Use this instead of `DispatchQueue.main.asyncAfter`.
+    /// The longest `onMainActorAfter` delay honored (one year); longer, infinite, or NaN delays clamp to it.
+    static let maximumDelay: TimeInterval = 365 * 24 * 60 * 60
+
+    /// Runs `work` on the main actor after `delay` seconds (clamped to `0...maximumDelay`). Cancel
+    /// the returned task to skip it. Use this instead of `DispatchQueue.main.asyncAfter`.
     @discardableResult
     public static func onMainActorAfter(delay: TimeInterval, _ work: @escaping @MainActor @Sendable () -> Void) -> Task<Void, Never> {
-        Task {
+        let seconds = delay.isNaN ? 0 : min(max(0, delay), maximumDelay)
+        return Task {
             do {
-                try await Task.sleep(nanoseconds: UInt64(max(0, delay) * 1_000_000_000))
+                try await Task.sleep(for: .seconds(seconds))
                 await MainActor.run { work() }
             } catch {
                 // Cancelled before the delay elapsed: the work is skipped.

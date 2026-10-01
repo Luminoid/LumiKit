@@ -16,7 +16,6 @@ extension LMKPhotoCropViewController {
         switch gesture.state {
         case .began:
             initialCropFrame = cropFrame
-            isMoving = true
             if resolvedStyle.playsHaptics {
                 LMKHaptics.light()
             }
@@ -29,7 +28,6 @@ extension LMKPhotoCropViewController {
             updateOverlayMask()
             CATransaction.commit()
         case .ended, .cancelled:
-            isMoving = false
             updateCropFrame(updateHandles: true)
             updateOverlayMask()
         default:
@@ -76,6 +74,8 @@ extension LMKPhotoCropViewController {
         }
     }
 
+    /// Zooms the image under the crop frame. The frame stays where it is on screen and re-fits
+    /// the crop area as the image grows or shrinks under it, so a locked ratio holds.
     @objc func handlePinch(_ gesture: UIPinchGestureRecognizer) {
         switch gesture.state {
         case .began:
@@ -88,8 +88,12 @@ extension LMKPhotoCropViewController {
             CATransaction.setDisableActions(true)
             currentZoomScale = max(1, min(resolvedStyle.maximumZoom, initialZoomScale * gesture.scale))
             updateImageViewFrame()
+            updateCropFrame(updateHandles: false)
             updateOverlayMask()
             CATransaction.commit()
+        case .ended, .cancelled:
+            updateCropFrame(updateHandles: true)
+            updateOverlayMask()
         default:
             break
         }
@@ -141,17 +145,17 @@ extension LMKPhotoCropViewController {
 
     /// Gesture arbitration, called by the private gesture delegate.
     func shouldBeginGesture(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
+        let location = gestureRecognizer.location(in: view)
+        // The aspect ratio control keeps its own touches.
+        if aspectRatioControl.frame.contains(location) {
+            return false
+        }
         if gestureRecognizer is UIPinchGestureRecognizer {
             return true
         }
         guard gestureRecognizer.view === cropFrameView || gestureRecognizer.view === view,
-              let pan = gestureRecognizer as? UIPanGestureRecognizer else {
+              gestureRecognizer is UIPanGestureRecognizer else {
             return true
-        }
-        let location = pan.location(in: view)
-        // The aspect ratio control keeps its own touches.
-        if aspectRatioControl.frame.contains(location) {
-            return false
         }
         // A handle goes to the resize pan (on the view); the frame interior to the move pan.
         if resizeHandle(at: location) != nil {
@@ -161,6 +165,63 @@ extension LMKPhotoCropViewController {
             return gestureRecognizer.view === cropFrameView
         }
         return false
+    }
+}
+
+// MARK: - Accessibility
+
+/// The crop frame as a VoiceOver element: adjustable (up and down resize it around its
+/// center) with custom actions that move it, the same clamps as a drag.
+final class LMKPhotoCropFrameAccessibilityElement: UIAccessibilityElement {
+    /// How much of the frame's size one adjustment adds or removes.
+    static let adjustmentFactor: CGFloat = 0.1
+    /// How far one move action shifts the frame, as a fraction of its size.
+    static let moveFraction: CGFloat = 0.1
+
+    private weak var controller: LMKPhotoCropViewController?
+    private var strings = LMKPhotoCropViewController.strings
+
+    init(controller: LMKPhotoCropViewController) {
+        self.controller = controller
+        super.init(accessibilityContainer: controller.view as Any)
+        accessibilityTraits = .adjustable
+    }
+
+    func apply(strings: LMKPhotoCropViewController.Strings) {
+        self.strings = strings
+        accessibilityLabel = strings.cropFrameAccessibilityLabel
+        accessibilityHint = strings.cropFrameAccessibilityHint
+        accessibilityCustomActions = [
+            UIAccessibilityCustomAction(name: strings.moveUp) { [weak self] _ in self?.move(dx: 0, dy: -1) ?? false },
+            UIAccessibilityCustomAction(name: strings.moveDown) { [weak self] _ in self?.move(dx: 0, dy: 1) ?? false },
+            UIAccessibilityCustomAction(name: strings.moveLeft) { [weak self] _ in self?.move(dx: -1, dy: 0) ?? false },
+            UIAccessibilityCustomAction(name: strings.moveRight) { [weak self] _ in self?.move(dx: 1, dy: 0) ?? false },
+        ]
+        update()
+    }
+
+    /// Follows the crop frame: its place on screen and its size as a share of the photo's width.
+    func update() {
+        guard let controller else { return }
+        accessibilityFrameInContainerSpace = controller.cropFrame
+        let area = controller.cropArea
+        let share = area.width > 0 ? Int((controller.cropFrame.width / area.width * 100).rounded()) : 0
+        accessibilityValue = String(format: strings.cropFrameAccessibilityValueFormat, share)
+    }
+
+    override func accessibilityIncrement() {
+        controller?.scaleCropFrame(by: 1 + Self.adjustmentFactor)
+    }
+
+    override func accessibilityDecrement() {
+        controller?.scaleCropFrame(by: 1 - Self.adjustmentFactor)
+    }
+
+    private func move(dx: CGFloat, dy: CGFloat) -> Bool {
+        guard let controller else { return false }
+        let frame = controller.cropFrame
+        controller.moveCropFrame(by: CGPoint(x: dx * frame.width * Self.moveFraction, y: dy * frame.height * Self.moveFraction))
+        return true
     }
 }
 

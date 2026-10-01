@@ -48,7 +48,11 @@ public struct LMKListRowConfiguration: UIContentConfiguration {
         /// A checkmark; the row reads as selected to VoiceOver.
         case checkmark
         /// An `LMKSwitch`; the row stops being one VoiceOver element so the switch stays reachable.
-        case toggle(isOn: Bool, onChange: (Bool) -> Void)
+        /// A flip is written back into the hosting cell's `contentConfiguration` before
+        /// `onValueChange` runs, so the next configuration pass (a highlight, a theme change)
+        /// keeps the switch where the user left it; a host that wants to reject the change
+        /// reapplies the row with the old value from `onValueChange`.
+        case toggle(isOn: Bool, onValueChange: (Bool) -> Void)
         /// An `LMKBadgeView`.
         case badge(LMKBadgeView.Content)
         /// A symbol or image, tinted with `tint` (`nil` = `textTertiary`).
@@ -72,9 +76,9 @@ public struct LMKListRowConfiguration: UIContentConfiguration {
         public var subtitleColor: UIColor?
         /// `nil` = `textPrimary`.
         public var detailColor: UIColor?
-        /// `nil` = 1.
+        /// `nil` = unlimited (0).
         public var titleLines: Int?
-        /// `nil` = 1.
+        /// `nil` = unlimited (0).
         public var subtitleLines: Int?
         /// Side of the leading circle or thumbnail; `nil` = `iconCircle`.
         public var leadingSize: CGFloat?
@@ -102,6 +106,15 @@ public struct LMKListRowConfiguration: UIContentConfiguration {
         public var contentInsets: NSDirectionalEdgeInsets?
         /// `nil` = `rowHeightCompact`.
         public var minimumHeight: CGFloat?
+        /// Layered while the cell is highlighted (`isHighlighted` from `updated(for:)`, a press on
+        /// a navigation row): `background` fills the row edge to edge, `foregroundColor` recolors
+        /// the text and accessory, `alpha` dims the content. `nil` = no change, because a table
+        /// cell's own selected background already shows the press.
+        public var highlighted: LMKControlStateStyle?
+        /// Layered while the cell is selected (`isSelected` from `updated(for:)`); the same fields
+        /// as `highlighted`, which layers over it while both hold.
+        public var selected: LMKControlStateStyle?
+        /// Layered while the row is disabled: `alpha` dims the content (`nil` = `alpha.disabled`).
         public var disabled: LMKControlStateStyle?
 
         public init(
@@ -125,6 +138,8 @@ public struct LMKListRowConfiguration: UIContentConfiguration {
             checkmarkTint: UIColor? = nil,
             contentInsets: NSDirectionalEdgeInsets? = nil,
             minimumHeight: CGFloat? = nil,
+            highlighted: LMKControlStateStyle? = nil,
+            selected: LMKControlStateStyle? = nil,
             disabled: LMKControlStateStyle? = nil
         ) {
             self.titleTextStyle = titleTextStyle
@@ -147,6 +162,8 @@ public struct LMKListRowConfiguration: UIContentConfiguration {
             self.checkmarkTint = checkmarkTint
             self.contentInsets = contentInsets
             self.minimumHeight = minimumHeight
+            self.highlighted = highlighted
+            self.selected = selected
             self.disabled = disabled
         }
 
@@ -175,6 +192,8 @@ public struct LMKListRowConfiguration: UIContentConfiguration {
                 checkmarkTint: other.checkmarkTint ?? checkmarkTint,
                 contentInsets: other.contentInsets ?? contentInsets,
                 minimumHeight: other.minimumHeight ?? minimumHeight,
+                highlighted: LMKControlStateStyle.merge(highlighted, other.highlighted),
+                selected: LMKControlStateStyle.merge(selected, other.selected),
                 disabled: LMKControlStateStyle.merge(disabled, other.disabled)
             )
         }
@@ -195,7 +214,8 @@ public struct LMKListRowConfiguration: UIContentConfiguration {
     public var accessibilityLabel: String?
     public var accessibilityHint: String?
 
-    /// Cell state from `updated(for:)`; the content view dims for `isDisabled`.
+    /// Cell state from `updated(for:)`: the content view layers `style.highlighted` and
+    /// `style.selected` while they hold, and dims for `isDisabled`.
     public internal(set) var isHighlighted = false
     public internal(set) var isSelected = false
 

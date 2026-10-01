@@ -2,20 +2,20 @@
 //  LMKCopyableLabel.swift
 //  LumiKit
 //
-//  A label whose text can be copied: long-press shows a Copy edit menu,
-//  VoiceOver gets a Copy custom action.
+//  A label whose text can be copied: a long press (or a secondary click on
+//  iPad and Mac) shows a Copy edit menu, VoiceOver gets a Copy custom action.
 //
 
 import UIKit
 
-/// A `UILabel` with a long-press Copy menu, for read-only detail values (a phone number, an
-/// identifier, a brand) that users want on the clipboard without a text field.
+/// A `UILabel` with a Copy menu on long press or secondary click, for read-only detail values
+/// (a phone number, an identifier, a brand) that users want on the clipboard without a text field.
 ///
 /// ```swift
 /// let phone = LMKCopyableLabel()
 /// phone.lmk_apply(.body)
 /// phone.text = clinic.phone
-/// phone.onCopied = { LMKToast.show(.success, "Copied", in: self) }
+/// phone.onCopy = { LMKToast.show(.success, "Copied", in: self) }
 /// ```
 public final class LMKCopyableLabel: UILabel {
     // MARK: - Strings
@@ -39,10 +39,13 @@ public final class LMKCopyableLabel: UILabel {
 
     // MARK: - Public API
 
-    /// `false` disables the menu and the VoiceOver action (the label stays a plain label).
+    /// `false` disables the menu and the VoiceOver action, and the label stops taking touches
+    /// (a plain label inside a control or a cell passes them on).
     public var isCopyEnabled = true {
         didSet {
+            isUserInteractionEnabled = isCopyEnabled
             longPress.isEnabled = isCopyEnabled
+            secondaryClick.isEnabled = isCopyEnabled
             updateAccessibilityActions()
         }
     }
@@ -51,7 +54,7 @@ public final class LMKCopyableLabel: UILabel {
     public var copyTextProvider: (() -> String?)?
 
     /// Called with the copied text after a copy.
-    public var onCopied: ((String) -> Void)?
+    public var onCopy: ((String) -> Void)?
 
     /// Selection haptic on copy (default `true`).
     public var haptics = true
@@ -71,6 +74,12 @@ public final class LMKCopyableLabel: UILabel {
 
     private lazy var editMenuInteraction = UIEditMenuInteraction(delegate: self)
     private lazy var longPress = UILongPressGestureRecognizer(target: self, action: #selector(handleLongPress(_:)))
+    /// A right click or a two-finger trackpad click on iPad and Mac Catalyst.
+    private lazy var secondaryClick: UITapGestureRecognizer = {
+        let tap = UITapGestureRecognizer(target: self, action: #selector(handleSecondaryClick(_:)))
+        tap.buttonMaskRequired = .secondary
+        return tap
+    }()
 
     // MARK: - Initialization
 
@@ -88,6 +97,7 @@ public final class LMKCopyableLabel: UILabel {
         isUserInteractionEnabled = true
         addInteraction(editMenuInteraction)
         addGestureRecognizer(longPress)
+        addGestureRecognizer(secondaryClick)
         updateAccessibilityActions()
     }
 
@@ -99,13 +109,14 @@ public final class LMKCopyableLabel: UILabel {
         guard isCopyEnabled, let text = copyableText else { return false }
         writeToPasteboard(text)
         if haptics { LMKHaptics.selection() }
-        onCopied?(text)
+        onCopy?(text)
         return true
     }
 
-    /// Shows the Copy menu anchored at `point` (in the label's coordinates).
+    /// Shows the Copy menu anchored at `point` (in the label's coordinates). Ignored while the
+    /// label is not in a window, where an edit menu cannot be presented.
     public func presentCopyMenu(at point: CGPoint) {
-        guard isCopyEnabled, copyableText != nil else { return }
+        guard isCopyEnabled, copyableText != nil, window != nil else { return }
         editMenuInteraction.presentEditMenu(with: UIEditMenuConfiguration(identifier: nil, sourcePoint: point))
     }
 
@@ -114,9 +125,15 @@ public final class LMKCopyableLabel: UILabel {
         presentCopyMenu(at: gesture.location(in: self))
     }
 
+    @objc private func handleSecondaryClick(_ gesture: UITapGestureRecognizer) {
+        guard gesture.state == .ended else { return }
+        presentCopyMenu(at: gesture.location(in: self))
+    }
+
     /// A one-line value is 19pt tall; the long press still lands in a 44pt band around it.
     override public func point(inside point: CGPoint, with event: UIEvent?) -> Bool {
-        guard isCopyEnabled, !isHidden else { return bounds.contains(point) }
+        guard !isHidden else { return false }
+        guard isCopyEnabled else { return bounds.contains(point) }
         return lmk_hitTestBounds(minimumSide: traitCollection.lmkTheme.layout.minimumTouchTarget).contains(point)
     }
 

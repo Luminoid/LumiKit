@@ -125,7 +125,8 @@ public final class LMKDividerView: UIView, LMKThemeApplying {
     override public func layoutSubviews() {
         super.layoutSubviews()
         guard let dash = resolved.dash else { return }
-        let thickness = resolvedThickness
+        // Whole pixels: a fractional stroke lands on a different number of pixels along the line.
+        let thickness = LMKLayout.pixelAligned(resolvedThickness, for: self)
         dashLayer.frame = bounds
         dashLayer.lineWidth = thickness
         dashLayer.lineDashPattern = dash.map { NSNumber(value: Double($0)) }

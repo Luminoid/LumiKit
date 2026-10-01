@@ -1,5 +1,5 @@
 //
-//  UIControl+LMKTouchArea.swift
+//  UIControl+LMKHitTest.swift
 //  LumiKit
 //
 //  Extension to expand or shrink the touch/hit area of any UIControl via edge insets.
@@ -27,7 +27,9 @@ public extension UIControl {
         }
     }
 
-    /// Check if point is inside the expanded touch area.
+    /// Check if point is inside the expanded touch area: a hidden control takes no touch, a
+    /// disabled one keeps its plain bounds (absorbing the touch, as UIKit's controls do), an
+    /// enabled one answers its bounds adjusted by `lmk_hitTestInsets`.
     ///
     /// Wire this up in your `UIControl` subclass:
     /// ```swift
@@ -36,7 +38,8 @@ public extension UIControl {
     /// }
     /// ```
     func lmk_point(inside point: CGPoint, with event: UIEvent?) -> Bool {
-        if lmk_hitTestInsets == .zero || !isEnabled || isHidden {
+        guard !isHidden else { return false }
+        if lmk_hitTestInsets == .zero || !isEnabled {
             return bounds.contains(point)
         }
         return bounds.inset(by: lmk_hitTestInsets).contains(point)

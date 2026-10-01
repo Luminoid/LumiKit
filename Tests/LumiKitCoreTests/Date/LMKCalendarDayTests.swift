@@ -15,6 +15,19 @@ private nonisolated func gregorian(firstWeekday: Int = 1) -> Calendar {
     return calendar
 }
 
+/// A calendar of `identifier` in `zone`, the shape a device set to that calendar hands the kit.
+private nonisolated func calendar(_ identifier: Calendar.Identifier, zone: String = "America/Los_Angeles", locale: String = "en_US_POSIX", firstWeekday: Int = 1) -> Calendar {
+    var calendar = Calendar(identifier: identifier)
+    calendar.timeZone = TimeZone(identifier: zone) ?? .current
+    calendar.locale = Locale(identifier: locale)
+    calendar.firstWeekday = firstWeekday
+    return calendar
+}
+
+private nonisolated func day(_ year: Int, _ month: Int, _ day: Int) -> LMKCalendarDay {
+    LMKCalendarDay(year: year, month: month, day: day)
+}
+
 // MARK: - Day
 
 struct LMKCalendarDayTests {
@@ -86,6 +99,101 @@ struct LMKCalendarDayTests {
         #expect(start.days(to: start, calendar: calendar) == 0)
         // Across the DST change (March 8, 2026 in Los Angeles) the count stays in days.
         #expect(LMKCalendarDay(year: 2026, month: 3, day: 1).days(to: LMKCalendarDay(year: 2026, month: 3, day: 15), calendar: calendar) == 14)
+    }
+
+    @Test(arguments: [
+        ("Africa/Cairo", day(2026, 4, 24)),
+        ("America/Santiago", day(2026, 9, 6)),
+        ("America/Havana", day(2026, 3, 8)),
+        ("Asia/Beirut", day(2026, 3, 29)),
+    ])
+    func `Day deltas survive a daylight-saving change at midnight`(zone: String, springForward: LMKCalendarDay) throws {
+        // These zones start DST at 00:00, so the day begins at 01:00 and a start-of-day delta came out 0.
+        let calendar = calendar(.gregorian, zone: zone)
+        let before = springForward.adding(days: -1, calendar: calendar)
+        let after = springForward.adding(days: 1, calendar: calendar)
+        #expect(before.days(to: springForward, calendar: calendar) == 1)
+        #expect(springForward.days(to: after, calendar: calendar) == 1)
+        #expect(after.days(to: before, calendar: calendar) == -2)
+        #expect(before.adding(days: 2, calendar: calendar) == after)
+        let start = try #require(springForward.startOfDay(in: calendar))
+        #expect(calendar.component(.hour, from: start) == 1, "the day really starts at 01:00 in \(zone)")
+        #expect(LMKCalendarDay(start, calendar: calendar) == springForward)
+        let month = springForward.calendarMonth
+        #expect(month.adding(months: -1, calendar: calendar).months(to: month.adding(months: 1, calendar: calendar), calendar: calendar) == 2)
+    }
+
+    @Test
+    func `A day is a Gregorian civil date under the Japanese and Buddhist calendars`() throws {
+        let gregorian = gregorian()
+        let japanese = calendar(.japanese, locale: "ja_JP")
+        let buddhist = calendar(.buddhist, locale: "th_TH")
+        // Heisei 30 (2018): the year number and the era differ, the civil day does not.
+        let heisei = try #require(gregorian.date(from: DateComponents(year: 2018, month: 6, day: 15, hour: 12)))
+        let day = LMKCalendarDay(heisei, calendar: japanese)
+        #expect(day == LMKCalendarDay(year: 2018, month: 6, day: 15))
+        #expect(day.key == "2018-06-15")
+        #expect(day.date(in: japanese).map { LMKCalendarDay($0, calendar: gregorian) } == day, "round-trips through date(in:)")
+        #expect(day.date(in: japanese) == day.date(in: gregorian))
+        #expect(LMKCalendarDay(heisei, calendar: buddhist).key == "2018-06-15", "not 2561")
+        #expect(LMKCalendarMonth(heisei, calendar: buddhist).key == "2018-06")
+        // Paging back across the Reiwa boundary stays in order.
+        let reiwa = LMKCalendarMonth(year: 2019, month: 5)
+        let previous = reiwa.adding(months: -1, calendar: japanese)
+        #expect(previous == LMKCalendarMonth(year: 2019, month: 4))
+        #expect(previous < reiwa)
+        #expect(previous.months(to: reiwa, calendar: japanese) == 1)
+        #expect(reiwa.weeks(in: japanese) == reiwa.weeks(in: gregorian))
+        #expect(day.weekday(in: japanese) == day.weekday(in: gregorian))
+    }
+
+    @Test
+    func `A day is a Gregorian civil date under the Chinese and Hebrew calendars`() throws {
+        let gregorian = gregorian()
+        let chinese = calendar(.chinese, locale: "zh_CN")
+        let hebrew = calendar(.hebrew, locale: "he_IL")
+        // 2025 has a leap month 6 in the Chinese calendar; paging must not stall on it.
+        var month = LMKCalendarMonth(year: 2025, month: 6)
+        var visited: [LMKCalendarMonth] = []
+        for _ in 0 ..< 4 {
+            month = month.adding(months: 1, calendar: chinese)
+            visited.append(month)
+        }
+        #expect(visited == (7 ... 10).map { LMKCalendarMonth(year: 2025, month: $0) })
+        let september = LMKCalendarMonth(year: 2026, month: 9)
+        #expect(september.numberOfDays(in: hebrew) == 30)
+        #expect(september.numberOfDays(in: chinese) == 30)
+        #expect(september.weeks(in: hebrew) == september.weeks(in: gregorian))
+        #expect(september.weeks(in: chinese) == september.weeks(in: gregorian))
+        let instant = try #require(gregorian.date(from: DateComponents(year: 2026, month: 9, day: 30, hour: 12)))
+        let day = LMKCalendarDay(instant, calendar: hebrew)
+        #expect(day.key == "2026-09-30")
+        #expect(day.date(in: chinese).map { LMKCalendarDay($0, calendar: gregorian) } == day)
+        #expect(LMKCalendarDay(instant, calendar: chinese).adding(days: 1, calendar: chinese) == LMKCalendarDay(year: 2026, month: 10, day: 1))
+    }
+
+    @Test
+    func `The civil calendar keeps the zone, locale, and week rules; display follows the calendar only when its months are Gregorian`() {
+        let japanese = calendar(.japanese, zone: "Asia/Tokyo", locale: "ja_JP", firstWeekday: 2)
+        let civil = japanese.lmk_civilCalendar
+        #expect(civil.identifier == .gregorian)
+        #expect(civil.timeZone.identifier == "Asia/Tokyo")
+        #expect(civil.locale?.identifier == "ja_JP")
+        #expect(civil.firstWeekday == 2)
+        #expect(civil.minimumDaysInFirstWeek == japanese.minimumDaysInFirstWeek)
+        #expect(japanese.lmk_hasGregorianMonths)
+        #expect(japanese.lmk_civilDisplayCalendar.identifier == .japanese)
+        let chinese = calendar(.chinese)
+        #expect(!chinese.lmk_hasGregorianMonths)
+        #expect(chinese.lmk_civilDisplayCalendar.identifier == .gregorian)
+        #expect(gregorian(firstWeekday: 3).lmk_civilCalendar == gregorian(firstWeekday: 3), "a Gregorian is its own twin")
+        #expect(calendar(.iso8601).lmk_civilCalendar.identifier == .iso8601)
+        for identifier in [Calendar.Identifier.buddhist, .republicOfChina, .iso8601] {
+            #expect(calendar(identifier).lmk_hasGregorianMonths, "\(identifier)")
+        }
+        for identifier in [Calendar.Identifier.hebrew, .islamicUmmAlQura, .persian, .indian, .coptic, .ethiopicAmeteMihret] {
+            #expect(!calendar(identifier).lmk_hasGregorianMonths, "\(identifier)")
+        }
     }
 
     @Test

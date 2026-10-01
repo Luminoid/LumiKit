@@ -17,9 +17,9 @@ import UIKit
 /// ```
 public nonisolated struct LMKCornerStyle: Sendable, Equatable {
     /// The radius rule.
-    public enum Radius: Sendable, Equatable {
+    public enum Radius: Sendable, Hashable {
         /// Square corners.
-        case none
+        case square
         /// A fixed radius in points.
         case fixed(CGFloat)
         /// Half the shorter side, tracking the bounds (pill shapes).
@@ -56,7 +56,9 @@ public nonisolated struct LMKCornerStyle: Sendable, Equatable {
         self.curve = curve
     }
 
-    public static let none = Self(radius: .none)
+    /// Square corners: an explicit override that removes a default rounding.
+    /// (`nil` in an optional style field keeps the default instead.)
+    public static let square = Self(radius: .square)
     public static let capsule = Self(radius: .capsule)
     public static let circle = Self(radius: .circle)
 
@@ -64,23 +66,24 @@ public nonisolated struct LMKCornerStyle: Sendable, Equatable {
         Self(radius: .fixed(radius), maskedCorners: corners, curve: curve)
     }
 
-    public static func concentric(minimum: CGFloat, corners: CACornerMask = .lmk_all) -> Self {
-        Self(radius: .concentric(minimum: minimum), maskedCorners: corners)
+    /// `curve` applies to the pre-iOS 26 fallback; a published concentric configuration is drawn with UIKit's own curve.
+    public static func concentric(minimum: CGFloat, corners: CACornerMask = .lmk_all, curve: Curve = .continuous) -> Self {
+        Self(radius: .concentric(minimum: minimum), maskedCorners: corners, curve: curve)
     }
 
     /// Whether the radius depends on the view's bounds (`capsule`, `circle`).
     public var tracksBounds: Bool {
         switch radius {
         case .capsule, .circle: true
-        case .none, .fixed, .concentric: false
+        case .square, .fixed, .concentric: false
         }
     }
 
     /// The layer radius for `bounds`: `capsule`/`circle` use half the shorter side,
-    /// `concentric` reports its minimum (UIKit refines it on iOS 26), `none` is 0.
+    /// `concentric` reports its minimum (UIKit refines it on iOS 26), `square` is 0.
     public func resolvedRadius(for bounds: CGRect) -> CGFloat {
         switch radius {
-        case .none: 0
+        case .square: 0
         case let .fixed(value): max(0, value)
         case .capsule, .circle: max(0, min(bounds.width, bounds.height) / 2)
         case let .concentric(minimum): max(0, minimum)

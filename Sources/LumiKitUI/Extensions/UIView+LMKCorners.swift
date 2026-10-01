@@ -167,11 +167,11 @@ public extension UIView {
         }
         let configuration: UICornerConfiguration
         if case let .concentric(minimum) = style.radius {
-            configuration = .corners(radius: .containerConcentric(minimum: minimum))
+            configuration = Self.lmk_configuration(radius: .containerConcentric(minimum: minimum), corners: style.maskedCorners)
         } else {
             // Immediate value for readers of `layer.cornerRadius`; UIKit applies the configuration at layout.
             layer.cornerRadius = radius
-            configuration = Self.lmk_fixedConfiguration(radius: radius, corners: style.maskedCorners)
+            configuration = Self.lmk_configuration(radius: .fixed(radius), corners: style.maskedCorners)
         }
         // Assigning an equal configuration still schedules a layout pass; a tracked radius is re-applied from layout.
         if !state.publishesConfiguration || cornerConfiguration != configuration {
@@ -201,13 +201,15 @@ public extension UIView {
         set { objc_setAssociatedObject(self, &lmk_cornerStateKey, newValue, .OBJC_ASSOCIATION_RETAIN_NONATOMIC) }
     }
 
+    /// `radius` on the corners in `corners` (square elsewhere), for a fixed or concentric radius
+    /// (`LMKGlassView` shapes its glass with it too).
     @available(iOS 26, *)
-    private static func lmk_fixedConfiguration(radius: CGFloat, corners: CACornerMask) -> UICornerConfiguration {
+    static func lmk_configuration(radius: UICornerRadius, corners: CACornerMask) -> UICornerConfiguration {
         guard corners != .lmk_all else {
-            return .corners(radius: .fixed(radius))
+            return .corners(radius: radius)
         }
         func cornerRadius(for corner: CACornerMask) -> UICornerRadius {
-            corners.contains(corner) ? .fixed(radius) : .fixed(0)
+            corners.contains(corner) ? radius : .fixed(0)
         }
         return .corners(
             topLeftRadius: cornerRadius(for: .layerMinXMinYCorner),

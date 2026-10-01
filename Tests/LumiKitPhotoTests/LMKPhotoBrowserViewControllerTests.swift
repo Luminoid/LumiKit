@@ -3,6 +3,7 @@
 //  LumiKit
 //
 
+import LumiKitCore
 import LumiKitUI
 import Testing
 import UIKit
@@ -88,6 +89,50 @@ struct LMKPhotoBrowserViewControllerTests {
     }
 
     @Test
+    func `Deleting every photo resets the index, and the transition asks for no thumbnail`() {
+        let (browser, dataSource) = makeBrowser(photoCount: 3, initialIndex: 2, inWindow: true)
+        defer { withExtendedLifetime(dataSource) {} }
+        var requested: [Int] = []
+        browser.zoomSourceView = { index in
+            requested.append(index)
+            return nil
+        }
+        #expect(browser.currentPhotoIndex == 2)
+
+        dataSource.photoCount = 0
+        browser.reloadData()
+        #expect(browser.currentPhotoIndex == 0)
+        #expect(LMKPhotoBrowserZoomAnimator.source(for: browser, in: browser.view) == nil)
+        #expect(requested.isEmpty, "a host closure like { thumbnails[$0] } must never see an index the data source no longer has")
+    }
+
+    @Test
+    func `A new page width re-aligns the offset to the current page`() {
+        let (browser, dataSource) = makeBrowser(photoCount: 5, initialIndex: 0)
+        defer { withExtendedLifetime(dataSource) {} }
+        let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 402, height: 874))
+        window.rootViewController = browser
+        window.makeKeyAndVisible()
+        browser.view.layoutIfNeeded()
+        browser.showPhoto(at: 2, animated: false)
+        let pageWidth = browser.collectionView.bounds.width
+        #expect(abs(browser.collectionView.contentOffset.x - 2 * pageWidth) < 0.5)
+
+        // A rotation: the page width changes and the old offset would land between two pages.
+        window.frame = CGRect(x: 0, y: 0, width: 874, height: 402)
+        browser.view.frame = window.bounds
+        browser.view.layoutIfNeeded()
+        let rotatedWidth = browser.collectionView.bounds.width
+        #expect(rotatedWidth != pageWidth)
+        #expect(browser.currentPhotoIndex == 2)
+        #expect(abs(browser.collectionView.contentOffset.x - 2 * rotatedWidth) < 0.5, "the pager sits on page 3, not 0.94 of a page")
+        // The pages are re-measured too (the flow layout keeps the delegate's sizes across its
+        // own bounds change), so page 3 is on screen and nothing else.
+        #expect(browser.collectionView.layoutAttributesForItem(at: IndexPath(item: 2, section: 0))?.frame == CGRect(x: 2 * rotatedWidth, y: 0, width: rotatedWidth, height: 402))
+        #expect(browser.collectionView.indexPathsForVisibleItems == [IndexPath(item: 2, section: 0)])
+    }
+
+    @Test
     func `showPhoto clamps to the data source and updates the counter`() {
         let (browser, dataSource) = makeBrowser(photoCount: 5, inWindow: true)
         defer { withExtendedLifetime(dataSource) {} }
@@ -135,6 +180,74 @@ struct LMKPhotoBrowserViewControllerTests {
 
         #expect(delegate.didDismissCalled)
         #expect(dismissed)
+    }
+
+    @Test
+    func `The dismissal is reported once per presentation`() {
+        let (browser, dataSource) = makeBrowser(photoCount: 3, inWindow: true)
+        defer { withExtendedLifetime(dataSource) {} }
+        var dismissed = 0
+        browser.onDismiss = { dismissed += 1 }
+
+        // A swipe commits, then Escape lands during its exit animation.
+        browser.performDismissWithSnapTiming()
+        browser.dismissFromKeyCommand()
+        browser.dismissBrowser()
+        #expect(dismissed == 1)
+
+        // Presented again: the next dismissal reports again.
+        browser.viewWillAppear(false)
+        browser.dismissBrowser()
+        #expect(dismissed == 2)
+    }
+
+    @Test
+    func `Reappearance clears what a dismissal left behind`() {
+        let (browser, dataSource) = makeBrowser(photoCount: 3, inWindow: true)
+        defer { withExtendedLifetime(dataSource) {} }
+        // A fade dismissal and a snap dismissal leave these behind on the same instance.
+        browser.view.alpha = 0
+        browser.stageView.alpha = 0
+        browser.collectionView.alpha = 0
+        browser.collectionView.transform = CGAffineTransform(scaleX: 0.7, y: 0.7)
+
+        browser.viewWillAppear(false)
+
+        #expect(browser.view.alpha == 1)
+        #expect(browser.stageView.alpha == 1)
+        #expect(browser.collectionView.alpha == 1)
+        #expect(browser.collectionView.transform.isIdentity)
+    }
+
+    @Test
+    func `A dismissal that starts during the zoom-in finishes it first, so the thumbnail is not left invisible`() {
+        let (browser, dataSource) = makeBrowser(photoCount: 3, inWindow: true)
+        defer { withExtendedLifetime(dataSource) {} }
+        let thumbnail = UIView(frame: CGRect(x: 0, y: 0, width: 80, height: 80))
+        browser.view.addSubview(thumbnail)
+        let photo = UIView(frame: CGRect(x: 0, y: 0, width: 80, height: 80))
+        browser.view.addSubview(photo)
+        // What `animatePresentation` sets up: the thumbnail hidden for the flight, restored in the completion.
+        thumbnail.alpha = 0
+        browser.collectionView.mask = UIView()
+        let animator = UIViewPropertyAnimator(duration: 1, curve: .easeOut) { photo.frame.origin.x = 200 }
+        animator.addCompletion { _ in
+            thumbnail.alpha = 1
+            browser.collectionView.mask = nil
+        }
+        browser.presentationAnimator = animator
+        browser.presentationPhoto = photo
+        animator.startAnimation()
+        #expect(animator.state == .active)
+
+        LMKPhotoBrowserZoomAnimator.finishRunningPresentation(of: browser)
+
+        #expect(thumbnail.alpha == 1, "the dismissal must read the thumbnail's real alpha")
+        #expect(browser.collectionView.mask == nil)
+        #expect(photo.superview == nil)
+        #expect(browser.presentationAnimator == nil)
+        #expect(browser.presentationPhoto == nil)
+        #expect(animator.state == .inactive)
     }
 
     @Test
@@ -430,7 +543,78 @@ struct LMKPhotoBrowserViewControllerTests {
         browser.loadViewIfNeeded()
         #expect(browser.strings.emptyText == "Custom Empty")
         #expect(browser.counterLabel.text == "1/3")
-        #expect(browser.collectionView.accessibilityHint == "Custom Hint")
+    }
+
+    @Test
+    func `Pages are the VoiceOver elements: counter, date or subtitle, Live Photo, and the hint`() {
+        let (browser, dataSource) = makeBrowser(photoCount: 3, inWindow: true)
+        defer { withExtendedLifetime(dataSource) {} }
+        browser.strings = LMKPhotoBrowserViewController.Strings(counterFormat: "%d/%d", tapToToggleHint: "Custom Hint", livePhotoAccessibilityLabel: "Live")
+        dataSource.liveIndices = [0]
+        browser.collectionView.reloadData()
+        browser.collectionView.layoutIfNeeded()
+
+        let page = browser.collectionView.cellForItem(at: IndexPath(item: 0, section: 0))
+        #expect(page?.isAccessibilityElement == true)
+        #expect(page?.accessibilityLabel == "1/3, \(LMKDateFormat.string(dataSource.date)), Live")
+        #expect(page?.accessibilityHint == "Custom Hint")
+        #expect(browser.collectionView.accessibilityLabel == nil, "the collection view is not the element")
+        #expect(browser.accessibilityPerformEscape())
+    }
+
+    @Test
+    func `In a right-to-left layout the arrows follow the pages`() {
+        let (browser, dataSource) = makeBrowser(photoCount: 3)
+        defer { withExtendedLifetime(dataSource) {} }
+        browser.loadViewIfNeeded()
+        let leftToRight = browser.keyCommands ?? []
+        #expect(leftToRight.first { $0.input == UIKeyCommand.inputRightArrow }?.title == browser.strings.nextPhoto)
+
+        browser.collectionView.semanticContentAttribute = .forceRightToLeft
+        #expect(browser.isRightToLeft)
+        let rightToLeft = browser.keyCommands ?? []
+        #expect(rightToLeft.first { $0.input == UIKeyCommand.inputLeftArrow }?.title == browser.strings.nextPhoto, "the next photo is on the left")
+        #expect(rightToLeft.first { $0.input == UIKeyCommand.inputRightArrow }?.title == browser.strings.previousPhoto)
+    }
+
+    @Test
+    func `Every Style field reaches the view it styles`() throws {
+        let style = LMKPhotoBrowserViewController.Style(
+            overlayButton: LMKButton.Style(foregroundColor: .orange),
+            overlayButtonSize: 60,
+            counterTextStyle: .h1,
+            counterAlpha: 0.4,
+            datePill: LMKSurfaceStyle(background: .solid(.magenta)),
+            dateTextStyle: .h2,
+            liveBadgeTextStyle: .h3,
+            interPageSpacing: 24,
+            dismissScale: 0.5,
+            dismissMinimumAlpha: 0.3
+        )
+        let (browser, dataSource) = makeBrowser(photoCount: 3)
+        defer { withExtendedLifetime(dataSource) {} }
+        browser.style = style
+        let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 375, height: 812))
+        window.rootViewController = browser
+        window.makeKeyAndVisible()
+        browser.view.layoutIfNeeded()
+
+        #expect(browser.dismissButton.bounds.width == 60)
+        #expect(browser.actionButton.style.foregroundColor == .orange)
+        #expect(browser.counterLabel.font.pointSize == LMKTypography.font(for: .h1, compatibleWith: browser.traitCollection).pointSize)
+        #expect(abs((browser.counterLabel.textColor.cgColor.alpha) - 0.4) < 0.01)
+        #expect(browser.datePillView.backgroundColor == .magenta)
+        #expect(browser.dateLabel.font.pointSize == LMKTypography.font(for: .h2, compatibleWith: browser.traitCollection).pointSize)
+        #expect(browser.collectionView.bounds.width == 399, "the page gap widens the pager")
+        #expect(browser.resolvedStyle.dismissScaleEffect == 0.5)
+        #expect(browser.resolvedStyle.dismissFloorAlpha == 0.3)
+        browser.updateDismissProgress(1)
+        #expect(abs(browser.collectionView.transform.a - 0.5) < 0.001, "the page shrinks by dismissScale at full progress")
+        #expect(abs(browser.stageView.alpha - 0.3) < 0.001)
+        let badgeLabel = try #require(browser.collectionView.visibleCells.compactMap { $0 as? LMKPhotoBrowserCell }.first.flatMap { cell in
+            cell.contentView.subviews.flatMap(\.subviews).flatMap(\.subviews).compactMap { $0 as? UILabel }.first
+        })
+        #expect(badgeLabel.font.pointSize == LMKTypography.font(for: .h3, compatibleWith: browser.traitCollection).pointSize, "the LIVE badge text style")
     }
 
     // MARK: - Key Commands
@@ -457,6 +641,8 @@ struct LMKPhotoBrowserViewControllerTests {
 
 private final class MockPhotoBrowserDataSource: LMKPhotoBrowserDataSource {
     var photoCount: Int
+    var liveIndices: Set<Int> = []
+    let date = Date(timeIntervalSince1970: 1_700_000_000)
 
     init(photoCount: Int) {
         self.photoCount = photoCount
@@ -473,7 +659,11 @@ private final class MockPhotoBrowserDataSource: LMKPhotoBrowserDataSource {
 
     func photoDate(at index: Int) -> Date? {
         guard index < photoCount else { return nil }
-        return Date()
+        return date
+    }
+
+    func photoIsLivePhoto(at index: Int) -> Bool {
+        liveIndices.contains(index)
     }
 
     func photoSubtitle(at index: Int) -> String? {

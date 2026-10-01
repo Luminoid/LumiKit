@@ -21,21 +21,19 @@ final class TabBarDetailViewController: DetailViewController {
         return toggle
     }
 
-    override func viewDidLoad() {
-        super.viewDidLoad()
-
+    override func setupStackContent() {
         addSectionHeader("LMKTabBarController")
-        stack.addArrangedSubview(UILabel.lmk_make(
+        stackView.addArrangedSubview(UILabel.lmk_make(
             .caption,
             text: "Built on the iOS 18 UITab model: roots are created on first selection, each wrapped in an LMKNavigationController, "
                 + "selection goes through identifiers, ⌘1…⌘3 switch tabs on iPad, and the appearance comes from theme.tabBar. "
                 + "On iOS 26 the bar can minimize on scroll and host a bottom accessory."
         ))
-        stack.addArrangedSubview(makeRow("Sidebar on iPad / Mac", sidebarSwitch))
-        stack.addArrangedSubview(makeRow("Minimize on scroll (iOS 26)", minimizeSwitch))
-        stack.addArrangedSubview(makeRow("Opaque background (no glass)", opaqueSwitch))
+        stackView.addArrangedSubview(makeRow("Sidebar on iPad / Mac", sidebarSwitch))
+        stackView.addArrangedSubview(makeRow("Minimize on scroll (iOS 26)", minimizeSwitch))
+        stackView.addArrangedSubview(makeRow("Opaque background (no glass)", opaqueSwitch))
         let present = LMKButton(title: "Present Tab Bar", style: .filled(.primary), target: self, action: #selector(presentTabBar))
-        stack.addArrangedSubview(present)
+        stackView.addArrangedSubview(present)
     }
 
     private func makeRow(_ title: String, _ control: UIView) -> UIStackView {

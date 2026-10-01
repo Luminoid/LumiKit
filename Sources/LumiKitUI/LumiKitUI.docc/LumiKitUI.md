@@ -110,9 +110,9 @@ Start with <doc:GettingStarted>, then <doc:Theming> and <doc:Styling>.
 
 - ``LMKToast``
 - ``LMKToastView``
-- ``LMKToastConfiguration``
-- ``LMKToastHandle``
-- ``LMKToastDismissReason``
+- ``LMKToast/Configuration``
+- ``LMKToast/Handle``
+- ``LMKToast/DismissReason``
 - ``LMKTip``
 - ``LMKTipView``
 - ``LMKFloatingButton``

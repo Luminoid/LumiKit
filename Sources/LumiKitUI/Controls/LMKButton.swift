@@ -60,6 +60,9 @@ open class LMKButton: UIButton, LMKThemeApplying {
         /// `nil` = `.medium`.
         public var size: Size?
         /// Corners (default capsule), border (outlined: tint, 1pt), shadow, content insets (per size).
+        /// A button draws its background through `UIButton.Configuration`, so `background` takes
+        /// `.clear` or `.solid` only; a solid color replaces the variant's fill and the pressed and
+        /// selected fills shade it.
         public var surface: LMKSurfaceStyle
         /// Overrides the role's tint.
         public var tintColor: UIColor?
@@ -89,6 +92,7 @@ open class LMKButton: UIButton, LMKThemeApplying {
         public var pressAnimation: Bool?
         /// Haptic on touch down; `nil` = yes.
         public var haptics: Bool?
+        /// The pressed look; `scale` replaces the theme's press scale.
         public var highlighted: LMKControlStateStyle?
         public var selected: LMKControlStateStyle?
         public var disabled: LMKControlStateStyle?
@@ -229,10 +233,8 @@ open class LMKButton: UIButton, LMKThemeApplying {
     /// Process-wide defaults; set at app launch to override.
     public nonisolated(unsafe) static var strings = Strings()
 
-    /// Per-instance strings (default `Self.strings`).
-    public var strings: Strings = LMKButton.strings {
-        didSet { updateContent() }
-    }
+    /// Per-instance strings (default `Self.strings`); a toggle's accessibility value reads them live.
+    public var strings: Strings = LMKButton.strings
 
     // MARK: - Content and state
 
@@ -274,19 +276,16 @@ open class LMKButton: UIButton, LMKThemeApplying {
     /// Called after a toggle flips, with the new `isSelected`.
     public var onValueChange: ((Bool) -> Void)?
 
-    /// Shows an activity indicator in place of the title and disables interaction.
+    /// Shows an activity indicator in place of the title and absorbs touches, like a disabled
+    /// control, until loading ends. The title (and a title set meanwhile) returns when loading
+    /// ends; VoiceOver keeps reading it and hears the button as not enabled.
     public var isLoading = false {
         didSet {
             guard isLoading != oldValue else { return }
-            configuration?.showsActivityIndicator = isLoading
-            if isLoading {
-                savedTitle = configuration?.title
-                // A space keeps the title's line-height contribution so the button does not shrink.
-                configuration?.title = " "
-            } else {
-                configuration?.title = savedTitle
+            if isLoading, isTracking {
+                cancelTracking(with: nil)
             }
-            isUserInteractionEnabled = !isLoading
+            updateContent()
         }
     }
 
@@ -297,12 +296,19 @@ open class LMKButton: UIButton, LMKThemeApplying {
         didSet { imageView?.contentMode = imageContentMode }
     }
 
-    /// Called at the end of every `applyTheme`, for tweaks the style does not cover.
+    /// Called at the end of every `applyTheme`, for tweaks the style does not cover. The
+    /// configuration is rebuilt on every state change, so a tweak to it belongs in an
+    /// `updateConfiguration()` override, after `super`.
     public var didApplyStyle: ((LMKButton) -> Void)?
 
-    private var savedTitle: String?
     private var resolvedStyle = Style()
     private var minimumHeightConstraint: Constraint?
+    private var titleShrinkScale: CGFloat?
+
+    /// The title for the current toggle state.
+    private var shownTitle: String? { isToggle && isSelected ? (selectedTitle ?? title) : title }
+    /// The image for the current toggle state.
+    private var shownImage: UIImage? { isToggle && isSelected ? (selectedImage ?? image) : image }
 
     override open var isSelected: Bool {
         didSet {
@@ -353,6 +359,9 @@ open class LMKButton: UIButton, LMKThemeApplying {
 
     /// One-time setup; subclasses call `super`.
     open func initialize() {
+        // The Mac idiom's default `.mac` behavioral style draws a Mac push button and ignores the
+        // configuration's background, so every variant would render as a bare title there.
+        preferredBehavioralStyle = .pad
         configuration = .plain()
         imageView?.contentMode = imageContentMode
         // Hover feedback for iPad pointer / Mac Catalyst.
@@ -360,7 +369,6 @@ open class LMKButton: UIButton, LMKThemeApplying {
         addTarget(self, action: #selector(didTap), for: .touchUpInside)
         addTarget(self, action: #selector(handleTouchDown), for: .touchDown)
         addTarget(self, action: #selector(handleTouchUp), for: [.touchUpInside, .touchUpOutside, .touchCancel])
-        updateContent()
         lmk_startApplyingTheme()
     }
 
@@ -373,24 +381,21 @@ open class LMKButton: UIButton, LMKThemeApplying {
 
     // MARK: - Content
 
-    /// Sets an SF Symbol as the image. Point size and weight default to the style's values.
+    /// Sets an SF Symbol as the image. Point size and weight come from the style (and follow
+    /// later style and theme changes) unless passed here, which bakes them into the image.
     public func setSymbol(_ name: String, pointSize: CGFloat? = nil, weight: UIImage.SymbolWeight? = nil) {
-        var configuration = UIImage.SymbolConfiguration(pointSize: pointSize ?? resolvedStyle.symbolPointSize ?? traitCollection.lmkTheme.layout.symbolAction)
-        configuration = configuration.applying(UIImage.SymbolConfiguration(weight: weight ?? resolvedStyle.symbolWeight ?? .medium))
-        image = UIImage(systemName: name, withConfiguration: configuration)
+        var configuration: UIImage.SymbolConfiguration?
+        if let pointSize { configuration = UIImage.SymbolConfiguration(pointSize: pointSize) }
+        if let weight {
+            let weightConfiguration = UIImage.SymbolConfiguration(weight: weight)
+            configuration = configuration?.applying(weightConfiguration) ?? weightConfiguration
+        }
+        image = configuration.map { UIImage(systemName: name, withConfiguration: $0) } ?? UIImage(systemName: name)
     }
 
+    /// Re-resolves the configuration for the current content and state.
     private func updateContent() {
-        let showsSelected = isToggle && isSelected
-        var config = configuration ?? .plain()
-        config.title = isLoading ? " " : (showsSelected ? (selectedTitle ?? title) : title)
-        config.image = showsSelected ? (selectedImage ?? image) : image
-        configuration = config
-        if isToggle {
-            accessibilityValue = isSelected ? strings.onAccessibilityValue : strings.offAccessibilityValue
-        } else {
-            accessibilityValue = nil
-        }
+        applyResolvedConfiguration()
     }
 
     // MARK: - Theme
@@ -411,7 +416,19 @@ open class LMKButton: UIButton, LMKThemeApplying {
         }
         applyResolvedConfiguration()
         setNeedsUpdateConfiguration()
+        applyContentTheme(theme)
         didApplyStyle?(self)
+    }
+
+    /// Subclass hook, called at the end of every `applyTheme(_:)` just before `didApplyStyle`, so
+    /// a subclass's own theming never has to follow `super.applyTheme` and `didApplyStyle` always
+    /// runs last. The configuration is rebuilt on every state change, so a tweak to it belongs
+    /// in an `updateConfiguration()` override, after `super`. The base implementation does nothing.
+    open func applyContentTheme(_ theme: LMKTheme) {}
+
+    /// The variant that draws: Liquid Glass exists from iOS 26, so `.glass` renders as `.tinted` before.
+    static func renderedVariant(_ variant: Variant, supportsGlass: Bool) -> Variant {
+        variant == .glass && !supportsGlass ? .tinted : variant
     }
 
     /// The appearance derived for one control state.
@@ -423,13 +440,14 @@ open class LMKButton: UIButton, LMKThemeApplying {
         var alpha: CGFloat
     }
 
-    /// Resolves every appearance field for the button's current state into `configuration`.
+    /// Resolves every appearance field for the button's current content and state into `configuration`.
     private func applyResolvedConfiguration() {
         let button = self
         let theme = traitCollection.lmkTheme
         let resolved = resolvedStyle
         let role = resolved.role ?? .primary
-        let variant = resolved.variant ?? .filled
+        let supportsGlass = if #available(iOS 26, *) { true } else { false }
+        let variant = Self.renderedVariant(resolved.variant ?? .filled, supportsGlass: supportsGlass)
         let size = resolved.size ?? .medium
         let tint = resolved.tintColor ?? Self.tint(for: role)
 
@@ -438,10 +456,14 @@ open class LMKButton: UIButton, LMKThemeApplying {
         } else {
             .plain()
         }
-        // Content is owned by `updateContent`; carry it over.
-        config.title = button.configuration?.title
-        config.image = button.configuration?.image
-        config.showsActivityIndicator = button.configuration?.showsActivityIndicator ?? false
+        // Content comes from the properties, so a rebuilt configuration never loses it. While
+        // loading, a space keeps a title's line-height contribution so the button does not
+        // shrink; an icon-only button keeps no title, so it does not widen.
+        let title = shownTitle
+        config.title = isLoading ? (title?.isEmpty == false ? " " : nil) : title
+        config.image = shownImage
+        config.showsActivityIndicator = isLoading
+        if titleShrinkScale != nil { config.titleLineBreakMode = .byTruncatingTail }
         config.imagePlacement = resolved.imagePlacement ?? .leading
         config.imagePadding = resolved.imagePadding ?? theme.spacing.iconToText
         config.preferredSymbolConfigurationForImage = UIImage.SymbolConfiguration(
@@ -466,18 +488,21 @@ open class LMKButton: UIButton, LMKThemeApplying {
         case .gradient, .blur, .glass: config.background.backgroundColor = .clear
         }
         config.background.backgroundColorTransformer = nil
-        if variant == .glass, #available(iOS 26, *) {
-            // Glass draws its own material; only the foreground is ours.
-        } else if stateAlpha < 1 {
+        if stateAlpha < 1 {
             let alpha = stateAlpha
-            config.background.backgroundColorTransformer = UIConfigurationColorTransformer { $0.withAlphaComponent($0.cgColor.alpha * alpha) }
+            // Glass draws its own material; only the foreground fades there.
+            if variant != .glass {
+                config.background.backgroundColorTransformer = UIConfigurationColorTransformer { $0.withAlphaComponent($0.cgColor.alpha * alpha) }
+            }
             foreground = foreground.withAlphaComponent(alpha)
         }
         config.baseForegroundColor = foreground
         config.baseBackgroundColor = nil
 
         if let border, (border.width ?? 1) > 0 {
-            config.background.strokeColor = (border.color ?? LMKColor.outline).withAlphaComponent(stateAlpha)
+            // The stroke keeps its own alpha (a translucent outline stays translucent) and fades with the state.
+            let strokeColor = border.color ?? LMKColor.outline
+            config.background.strokeColor = stateAlpha < 1 ? strokeColor.withAlphaComponent(strokeColor.resolvedColor(with: traitCollection).cgColor.alpha * stateAlpha) : strokeColor
             config.background.strokeWidth = LMKLayout.pixelAligned(border.width ?? Self.outlinedBorderWidth, for: self)
         } else {
             config.background.strokeColor = nil
@@ -488,7 +513,7 @@ open class LMKButton: UIButton, LMKThemeApplying {
         switch corners.radius {
         case .capsule, .circle:
             config.cornerStyle = .capsule
-        case .none:
+        case .square:
             config.cornerStyle = .fixed
             config.background.cornerRadius = 0
         case let .fixed(radius):
@@ -500,7 +525,7 @@ open class LMKButton: UIButton, LMKThemeApplying {
         }
 
         switch shadow {
-        case .none:
+        case .hidden:
             config.background.shadowProperties.opacity = 0
         case let .level(level):
             Self.apply(theme.shadow.shadow(for: level).style, to: &config.background.shadowProperties, traits: traitCollection)
@@ -522,17 +547,23 @@ open class LMKButton: UIButton, LMKThemeApplying {
         config.activityIndicatorColorTransformer = UIConfigurationColorTransformer { _ in indicatorColor }
 
         button.configuration = config
+        if let titleShrinkScale {
+            // The label fields are not part of the configuration; re-apply them after every rebuild.
+            titleLabel?.numberOfLines = 1
+            titleLabel?.adjustsFontSizeToFitWidth = true
+            titleLabel?.minimumScaleFactor = titleShrinkScale
+        }
     }
 
     private func appearance(for state: UIControl.State, role: Role, variant: Variant, tint: UIColor, theme: LMKTheme) -> Appearance {
         let resolved = resolvedStyle
         let filledBackground = role == .neutral && resolved.tintColor == nil ? LMKColor.fill : tint
-        let filledForeground = role == .neutral ? LMKColor.textPrimary : LMKColor.onFill(filledBackground, preferred: LMKColor.onAccent)
+        let filledForeground = role == .neutral && resolved.tintColor == nil ? LMKColor.textPrimary : LMKColor.onFill(filledBackground, preferred: LMKColor.onAccent)
         var appearance = Appearance(
             background: .clear,
             foreground: resolved.foregroundColor ?? (variant == .filled ? filledForeground : tint),
             border: variant == .outlined ? .solid(tint, width: Self.outlinedBorderWidth) : nil,
-            shadow: resolved.surface.shadow ?? .none,
+            shadow: resolved.surface.shadow ?? .hidden,
             alpha: 1
         )
         switch variant {
@@ -541,15 +572,30 @@ open class LMKButton: UIButton, LMKThemeApplying {
         case .outlined, .ghost, .glass: appearance.background = .clear
         }
 
+        // Surface fields replace the variant's resting background and border; the state
+        // overrides below build on them.
+        var stateVariant = variant
+        var stateBase = variant == .filled ? filledBackground : tint
+        if let surfaceBackground = resolved.surface.background {
+            appearance.background = surfaceBackground.resolved(against: appearance.background)
+            if case let .solid(color?) = appearance.background {
+                // A solid surface is the fill the button shows: its states shade that fill.
+                stateVariant = .filled
+                stateBase = color
+            }
+        }
+        if let surfaceBorder = resolved.surface.border {
+            appearance.border = surfaceBorder
+        }
+
         // State overrides: derived defaults, then the style's per-state fields. A filled
         // button shifts the fill it shows (a neutral one is filled in gray, not in its tint).
-        let stateBase = variant == .filled ? filledBackground : tint
         if state.contains(.selected) {
-            appearance.background = Self.selectedBackground(variant: variant, base: stateBase, theme: theme) ?? appearance.background
+            appearance.background = Self.selectedBackground(variant: stateVariant, base: stateBase, theme: theme) ?? appearance.background
             Self.apply(resolved.selected, to: &appearance)
         }
         if state.contains(.highlighted) {
-            appearance.background = Self.highlightedBackground(variant: variant, base: stateBase, theme: theme) ?? appearance.background
+            appearance.background = Self.highlightedBackground(variant: stateVariant, base: stateBase, theme: theme) ?? appearance.background
             Self.apply(resolved.highlighted, to: &appearance)
         }
         if state.contains(.focused) {
@@ -561,13 +607,6 @@ open class LMKButton: UIButton, LMKThemeApplying {
                 disabled.alpha = theme.alpha.disabled
             }
             Self.apply(disabled, to: &appearance)
-        }
-        // Instance surface fields win over the derived base for background and border.
-        if let surfaceBackground = resolved.surface.background {
-            appearance.background = surfaceBackground.resolved(against: appearance.background)
-        }
-        if let surfaceBorder = resolved.surface.border {
-            appearance.border = surfaceBorder
         }
         return appearance
     }
@@ -656,43 +695,100 @@ open class LMKButton: UIButton, LMKThemeApplying {
 
     // MARK: - Interaction
 
+    /// A disabled button absorbs a touch inside its bounds, like `UIButton`; an enabled one answers the minimum touch target.
     override open func point(inside point: CGPoint, with event: UIEvent?) -> Bool {
-        guard isEnabled, !isHidden else { return false }
+        guard !isHidden else { return false }
+        guard isEnabled, !isLoading else { return bounds.contains(point) }
         let minimum = minimumHitTarget ?? traitCollection.lmkTheme.layout.minimumTouchTarget
         return lmk_hitTestBounds(minimumSide: minimum, insets: lmk_hitTestInsets).contains(point)
+    }
+
+    /// The scale a press shrinks to: `highlighted.scale`, else the theme's press scale, else none.
+    private var pressScale: CGFloat {
+        let theme = traitCollection.lmkTheme
+        return resolvedStyle.highlighted?.scale ?? (resolvedStyle.pressAnimation ?? true ? theme.animation.pressScale : 1)
     }
 
     @objc private func handleTouchDown() {
         if resolvedStyle.haptics ?? true {
             LMKHaptics.medium()
         }
-        guard resolvedStyle.pressAnimation ?? true, LMKAnimation.shouldAnimate else { return }
-        LMKAnimation.animateButtonPressDown(self)
+        let scale = pressScale
+        guard scale != 1, LMKAnimation.shouldAnimate else { return }
+        animatePress(to: CGAffineTransform(scaleX: scale, y: scale))
     }
 
     @objc private func handleTouchUp() {
-        guard resolvedStyle.pressAnimation ?? true, LMKAnimation.shouldAnimate else { return }
-        LMKAnimation.animateButtonPressUp(self)
+        guard transform != .identity else { return }
+        animatePress(to: .identity)
     }
 
-    /// Runs the tap: flips a toggle, then calls `onTap`.
+    private func animatePress(to target: CGAffineTransform) {
+        let animation = traitCollection.lmkTheme.animation
+        UIView.animate(
+            withDuration: animation.instant,
+            delay: 0,
+            usingSpringWithDamping: animation.pressSpring.damping,
+            initialSpringVelocity: animation.pressSpring.initialVelocity,
+            options: [.allowUserInteraction, .beginFromCurrentState]
+        ) { [self] in
+            transform = target
+        }
+    }
+
+    /// Runs the tap: flips a toggle (reporting it through `onValueChange` and `.valueChanged`), then calls `onTap`.
+    /// A loading button takes no touches: the tap is absorbed, never tracked.
+    override open func beginTracking(_ touch: UITouch, with event: UIEvent?) -> Bool {
+        guard !isLoading else { return false }
+        return super.beginTracking(touch, with: event)
+    }
+
     @objc open func didTap() {
+        guard !isLoading else { return }
         if isToggle {
             isSelected.toggle()
             onValueChange?(isSelected)
+            sendActions(for: .valueChanged)
         }
         onTap?()
     }
 
-    /// Constrains the title to a single line that shrinks to fit the available width.
+    /// Constrains the title to a single line that shrinks to fit the available width. The
+    /// setting survives every configuration rebuild (state, style, and theme changes).
     /// - Parameter minimumScaleFactor: Smallest fraction the font will shrink to (default 0.7).
     @discardableResult
     public func shrinkingTitleToFit(minimumScaleFactor: CGFloat = 0.7) -> Self {
-        configuration?.titleLineBreakMode = .byTruncatingTail
-        titleLabel?.numberOfLines = 1
-        titleLabel?.adjustsFontSizeToFitWidth = true
-        titleLabel?.minimumScaleFactor = minimumScaleFactor
+        titleShrinkScale = min(max(minimumScaleFactor, 0.1), 1)
+        applyResolvedConfiguration()
         return self
+    }
+
+    // MARK: - Accessibility
+
+    /// A toggle reads its on/off state; other buttons keep whatever the host set.
+    override open var accessibilityValue: String? {
+        get { isToggle ? (isSelected ? strings.onAccessibilityValue : strings.offAccessibilityValue) : super.accessibilityValue }
+        set { super.accessibilityValue = newValue }
+    }
+
+    /// While loading, the title stands in for a label the placeholder title would blank.
+    override open var accessibilityLabel: String? {
+        get {
+            let label = super.accessibilityLabel
+            guard isLoading, label?.trimmingCharacters(in: .whitespaces).isEmpty ?? true else { return label }
+            return shownTitle
+        }
+        set { super.accessibilityLabel = newValue }
+    }
+
+    override open var accessibilityTraits: UIAccessibilityTraits {
+        get {
+            var traits = super.accessibilityTraits
+            if isToggle { traits.insert(.toggleButton) }
+            if isLoading { traits.insert(.notEnabled) }
+            return traits
+        }
+        set { super.accessibilityTraits = newValue }
     }
 }
 

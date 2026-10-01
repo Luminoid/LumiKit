@@ -84,6 +84,26 @@ struct UIColorLMKTests {
         #expect(UIColor(lmk_hex: "") == nil)
     }
 
+    /// The regression: `Scanner` accepted any valid prefix, so a stray character or a `0x`
+    /// prefix parsed as some other color instead of failing.
+    @Test
+    func `Hex init rejects strings with non-hex characters`() {
+        #expect(UIColor(lmk_hex: "#12345G") == nil)
+        #expect(UIColor(lmk_hex: "12 456") == nil)
+        #expect(UIColor(lmk_hex: "0x1234") == nil)
+        #expect(UIColor(lmk_hex: "+ABCDEF") == nil)
+        #expect(UIColor(lmk_hex: " #aBcDeF ")?.lmk_hexString == "ABCDEF", "whitespace is trimmed, case is free")
+    }
+
+    @Test
+    func `lmk_isVisuallyEqual samples both appearances`() {
+        let dynamic = UIColor.lmk_dynamic(light: .red, dark: .blue)
+        #expect(dynamic.lmk_isVisuallyEqual(to: .lmk_dynamic(light: .red, dark: .blue)))
+        #expect(!dynamic.lmk_isVisuallyEqual(to: .lmk_dynamic(light: .red, dark: .green)))
+        #expect(!dynamic.lmk_isVisuallyEqual(to: .red), "differs in dark mode")
+        #expect(UIColor.red.lmk_isVisuallyEqual(to: UIColor(red: 1, green: 0, blue: 0, alpha: 1)))
+    }
+
     @Test
     func `lmk_hexString round-trips`() {
         let color = UIColor(lmk_hex: "#FF5733")

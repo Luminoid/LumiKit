@@ -6,6 +6,7 @@
 //  `theme.badge` and the instance style.
 //
 
+import LumiKitCore
 import SnapKit
 import UIKit
 
@@ -182,8 +183,9 @@ public final class LMKBadgeView: UIView, LMKThemeApplying {
         switch content {
         case let .count(count)?:
             isHidden = count <= 0
-            countLabel.lmk_setText(count > Self.overflowThreshold ? (resolved.overflowText ?? Self.defaultOverflowText) : "\(count)")
-            accessibilityLabel = customAccessibilityLabel ?? "\(count)"
+            let formattedCount = LMKFormat.number(count)
+            countLabel.lmk_setText(count > Self.overflowThreshold ? (resolved.overflowText ?? Self.defaultOverflowText) : formattedCount)
+            accessibilityLabel = customAccessibilityLabel ?? formattedCount
         case let .text(text)?:
             isHidden = text.isEmpty
             countLabel.lmk_setText(text)
@@ -216,7 +218,7 @@ public final class LMKBadgeView: UIView, LMKThemeApplying {
             background: .solid(LMKColor.error),
             corners: .capsule,
             border: .solid(LMKColor.backgroundPrimary, width: Self.defaultBorderWidth),
-            shadow: LMKShadowSource.none
+            shadow: LMKShadowSource.hidden
         )
         let applied = lmk_apply(surface: resolved.surface, defaults: defaults)
         let fill: UIColor = if case let .solid(color) = applied.background, let color { color } else { LMKColor.error }

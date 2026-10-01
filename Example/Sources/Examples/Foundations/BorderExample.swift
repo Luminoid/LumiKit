@@ -12,9 +12,7 @@ import UIKit
 // MARK: - Border & Corner Radius
 
 final class BorderDetailViewController: DetailViewController {
-    override func viewDidLoad() {
-        super.viewDidLoad()
-
+    override func setupStackContent() {
         addSectionHeader("lmk_applyBorder")
         let borderedView = UIView()
         borderedView.backgroundColor = LMKColor.backgroundSecondary
@@ -26,7 +24,7 @@ final class BorderDetailViewController: DetailViewController {
         borderedView.addSubview(label)
         label.snp.makeConstraints { $0.edges.equalToSuperview().inset(LMKSpacing.large) }
         borderedView.snp.makeConstraints { $0.height.greaterThanOrEqualTo(60) }
-        stack.addArrangedSubview(borderedView)
+        stackView.addArrangedSubview(borderedView)
 
         addDivider()
         addSectionHeader("Hairline Default (LMKLayout.hairline)")
@@ -42,11 +40,11 @@ final class BorderDetailViewController: DetailViewController {
         hairlineLabel.textAlignment = .center
         hairlineView.addSubview(hairlineLabel)
         hairlineLabel.snp.makeConstraints { $0.edges.equalToSuperview().inset(LMKSpacing.large) }
-        stack.addArrangedSubview(hairlineView)
+        stackView.addArrangedSubview(hairlineView)
 
         addDivider()
         addSectionHeader("Bordered Capsules")
-        stack.addArrangedSubview(UILabel.lmk_make(
+        stackView.addArrangedSubview(UILabel.lmk_make(
             .caption,
             text: "A capsule follows its view's size on its own. Border widths snap to whole pixels, so the line keeps one thickness along the edges and around the ends."
         ))
@@ -65,7 +63,7 @@ final class BorderDetailViewController: DetailViewController {
             capsuleRow.addArrangedSubview(capsule)
         }
         capsuleRow.addArrangedSubview(UIView())
-        stack.addArrangedSubview(capsuleRow)
+        stackView.addArrangedSubview(capsuleRow)
 
         addDivider()
         addSectionHeader("lmk_makeCircular")
@@ -73,9 +71,7 @@ final class BorderDetailViewController: DetailViewController {
         let circleView = UIView()
         circleView.backgroundColor = LMKColor.primary
         circleView.snp.makeConstraints { $0.width.height.equalTo(circleSize) }
-
-        // Force layout so makeCircular can calculate
-        circleView.frame = CGRect(x: 0, y: 0, width: circleSize, height: circleSize)
+        // The circle tracks the view's bounds, so no frame is needed up front.
         circleView.lmk_makeCircular()
 
         let circleLabel = UILabel.lmk_make(.small, text: "Circle")
@@ -87,16 +83,17 @@ final class BorderDetailViewController: DetailViewController {
         let row = UIStackView(lmk_axis: .horizontal)
         row.addArrangedSubview(circleView)
         row.addArrangedSubview(UIView())
-        stack.addArrangedSubview(row)
+        stackView.addArrangedSubview(row)
 
         addDivider()
         addSectionHeader("Corner Radius Tokens")
+        // The labels read the live tokens, so a theme with its own corner scale (Ocean) stays truthful.
         let radii: [(String, CGFloat)] = [
-            ("xs (4)", LMKCornerRadius.xs),
-            ("small (8)", LMKCornerRadius.small),
-            ("medium (12)", LMKCornerRadius.medium),
-            ("large (16)", LMKCornerRadius.large),
-            ("xl (20)", LMKCornerRadius.xl),
+            ("xs", LMKCornerRadius.xs),
+            ("small", LMKCornerRadius.small),
+            ("medium", LMKCornerRadius.medium),
+            ("large", LMKCornerRadius.large),
+            ("xl", LMKCornerRadius.xl),
         ]
         let radiusRow = UIStackView(lmk_axis: .horizontal, spacing: LMKSpacing.small)
         radiusRow.distribution = .fillEqually
@@ -106,18 +103,18 @@ final class BorderDetailViewController: DetailViewController {
             box.lmk_applyCornerRadius(radius)
             box.snp.makeConstraints { $0.height.equalTo(52) }
 
-            let lbl = UILabel.lmk_make(.small, text: name)
+            let lbl = UILabel.lmk_make(.small, text: "\(name) (\(Int(radius)))")
             lbl.textColor = LMKColor.onAccent
             lbl.textAlignment = .center
             box.addSubview(lbl)
             lbl.snp.makeConstraints { $0.center.equalToSuperview() }
             radiusRow.addArrangedSubview(box)
         }
-        stack.addArrangedSubview(radiusRow)
+        stackView.addArrangedSubview(radiusRow)
 
         addDivider()
         addSectionHeader("lmk_applyConcentricCorners (iOS 26)")
-        stack.addArrangedSubview(UILabel.lmk_make(.caption, text: "The outer card publishes its radius (asConcentricContainer: true); the inner view asks UIKit for a "
+        stackView.addArrangedSubview(UILabel.lmk_make(.caption, text: "The outer card publishes its radius (asConcentricContainer: true); the inner view asks UIKit for a "
                 + "container-concentric radius: the outer corner minus the inset, floored at the minimum. "
                 + "Before iOS 26 it falls back to the fixed minimum radius."))
         let outer = UIView()
@@ -134,6 +131,6 @@ final class BorderDetailViewController: DetailViewController {
         innerLabel.textAlignment = .center
         inner.addSubview(innerLabel)
         innerLabel.snp.makeConstraints { $0.center.equalToSuperview() }
-        stack.addArrangedSubview(outer)
+        stackView.addArrangedSubview(outer)
     }
 }

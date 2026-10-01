@@ -11,6 +11,13 @@ import UIKit
 
 @MainActor
 struct UIViewControllerLMKTopViewControllerTests {
+    private func makeWindowed(_ root: UIViewController) -> UIWindow {
+        let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 375, height: 812))
+        window.rootViewController = root
+        window.makeKeyAndVisible()
+        return window
+    }
+
     @Test
     func `Returns controller when passed directly`() {
         let vc = UIViewController()
@@ -49,21 +56,71 @@ struct UIViewControllerLMKTopViewControllerTests {
         #expect(top === child)
     }
 
+    /// The regression: an empty navigation controller restarted the walk from the key
+    /// window's root and recursed until the stack overflowed.
     @Test
-    func `Returns nil for nil controller without key window`() {
-        // When no key window exists and controller is nil
-        let top = UIViewController.lmk_topViewController(controller: nil)
-        // In test environment this depends on window state; just verify it doesn't crash
-        _ = top
+    func `An empty container is its own top, even as the key window's root`() {
+        let nav = UINavigationController()
+        #expect(UIViewController.lmk_topViewController(controller: nav) === nav)
+        let tabBar = UITabBarController()
+        #expect(UIViewController.lmk_topViewController(controller: tabBar) === tabBar)
+
+        let window = makeWindowed(nav)
+        defer { window.isHidden = true }
+        let fromWindow = UIViewController.lmk_topViewController(controller: nil)
+        #expect(fromWindow == nil || fromWindow === nav, "no key window in the test host, or the empty root itself")
     }
 
     @Test
-    func `lmk_presentAlertOnTop does not crash`() {
-        let vc = UIViewController()
+    func `lmk_presentAlertOnTop presents from the top-most controller`() {
+        let host = UIViewController()
+        let window = makeWindowed(host)
+        defer { window.isHidden = true }
         let alert = UIAlertController(title: "Test", message: nil, preferredStyle: .alert)
-        // In test environment without a window this won't actually present,
-        // but verifying it doesn't crash
-        _ = alert
-        _ = vc
+        host.lmk_presentAlertOnTop(alert)
+        #expect(host.presentedViewController === alert)
+    }
+
+    /// The regression: a valid anchor (a bar button item, or a source view in the presenter's
+    /// window) was replaced by the centered, arrowless configuration.
+    @Test
+    func `lmk_presentAlertOnTop keeps a bar button anchor`() {
+        let host = UIViewController()
+        let window = makeWindowed(host)
+        defer { window.isHidden = true }
+        let anchored = UIAlertController(title: nil, message: nil, preferredStyle: .actionSheet)
+        let item = UIBarButtonItem(systemItem: .action)
+        anchored.popoverPresentationController?.barButtonItem = item
+        host.lmk_presentAlertOnTop(anchored)
+        #expect(anchored.popoverPresentationController?.barButtonItem === item)
+        #expect(anchored.popoverPresentationController?.sourceView == nil)
+    }
+
+    @Test
+    func `lmk_presentAlertOnTop keeps a source view that is in the presenter's window`() {
+        let host = UIViewController()
+        let window = makeWindowed(host)
+        defer { window.isHidden = true }
+        window.layoutIfNeeded()
+        let sourceView = UIView()
+        host.view.addSubview(sourceView)
+        #expect(sourceView.window === window)
+        let viewAnchored = UIAlertController(title: nil, message: nil, preferredStyle: .actionSheet)
+        viewAnchored.popoverPresentationController?.sourceView = sourceView
+        host.lmk_presentAlertOnTop(viewAnchored)
+        // The centered configuration would have replaced the source view with the presenter's view.
+        #expect(viewAnchored.popoverPresentationController?.sourceView === sourceView)
+        #expect(host.presentedViewController === viewAnchored)
+    }
+
+    @Test
+    func `lmk_presentAlertOnTop centers a sheet without an anchor`() {
+        let host = UIViewController()
+        let window = makeWindowed(host)
+        defer { window.isHidden = true }
+        let bare = UIAlertController(title: nil, message: nil, preferredStyle: .actionSheet)
+        host.lmk_presentAlertOnTop(bare)
+        #expect(bare.popoverPresentationController?.sourceView === host.view)
+        #expect(bare.popoverPresentationController?.permittedArrowDirections == [])
     }
 }

@@ -18,13 +18,13 @@ import UIKit
 public final class LMKGradientView: UIView {
     // MARK: - Direction
 
-    /// Where a linear gradient runs (also the start and end of a radial gradient's radius).
-    public nonisolated enum Direction: Sendable, Equatable {
+    /// Where a linear gradient runs (a radial gradient ignores it).
+    public nonisolated enum Direction: Sendable, Hashable {
         case topToBottom
         case leftToRight
         case topLeftToBottomRight
         case topRightToBottomLeft
-        /// Degrees clockwise from `topToBottom` (0 = top to bottom, 90 = left to right).
+        /// Degrees counterclockwise from `topToBottom` (0 = top to bottom, 90 = left to right, 180 = bottom to top).
         case angle(CGFloat)
         /// Explicit unit-space points.
         case custom(start: CGPoint, end: CGPoint)
@@ -53,7 +53,7 @@ public final class LMKGradientView: UIView {
             }
         }
 
-        /// Unit-space endpoints for a direction `degrees` clockwise from top-to-bottom.
+        /// Unit-space endpoints for a direction `degrees` counterclockwise from top-to-bottom.
         private static func points(for degrees: CGFloat) -> (start: CGPoint, end: CGPoint) {
             let radians = degrees * .pi / 180
             let dx = sin(radians) / 2
@@ -103,12 +103,12 @@ public final class LMKGradientView: UIView {
         self.kind = kind
         self.locations = locations
         super.init(frame: .zero)
+        // A backdrop, not an element; whatever a host puts on it stays reachable.
         isAccessibilityElement = false
-        accessibilityElementsHidden = true
         gradientLayer?.locations = locations
         applyGeometry()
         applyColors()
-        registerForTraitChanges([UITraitUserInterfaceStyle.self, UITraitAccessibilityContrast.self, LMKThemeTrait.self]) { (view: Self, _) in
+        registerForTraitChanges([UITraitUserInterfaceStyle.self, UITraitAccessibilityContrast.self, UITraitUserInterfaceLevel.self, LMKThemeTrait.self]) { (view: Self, _) in
             view.applyColors()
         }
     }

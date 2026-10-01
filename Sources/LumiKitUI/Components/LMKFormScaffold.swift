@@ -9,6 +9,10 @@
 import SnapKit
 import UIKit
 
+// A namespace of static builders without a theme argument: every read happens when the host builds
+// the form, and the pieces it returns carry no `applyTheme(_:)` of their own.
+// swiftlint:disable no_global_token_proxies_in_components
+
 /// Static builders for form screens that are not `LMKScrollStackViewController`
 /// subclasses: view controllers with their own base class that still want the
 /// standard scroll + stack form layout and keyboard behavior.
@@ -155,6 +159,9 @@ public enum LMKFormScaffold {
                 make.width.lessThanOrEqualTo(maxWidth)
                 make.leading.greaterThanOrEqualToSuperview().offset(horizontalInset)
                 make.trailing.lessThanOrEqualToSuperview().offset(-horizontalInset)
+                // Inside a scroll view the content edges float, so the insets alone do not bound
+                // the width: the cap against the frame does (as `lmk_pinReadableWidth` carries).
+                make.width.lessThanOrEqualToSuperview().offset(-horizontalInset * 2)
                 // Just below required: a card's internal content-size chains (required hugging
                 // on a detail label, wrapped labels) must never win over filling the width.
                 make.width.equalToSuperview().offset(-horizontalInset * 2).priority(999)
@@ -162,3 +169,5 @@ public enum LMKFormScaffold {
         }
     }
 }
+
+// swiftlint:enable no_global_token_proxies_in_components

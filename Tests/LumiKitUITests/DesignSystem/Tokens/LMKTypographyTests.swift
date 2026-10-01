@@ -4,7 +4,6 @@
 //
 
 import Testing
-import UIKit
 @testable import LumiKitUI
 
 // MARK: - LMKTypography
@@ -38,6 +37,16 @@ struct LMKTypographyTests {
     @Test
     func `letterSpacing for heading is negative`() {
         #expect(LMKTypography.letterSpacing(for: .heading) < 0)
+    }
+
+    @Test
+    func `lineHeightMultiplier reads the theme per kind`() {
+        let theme = LMKThemeTesting.distinct.typography
+        #expect(theme.lineHeightMultiplier(for: .heading) == 1.3)
+        #expect(theme.lineHeightMultiplier(for: .body) == 1.6)
+        #expect(theme.lineHeightMultiplier(for: .caption) == 1.45)
+        #expect(theme.lineHeightMultiplier(for: .small) == 1.35)
+        #expect(LMKTypography.lineHeightMultiplier(for: .body) == LMKTheme.current.typography.bodyLineHeightMultiplier)
     }
 }
 

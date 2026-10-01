@@ -5,11 +5,12 @@
 //  Device type and layout-size classification.
 //
 
+import Synchronization
 import UIKit
 
 /// Device type classification. Nonisolated because device type is constant at runtime.
 public extension LMKDevice {
-    nonisolated enum Kind: Sendable, Equatable {
+    nonisolated enum Kind: Sendable, Hashable {
         case iPhone
         case iPad
         case macCatalyst
@@ -24,7 +25,7 @@ public extension LMKDevice {
 /// window on iPad, iPhone Mirroring on the Mac, and both iPhone Duo displays
 /// land in the tier their real width earns. Nonisolated: a pure value.
 public extension LMKDevice {
-    nonisolated enum ScreenSize: Sendable, Equatable {
+    nonisolated enum ScreenSize: Sendable, Hashable {
         /// Portrait width ≤ 375pt: iPhone SE, iPhone 13 mini, iPhone XS / 11 Pro,
         /// iPad Slide Over (320pt).
         case compact
@@ -46,7 +47,7 @@ public extension LMKDevice {
 /// static ``screenSize``: it reads that view's own traits and bounds, which is
 /// what a split-view child, a resizable iPad window, or an iPhone Duo scene
 /// actually has. Re-read it from `viewWillTransition(to:with:)` or a
-/// `registerForTraitChanges` handler — the tier changes when the window
+/// `registerForTraitChanges` handler: the tier changes when the window
 /// resizes, the device rotates, or iPhone Duo folds.
 public enum LMKDevice {
     // MARK: - Breakpoints
@@ -58,17 +59,22 @@ public enum LMKDevice {
 
     // MARK: - Device Type
 
-    /// Current device type. Nonisolated because device type never changes at runtime.
+    /// Current device type: the interface idiom the app runs with. Readable from any
+    /// isolation, since the idiom never changes while the process runs.
+    ///
+    /// On the main thread it is read from `UIDevice` and kept for every later read; a read
+    /// from another thread before that uses the calling thread's traits when they carry an
+    /// idiom, else the hardware family, and never blocks on the main thread.
     public nonisolated static var deviceType: Kind {
         #if targetEnvironment(macCatalyst)
             .macCatalyst
         #else
-            MainActor.assumeIsolated {
-                switch UIDevice.current.userInterfaceIdiom {
-                case .phone: .iPhone
-                case .pad: .iPad
-                default: .other
-                }
+            mainThreadKind.withLock { cached in
+                if let cached { return cached }
+                guard Thread.isMainThread else { return kindFromCurrentTraits() }
+                let kind = MainActor.assumeIsolated { kind(for: UIDevice.current.userInterfaceIdiom) ?? .other }
+                cached = kind
+                return kind
             }
         #endif
     }
@@ -78,6 +84,40 @@ public enum LMKDevice {
 
     /// Whether running as Mac Catalyst.
     public nonisolated static var isMacCatalyst: Bool { deviceType == .macCatalyst }
+
+    #if !targetEnvironment(macCatalyst)
+        /// The kind read from `UIDevice` on the main thread, `nil` until the first such read.
+        private nonisolated static let mainThreadKind = Mutex<Kind?>(nil)
+
+        /// The kind for a thread other than the main one: the thread's current traits, or the
+        /// hardware family when those carry no idiom.
+        nonisolated static func kindFromCurrentTraits() -> Kind {
+            kind(for: UITraitCollection.current.userInterfaceIdiom) ?? hardwareKind
+        }
+
+        /// The kind for `idiom`; `nil` for `.unspecified`.
+        nonisolated static func kind(for idiom: UIUserInterfaceIdiom) -> Kind? {
+            switch idiom {
+            case .phone: .iPhone
+            case .pad: .iPad
+            case .unspecified: nil
+            default: .other
+            }
+        }
+
+        /// The kind of the hardware model (`iPad…`, `iPhone…`; the simulated model on the simulator).
+        private nonisolated static var hardwareKind: Kind {
+            var systemInfo = utsname()
+            uname(&systemInfo)
+            let machine = withUnsafeBytes(of: &systemInfo.machine) { bytes in
+                String(bytes: bytes.prefix { $0 != 0 }, encoding: .utf8) ?? ""
+            }
+            let model = ProcessInfo.processInfo.environment["SIMULATOR_MODEL_IDENTIFIER"] ?? machine
+            if model.hasPrefix("iPad") { return .iPad }
+            if model.hasPrefix("iPhone") || model.hasPrefix("iPod") { return .iPhone }
+            return .other
+        }
+    #endif
 
     // MARK: - Screen Size
 
@@ -138,6 +178,18 @@ public enum LMKDevice {
             return .regular
         } else {
             return .large
+        }
+    }
+
+    /// Calls `onChange` with the new tier whenever `window`'s `ScreenSize` changes (rotation
+    /// never changes it; a resized window, a fold, or a multitasking change can), and once at
+    /// install with the current tier. Built on `LMKScene.observeGeometry(of:onChange:)`.
+    public static func observeScreenSize(of window: UIWindow, onChange: @escaping (ScreenSize) -> Void) -> LMKSceneGeometryObservation {
+        var lastTier: ScreenSize?
+        return LMKScene.observeGeometry(of: window) { geometry in
+            guard geometry.screenSize != lastTier else { return }
+            lastTier = geometry.screenSize
+            onChange(geometry.screenSize)
         }
     }
 

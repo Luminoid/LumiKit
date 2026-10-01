@@ -8,7 +8,7 @@ import Testing
 
 // MARK: - URLSessionConfiguration+LMKDebug
 
-#if DEBUG && LMK_ENABLE_NETWORK_LOGGING
+#if LMK_ENABLE_NETWORK_LOGGING
 
     import Foundation
 

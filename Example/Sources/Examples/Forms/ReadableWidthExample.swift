@@ -20,11 +20,9 @@ final class ReadableWidthDetailViewController: DetailViewController {
         lmk_formKeyCommands(save: #selector(saveTapped), cancel: #selector(cancelTapped))
     }
 
-    override func viewDidLoad() {
-        super.viewDidLoad()
-
+    override func setupStackContent() {
         addSectionHeader("lmk_pinReadableWidth")
-        stack.addArrangedSubview(UILabel.lmk_make(
+        stackView.addArrangedSubview(UILabel.lmk_make(
             .caption,
             text: "Content fills narrow screens inside the inset and caps at LMKLayout.readableContentMaxWidth on wide iPads and Mac windows, centered. "
                 + "Rotate or resize the window to see the cap kick in."
@@ -40,10 +38,10 @@ final class ReadableWidthDetailViewController: DetailViewController {
             make.top.bottom.equalToSuperview().inset(LMKSpacing.medium)
             make.height.equalTo(LMKLayout.rowHeightCompact)
         }
-        stack.addArrangedSubview(container)
+        stackView.addArrangedSubview(container)
 
         addSectionHeader("lmk_readableWidthGuide")
-        stack.addArrangedSubview(UILabel.lmk_make(.caption, text: "The same geometry as a layout guide on any view, for content that keeps its own constraints."))
+        stackView.addArrangedSubview(UILabel.lmk_make(.caption, text: "The same geometry as a layout guide on any view, for content that keeps its own constraints."))
         let guideHost = UIView()
         guideHost.backgroundColor = LMKColor.backgroundSecondary
         guideHost.lmk_applyCornerRadius(LMKCornerRadius.medium)
@@ -55,17 +53,17 @@ final class ReadableWidthDetailViewController: DetailViewController {
             make.top.bottom.equalToSuperview().inset(LMKSpacing.medium)
             make.height.equalTo(LMKLayout.rowHeightCompact)
         }
-        stack.addArrangedSubview(guideHost)
-        stack.addArrangedSubview(readout)
+        stackView.addArrangedSubview(guideHost)
+        stackView.addArrangedSubview(readout)
 
         addDivider()
         addSectionHeader("lmk_formKeyCommands")
-        stack.addArrangedSubview(UILabel.lmk_make(
+        stackView.addArrangedSubview(UILabel.lmk_make(
             .caption,
             text: "This page returns lmk_formKeyCommands(save:cancel:) from keyCommands: on an iPad or Mac with a hardware keyboard, "
                 + "Command-Return saves and Escape cancels (the discoverability HUD lists both). Cancel defaults to dismissing the screen when no selector is given."
         ))
-        stack.addArrangedSubview(UILabel.lmk_make(
+        stackView.addArrangedSubview(UILabel.lmk_make(
             .caption,
             text: "LMKScene.configureMacWindow(for:minimumSize:maximumSize:hidesTitleBar:) is called from this app's SceneDelegate; it is a no-op on iOS."
         ))
@@ -73,8 +71,8 @@ final class ReadableWidthDetailViewController: DetailViewController {
 
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
-        readout.text = "Page width \(Int(view.bounds.width)) pt, pinned block \(Int(pinnedBlock.bounds.width)) pt, guide block \(Int(guideBlock.bounds.width)) pt, "
-            + "cap \(Int(LMKLayout.readableContentMaxWidth)) pt"
+        readout.lmk_setText("Page width \(Int(view.bounds.width)) pt, pinned block \(Int(pinnedBlock.bounds.width)) pt, guide block \(Int(guideBlock.bounds.width)) pt, "
+            + "cap \(Int(LMKLayout.readableContentMaxWidth)) pt")
     }
 
     @objc private func saveTapped() {

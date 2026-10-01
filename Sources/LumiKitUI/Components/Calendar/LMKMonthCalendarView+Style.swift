@@ -66,13 +66,14 @@ public extension LMKMonthCalendarView {
         public var headerLayout: HeaderLayout?
         /// `nil` = `minimumTouchTarget`.
         public var headerHeight: CGFloat?
-        /// Background, corners, border, shadow, and insets of the header band (default clear).
+        /// Background, corners, border, shadow, and insets of the header band (default clear); the
+        /// insets pad the band, which grows past `headerHeight` to keep its content.
         public var headerSurface: LMKSurfaceStyle
         /// `nil` = `.h3`.
         public var titleTextStyle: LMKTextStyle?
         /// `nil` = `textPrimary`.
         public var titleColor: UIColor?
-        /// Whether the title is a button (`onMonthTitleTapped`); `nil` = no.
+        /// Whether the title is a button (`onMonthTitleTap`); `nil` = no.
         public var titleIsTappable: Bool?
         /// Whether a Today button shows in the header; `nil` = no.
         public var showsTodayButton: Bool?
@@ -90,7 +91,7 @@ public extension LMKMonthCalendarView {
         public var weekdayRowHeight: CGFloat?
         /// `nil` = `.captionMedium`.
         public var weekdayTextStyle: LMKTextStyle?
-        /// `nil` = `textTertiary`.
+        /// `nil` = `textSecondary`.
         public var weekdayColor: UIColor?
         /// `nil` = `.narrow` ("S M T W T F S").
         public var weekdaySymbolStyle: LMKDateFormat.WeekdaySymbolStyle?

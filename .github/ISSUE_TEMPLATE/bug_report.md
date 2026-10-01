@@ -18,7 +18,7 @@ labels: bug
 **Environment**
 
 - LumiKit version (tag or commit):
-- Target(s) imported (LumiKitCore / LumiKitUI / LumiKitNetwork / LumiKitLottie):
+- Product(s) imported (LumiKitCore / LumiKitUI / LumiKitPhoto / LumiKitDebug / LumiKitLottie):
 - Xcode version (`xcodebuild -version`):
 - Platform and OS version (iOS / iPadOS / Mac Catalyst; simulator or device):
 - Dynamic Type size, dark mode, or Reduce Motion, if relevant:

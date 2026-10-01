@@ -29,7 +29,7 @@ public enum LMKFile {
     /// Removes items from the temporary directory, continuing past individual failures.
     ///
     /// - Parameters:
-    ///   - age: When set, only items whose modification date is at least this many seconds old are removed.
+    ///   - age: When set, only items whose modification date is known and at least this many seconds old are removed.
     ///   - prefix: When set, only items whose file name starts with the prefix are removed.
     /// - Returns: The number of items removed.
     @discardableResult
@@ -37,9 +37,10 @@ public enum LMKFile {
         removeTemporaryFiles(olderThan: age, matchingPrefix: prefix)
     }
 
-    /// `clearTemporaryFiles(olderThan:matchingPrefix:)` off the calling task.
+    /// `clearTemporaryFiles(olderThan:matchingPrefix:)` on a detached utility task, so the caller's
+    /// actor never blocks on the file system.
     @discardableResult
-    public static func clearTemporaryFiles(olderThan age: TimeInterval? = nil, matchingPrefix prefix: String? = nil) async -> Int {
+    public static func clearTemporaryFilesInBackground(olderThan age: TimeInterval? = nil, matchingPrefix prefix: String? = nil) async -> Int {
         await Task.detached(priority: .utility) {
             removeTemporaryFiles(olderThan: age, matchingPrefix: prefix)
         }.value
@@ -64,8 +65,9 @@ public enum LMKFile {
         for item in items {
             if let prefix, !item.lastPathComponent.hasPrefix(prefix) { continue }
             if let cutoff {
+                // An item whose age is unknown is kept: the age filter only removes what it can date.
                 let modified = (try? item.resourceValues(forKeys: [.contentModificationDateKey]))?.contentModificationDate
-                if let modified, modified > cutoff { continue }
+                guard let modified, modified <= cutoff else { continue }
             }
             do {
                 try fileManager.removeItem(at: item)

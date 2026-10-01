@@ -28,7 +28,7 @@
 "switch.off.accessibilityValue" = "关";
 "button.on.accessibilityValue" = "开";
 "button.off.accessibilityValue" = "关";
-"tip.dismiss.accessibilityHint" = "点按任意位置关闭";
+"tip.dismiss.accessibilityHint" = "轻点任意位置关闭";
 "tip.dismissButton" = "知道了";
 "datePicker.confirm" = "确定";
 "datePicker.from" = "从";
@@ -37,7 +37,7 @@
 "datePicker.selectDatesPrompt" = "选择日期";
 "toast.dismiss.accessibilityLabel" = "关闭";
 "toast.undo" = "撤销";
-"loadingState.loading.accessibilityLabel" = "加载中";
+"loadingState.loading.accessibilityLabel" = "正在加载";
 "floatingButton.move.topLeading" = "移到左上角";
 "floatingButton.move.topTrailing" = "移到右上角";
 "floatingButton.move.bottomLeading" = "移到左下角";
@@ -51,6 +51,7 @@
 "alert.delete" = "删除";
 "alert.deleteConfirmation.title" = "删除“%@”？";
 "alert.deleteConfirmation.message" = "此操作无法撤销。";
+"alert.countdownConfirmation.confirmTitleFormat" = "%1$@（%2$lld）";
 "formKeyCommands.save" = "保存";
 "formKeyCommands.cancel" = "取消";
 "ratingControl.accessibilityLabel" = "评分";
@@ -58,6 +59,8 @@
 "copyableLabel.copy" = "拷贝";
 "photoButton.add.accessibilityLabel" = "添加照片";
 "photoButton.change.accessibilityLabel" = "更换照片";
+"textField.clear.accessibilityLabel" = "清除";
+"textInput.counter.accessibilityLabel" = "已输入 %lld 个字符，上限 %lld 个";
 "monthCalendar.today" = "今天";
 "monthCalendar.previousMonth.accessibilityLabel" = "上个月";
 "monthCalendar.nextMonth.accessibilityLabel" = "下个月";
@@ -68,7 +71,7 @@
 "sortMenu.descending" = "降序";
 "detailCard.removeLink.accessibilityLabel" = "移除链接";
 "detailCard.loading.accessibilityLabel" = "正在加载";
-"detailCard.photoSelected.accessibilityValue" = "已选择";
+"detailCard.photoSelected.accessibilityValue" = "已选中";
 "detailCard.photo.accessibilityLabel" = "第 %lld 张照片，共 %lld 张";
 "detailPage.edit" = "编辑";
 "detailPage.share" = "分享";

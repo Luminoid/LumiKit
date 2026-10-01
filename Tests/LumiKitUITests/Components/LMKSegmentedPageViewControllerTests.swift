@@ -41,6 +41,30 @@ private final class EmptyPagesVC: LMKSegmentedPageViewController {
     }
 }
 
+/// Vetoes page 1 from `setPage`, the way a subclass gating navigation would.
+private final class VetoingPageVC: LMKSegmentedPageViewController {
+    let page0 = UIViewController()
+    let page1 = UIViewController()
+    var themedContent: [String] = []
+
+    init() {
+        super.init(titles: ["A", "B"])
+    }
+
+    override func makePages() -> [UIViewController] {
+        [page0, page1]
+    }
+
+    override func setPage(_ index: Int, animated: Bool) {
+        guard index != 1 else { return }
+        super.setPage(index, animated: animated)
+    }
+
+    override func applyContentTheme(_ theme: LMKTheme) {
+        themedContent.append("content")
+    }
+}
+
 /// Hosts its pages in a container pinned below custom chrome, the way an app using a custom
 /// navigation bar does. The container is built before `super.viewDidLoad()` installs the pages.
 private final class ContainerHostedPageVC: LMKSegmentedPageViewController {
@@ -222,12 +246,14 @@ struct LMKSegmentedPageViewControllerTests {
             segmentedControl: LMKSegmentedControl.Style(corners: .rounded),
             backgroundColor: .red,
             edgePanBandWidth: 40,
-            commitVelocityThreshold: 500
+            commitVelocityThreshold: 500,
+            pageTransitionDuration: 0.1
         ))
         vc.loadViewIfNeeded()
         #expect(vc.view.backgroundColor == UIColor.red)
         #expect(vc.edgePanBandWidth == 40)
         #expect(vc.commitVelocityThreshold == 500)
+        #expect(vc.resolvedStyle.pageTransitionDuration == 0.1)
         #expect(vc.segmentedControl.style.corners == .rounded)
         #expect(vc.segmentedControl.style.itemPadding == LMKSpacing.xl)
 
@@ -238,5 +264,127 @@ struct LMKSegmentedPageViewControllerTests {
         defer { window.isHidden = true }
         themed.applyTheme(theme)
         #expect(themed.view.backgroundColor == UIColor.magenta)
+    }
+
+    @Test
+    func `setPages and setPage before the view loads take effect once it does`() {
+        let vc = TestSegmentedPageVC()
+        let a = UIViewController()
+        let b = UIViewController()
+        vc.setPages([a, b], titles: ["One", "Two"])
+        #expect(vc.isViewLoaded, "setPages loads the view rather than corrupt it")
+        #expect(vc.pages == [a, b], "makePages() does not overwrite pages handed over before the load")
+        #expect(vc.currentViewController === a)
+        #expect(vc.page0.parent == nil)
+        #expect(vc.segmentedControl.items == ["One", "Two"])
+
+        let deepLinked = TestSegmentedPageVC()
+        deepLinked.setPage(1, animated: false)
+        #expect(deepLinked.currentPageIndex == 1)
+        #expect(deepLinked.currentViewController === deepLinked.page1)
+        #expect(deepLinked.segmentedControl.selectedSegmentIndex == 1)
+    }
+
+    @Test
+    func `A segment tap the page change rejects snaps the control back`() {
+        let vc = VetoingPageVC()
+        vc.loadViewIfNeeded()
+        vc.segmentedControl.setSelectedSegmentIndex(1, animated: false)
+        vc.segmentedControl.onValueChange?(1)
+        #expect(vc.currentPageIndex == 0)
+        #expect(vc.segmentedControl.selectedSegmentIndex == 0, "the control never shows a segment whose page is not up")
+    }
+
+    @Test
+    func `Mid-slide: a second tap snaps back and pages handed over are queued until it settles`() async {
+        let vc = TestSegmentedPageVC()
+        let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 390, height: 844))
+        window.rootViewController = vc
+        window.isHidden = false
+        defer { window.isHidden = true }
+        vc.view.layoutIfNeeded()
+
+        vc.setPage(1, animated: true)
+        #expect(vc.currentPageIndex == 1)
+        let inFlight = vc.isAnimatingPageChange
+        let a = UIViewController()
+        let b = UIViewController()
+        let c = UIViewController()
+        vc.segmentedControl.setSelectedSegmentIndex(0, animated: false)
+        vc.segmentedControl.onValueChange?(0)
+        vc.setPages([a, b, c], titles: ["One", "Two", "Three"])
+        if inFlight {
+            #expect(vc.currentPageIndex == 1, "a tap during the slide is rejected")
+            #expect(vc.segmentedControl.selectedSegmentIndex == 1, "and the control follows the page")
+            #expect(vc.pages == [vc.page0, vc.page1], "new pages wait for the slide")
+            #expect(vc.segmentedControl.items == ["A", "B"])
+        }
+        await LMKWait.until { !vc.isAnimatingPageChange && vc.pages.count == 3 }
+        #expect(vc.pages == [a, b, c])
+        #expect(vc.segmentedControl.items == ["One", "Two", "Three"])
+        #expect(vc.currentPageIndex == (inFlight ? 1 : 0), "the index survives the replacement when in range")
+        #expect(vc.currentViewController === (inFlight ? b : a))
+        #expect(vc.page1.parent == nil)
+        #expect(vc.children.count == 1)
+    }
+
+    @Test
+    func `A drag commits on the clamped offset and on a flick toward the neighbor`() {
+        typealias Pages = LMKSegmentedPageViewController
+        // Toward the next page (direction 1) the finger moves toward the leading edge (negative).
+        #expect(Pages.interactiveOffset(for: -100, direction: 1, width: 390, hasNeighbor: true) == -100)
+        #expect(Pages.interactiveOffset(for: -500, direction: 1, width: 390, hasNeighbor: true) == -390, "one page at most")
+        #expect(Pages.interactiveOffset(for: 300, direction: 1, width: 390, hasNeighbor: true) == 0, "the wrong way stays put")
+        #expect(Pages.interactiveOffset(for: 300, direction: -1, width: 390, hasNeighbor: true) == 300)
+        #expect(Pages.interactiveOffset(for: 100, direction: -1, width: 390, hasNeighbor: false) == 30, "a rubber band at the ends")
+
+        let threshold: CGFloat = 800
+        #expect(Pages.commitsInteractiveDrag(offset: -200, velocity: 0, direction: 1, width: 390, commitVelocityThreshold: threshold))
+        #expect(!Pages.commitsInteractiveDrag(offset: -100, velocity: 0, direction: 1, width: 390, commitVelocityThreshold: threshold))
+        #expect(
+            !Pages.commitsInteractiveDrag(offset: 0, velocity: 0, direction: 1, width: 390, commitVelocityThreshold: threshold),
+            "reversed past the start: the raw translation would have committed"
+        )
+        #expect(Pages.commitsInteractiveDrag(offset: -20, velocity: -900, direction: 1, width: 390, commitVelocityThreshold: threshold), "a flick toward the neighbor")
+        #expect(!Pages.commitsInteractiveDrag(offset: -20, velocity: 900, direction: 1, width: 390, commitVelocityThreshold: threshold), "a flick back does not")
+        #expect(Pages.commitsInteractiveDrag(offset: 20, velocity: 900, direction: -1, width: 390, commitVelocityThreshold: threshold))
+    }
+
+    @Test
+    func `The page pan leaves the segmented control and sliders alone and coexists only with a scroll view's pan`() {
+        let vc = ContainerHostedPageVC()
+        vc.loadViewIfNeeded()
+        vc.view.layoutIfNeeded()
+        #expect(!vc.pagePanShouldReceiveTouch(on: vc.segmentedControl))
+        #expect(!vc.pagePanShouldReceiveTouch(on: vc.segmentedControl.subviews.first), "nor a touch on its indicator")
+        let slider = UISlider()
+        vc.page0.view.addSubview(slider)
+        #expect(!vc.pagePanShouldReceiveTouch(on: slider))
+        #expect(vc.pagePanShouldReceiveTouch(on: vc.page0.view))
+        #expect(vc.pagePanShouldReceiveTouch(on: nil))
+
+        let delegate = vc.pagePanRecognizer.delegate
+        let scrollView = UIScrollView()
+        #expect(delegate?.gestureRecognizer?(vc.pagePanRecognizer, shouldRecognizeSimultaneouslyWith: scrollView.panGestureRecognizer) == true)
+        #expect(delegate?.gestureRecognizer?(vc.pagePanRecognizer, shouldRecognizeSimultaneouslyWith: UIPanGestureRecognizer()) == false)
+        let controlPan = vc.segmentedControl.gestureRecognizers?.first { $0 is UIPanGestureRecognizer }
+        #expect(controlPan != nil)
+        if let controlPan {
+            #expect(delegate?.gestureRecognizer?(vc.pagePanRecognizer, shouldRecognizeSimultaneouslyWith: controlPan) == false, "the indicator drag never pages")
+        }
+    }
+
+    @Test
+    func `applyContentTheme runs before didApplyStyle on every theme pass`() {
+        let vc = VetoingPageVC()
+        var order: [String] = []
+        vc.didApplyStyle = { _ in order.append("didApplyStyle") }
+        vc.loadViewIfNeeded()
+        #expect(vc.themedContent.count >= 1)
+        vc.themedContent.removeAll()
+        order.removeAll()
+        vc.didApplyStyle = { [unowned vc] _ in order.append(contentsOf: vc.themedContent + ["didApplyStyle"]) }
+        vc.applyTheme(LMKTheme())
+        #expect(order == ["content", "didApplyStyle"])
     }
 }

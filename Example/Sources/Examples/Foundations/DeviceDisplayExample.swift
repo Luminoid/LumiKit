@@ -6,7 +6,6 @@
 //
 
 import LumiKitUI
-import SnapKit
 import UIKit
 
 // MARK: - Device & Display
@@ -14,11 +13,9 @@ import UIKit
 final class DeviceDisplayDetailViewController: DetailViewController {
     private var valueLabels: [String: UILabel] = [:]
 
-    override func viewDidLoad() {
-        super.viewDidLoad()
-
+    override func setupStackContent() {
         addSectionHeader("LMKDevice")
-        stack.addArrangedSubview(UILabel.lmk_make(.caption, text: "Tiers come from the window's size classes and bounds, never the device model. "
+        stackView.addArrangedSubview(UILabel.lmk_make(.caption, text: "Tiers come from the window's size classes and bounds, never the device model. "
                 + "Rotate, resize the window (iPad multitasking, Stage Manager), or fold an iPhone Duo: every row updates live."))
         addInfoRow(key: "deviceType", title: "deviceType")
         addInfoRow(key: "screenSize", title: "screenSize (key window)")
@@ -45,7 +42,7 @@ final class DeviceDisplayDetailViewController: DetailViewController {
             "extraLarge: regular × regular (iPad, Mac, iPhone Duo inner display)",
         ]
         for line in tierLines {
-            stack.addArrangedSubview(UILabel.lmk_make(.caption, text: line))
+            stackView.addArrangedSubview(UILabel.lmk_make(.caption, text: line))
         }
         refreshValues()
     }
@@ -62,12 +59,12 @@ final class DeviceDisplayDetailViewController: DetailViewController {
         row.alignment = .firstBaseline
         let titleLabel = UILabel.lmk_make(.body, text: title, color: LMKColor.textSecondary)
         titleLabel.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        // The value hugs its content at the trailing edge of the row, so no alignment is forced (RTL flips it).
         let valueLabel = UILabel.lmk_make(.bodyMedium, text: "…")
-        valueLabel.textAlignment = .right
         valueLabel.setContentCompressionResistancePriority(.required, for: .horizontal)
         row.addArrangedSubview(titleLabel)
         row.addArrangedSubview(valueLabel)
-        stack.addArrangedSubview(row)
+        stackView.addArrangedSubview(row)
         valueLabels[key] = valueLabel
     }
 
@@ -89,7 +86,7 @@ final class DeviceDisplayDetailViewController: DetailViewController {
     }
 
     private func setValue(_ key: String, _ value: String) {
-        valueLabels[key]?.text = value
+        valueLabels[key]?.lmk_setText(value)
     }
 
     private static func format(_ size: CGSize) -> String {

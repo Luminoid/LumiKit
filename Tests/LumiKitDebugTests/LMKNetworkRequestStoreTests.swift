@@ -5,7 +5,7 @@
 //  Tests for LMKNetworkRequestStore — thread safety and ring buffer behavior.
 //
 
-#if DEBUG
+#if LMK_ENABLE_NETWORK_LOGGING
 
     import Foundation
     import os
@@ -26,6 +26,17 @@
             #expect(store.records.count == 1)
             #expect(store.records.first?.id == id)
             #expect(store.records.first?.request.url == url)
+        }
+
+        @Test
+        func `A capacity below one keeps one record`() throws {
+            let store = LMKNetworkRequestStore(maxRecords: 0)
+            let url = try #require(URL(string: "https://example.com"))
+            _ = store.addRequest(url, method: "GET", headers: [:], body: nil)
+            let newest = store.addRequest(url, method: "POST", headers: [:], body: nil)
+
+            #expect(store.count == 1)
+            #expect(store.records.first?.id == newest)
         }
 
         @Test

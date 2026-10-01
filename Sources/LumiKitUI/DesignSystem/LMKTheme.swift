@@ -211,9 +211,9 @@ public nonisolated extension LMKTheme {
         apply(.default)
     }
 
-    /// Calls `handler` after every `apply` until the returned observation is cancelled or released.
+    /// Calls `handler` after every `apply` until the returned observation is cancelled or
+    /// released, so keep the observation somewhere.
     @MainActor
-    @discardableResult
     static func observe(_ handler: @escaping @MainActor (LMKTheme) -> Void) -> LMKThemeObservation {
         let id = UUID()
         LMKThemeObservers.handlers[id] = handler

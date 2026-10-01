@@ -17,16 +17,27 @@ import UIKit
 /// ```swift
 /// let calendar = LMKMonthCalendarView()
 /// calendar.selectionMode = .single
-/// calendar.configure(month: .current(), today: .today(), selection: .empty, decorations: dots)
+/// calendar.configure(month: .current(), selection: .empty, decorations: dots)
 /// calendar.onSelectionChange = { [weak self] selection in self?.showEvents(for: selection) }
-/// calendar.onMonthChanged = { [weak self] month in self?.loadDecorations(for: month) }
+/// calendar.onMonthChange = { [weak self] month in self?.loadDecorations(for: month) }
 /// ```
 ///
 /// **Ownership of the month.** By default the view pages itself and reports through
-/// `onMonthChanged`. Set `onMonthChangeProposed` for the stateless contract: the view never
+/// `onMonthChange`. Set `onMonthChangeRequest` for the stateless contract: the view never
 /// repages itself; the host decides and calls `configure(...)` or `setVisibleMonth(_:animated:)`
 /// (a swipe that the host ignores snaps back). Selection always runs through the reducer and is
 /// reported by `onSelectionChange`; `configure` and `setSelection` overwrite it.
+///
+/// **Today.** Left to the view (`configure(today: nil)`, the default), the today mark follows
+/// the system day (the date on the device's clock in its current time zone, whatever time zone
+/// `calendar` lays the grid out in) and moves at midnight, after a clock change, or when the time
+/// zone changes. A day the host passes to `configure(today:)` or `setToday(_:)` is pinned until the
+/// host passes another.
+///
+/// **Calendars.** Days and months are Gregorian civil dates whatever `calendar` is: the grid,
+/// the keys, and the paging use `calendar.lmk_civilCalendar`, and the title, weekday row, and
+/// VoiceOver dates format through `calendar.lmk_civilDisplayCalendar` (the calendar itself when
+/// its months are the Gregorian months, as with the Japanese and Buddhist calendars).
 ///
 /// The height is intrinsic (`preferredHeight(for:)`): four to six week rows with
 /// `Style.weekRows == .fitMonth`, always six with `.alwaysSix`. Constrain the width only.
@@ -43,6 +54,7 @@ public final class LMKMonthCalendarView: UIView, LMKThemeApplying {
 
     // MARK: - Public API
 
+    /// The calendar the view was created with (its time zone and first weekday shape the grid).
     public let calendar: Calendar
     public let locale: Locale
 
@@ -60,8 +72,10 @@ public final class LMKMonthCalendarView: UIView, LMKThemeApplying {
     /// The style last resolved against the theme.
     public private(set) var resolvedStyle = Style()
 
-    /// How taps select. Default `.single`.
-    public var selectionMode: LMKCalendarSelectionMode = .single
+    /// How taps select. Default `.single`; changing it re-renders the marks.
+    public var selectionMode: LMKCalendarSelectionMode = .single {
+        didSet { guard selectionMode != oldValue else { return }; render() }
+    }
 
     /// Days before this one are disabled and months before it cannot be shown.
     public var minimumDay: LMKCalendarDay? {
@@ -88,17 +102,17 @@ public final class LMKMonthCalendarView: UIView, LMKThemeApplying {
     public private(set) var decorations: [LMKCalendarDay: LMKCalendarDayDecoration] = [:]
 
     /// Called with the day on every tap of an enabled day, before the selection reducer runs.
-    public var onDaySelected: ((LMKCalendarDay) -> Void)?
+    public var onDayTap: ((LMKCalendarDay) -> Void)?
     /// Called after a tap changed the selection (never for `setSelection` / `configure`).
     public var onSelectionChange: ((LMKCalendarSelection) -> Void)?
     /// The stateless contract: set it and the view never repages itself; the host decides.
-    public var onMonthChangeProposed: ((LMKCalendarMonth) -> Void)?
+    public var onMonthChangeRequest: ((LMKCalendarMonth) -> Void)?
     /// Called after the view paged itself (chevrons, swipes, the Today button, `showNextMonth`).
-    public var onMonthChanged: ((LMKCalendarMonth) -> Void)?
+    public var onMonthChange: ((LMKCalendarMonth) -> Void)?
     /// Called when the (tappable) month title is tapped.
-    public var onMonthTitleTapped: (() -> Void)?
+    public var onMonthTitleTap: (() -> Void)?
     /// Called when the Today button is tapped; when `nil` the view shows today's month itself.
-    public var onTodayTapped: (() -> Void)?
+    public var onTodayTap: (() -> Void)?
 
     // MARK: - Views
 
@@ -119,22 +133,41 @@ public final class LMKMonthCalendarView: UIView, LMKThemeApplying {
 
     // MARK: - Internal state
 
-    /// The month the grid currently renders (the neighbour during a drag).
+    /// The month the grid currently renders (the neighbour during a drag or a pending proposal).
     var renderedMonth: LMKCalendarMonth
     /// Extra rows kept visible during a drag so a 5-row and a 6-row month share a height.
     var minimumRenderedRows = 0
     var currentRowCount = 0
+    /// Whether a drag, a settle, or a programmatic slide is in flight.
     var isPaging = false
+    /// Whether the finger is down on a drag this gesture began (a settle is `isPaging` alone).
+    var isDragging = false
     var dragDirection = 0
     var dragTarget: LMKCalendarMonth?
+    /// The outgoing grid image that slides out with the finger.
+    var pagingSnapshot: UIView?
+    /// The settle or slide in flight, owned so a newer transition can finish it first.
+    var pagingAnimator: UIViewPropertyAnimator?
+    var pagingCompletion: LMKOnceCompletion?
+    /// Bumped by every transition and every cancel: a completion from an older transition is a no-op.
+    var pagingGeneration = 0
+    /// Bumped whenever the host sets the month (`configure`, `setVisibleMonth`): a proposal the host
+    /// answered is not snapped back.
+    var hostMonthGeneration = 0
+    /// The snap-back after an unanswered proposal, one main-queue turn later.
+    var snapBackTask: Task<Void, Never>?
     lazy var panGesture: UIPanGestureRecognizer = {
         let pan = UIPanGestureRecognizer(target: self, action: #selector(handlePan(_:)))
         pan.delegate = panDelegate
         return pan
     }()
 
+    /// The clock behind the system today. Test hook.
+    var currentDate: () -> Date = { Date() }
+
     private lazy var panDelegate = LMKMonthCalendarPanDelegate(owner: self)
     private var contentInsetsConstraint: Constraint?
+    private var headerInsetsConstraint: Constraint?
     private var headerHeightConstraint: Constraint?
     private var weekdayHeightConstraint: Constraint?
     private var rowHeightConstraints: [Constraint] = []
@@ -144,12 +177,21 @@ public final class LMKMonthCalendarView: UIView, LMKThemeApplying {
     private var numeralLineHeight: CGFloat = 0
     private var headerSpacing: CGFloat = 8
     private var weekdaySpacing: CGFloat = 4
+    /// Whether the today mark follows the system day (`configure(today: nil)`) or a host-pinned day.
+    private var followsSystemToday = true
 
     static let rowCapacity = 6
     static let columnCount = 7
+    /// Built-in metrics behind the `nil` style fields.
+    static let defaultWeekdayRowHeight: CGFloat = 24
+    static let defaultReservedEdgeBandWidth: CGFloat = 24
+    static let defaultCommitFraction: CGFloat = 0.4
+    static let defaultFlickVelocity: CGFloat = 300
 
+    /// The formatting context: the calendar's own names when its months are the Gregorian months,
+    /// the civil twin's otherwise.
     var dateContext: LMKDateFormat.Context {
-        LMKDateFormat.Context(locale: locale, calendar: calendar, timeZone: calendar.timeZone)
+        LMKDateFormat.Context(locale: locale, calendar: calendar.lmk_civilDisplayCalendar, timeZone: calendar.timeZone)
     }
 
     // MARK: - Initialization
@@ -160,13 +202,16 @@ public final class LMKMonthCalendarView: UIView, LMKThemeApplying {
         self.calendar = calendar
         self.locale = locale
         self.style = style
-        let month = LMKCalendarMonth.current(calendar: calendar)
+        var local = calendar
+        local.timeZone = .current
+        let month = LMKCalendarMonth.current(calendar: local)
         visibleMonth = month
         renderedMonth = month
-        today = .today(calendar: calendar)
+        today = .today(calendar: local)
         super.init(frame: .zero)
         setupUI()
         rebuildCells()
+        NotificationCenter.default.addObserver(self, selector: #selector(handleSignificantTimeChange), name: UIApplication.significantTimeChangeNotification, object: nil)
         lmk_startApplyingTheme()
     }
 
@@ -182,6 +227,10 @@ public final class LMKMonthCalendarView: UIView, LMKThemeApplying {
         fatalError("init(coder:) has not been implemented")
     }
 
+    deinit {
+        snapBackTask?.cancel()
+    }
+
     // MARK: - Setup
 
     private func setupUI() {
@@ -189,17 +238,19 @@ public final class LMKMonthCalendarView: UIView, LMKThemeApplying {
         contentStack.alignment = .fill
         addSubview(contentStack)
         contentStack.snp.makeConstraints { make in
-            contentInsetsConstraint = make.edges.equalToSuperview().constraint
+            contentInsetsConstraint = make.directionalEdges.equalToSuperview().constraint
         }
 
         headerStack.axis = .horizontal
         headerStack.alignment = .center
         headerView.addSubview(headerStack)
         headerStack.snp.makeConstraints { make in
-            make.edges.equalToSuperview()
+            headerInsetsConstraint = make.directionalEdges.equalToSuperview().constraint
         }
+        // Sizes along the stack axis sit just below required: a hidden arranged view carries the
+        // stack's own hiding constraint, and both must be satisfiable at once.
         headerView.snp.makeConstraints { make in
-            headerHeightConstraint = make.height.equalTo(44).constraint
+            headerHeightConstraint = make.height.equalTo(44).priority(999).constraint
         }
         titleButton.contentHorizontalAlignment = .leading
         // The header's spare width belongs to the title (or the spacer): a glyph button that
@@ -208,7 +259,7 @@ public final class LMKMonthCalendarView: UIView, LMKThemeApplying {
             button.setContentHuggingPriority(.required, for: .horizontal)
             button.setContentCompressionResistancePriority(.required, for: .horizontal)
         }
-        titleButton.onTap = { [weak self] in self?.onMonthTitleTapped?() }
+        titleButton.onTap = { [weak self] in self?.onMonthTitleTap?() }
         previousButton.onTap = { [weak self] in self?.showPreviousMonth() }
         nextButton.onTap = { [weak self] in self?.showNextMonth() }
         todayButton.onTap = { [weak self] in self?.handleTodayTapped() }
@@ -216,7 +267,7 @@ public final class LMKMonthCalendarView: UIView, LMKThemeApplying {
         weekdayRow.axis = .horizontal
         weekdayRow.distribution = .fillEqually
         weekdayRow.snp.makeConstraints { make in
-            weekdayHeightConstraint = make.height.equalTo(24).constraint
+            weekdayHeightConstraint = make.height.equalTo(Self.defaultWeekdayRowHeight).priority(999).constraint
         }
         for _ in 0 ..< Self.columnCount {
             let label = UILabel()
@@ -243,7 +294,7 @@ public final class LMKMonthCalendarView: UIView, LMKThemeApplying {
             rowStacks.append(row)
             gridStack.addArrangedSubview(row)
             row.snp.makeConstraints { make in
-                rowHeightConstraints.append(make.height.equalTo(44).constraint)
+                rowHeightConstraints.append(make.height.equalTo(44).priority(999).constraint)
             }
         }
         gridContainer.addGestureRecognizer(panGesture)
@@ -296,17 +347,17 @@ public final class LMKMonthCalendarView: UIView, LMKThemeApplying {
         let accent = resolved.accent ?? LMKColor.primary
         maximumContentSizeCategory = resolved.maximumContentSizeCategory ?? .extraExtraLarge
 
-        let insets = resolved.contentInsets ?? .lmk_all(theme.spacing.small)
-        contentInsetsConstraint?.update(inset: UIEdgeInsets(top: insets.top, left: insets.leading, bottom: insets.bottom, right: insets.trailing))
+        contentInsetsConstraint?.update(inset: resolved.contentInsets ?? .lmk_all(theme.spacing.small))
 
         // Header
         let layout = resolved.headerLayout ?? .centeredTitle
         headerView.isHidden = layout == .hidden
-        _ = headerView.lmk_apply(surface: resolved.headerSurface, defaults: LMKSurfaceStyle(background: .clear), clipsContent: false)
-        headerHeightConstraint?.update(offset: max(resolved.headerHeight ?? theme.layout.minimumTouchTarget, theme.layout.minimumTouchTarget))
+        let headerSurface = headerView.lmk_apply(surface: resolved.headerSurface, defaults: LMKSurfaceStyle(background: .clear), clipsContent: false)
+        headerInsetsConstraint?.update(inset: headerSurface.contentInsets ?? .zero)
+        headerHeightConstraint?.update(offset: headerBandHeight(theme: theme))
         headerSpacing = resolved.spacingAfterHeader ?? theme.spacing.small
         contentStack.setCustomSpacing(layout == .hidden ? 0 : headerSpacing, after: headerView)
-        arrangeHeader(layout: layout, resolved: resolved)
+        arrangeHeader(layout: layout)
         let tappable = resolved.titleIsTappable ?? false
         titleButton.isUserInteractionEnabled = tappable
         titleButton.isPointerInteractionEnabled = tappable
@@ -335,14 +386,13 @@ public final class LMKMonthCalendarView: UIView, LMKThemeApplying {
 
         // Weekday row
         let weekdayStyle = resolved.weekdayTextStyle ?? .captionMedium
-        let weekdayLineHeight = LMKTextMeasurement.lineHeight(of: weekdayStyle, traits: traitCollection)
-        weekdayHeightConstraint?.update(offset: max(resolved.weekdayRowHeight ?? 24, ceil(weekdayLineHeight)))
+        weekdayHeightConstraint?.update(offset: weekdayRowHeight(theme: theme))
         weekdaySpacing = resolved.spacingAfterWeekdays ?? theme.spacing.xs
         contentStack.setCustomSpacing(weekdaySpacing, after: weekdayRow)
         let symbols = LMKDateFormat.weekdaySymbols(style: resolved.weekdaySymbolStyle ?? .narrow, context: dateContext)
         let wideSymbols = LMKDateFormat.weekdaySymbols(style: .wide, context: dateContext)
         for (index, label) in weekdayLabels.enumerated() {
-            label.lmk_apply(weekdayStyle, color: resolved.weekdayColor ?? LMKColor.textTertiary)
+            label.lmk_apply(weekdayStyle, color: resolved.weekdayColor ?? LMKColor.textSecondary)
             label.lmk_setText(symbols[lmk_safe: index])
             label.accessibilityLabel = wideSymbols[lmk_safe: index]
         }
@@ -356,7 +406,7 @@ public final class LMKMonthCalendarView: UIView, LMKThemeApplying {
         didApplyStyle?(self)
     }
 
-    private func arrangeHeader(layout: HeaderLayout, resolved _: Style) {
+    private func arrangeHeader(layout: HeaderLayout) {
         for view in headerStack.arrangedSubviews {
             headerStack.removeArrangedSubview(view)
             view.removeFromSuperview()
@@ -393,18 +443,21 @@ public final class LMKMonthCalendarView: UIView, LMKThemeApplying {
 
     // MARK: - Configuration
 
-    /// Sets the whole input in one call (the stateless contract). Cancels a drag in flight so a
-    /// reload landing mid-swipe can never reset the browsing position.
+    /// Sets the whole input in one call (the stateless contract). Cancels a drag or a settle in
+    /// flight so a reload landing mid-swipe can never reset the browsing position. A `nil`
+    /// `today` follows the system day; a day pins the mark until the next `configure` or `setToday`.
     public func configure(
         month: LMKCalendarMonth,
         today: LMKCalendarDay? = nil,
         selection: LMKCalendarSelection = .empty,
         decorations: [LMKCalendarDay: LMKCalendarDayDecoration] = [:]
     ) {
+        hostMonthGeneration += 1
         cancelPagingIfNeeded()
         visibleMonth = month
         renderedMonth = month
-        self.today = today ?? .today(calendar: calendar)
+        followsSystemToday = today == nil
+        self.today = today ?? systemToday()
         self.selection = selection
         self.decorations = decorations
         render()
@@ -420,7 +473,7 @@ public final class LMKMonthCalendarView: UIView, LMKThemeApplying {
     public func setSelection(_ selection: LMKCalendarSelection, animated: Bool = false) {
         self.selection = selection
         if animated, LMKAnimation.shouldAnimate, window != nil {
-            UIView.transition(with: gridStack, duration: LMKAnimation.Duration.fast, options: [.transitionCrossDissolve, .allowUserInteraction]) {
+            UIView.transition(with: gridStack, duration: traitCollection.lmkTheme.animation.fast, options: [.transitionCrossDissolve, .allowUserInteraction]) {
                 self.render()
             }
         } else {
@@ -428,15 +481,31 @@ public final class LMKMonthCalendarView: UIView, LMKThemeApplying {
         }
     }
 
-    /// Replaces the day marked as today.
+    /// Pins the day marked as today (the view stops following the system day until the next
+    /// `configure(today: nil)`).
     public func setToday(_ day: LMKCalendarDay) {
+        followsSystemToday = false
         today = day
         render()
     }
 
     /// Shows `month`, sliding from the right direction when `animated`. Does not report.
+    ///
+    /// Answering `onMonthChangeRequest` with the proposed month applies it without a second
+    /// slide (the swipe already showed it); echoing the month on screen during a drag is ignored.
     public func setVisibleMonth(_ month: LMKCalendarMonth, animated: Bool) {
-        guard month != visibleMonth || isPaging else { return }
+        guard month != visibleMonth else {
+            // The host answered a proposal with the month it already had: snap back now.
+            if !isPaging, renderedMonth != visibleMonth { snapBackToVisibleMonth() }
+            return
+        }
+        hostMonthGeneration += 1
+        cancelSnapBack()
+        if !isPaging, renderedMonth == month {
+            visibleMonth = month
+            render()
+            return
+        }
         let direction = month > visibleMonth ? 1 : -1
         cancelPagingIfNeeded()
         if animated {
@@ -448,13 +517,15 @@ public final class LMKMonthCalendarView: UIView, LMKThemeApplying {
         }
     }
 
-    /// Requests the previous month (through `onMonthChangeProposed` when set).
+    /// Requests the previous month (through `onMonthChangeRequest` when set).
     public func showPreviousMonth() {
+        settlePaging()
         requestMonthChange(to: visibleMonth.adding(months: -1, calendar: calendar), direction: -1)
     }
 
-    /// Requests the next month (through `onMonthChangeProposed` when set).
+    /// Requests the next month (through `onMonthChangeRequest` when set).
     public func showNextMonth() {
+        settlePaging()
         requestMonthChange(to: visibleMonth.adding(months: 1, calendar: calendar), direction: 1)
     }
 
@@ -477,49 +548,92 @@ public final class LMKMonthCalendarView: UIView, LMKThemeApplying {
 
     // MARK: - Month changes
 
-    /// Applies a month change: proposes it to the host when `onMonthChangeProposed` is set,
-    /// else pages (sliding in `direction`) and reports `onMonthChanged`.
+    /// Applies a month change: proposes it to the host when `onMonthChangeRequest` is set,
+    /// else pages (sliding in `direction`) and reports `onMonthChange`. A transition in flight
+    /// finishes first, so two quick taps report both months.
     func requestMonthChange(to month: LMKCalendarMonth, direction: Int, animated: Bool = true) {
+        settlePaging()
         guard canShow(month), month != visibleMonth else { return }
-        if let onMonthChangeProposed {
-            onMonthChangeProposed(month)
+        if let onMonthChangeRequest {
+            onMonthChangeRequest(month)
             return
         }
         if animated {
             slide(to: month, direction: direction) { [weak self] in
                 guard let self else { return }
-                onMonthChanged?(visibleMonth)
+                onMonthChange?(visibleMonth)
             }
         } else {
             visibleMonth = month
             renderedMonth = month
             render()
-            onMonthChanged?(month)
+            onMonthChange?(month)
         }
     }
 
-    /// Called after an interactive swipe settled on `month`.
+    /// Called after an interactive swipe settled on `month` (the grid already shows it).
     func finishInteractivePaging(to month: LMKCalendarMonth) {
-        if let onMonthChangeProposed {
-            onMonthChangeProposed(month)
-            // The host configured the view (or did not); either way render what it owns.
-            renderedMonth = visibleMonth
-            render()
-        } else {
+        guard let onMonthChangeRequest else {
             visibleMonth = month
             renderedMonth = month
             render()
-            onMonthChanged?(month)
+            onMonthChange?(month)
+            return
+        }
+        // The grid keeps showing the proposed month while the host decides; a host that answers
+        // one main-queue turn later (a Combine sink) must not see the old month flash by.
+        renderedMonth = month
+        render()
+        let generation = hostMonthGeneration
+        onMonthChangeRequest(month)
+        guard generation == hostMonthGeneration, renderedMonth != visibleMonth else { return }
+        cancelSnapBack()
+        snapBackTask = Task { [weak self] in
+            guard let self, !Task.isCancelled, generation == hostMonthGeneration else { return }
+            snapBackTask = nil
+            if !isPaging, renderedMonth != visibleMonth { snapBackToVisibleMonth() }
         }
     }
 
+    /// Re-renders the month the host owns after a proposal it did not take.
+    private func snapBackToVisibleMonth() {
+        cancelSnapBack()
+        renderedMonth = visibleMonth
+        render()
+    }
+
+    func cancelSnapBack() {
+        snapBackTask?.cancel()
+        snapBackTask = nil
+    }
+
     private func handleTodayTapped() {
-        if let onTodayTapped {
-            onTodayTapped()
+        if let onTodayTap {
+            onTodayTap()
         } else {
+            settlePaging()
             let month = today.calendarMonth
             requestMonthChange(to: month, direction: month > visibleMonth ? 1 : -1)
         }
+    }
+
+    // MARK: - Today
+
+    /// The device's date: a civil day, so it is read in the current time zone even when the grid's
+    /// calendar uses another one (a UTC grid keyed by civil dates still marks the user's today).
+    private func systemToday() -> LMKCalendarDay {
+        var local = calendar
+        local.timeZone = .current
+        return LMKCalendarDay(currentDate(), calendar: local)
+    }
+
+    /// Moves the today mark when the system day changed under a view that follows it.
+    @objc func handleSignificantTimeChange() {
+        guard followsSystemToday else { return }
+        let day = systemToday()
+        guard day != today else { return }
+        today = day
+        render()
     }
 
     // MARK: - Selection
@@ -527,9 +641,9 @@ public final class LMKMonthCalendarView: UIView, LMKThemeApplying {
     private func handleDayTap(_ day: LMKCalendarDay) {
         guard isDayEnabled(day), !isPaging else { return }
         if resolvedStyle.haptics ?? true { LMKHaptics.selection() }
-        onDaySelected?(day)
+        onDayTap?(day)
         guard selectionMode != .none else { return }
-        let next = selection.tapping(day, mode: selectionMode)
+        let next = selection.tapping(day, mode: selectionMode, calendar: calendar)
         guard next != selection else { return }
         selection = next
         render()
@@ -549,15 +663,25 @@ public final class LMKMonthCalendarView: UIView, LMKThemeApplying {
         return min(Self.rowCapacity, max(1, weeks))
     }
 
+    /// The header band: the style's height (floored at a touch target) plus the surface's vertical insets.
+    private func headerBandHeight(theme: LMKTheme) -> CGFloat {
+        let insets = resolvedStyle.headerSurface.contentInsets ?? .zero
+        return max(resolvedStyle.headerHeight ?? theme.layout.minimumTouchTarget, theme.layout.minimumTouchTarget) + insets.top + insets.bottom
+    }
+
+    private func weekdayRowHeight(theme _: LMKTheme) -> CGFloat {
+        let lineHeight = LMKTextMeasurement.lineHeight(of: resolvedStyle.weekdayTextStyle ?? .captionMedium, traits: traitCollection)
+        return max(resolvedStyle.weekdayRowHeight ?? Self.defaultWeekdayRowHeight, ceil(lineHeight))
+    }
+
     func height(forRows rows: Int) -> CGFloat {
         let theme = traitCollection.lmkTheme
         let insets = resolvedStyle.contentInsets ?? .lmk_all(theme.spacing.small)
         var height = insets.top + insets.bottom
         if (resolvedStyle.headerLayout ?? .centeredTitle) != .hidden {
-            height += max(resolvedStyle.headerHeight ?? theme.layout.minimumTouchTarget, theme.layout.minimumTouchTarget) + headerSpacing
+            height += headerBandHeight(theme: theme) + headerSpacing
         }
-        let weekdayLineHeight = LMKTextMeasurement.lineHeight(of: resolvedStyle.weekdayTextStyle ?? .captionMedium, traits: traitCollection)
-        height += max(resolvedStyle.weekdayRowHeight ?? 24, ceil(weekdayLineHeight)) + weekdaySpacing
+        height += weekdayRowHeight(theme: theme) + weekdaySpacing
         height += CGFloat(rows) * resolvedDayRowHeight
         return height
     }
@@ -590,7 +714,6 @@ public final class LMKMonthCalendarView: UIView, LMKThemeApplying {
         let weeks = month.weeks(in: calendar, rows: resolved.weekRows ?? .fitMonth)
         let rows = max(min(Self.rowCapacity, weeks.count), minimumRenderedRows)
         let showsAdjacent = resolved.showsAdjacentMonthDays ?? true
-        let numeralFormatter = LMKDateFormat.formatter(template: "d", context: dateContext)
         let selectedRange = selection.selectedRange
 
         for (rowIndex, row) in rowStacks.enumerated() {
@@ -600,7 +723,7 @@ public final class LMKMonthCalendarView: UIView, LMKThemeApplying {
             for column in 0 ..< Self.columnCount {
                 let cell = dayCells[rowIndex * Self.columnCount + column]
                 guard let day = weeks[lmk_safe: rowIndex]?[lmk_safe: column] else {
-                    cell.apply(state: .init(day: .today(calendar: calendar), numeral: "", isInMonth: false, isEnabled: false), decoration: .none, style: resolved, theme: theme)
+                    cell.apply(state: .init(day: today, numeral: "", isInMonth: false, isEnabled: false), decoration: .none, style: resolved, theme: theme)
                     continue
                 }
                 let inMonth = month.contains(day)
@@ -609,12 +732,14 @@ public final class LMKMonthCalendarView: UIView, LMKThemeApplying {
                 let selected = inMonth && selection.contains(day)
                 let position: LMKCalendarDayCell.RangePosition = if !selected {
                     .none
-                } else if let selectedRange, selectedRange.lowerBound != selectedRange.upperBound, selectionMode == .range {
+                } else if let selectedRange, selectedRange.lowerBound != selectedRange.upperBound {
                     day == selectedRange.lowerBound ? .start : (day == selectedRange.upperBound ? .end : .middle)
                 } else {
                     .single
                 }
-                let numeral = inMonth || showsAdjacent ? (day.date(in: calendar).map { numeralFormatter.string(from: $0) } ?? String(day.day)) : ""
+                // The bare day number in the locale's numbering system: a localized date template
+                // would add the locale's day suffix ("21日").
+                let numeral = inMonth || showsAdjacent ? LMKFormat.number(day.day, locale: locale) : ""
                 let state = LMKCalendarDayCell.DayState(
                     day: day,
                     numeral: numeral,
@@ -645,7 +770,8 @@ public final class LMKMonthCalendarView: UIView, LMKThemeApplying {
         titleButton.accessibilityLabel = monthTitle(for: renderedMonth)
     }
 
-    /// The localized title for `month`.
+    /// The localized title for `month`, in the calendar's own names when its months are the
+    /// Gregorian months ("令和8年9月" on a Japanese device), else in the civil calendar's.
     public func monthTitle(for month: LMKCalendarMonth) -> String {
         guard let date = month.date(in: calendar) else { return month.key }
         if let template = resolvedStyle.monthTitleTemplate {

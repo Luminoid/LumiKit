@@ -12,11 +12,9 @@ import UIKit
 // MARK: - Action Tile
 
 final class ActionTileDetailViewController: DetailViewController {
-    override func viewDidLoad() {
-        super.viewDidLoad()
-
+    override func setupStackContent() {
         addSectionHeader("LMKActionTile")
-        stack.addArrangedSubview(UILabel.lmk_make(
+        stackView.addArrangedSubview(UILabel.lmk_make(
             .caption,
             text: "Icon-over-label tiles for action grids. A count reads inline (\"Expenses · 3\"). "
                 + "An accent tints the background lightly and the glyph fully; a locked accent (Emergency) ignores the theme accent."
@@ -49,11 +47,11 @@ final class ActionTileDetailViewController: DetailViewController {
         let grid = UIStackView(lmk_axis: .vertical, spacing: LMKSpacing.medium, arrangedSubviews: stride(from: 0, to: made.count, by: 3).map { start in
             UIStackView(lmk_axis: .horizontal, spacing: LMKSpacing.medium, distribution: .fillEqually, arrangedSubviews: Array(made[start ..< min(start + 3, made.count)]))
         })
-        stack.addArrangedSubview(grid)
+        stackView.addArrangedSubview(grid)
 
         addDivider()
         addSectionHeader("Accent color")
-        stack.addArrangedSubview(UILabel.lmk_make(
+        stackView.addArrangedSubview(UILabel.lmk_make(
             .caption,
             text: "Pick an accent. Light accents darken for the glyph (UIColor.lmk_glyphTint) so they stay legible; the Emergency tile keeps its locked red."
         ))
@@ -64,6 +62,6 @@ final class ActionTileDetailViewController: DetailViewController {
                 tile.accentColor = accents[index].1
             }
         }
-        stack.addArrangedSubview(control)
+        stackView.addArrangedSubview(control)
     }
 }

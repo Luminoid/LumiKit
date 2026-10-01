@@ -6,7 +6,6 @@
 //
 
 import LumiKitUI
-import SnapKit
 import UIKit
 
 // MARK: - Checkbox Cell
@@ -34,21 +33,12 @@ final class CheckboxCellDetailViewController: DetailViewController, UITableViewD
         return table
     }()
 
-    override func viewDidLoad() {
-        super.viewDidLoad()
-
+    override func setupStackContent() {
         addSectionHeader("LMKCheckboxCell")
-        stack.addArrangedSubview(UILabel.lmk_make(.caption, text: "Check-off row for to-dos and checklists: checkbox + strike-through title. "
-                + "The checkbox hit area expands to the minimum touch target, and the host "
-                + "also toggles from didSelectRowAt so the whole row is a target."))
-        stack.addArrangedSubview(tableView)
-    }
-
-    private func toggleItem(at index: Int) {
-        items[index].isDone.toggle()
-        // Reload the whole table — the cell sets its checkbox image directly
-        // (never via cross-dissolve), so recycled cells can't flash a checkmark.
-        tableView.reloadData()
+        stackView.addArrangedSubview(UILabel.lmk_make(.caption, text: "Check-off row for to-dos and checklists: checkbox + strike-through title. "
+                + "The checkbox hit area expands to the minimum touch target and reports onValueChange; the host "
+                + "also toggles from didSelectRowAt with setDone(_:animated:), so the whole row is a target."))
+        stackView.addArrangedSubview(tableView)
     }
 
     // MARK: - UITableViewDataSource
@@ -66,15 +56,19 @@ final class CheckboxCellDetailViewController: DetailViewController, UITableViewD
         }
         let item = items[indexPath.row]
         cell.configure(title: item.title, isDone: item.isDone)
-        cell.onToggle = { [weak self] in
-            self?.toggleItem(at: indexPath.row)
+        // A tap on the checkbox has already flipped the cell; the host only records the value.
+        cell.onValueChange = { [weak self] isDone in
+            self?.items[indexPath.row].isDone = isDone
         }
         return cell
     }
 
     // MARK: - UITableViewDelegate
 
+    /// A tap anywhere else on the row: the host flips the value and tells the cell, which animates silently.
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
-        toggleItem(at: indexPath.row)
+        tableView.deselectRow(at: indexPath, animated: true)
+        items[indexPath.row].isDone.toggle()
+        (tableView.cellForRow(at: indexPath) as? LMKCheckboxCell)?.setDone(items[indexPath.row].isDone, animated: true)
     }
 }

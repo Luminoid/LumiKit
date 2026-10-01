@@ -173,9 +173,10 @@ public final class LMKEmptyStateView: UIView, LMKThemeApplying {
     public let iconView = UIImageView()
     public let titleLabel = UILabel()
     public let messageLabel = UILabel()
-    /// The primary action's button (`nil` without a primary action).
+    /// The primary action's button (`nil` without a primary action). The same instance stays
+    /// across theme and style changes, so `isLoading` or `isEnabled` set by the host hold.
     public private(set) var actionButton: LMKButton?
-    /// The secondary action's button (`nil` without a secondary action; never shown inline).
+    /// The secondary action's button (`nil` without a secondary action; hidden inline).
     public private(set) var secondaryActionButton: LMKButton?
     private let containerStack = UIStackView()
     private let textStack = UIStackView()
@@ -203,6 +204,9 @@ public final class LMKEmptyStateView: UIView, LMKThemeApplying {
     private var resolved = Style()
     private var iconSizeConstraint: Constraint?
     private var containerInsetsConstraint: Constraint?
+    /// The 999 guards that keep the content inside the view; they carry the same insets.
+    private var containerLeadingTopGuard: Constraint?
+    private var containerTrailingBottomGuard: Constraint?
 
     private static let iconAnimationScale: CGFloat = 0.95
     private static let iconAnimationDelay: TimeInterval = 0.05
@@ -243,9 +247,9 @@ public final class LMKEmptyStateView: UIView, LMKThemeApplying {
             // instead of breaking constraints); the hugging gives the view its content height when
             // the host imposes none. The hugging stays below UILabel's default vertical hugging (250),
             // so a taller host height centers the content instead of stretching the message.
-            containerInsetsConstraint = make.edges.equalToSuperview().priority(249).constraint
-            make.top.left.greaterThanOrEqualToSuperview().priority(999)
-            make.bottom.right.lessThanOrEqualToSuperview().priority(999)
+            containerInsetsConstraint = make.directionalEdges.equalToSuperview().priority(249).constraint
+            containerLeadingTopGuard = make.top.leading.greaterThanOrEqualToSuperview().priority(999).constraint
+            containerTrailingBottomGuard = make.bottom.trailing.lessThanOrEqualToSuperview().priority(999).constraint
         }
 
         iconView.contentMode = .scaleAspectFit
@@ -279,15 +283,24 @@ public final class LMKEmptyStateView: UIView, LMKThemeApplying {
     // MARK: - Configuration
 
     /// Sets the content and rebuilds the action buttons.
-    public func configure(_ content: Content) {
+    ///
+    /// - Parameters:
+    ///   - content: The icon, title, message, and actions to show.
+    ///   - animated: Whether the icon, text, and actions fade in (default `true`);
+    ///     pass `false` for a reload that is still empty, so nothing flashes.
+    public func configure(_ content: Content, animated: Bool = true) {
         self.content = content
+        rebuildActions()
         applyTheme(traitCollection.lmkTheme)
-        animateEntrance()
+        if animated {
+            animateEntrance()
+        }
     }
 
     /// Adds, replaces, or removes the primary action after `configure`.
     public func setAction(_ action: Action?) {
         content?.primaryAction = action
+        rebuildActions()
         applyTheme(traitCollection.lmkTheme)
         if LMKAnimation.shouldAnimate, let actionButton {
             actionButton.alpha = 0
@@ -304,13 +317,16 @@ public final class LMKEmptyStateView: UIView, LMKThemeApplying {
         let layout = layout
         let defaults = LMKSurfaceStyle(
             background: .clear,
-            corners: LMKCornerStyle.none,
-            shadow: LMKShadowSource.none,
+            corners: LMKCornerStyle.square,
+            shadow: LMKShadowSource.hidden,
             contentInsets: layout == .card ? .lmk_all(theme.spacing.large) : .lmk_all(0)
         )
         let applied = lmk_apply(surface: resolved.surface, defaults: defaults)
         let insets = applied.contentInsets ?? .lmk_all(0)
-        containerInsetsConstraint?.update(inset: UIEdgeInsets(top: insets.top, left: insets.leading, bottom: insets.bottom, right: insets.trailing))
+        containerInsetsConstraint?.update(inset: insets)
+        // The guards hold the insets when the message wraps and the low-priority edges give.
+        containerLeadingTopGuard?.update(inset: insets)
+        containerTrailingBottomGuard?.update(inset: insets)
 
         // Content
         iconView.image = content?.icon?.image
@@ -327,42 +343,57 @@ public final class LMKEmptyStateView: UIView, LMKThemeApplying {
 
         // Layout
         containerStack.axis = layout.isHorizontal ? .horizontal : .vertical
-        containerStack.alignment = layout.isHorizontal ? .center : .center
+        containerStack.alignment = .center
         containerStack.spacing = resolved.spacing ?? theme.spacing.small
         textStack.spacing = resolved.spacing ?? theme.spacing.xs
         titleLabel.textAlignment = layout.isHorizontal ? .natural : .center
         messageLabel.textAlignment = layout.isHorizontal ? .natural : .center
         containerStack.setCustomSpacing(resolved.actionSpacing ?? theme.spacing.large, after: textStack)
-        rebuildActions(theme: theme)
+        styleActions()
         actionStack.spacing = theme.spacing.small
         updateAccessibility()
         invalidateIntrinsicContentSize()
         didApplyStyle?(self)
     }
 
-    private func rebuildActions(theme: LMKTheme) {
+    /// Creates the buttons for the content's actions; only `configure` and `setAction` call it,
+    /// so a theme or style pass keeps the instances (and the state the host set on them).
+    private func rebuildActions() {
         actionButton?.removeFromSuperview()
         secondaryActionButton?.removeFromSuperview()
         actionButton = nil
         secondaryActionButton = nil
         if let primary = content?.primaryAction {
-            let button = makeButton(for: primary, defaultStyle: resolved.primaryButton ?? .filled())
+            let button = makeButton(for: primary)
             actionStack.addArrangedSubview(button)
             actionButton = button
         }
-        if let secondary = content?.secondaryAction, !layout.isHorizontal {
-            let button = makeButton(for: secondary, defaultStyle: resolved.secondaryButton ?? .ghost())
+        if let secondary = content?.secondaryAction {
+            let button = makeButton(for: secondary)
             actionStack.addArrangedSubview(button)
             secondaryActionButton = button
         }
-        actionStack.isHidden = actionStack.arrangedSubviews.isEmpty
-        if layout.isHorizontal {
-            actionButton?.style = (actionButton?.style ?? LMKButton.Style()).size(.small)
-        }
     }
 
-    private func makeButton(for action: Action, defaultStyle: LMKButton.Style) -> LMKButton {
-        let button = LMKButton(title: action.title, style: action.style.map { defaultStyle.merging($0) } ?? defaultStyle)
+    /// The buttons' styles from the actions, the style, and the layout (inline: the primary
+    /// goes small and the secondary is hidden).
+    private func styleActions() {
+        if let actionButton, let primary = content?.primaryAction {
+            var style = Self.buttonStyle(for: primary, defaultStyle: resolved.primaryButton ?? .filled())
+            if layout.isHorizontal {
+                style = style.size(.small)
+            }
+            actionButton.style = style
+        }
+        if let secondaryActionButton, let secondary = content?.secondaryAction {
+            secondaryActionButton.style = Self.buttonStyle(for: secondary, defaultStyle: resolved.secondaryButton ?? .ghost())
+            secondaryActionButton.isHidden = layout.isHorizontal
+        }
+        actionStack.isHidden = actionStack.arrangedSubviews.allSatisfy(\.isHidden)
+    }
+
+    private func makeButton(for action: Action) -> LMKButton {
+        let button = LMKButton(title: action.title)
         if let icon = action.icon {
             button.setSymbol(icon)
         }
@@ -371,6 +402,10 @@ public final class LMKEmptyStateView: UIView, LMKThemeApplying {
         button.setContentHuggingPriority(.required, for: .horizontal)
         button.setContentCompressionResistancePriority(.required, for: .horizontal)
         return button
+    }
+
+    private static func buttonStyle(for action: Action, defaultStyle: LMKButton.Style) -> LMKButton.Style {
+        action.style.map { defaultStyle.merging($0) } ?? defaultStyle
     }
 
     private static func iconSize(for layout: Layout) -> CGFloat {

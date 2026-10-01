@@ -21,9 +21,3 @@ nonisolated let lmkModuleBundle: Bundle = .module
 nonisolated func LMKLocalized(_ key: String) -> String {
     String(localized: String.LocalizationValue(key), bundle: lmkModuleBundle)
 }
-
-/// Localized format string filled with `arguments` (`%lld`, `%@`, …).
-@usableFromInline
-nonisolated func LMKLocalized(_ key: String, _ arguments: CVarArg...) -> String {
-    String(format: LMKLocalized(key), arguments: arguments)
-}

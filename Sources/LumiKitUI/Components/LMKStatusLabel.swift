@@ -24,7 +24,7 @@ public final class LMKStatusLabel: UIView, LMKThemeApplying {
         public var textStyle: LMKTextStyle?
         /// `nil` = `symbolInline`.
         public var iconSize: CGFloat?
-        /// Show the status glyph; `nil` = shown when the status has one.
+        /// Show the status glyph; `nil` = shown when the status has one (`.neutral` never has one).
         public var showsIcon: Bool?
         /// Gap between glyph and text; `nil` = `xs`.
         public var spacing: CGFloat?
@@ -140,7 +140,7 @@ public final class LMKStatusLabel: UIView, LMKThemeApplying {
         let resolved = theme.statusLabel.merging(style)
         let color = resolved.colors?[status] ?? status.color
         iconView.image = status.systemImageName.flatMap { UIImage(systemName: $0) }
-        iconView.isHidden = !(resolved.showsIcon ?? (iconView.image != nil))
+        iconView.isHidden = iconView.image == nil || resolved.showsIcon == false
         iconView.tintColor = color
         iconSizeConstraint?.update(offset: resolved.iconSize ?? theme.layout.symbolInline)
         row.spacing = resolved.spacing ?? theme.spacing.xs

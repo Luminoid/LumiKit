@@ -129,6 +129,9 @@ struct LMKCalendarDayCellTests {
         #expect(cell.point(inside: CGPoint(x: 25, y: 36), with: nil))
         #expect(!cell.point(inside: CGPoint(x: 25, y: 40), with: nil))
         cell.isEnabled = false
+        #expect(cell.point(inside: CGPoint(x: 25, y: 15), with: nil), "a disabled day absorbs its own bounds, as UIKit controls do")
+        #expect(!cell.point(inside: CGPoint(x: 25, y: -6), with: nil), "but not the expanded band")
+        cell.isHidden = true
         #expect(!cell.point(inside: CGPoint(x: 25, y: 15), with: nil))
     }
 

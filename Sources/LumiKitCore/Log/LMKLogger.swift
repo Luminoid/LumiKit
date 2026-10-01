@@ -64,7 +64,7 @@ public enum LMKLogger {
     // MARK: - Types
 
     /// How message text is marked for the unified logging system.
-    public enum Privacy: Sendable {
+    public enum Privacy: Sendable, Hashable {
         /// Messages are readable in Console and `log show` (the default).
         case `public`
         /// Messages are redacted in Console unless the device is configured to show private data.
@@ -147,7 +147,7 @@ public enum LMKLogger {
     }
 
     /// Enable in-memory log capture with a bounded ring buffer.
-    /// - Parameter maxEntries: Maximum number of entries to retain (default 500).
+    /// - Parameter maxEntries: Maximum number of entries to retain (default 500; values below 1 keep one).
     public static func enableLogStore(maxEntries: Int = 500) {
         let store = LMKLogStore(maxEntries: maxEntries)
         configuration.withLock { $0.logStore = store }
@@ -199,57 +199,59 @@ public enum LMKLogger {
 
     // MARK: - Log Levels
 
-    /// Debug logs — only emitted in DEBUG builds.
+    /// Debug logs — only emitted in DEBUG builds. The message is built only when the entry is
+    /// emitted, so an interpolation costs nothing when the level is filtered out.
     public static func debug(
-        _ message: String,
+        _ message: @autoclosure () -> String,
         category: LogCategory = .general,
         file: String = #file,
         function: String = #function,
         line: Int = #line
     ) {
         #if DEBUG
-            log(.debug, message, error: nil, category: category, file: file, function: function, line: line)
+            log(.debug, message(), error: nil, category: category, file: file, function: function, line: line)
         #endif
     }
 
     /// Info logs — emitted in all builds.
     public static func info(
-        _ message: String,
+        _ message: @autoclosure () -> String,
         category: LogCategory = .general,
         file: String = #file,
         function: String = #function,
         line: Int = #line
     ) {
-        log(.info, message, error: nil, category: category, file: file, function: function, line: line)
+        log(.info, message(), error: nil, category: category, file: file, function: function, line: line)
     }
 
     /// Warning logs — emitted in all builds.
     public static func warning(
-        _ message: String,
+        _ message: @autoclosure () -> String,
         category: LogCategory = .general,
         file: String = #file,
         function: String = #function,
         line: Int = #line
     ) {
-        log(.warning, message, error: nil, category: category, file: file, function: function, line: line)
+        log(.warning, message(), error: nil, category: category, file: file, function: function, line: line)
     }
 
     /// Error logs — always emitted, highest priority.
     public static func error(
-        _ message: String,
+        _ message: @autoclosure () -> String,
         error: (any Error)? = nil,
         category: LogCategory = .error,
         file: String = #file,
         function: String = #function,
         line: Int = #line
     ) {
-        log(.error, message, error: error, category: category, file: file, function: function, line: line)
+        log(.error, message(), error: error, category: category, file: file, function: function, line: line)
     }
 
-    /// The general entry point behind the level-specific functions.
+    /// The general entry point behind the level-specific functions. `message` is evaluated only
+    /// after the level and kill-switch checks pass.
     public static func log(
         _ level: LMKLogLevel,
-        _ message: String,
+        _ message: @autoclosure () -> String,
         error: (any Error)? = nil,
         category: LogCategory = .general,
         file: String = #file,
@@ -272,7 +274,7 @@ public enum LMKLogger {
         }
         guard let emission else { return }
 
-        var text = message
+        var text = message()
         if let error {
             text += " | Error: \(error.localizedDescription)"
         }

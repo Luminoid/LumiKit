@@ -15,13 +15,11 @@ final class EmptyStateDetailViewController: DetailViewController {
     private let toggleableEmpty = LMKEmptyStateView()
     private var actionInstalled = false
 
-    override func viewDidLoad() {
-        super.viewDidLoad()
-
+    override func setupStackContent() {
         addSectionHeader("Card Style")
         let cardEmpty = LMKEmptyStateView(style: .card)
         cardEmpty.configure(LMKEmptyStateView.Content(title: "Nothing here yet", message: "Add your first item to get started.", icon: .system("tray")))
-        stack.addArrangedSubview(cardEmpty)
+        stackView.addArrangedSubview(cardEmpty)
 
         addDivider()
         addSectionHeader("Inline Style")
@@ -35,18 +33,18 @@ final class EmptyStateDetailViewController: DetailViewController {
             }
         ))
         inlineEmpty.snp.makeConstraints { $0.height.greaterThanOrEqualTo(LMKLayout.minimumTouchTarget) }
-        stack.addArrangedSubview(inlineEmpty)
+        stackView.addArrangedSubview(inlineEmpty)
 
         addDivider()
         addSectionHeader("Full Screen Style")
         let fullEmpty = LMKEmptyStateView(style: .fullScreen)
         fullEmpty.configure(LMKEmptyStateView.Content(message: "Your collection is empty. Start by adding some items!", icon: .system("square.stack.3d.up.slash")))
         fullEmpty.snp.makeConstraints { $0.height.equalTo(200) }
-        stack.addArrangedSubview(fullEmpty)
+        stackView.addArrangedSubview(fullEmpty)
 
         addDivider()
         addSectionHeader("Actions")
-        stack.addArrangedSubview(UILabel.lmk_make(.caption, text: "Content carries a primary and a secondary action rendered below the message. "
+        stackView.addArrangedSubview(UILabel.lmk_make(.caption, text: "Content carries a primary and a secondary action rendered below the message. "
                 + "Icon, text, and buttons form one column, so the view sizes itself to its "
                 + "content (no height is pinned here); a host-imposed height wins and centers the content instead."))
         let actionEmpty = LMKEmptyStateView(style: .card)
@@ -63,18 +61,18 @@ final class EmptyStateDetailViewController: DetailViewController {
                 LMKToast.show(.info, "Import tapped", in: self)
             }
         ))
-        stack.addArrangedSubview(actionEmpty)
+        stackView.addArrangedSubview(actionEmpty)
 
         addDivider()
         addSectionHeader("setAction(_:)")
-        stack.addArrangedSubview(UILabel.lmk_make(.caption, text: "setAction adds, replaces, or removes the button after configure, "
+        stackView.addArrangedSubview(UILabel.lmk_make(.caption, text: "setAction adds, replaces, or removes the button after configure, "
                 + "for hosts whose call-to-action depends on state (permissions, "
                 + "edit rights). Passing a custom style overrides the default filled primary."))
         toggleableEmpty.style = .card
         toggleableEmpty.configure(LMKEmptyStateView.Content(message: "No downloads yet.", icon: .system("arrow.down.circle")))
-        stack.addArrangedSubview(toggleableEmpty)
+        stackView.addArrangedSubview(toggleableEmpty)
         let toggleButton = LMKButton(title: "Toggle Action", style: .outlined(.primary), target: self, action: #selector(toggleEmptyStateAction))
-        stack.addArrangedSubview(toggleButton)
+        stackView.addArrangedSubview(toggleButton)
     }
 
     @objc private func toggleEmptyStateAction() {

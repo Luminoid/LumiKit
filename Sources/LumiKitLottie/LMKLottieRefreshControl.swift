@@ -15,6 +15,9 @@ import UIKit
 ///
 /// Phase 1 (pull): the animation scrubs to `timeline.phase1EndFrame` proportionally to the pull.
 /// Phase 2 (loading): frames `phase1EndFrame...totalFrames` loop until `endRefreshing()`.
+/// The bundled ring uses `Timeline.bundled`; an injected animation gets a timeline from its
+/// `PHASE2_SPIN_LOOP` marker when it has one (the loop runs from the marker to the last frame),
+/// otherwise the whole animation loops and the pull holds its first frame. `Style.timeline` overrides both.
 ///
 /// ```swift
 /// refreshControl = LMKLottieRefreshControl.install(on: collectionView) { [weak self] in self?.reload() }
@@ -48,6 +51,16 @@ public final class LMKLottieRefreshControl: UIRefreshControl, LMKThemeApplying {
 
         /// The bundled ring animation's timeline.
         public static let bundled = Self()
+
+        /// Marker an injected animation carries at the first frame of its loading loop.
+        public static let phase2MarkerName = "PHASE2_SPIN_LOOP"
+
+        /// The timeline of `animation`: phase 1 ends at its `phase2MarkerName` marker, or at its
+        /// first frame when it has none; the loop always runs to its last frame.
+        public init(animation: LottieAnimation) {
+            let loopStart = animation.frameTime(forMarker: Self.phase2MarkerName) ?? animation.startFrame
+            self.init(phase1EndFrame: min(max(animation.startFrame, loopStart), animation.endFrame), totalFrames: animation.endFrame)
+        }
     }
 
     // MARK: - Style
@@ -55,7 +68,7 @@ public final class LMKLottieRefreshControl: UIRefreshControl, LMKThemeApplying {
     public nonisolated struct Style: Sendable, Equatable, LMKThemeExtension {
         /// Pull distance (pt) that maps to 100% of phase 1; `nil` = `theme.layout.pullThreshold`.
         public var pullThreshold: CGFloat?
-        /// Frame layout; `nil` = the bundled animation's (60 / 180).
+        /// Frame layout; `nil` = the bundled animation's (60 / 180), or `Timeline(animation:)` of an injected animation.
         public var timeline: Timeline?
         /// Shortest time the spinner stays up once refreshing; `nil` = 0.8 s.
         public var minimumSpinDuration: TimeInterval?
@@ -135,6 +148,7 @@ public final class LMKLottieRefreshControl: UIRefreshControl, LMKThemeApplying {
     public var animation: LottieAnimation? {
         didSet {
             animationView.animation = animation ?? Self.bundledAnimation
+            animationTimeline = animation.map { Timeline(animation: $0) } ?? .bundled
             applyTint()
         }
     }
@@ -174,9 +188,15 @@ public final class LMKLottieRefreshControl: UIRefreshControl, LMKThemeApplying {
     private var isTriggeringRefresh = false
     private var isDismissing = false
     private var passedThreshold = false
+    /// A finger that stayed down through a refresh must lift before its pull can arm another.
+    private var needsRelease = false
     private var spinStartTime: Date?
     private var pendingEndRefresh: Task<Void, Never>?
     private var contentOffsetObservation: NSKeyValueObservation?
+    /// The timeline derived from `animation` (the bundled ring's when there is none).
+    private var animationTimeline = Timeline.bundled
+    /// Whether the Lottie view stands in for the system spinner (`nil` until first applied).
+    private var usesLottieSpinner: Bool?
 
     // MARK: - Initialization
 
@@ -186,6 +206,7 @@ public final class LMKLottieRefreshControl: UIRefreshControl, LMKThemeApplying {
     public init(animation: LottieAnimation? = nil, style: Style = Style()) {
         self.animation = animation
         self.style = style
+        animationTimeline = animation.map { Timeline(animation: $0) } ?? .bundled
         super.init()
         setup()
     }
@@ -210,13 +231,21 @@ public final class LMKLottieRefreshControl: UIRefreshControl, LMKThemeApplying {
         animationView.backgroundBehavior = .pauseAndRestore
         animationView.animation = animation ?? Self.bundledAnimation
         animationView.isAccessibilityElement = false
-        if LMKAnimation.shouldAnimate {
-            tintColor = .clear
-            hideDefaultSubviews()
-        }
+        animationView.isHidden = true
         addSubview(animationView)
+        updateSpinnerVisibility()
         addTarget(self, action: #selector(handleValueChanged), for: .valueChanged)
+        // The tint is resolved into the animation, so a light/dark or contrast switch re-resolves it.
+        registerForTraitChanges([UITraitUserInterfaceStyle.self, UITraitAccessibilityContrast.self]) { (control: Self, _: UITraitCollection) in
+            control.applyTint()
+        }
+        // Selector observers unregister themselves on deallocation.
+        NotificationCenter.default.addObserver(self, selector: #selector(reduceMotionStatusDidChange), name: UIAccessibility.reduceMotionStatusDidChangeNotification, object: nil)
         lmk_startApplyingTheme()
+    }
+
+    @objc private func reduceMotionStatusDidChange() {
+        updateSpinnerVisibility()
     }
 
     // MARK: - Installation
@@ -247,7 +276,8 @@ public final class LMKLottieRefreshControl: UIRefreshControl, LMKThemeApplying {
         attachedScrollView = scrollView
         contentOffsetObservation = scrollView.observe(\.contentOffset, options: [.new]) { [weak self] scrollView, _ in
             MainActor.assumeIsolated {
-                self?.updatePullProgress(scrollView: scrollView)
+                // A bounce or a programmatic offset draws the ring but cannot arm a refresh.
+                self?.updatePullProgress(scrollView: scrollView, armsRefresh: scrollView.isTracking)
             }
         }
         scrollView.panGestureRecognizer.addTarget(self, action: #selector(handlePan(_:)))
@@ -279,9 +309,12 @@ public final class LMKLottieRefreshControl: UIRefreshControl, LMKThemeApplying {
     }
 
     private func applyTint() {
-        guard resolvedStyle.appliesTint ?? true else { return }
-        let tint = (resolvedStyle.tintColor ?? LMKColor.primary).resolvedColor(with: traitCollection)
         let keypath = AnimationKeypath(keypath: resolvedStyle.tintKeypath ?? Self.defaultTintKeypath)
+        guard resolvedStyle.appliesTint ?? true else {
+            animationView.removeValueProvider(for: keypath)
+            return
+        }
+        let tint = (resolvedStyle.tintColor ?? LMKColor.primary).resolvedColor(with: traitCollection)
         animationView.setValueProvider(ColorValueProvider(tint.lottieColorValue), keypath: keypath)
     }
 
@@ -289,48 +322,80 @@ public final class LMKLottieRefreshControl: UIRefreshControl, LMKThemeApplying {
 
     override public func didMoveToWindow() {
         super.didMoveToWindow()
-        animationView.isHidden = !LMKAnimation.shouldAnimate
         // Lottie stops a view that leaves its window; a refresh still running spins again.
-        if window != nil, isAnimatingRefresh, !isDismissing, !animationView.isAnimationPlaying {
-            playPhase2()
+        if window != nil, isAnimatingRefresh, !isDismissing, LMKAnimation.shouldAnimate {
+            animationView.isHidden = false
+            if !animationView.isAnimationPlaying {
+                playPhase2()
+            }
         }
     }
 
     override public func layoutSubviews() {
         super.layoutSubviews()
-        if LMKAnimation.shouldAnimate {
-            hideDefaultSubviews()
-        }
+        // UIKit re-shows its own spinner subviews on layout, so they are re-hidden every pass.
+        updateSpinnerVisibility()
         let preferred = resolvedStyle.size ?? traitCollection.lmkTheme.spacing.xxl * 2
         let side = min(bounds.width, bounds.height, preferred)
         animationView.frame = CGRect(x: (bounds.width - side) / 2, y: (bounds.height - side) / 2, width: side, height: side)
+    }
+
+    /// Hands the spinner role to the Lottie view, or under Reduce Motion back to UIKit's spinner.
+    private func updateSpinnerVisibility() {
+        let usesLottie = LMKAnimation.shouldAnimate
+        for subview in subviews where subview !== animationView {
+            subview.alpha = usesLottie ? 0 : 1
+        }
+        guard usesLottie != usesLottieSpinner else { return }
+        usesLottieSpinner = usesLottie
+        tintColor = usesLottie ? .clear : nil
+        if usesLottie {
+            if isAnimatingRefresh, !isDismissing {
+                animationView.isHidden = false
+                playPhase2()
+            }
+        } else {
+            stopPhase2()
+            animationView.isHidden = true
+        }
     }
 
     // MARK: - Pull tracking
 
     /// Drives phase 1 from the scroll offset (call from `scrollViewDidScroll` when not installed).
     public func updatePullProgress(scrollView: UIScrollView) {
+        updatePullProgress(scrollView: scrollView, armsRefresh: true)
+    }
+
+    /// `updatePullProgress(scrollView:)`; `armsRefresh` is false for offsets no finger is driving.
+    private func updatePullProgress(scrollView: UIScrollView, armsRefresh: Bool) {
         guard !isRefreshing, !isAnimatingRefresh, !isDismissing else { return }
+        if needsRelease, !scrollView.isTracking {
+            needsRelease = false
+        }
         let offset = -(scrollView.contentOffset.y + scrollView.adjustedContentInset.top)
         let pull = Self.pullProgress(offset: offset, threshold: pullThreshold)
 
-        if pull >= 1, !passedThreshold {
-            passedThreshold = true
-            if resolvedStyle.haptics ?? true {
+        if armsRefresh, !needsRelease {
+            let crossed = pull >= 1
+            if crossed, !passedThreshold, resolvedStyle.haptics ?? true {
                 LMKHaptics.light()
             }
-        } else if pull >= 1 {
-            passedThreshold = true
+            passedThreshold = crossed
         }
 
-        animationView.currentProgress = Self.phase1Progress(pull: pull, timeline: timeline)
-        animationView.isHidden = pull <= 0 || !LMKAnimation.shouldAnimate
+        let shows = pull > 0 && LMKAnimation.shouldAnimate
+        // At rest with the ring already away there is nothing to draw, so plain scrolling costs nothing.
+        guard shows || !animationView.isHidden else { return }
+        animationView.currentFrame = Self.phase1Frame(pull: pull, timeline: timeline, startFrame: animationView.animation?.startFrame ?? 0)
+        animationView.isHidden = !shows
     }
 
     /// Triggers a refresh when the last drag ended past the threshold (call from
     /// `scrollViewDidEndDragging` when not installed). Returns whether it did.
     @discardableResult
     public func handleEndDragging(scrollView: UIScrollView) -> Bool {
+        needsRelease = false
         guard !isRefreshing, !isAnimatingRefresh, !isDismissing else { return false }
         let shouldRefresh = passedThreshold
         passedThreshold = false
@@ -358,6 +423,7 @@ public final class LMKLottieRefreshControl: UIRefreshControl, LMKThemeApplying {
         isAnimatingRefresh = true
         isDismissing = false
         passedThreshold = false
+        needsRelease = trackedScrollView?.isTracking ?? false
         spinStartTime = Date()
         animationView.isHidden = !LMKAnimation.shouldAnimate
         animationView.alpha = 1
@@ -415,17 +481,16 @@ public final class LMKLottieRefreshControl: UIRefreshControl, LMKThemeApplying {
     }
 
     private var timeline: Timeline {
-        resolvedStyle.timeline ?? .bundled
+        resolvedStyle.timeline ?? animationTimeline
+    }
+
+    /// The scroll view whose touches drive the control: the installed one, else the host's.
+    private var trackedScrollView: UIScrollView? {
+        attachedScrollView ?? superview as? UIScrollView
     }
 
     private var minimumSpinDuration: TimeInterval {
         max(0, resolvedStyle.minimumSpinDuration ?? Self.defaultMinimumSpinDuration)
-    }
-
-    private func hideDefaultSubviews() {
-        for subview in subviews where subview !== animationView {
-            subview.alpha = 0
-        }
     }
 
     private func playPhase2() {
@@ -434,9 +499,8 @@ public final class LMKLottieRefreshControl: UIRefreshControl, LMKThemeApplying {
     }
 
     private func stopPhase2() {
-        guard LMKAnimation.shouldAnimate else { return }
         animationView.stop()
-        animationView.currentProgress = 0
+        animationView.currentFrame = animationView.animation?.startFrame ?? 0
     }
 
     // MARK: - Pure helpers
@@ -447,10 +511,10 @@ public final class LMKLottieRefreshControl: UIRefreshControl, LMKThemeApplying {
         return min(max(0, offset) / threshold, 1)
     }
 
-    /// Animation progress (0...1 of the whole timeline) for a phase-1 `pull` fraction.
-    nonisolated static func phase1Progress(pull: CGFloat, timeline: Timeline) -> CGFloat {
-        guard timeline.totalFrames > 0 else { return 0 }
-        return (timeline.phase1EndFrame / timeline.totalFrames) * min(max(0, pull), 1)
+    /// The frame a phase-1 `pull` fraction scrubs to: from the animation's `startFrame` to `timeline.phase1EndFrame`.
+    nonisolated static func phase1Frame(pull: CGFloat, timeline: Timeline, startFrame: CGFloat = 0) -> CGFloat {
+        let start = min(startFrame, timeline.phase1EndFrame)
+        return start + (timeline.phase1EndFrame - start) * min(max(0, pull), 1)
     }
 }
 

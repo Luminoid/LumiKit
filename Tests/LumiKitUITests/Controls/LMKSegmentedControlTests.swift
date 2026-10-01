@@ -32,7 +32,8 @@ struct LMKSegmentedControlTests {
         #expect(control.selectedSegmentIndex == 0)
         #expect(control.numberOfSegments == 3)
         control.selectedSegmentIndex = 2
-        #expect(control.selectedSegmentIndex == 2)
+        #expect(control.segmentLabels[2].accessibilityTraits.contains(.selected))
+        #expect(!control.segmentLabels[0].accessibilityTraits.contains(.selected))
         control.selectedSegmentIndex = -1
         #expect(control.indicatorView.isHidden)
         control.selectedSegmentIndex = 99
@@ -127,6 +128,14 @@ struct LMKSegmentedControlTests {
         #expect(!control.isEnabledForSegment(at: 1))
         control.removeSegment(at: 9)
         #expect(control.items == ["A", "C"])
+
+        let empty = LMKSegmentedControl(items: [])
+        #expect(empty.indicatorView.isHidden)
+        empty.insertSegment(withTitle: "First", at: 0)
+        #expect(empty.selectedSegmentIndex == 0, "the first segment takes the default selection, as setItems would")
+        #expect(!empty.indicatorView.isHidden)
+        empty.setItems([])
+        #expect(empty.indicatorView.isHidden, "no items, no indicator")
     }
 
     // MARK: - Enabled state
@@ -147,9 +156,79 @@ struct LMKSegmentedControlTests {
         #expect(control.panGesture?.isEnabled == false)
         control.frame = CGRect(x: 0, y: 0, width: 200, height: 36)
         #expect(!control.point(inside: CGPoint(x: 100, y: -3), with: nil), "no hit inflation while disabled")
+        #expect(control.point(inside: CGPoint(x: 100, y: 3), with: nil), "a disabled control absorbs a touch inside its bounds")
         control.isEnabled = true
         #expect(control.alpha == 1)
         #expect(control.panGesture?.isEnabled == true)
+        control.isHidden = true
+        #expect(!control.point(inside: CGPoint(x: 100, y: 3), with: nil))
+    }
+
+    // MARK: - Gestures
+
+    @Test
+    func `The indicator pan begins only for a horizontal drag that starts on the pill`() {
+        let control = LMKSegmentedControl(items: ["A", "B", "C"])
+        _ = layout(control, width: 300)
+        let onPill = CGPoint(x: control.indicatorView.frame.midX, y: control.indicatorView.frame.midY)
+        let offPill = CGPoint(x: control.containerView.bounds.maxX - 10, y: control.indicatorView.frame.midY)
+        #expect(control.indicatorPanShouldBegin(velocity: CGPoint(x: 200, y: 20), touchDown: onPill))
+        #expect(!control.indicatorPanShouldBegin(velocity: CGPoint(x: 20, y: 200), touchDown: onPill), "a vertical drag scrolls the ancestor")
+        #expect(!control.indicatorPanShouldBegin(velocity: CGPoint(x: 200, y: 20), touchDown: offPill), "a drag off the pill belongs to a pager or the back swipe")
+        let nearPill = CGPoint(x: control.indicatorView.frame.maxX + LMKTheme.current.spacing.small - 1, y: onPill.y)
+        #expect(control.indicatorPanShouldBegin(velocity: CGPoint(x: 200, y: 0), touchDown: nearPill), "a little slack around the pill")
+        control.selectedSegmentIndex = -1
+        #expect(!control.indicatorPanShouldBegin(velocity: CGPoint(x: 200, y: 20), touchDown: onPill), "nothing to drag without a selection")
+        control.selectedSegmentIndex = 0
+        control.isEnabled = false
+        #expect(!control.indicatorPanShouldBegin(velocity: CGPoint(x: 200, y: 20), touchDown: onPill))
+    }
+
+    @Test
+    func `A cancelled drag restores the pre-drag segment and reports nothing; an ended one commits`() {
+        let control = LMKSegmentedControl(items: ["A", "B", "C"])
+        _ = layout(control, width: 300)
+        var received: [Int] = []
+        control.onValueChange = { received.append($0) }
+        control.isDragging = true
+        control.preDragIndex = 0
+        control.selectedSegmentIndex = 2
+        control.endIndicatorDrag(committing: false)
+        #expect(control.selectedSegmentIndex == 0)
+        #expect(received.isEmpty)
+        #expect(!control.isDragging)
+
+        control.isDragging = true
+        control.preDragIndex = 0
+        control.selectedSegmentIndex = 1
+        control.endIndicatorDrag(committing: true)
+        #expect(received == [1])
+        control.endIndicatorDrag(committing: true)
+        #expect(received == [1], "ending twice is a no-op")
+
+        control.isDragging = true
+        control.preDragIndex = 1
+        control.selectedSegmentIndex = 2
+        control.isEnabled = false
+        #expect(!control.isDragging, "disabling mid-drag abandons the drag")
+        #expect(control.selectedSegmentIndex == 1)
+        #expect(received == [1])
+    }
+
+    @Test
+    func `Taps resolve by x alone, so the hit band and the inset ring select the segment under them`() {
+        let control = LMKSegmentedControl(items: ["A", "B", "C"])
+        _ = layout(control, width: 300)
+        let second = control.segmentLabels[1].frame
+        #expect(control.segmentIndex(atX: second.midX, clampingToEdges: true) == 1)
+        #expect(control.segmentIndex(atX: -20, clampingToEdges: true) == 0, "past the leading edge clamps to the first segment")
+        #expect(control.segmentIndex(atX: control.segmentStack.bounds.width + 20, clampingToEdges: true) == 2)
+        #expect(control.segmentIndex(atX: -20, clampingToEdges: false) == nil)
+
+        let scrollable = LMKSegmentedControl(items: ["A", "B", "C"], style: .scrollable)
+        _ = layout(scrollable, width: 400)
+        let gap = (scrollable.segmentLabels[0].frame.maxX + scrollable.segmentLabels[1].frame.minX) / 2
+        #expect(scrollable.segmentIndex(atX: gap, clampingToEdges: true) == nil, "a gap between scrollable segments selects nothing")
     }
 
     // MARK: - Layout
@@ -259,6 +338,21 @@ struct LMKSegmentedControlTests {
     }
 
     @Test
+    func `The indicator inset applies horizontally from the start and follows the style`() {
+        let control = LMKSegmentedControl(items: ["A", "B"], style: LMKSegmentedControl.Style(indicatorInset: 6))
+        _ = layout(control, width: 200)
+        let label = control.containerView.convert(control.segmentLabels[0].frame, from: control.segmentStack)
+        #expect(near(control.indicatorView.frame.minX - label.minX, 6))
+        #expect(near(label.maxX - control.indicatorView.frame.maxX, 6))
+        #expect(near(control.indicatorView.frame.minY - label.minY, 6))
+        control.style.indicatorInset = 1
+        control.setNeedsLayout()
+        control.layoutIfNeeded()
+        #expect(near(control.indicatorView.frame.minX - label.minX, 1))
+        #expect(near(control.indicatorView.frame.minY - label.minY, 1))
+    }
+
+    @Test
     func `Style overrides colors, insets, and the height floor`() {
         let style = LMKSegmentedControl.Style(
             surface: LMKSurfaceStyle(background: .solid(.red)),
@@ -279,6 +373,16 @@ struct LMKSegmentedControlTests {
         control.style.selected = LMKControlStateStyle(background: .solid(.orange), foregroundColor: .brown)
         #expect(control.indicatorView.backgroundColor == UIColor.orange)
         #expect(control.segmentLabels[0].textColor == UIColor.brown)
+    }
+
+    @Test
+    func `Text styles and the layout vocabulary`() {
+        let control = LMKSegmentedControl(items: ["A", "B"], style: LMKSegmentedControl.Style(textStyle: .small, selectedTextStyle: .h4))
+        #expect(control.segmentLabels[0].lmk_textStyle == .h4)
+        #expect(control.segmentLabels[1].lmk_textStyle == .small)
+        #expect(LMKSegmentedControl.Layout.scrollable().isScrollable)
+        #expect(!LMKSegmentedControl.Layout.fitContent.isScrollable)
+        #expect(!LMKSegmentedControl.Layout.equalWidth.isScrollable)
     }
 
     @Test

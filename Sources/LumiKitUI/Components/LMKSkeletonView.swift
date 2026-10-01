@@ -15,11 +15,14 @@ import UIKit
 /// let skeleton = LMKSkeletonView(shapes: [.circle(diameter: 40), .line(), .line(width: 160)])
 /// skeleton.startShimmer()
 /// ```
+///
+/// The sweep survives what Core Animation forgets: it is re-added when the view returns to
+/// a window and when the app comes back to the foreground, for as long as `isShimmering`.
 public final class LMKSkeletonView: UIView, LMKThemeApplying {
     // MARK: - Shape
 
     /// One placeholder row.
-    public nonisolated enum Shape: Sendable, Equatable {
+    public nonisolated enum Shape: Sendable, Hashable {
         /// A text line; `nil` width fills the view, `nil` height uses the style's line height.
         case line(width: CGFloat? = nil, height: CGFloat? = nil)
         /// An avatar or icon placeholder.
@@ -31,7 +34,8 @@ public final class LMKSkeletonView: UIView, LMKThemeApplying {
     // MARK: - Style
 
     public nonisolated struct Style: Sendable, Equatable, LMKThemeExtension {
-        /// `nil` = `backgroundTertiary`.
+        /// `nil` = `fill`, which shows on the primary, secondary, and card backgrounds in both
+        /// appearances (`backgroundTertiary` is white in light mode).
         public var shapeColor: UIColor?
         /// `nil` = `backgroundSecondary`.
         public var shimmerColor: UIColor?
@@ -126,7 +130,13 @@ public final class LMKSkeletonView: UIView, LMKThemeApplying {
     /// Called at the end of every `applyTheme`, for tweaks the style does not cover.
     public var didApplyStyle: ((LMKSkeletonView) -> Void)?
 
-    private let stack = UIStackView()
+    /// Whether the shimmer animation is installed on the layer (a test hook).
+    var hasShimmerAnimation: Bool { shimmerLayer.animation(forKey: Self.shimmerKey) != nil }
+
+    /// The mask that limits the sweep to the shapes (a test hook).
+    var shimmerMaskPath: CGPath? { shimmerMask.path }
+
+    private let stack = LMKSkeletonStackView()
     private var shapeViews: [UIView] = []
     private let shimmerLayer = CAGradientLayer()
     private let shimmerMask = CAShapeLayer()
@@ -162,6 +172,7 @@ public final class LMKSkeletonView: UIView, LMKThemeApplying {
 
         stack.axis = .vertical
         stack.alignment = .leading
+        stack.onLayout = { [weak self] in self?.updateShimmerMask() }
         addSubview(stack)
         stack.snp.makeConstraints { make in
             make.top.leading.trailing.equalToSuperview()
@@ -175,6 +186,12 @@ public final class LMKSkeletonView: UIView, LMKThemeApplying {
         shimmerLayer.mask = shimmerMask
         shimmerLayer.isHidden = true
         layer.addSublayer(shimmerLayer)
+
+        // The shimmer's colors are resolved values: re-stamp them when the appearance changes.
+        registerForTraitChanges([UITraitUserInterfaceStyle.self, UITraitAccessibilityContrast.self, UITraitUserInterfaceLevel.self]) { (self: Self, _: UITraitCollection) in
+            self.applyShimmerColors()
+        }
+        NotificationCenter.default.addObserver(self, selector: #selector(restoreShimmerIfNeeded), name: UIApplication.willEnterForegroundNotification, object: nil)
     }
 
     private func rebuildShapes() {
@@ -192,6 +209,18 @@ public final class LMKSkeletonView: UIView, LMKThemeApplying {
     override public func layoutSubviews() {
         super.layoutSubviews()
         shimmerLayer.frame = bounds
+        shimmerMask.frame = bounds
+        updateShimmerMask()
+    }
+
+    override public func didMoveToWindow() {
+        super.didMoveToWindow()
+        restoreShimmerIfNeeded()
+    }
+
+    /// The sweep covers the shapes only. Rebuilt from the stack's own layout pass, after the
+    /// arranged subviews have their final frames.
+    private func updateShimmerMask() {
         let path = UIBezierPath()
         for (shape, view) in zip(shapes, shapeViews) {
             let frame = view.convert(view.bounds, to: self)
@@ -201,7 +230,6 @@ public final class LMKSkeletonView: UIView, LMKThemeApplying {
             }
             path.append(UIBezierPath(roundedRect: frame, cornerRadius: radius))
         }
-        shimmerMask.frame = bounds
         shimmerMask.path = path.cgPath
     }
 
@@ -209,8 +237,7 @@ public final class LMKSkeletonView: UIView, LMKThemeApplying {
 
     public func applyTheme(_ theme: LMKTheme) {
         resolved = theme.skeleton.merging(style)
-        let shapeColor = resolved.shapeColor ?? LMKColor.backgroundTertiary
-        let shimmerColor = resolved.shimmerColor ?? LMKColor.backgroundSecondary
+        let shapeColor = resolved.shapeColor ?? LMKColor.fill
         let corners = resolved.corners ?? .fixed(theme.cornerRadius.xs)
         let lineHeight = resolved.lineHeight ?? Self.defaultLineHeight
         stack.spacing = resolved.spacing ?? theme.spacing.small
@@ -220,12 +247,12 @@ public final class LMKSkeletonView: UIView, LMKThemeApplying {
                 switch shape {
                 case let .line(width, height):
                     make.height.equalTo(height ?? lineHeight)
-                    if let width { make.width.equalTo(width) } else { make.width.equalToSuperview() }
+                    constrainWidth(make, to: width)
                 case let .circle(diameter):
                     make.width.height.equalTo(diameter)
                 case let .rect(width, height):
                     make.height.equalTo(height)
-                    if let width { make.width.equalTo(width) } else { make.width.equalToSuperview() }
+                    constrainWidth(make, to: width)
                 }
             }
             switch shape {
@@ -233,20 +260,42 @@ public final class LMKSkeletonView: UIView, LMKThemeApplying {
             case .line, .rect: view.lmk_applyCornerStyle(corners)
             }
         }
-        let resolvedShape = shapeColor.resolvedColor(with: traitCollection).cgColor
-        shimmerLayer.colors = [resolvedShape, shimmerColor.resolvedColor(with: traitCollection).cgColor, resolvedShape]
+        applyShimmerColors()
         setNeedsLayout()
         didApplyStyle?(self)
+    }
+
+    /// An explicit width is a wish, not a demand: a narrower container wins.
+    private func constrainWidth(_ make: ConstraintMaker, to width: CGFloat?) {
+        guard let width else {
+            make.width.equalToSuperview()
+            return
+        }
+        make.width.equalTo(width).priority(.high)
+        make.width.lessThanOrEqualToSuperview()
+    }
+
+    /// Stamps the sweep's colors, resolved for the current appearance.
+    private func applyShimmerColors() {
+        let shapeColor = resolved.shapeColor ?? LMKColor.fill
+        let shimmerColor = resolved.shimmerColor ?? LMKColor.backgroundSecondary
+        let resolvedShape = shapeColor.resolvedColor(with: traitCollection).cgColor
+        shimmerLayer.colors = [resolvedShape, shimmerColor.resolvedColor(with: traitCollection).cgColor, resolvedShape]
     }
 
     // MARK: - Shimmer
 
     /// Starts the sweep; `staggerIndex` delays it by `staggerDelay` per index (rows of a list).
+    /// Under Reduce Motion the shapes stay still (no sweep and no static highlight).
     public func startShimmer(staggerIndex: Int = 0) {
         self.staggerIndex = staggerIndex
         isShimmering = true
+        shimmerLayer.removeAnimation(forKey: Self.shimmerKey)
+        guard LMKAnimation.shouldAnimate else {
+            shimmerLayer.isHidden = true
+            return
+        }
         shimmerLayer.isHidden = false
-        guard LMKAnimation.shouldAnimate else { return }
         let animation = CAKeyframeAnimation(keyPath: "locations")
         animation.values = [
             [-1.0, -0.5, 0.0] as [NSNumber],
@@ -255,6 +304,7 @@ public final class LMKSkeletonView: UIView, LMKThemeApplying {
         ]
         animation.duration = resolved.shimmerDuration ?? traitCollection.lmkTheme.animation.shimmer
         animation.repeatCount = .infinity
+        animation.isRemovedOnCompletion = false
         animation.timingFunction = LMKAnimation.Curve.easeInOut.timingFunction
         animation.beginTime = CACurrentMediaTime() + Double(staggerIndex) * (resolved.staggerDelay ?? Self.defaultStaggerDelay)
         shimmerLayer.add(animation, forKey: Self.shimmerKey)
@@ -265,6 +315,23 @@ public final class LMKSkeletonView: UIView, LMKThemeApplying {
         isShimmering = false
         shimmerLayer.removeAnimation(forKey: Self.shimmerKey)
         shimmerLayer.isHidden = true
+    }
+
+    /// Re-adds the sweep Core Animation dropped (leaving the window, the app backgrounding).
+    @objc private func restoreShimmerIfNeeded() {
+        guard isShimmering, window != nil, !hasShimmerAnimation else { return }
+        startShimmer(staggerIndex: staggerIndex)
+    }
+}
+
+/// A stack that reports its own layout pass, which is when the arranged subviews have the
+/// frames the shimmer mask is built from.
+private final class LMKSkeletonStackView: UIStackView {
+    var onLayout: (() -> Void)?
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        onLayout?()
     }
 }
 

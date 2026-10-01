@@ -27,6 +27,7 @@ included:
   - Sources
   - Tests
   - Example/Sources
+  - Package.swift
 
 # Case-sensitive paths to ignore during linting. Takes precedence over `included`. Wildcards
 # are supported.
@@ -109,6 +110,24 @@ custom_rules:
       - doccomment
       - doccomment.field
     message: "Components read the theme passed to applyTheme(_:) or traitCollection.lmkTheme, not LMKTheme.current."
+    severity: error
+
+  # The global token proxies (`LMKSpacing.large`, `LMKLayout.rowHeight`, ...) resolve through the
+  # process-wide theme, so a constraint or value set from one at setup time ignores a scoped theme
+  # and a later `LMKTheme.apply`. Components keep the constraint handle and set it in `applyTheme(_:)`
+  # from `theme.spacing` / `theme.layout` / `theme.cornerRadius` / `theme.alpha`. `LMKLayout.hairline`
+  # and `pixelAligned` are display physics, not theme values. A default argument
+  # (`spacing: CGFloat = LMKSpacing.large`) is the caller's choice and stays allowed; the few
+  # namespaces without a theme input carry an inline disable with the reason.
+  no_global_token_proxies_in_components:
+    name: "Global token proxy read in a component"
+    regex: '(?<!: CGFloat = )\bLMK(?:Spacing|CornerRadius|Alpha|Layout)\.(?!hairline\b|pixelAligned\b)[a-z]\w*'
+    included: "Sources/(LumiKitUI/(Components|Controls|Alerts)|LumiKitPhoto|LumiKitLottie)/.*\\.swift"
+    excluded_match_kinds:
+      - comment
+      - doccomment
+      - doccomment.field
+    message: "Read theme.spacing / theme.layout / theme.cornerRadius / theme.alpha from the theme passed to applyTheme(_:), and keep the constraint handle to update there."
     severity: error
 
 # The default reporter (SwiftLint's output format) can be configured as `checkstyle`, `codeclimate`, `csv`,

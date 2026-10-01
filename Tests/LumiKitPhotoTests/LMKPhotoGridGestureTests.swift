@@ -43,6 +43,40 @@ struct LMKPhotoGridGestureTests {
         #expect(attributes?.frame == LMKPhotoGridViewController.frame(ofItem: 7, columnCount: 3, width: 390, spacing: 2))
     }
 
+    @Test
+    func `In a right-to-left layout the geometry mirrors the columns like the flow layout does`() throws {
+        // The flow layout starts each row at the right without flipping its coordinates: item 0
+        // sits at the far right, in the same content space the gestures report.
+        #expect(LMKPhotoGridViewController.frame(ofItem: 0, columnCount: 3, width: 390, spacing: 2, isRightToLeft: true).maxX == 390)
+        #expect(LMKPhotoGridViewController.frame(ofItem: 2, columnCount: 3, width: 390, spacing: 2, isRightToLeft: true).minX == 0)
+        #expect(LMKPhotoGridViewController.item(at: CGPoint(x: 10, y: 10), columnCount: 3, itemCount: 60, width: 390, spacing: 2, isRightToLeft: true) == 2)
+        #expect(LMKPhotoGridViewController.item(at: CGPoint(x: 380, y: 10), columnCount: 3, itemCount: 60, width: 390, spacing: 2, isRightToLeft: true) == 0)
+
+        let dataSource = GridPhotos(count: 9)
+        let grid = LMKPhotoGridViewController(columnCount: 3, style: LMKPhotoGridViewController.Style(haptics: false))
+        grid.dataSource = dataSource
+        grid.view.semanticContentAttribute = .forceRightToLeft
+        grid.collectionView.semanticContentAttribute = .forceRightToLeft
+        let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 390, height: 844))
+        window.rootViewController = grid
+        window.isHidden = false
+        defer { window.isHidden = true }
+        grid.view.layoutIfNeeded()
+        grid.collectionView.layoutIfNeeded()
+        #expect(grid.isRightToLeft)
+        for item in 0 ..< 3 {
+            let attributes = try #require(grid.collectionView.layoutAttributesForItem(at: IndexPath(item: item, section: 0)))
+            #expect(grid.frame(ofItem: item) == attributes.frame, "item \(item)")
+            #expect(grid.item(atContentPoint: CGPoint(x: attributes.frame.midX, y: attributes.frame.midY)) == item)
+        }
+        // A selection drag over the two leftmost cells selects the two photos drawn there.
+        grid.allowsMultipleSelection = true
+        grid.beginDragSelection(atContentPoint: CGPoint(x: 10, y: 10))
+        grid.updateDragSelection(toContentPoint: CGPoint(x: 200, y: 10))
+        #expect(grid.selectedIndices == [1, 2])
+        grid.endDragSelection()
+    }
+
     // MARK: - Pinch
 
     @Test
@@ -184,8 +218,6 @@ struct LMKPhotoGridGestureTests {
 
     @Test
     func `A touch dims the photo and a release restores it`() {
-        UIView.setAnimationsEnabled(false)
-        defer { UIView.setAnimationsEnabled(true) }
         let cell = LMKPhotoGridCell(frame: CGRect(x: 0, y: 0, width: 120, height: 120))
         cell.apply(style: LMKPhotoGridViewController.Style(), theme: LMKTheme.default)
         #expect(!cell.isPressed)

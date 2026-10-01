@@ -3,20 +3,21 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 77;
+	objectVersion = 63;
 	objects = {
 
 /* Begin PBXBuildFile section */
 		042B408062CD8FD467D098E0 /* PageIndicatorExample.swift in Sources */ = {isa = PBXBuildFile; fileRef = EFD4AC480AC7013D263B9E95 /* PageIndicatorExample.swift */; };
-		047822D6720CE3A9B3F0D39B /* LumiKitUI in Frameworks */ = {isa = PBXBuildFile; productRef = 2F68DA943A7AC838DB04D706 /* LumiKitUI */; };
+		047822D6720CE3A9B3F0D39B /* LumiKitCore in Frameworks */ = {isa = PBXBuildFile; productRef = 0734FD4EE7A0A0B9E60447E6 /* LumiKitCore */; };
 		0636956E679EC58792D027E0 /* ActionTileExample.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A190A1DEE13F79AB9AF032A /* ActionTileExample.swift */; };
 		098008214180E46BBD4C12ED /* FadeExample.swift in Sources */ = {isa = PBXBuildFile; fileRef = 330B6FB19C2616C63E297548 /* FadeExample.swift */; };
 		0AE55C95C5092BCAFBF5B8CE /* PhotoButtonCopyableLabelExample.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9CB8FD3E04530697699A707 /* PhotoButtonCopyableLabelExample.swift */; };
+		0BBD4E92093D791080672A25 /* EnumPickerExample.swift in Sources */ = {isa = PBXBuildFile; fileRef = D5444D56D7A6518BA9853972 /* EnumPickerExample.swift */; };
 		1965DCD9EC56016DB57C901D /* TextViewExample.swift in Sources */ = {isa = PBXBuildFile; fileRef = CFBCAFA23DB450BB379BE1E8 /* TextViewExample.swift */; };
 		1B4E8B4A3D5B8C0D87B50FB0 /* ProgressExample.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21A598445434168C83367012 /* ProgressExample.swift */; };
 		1DA02EC5CDF459D6CD14B540 /* DeviceDisplayExample.swift in Sources */ = {isa = PBXBuildFile; fileRef = 43E74F9E46083AD129057164 /* DeviceDisplayExample.swift */; };
 		21FADE7A431E99C689E22BCD /* ExampleViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9B50227ABA29034C8561A94D /* ExampleViewController.swift */; };
-		22C56DB952D95C22A4EFA931 /* LumiKitPhoto in Frameworks */ = {isa = PBXBuildFile; productRef = A1DEB29B422064DFE99D3E9D /* LumiKitPhoto */; };
+		22C56DB952D95C22A4EFA931 /* LumiKitUI in Frameworks */ = {isa = PBXBuildFile; productRef = 2F68DA943A7AC838DB04D706 /* LumiKitUI */; };
 		27C95E01A063C1DB71F01A66 /* KeyboardDismissExample.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1D6D6C6C0A5813628B3F851 /* KeyboardDismissExample.swift */; };
 		2BF2259AC5DC25989F472BF6 /* DetailViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = F49C587FAE89BA2CD1A5AD20 /* DetailViewController.swift */; };
 		2C0494AA545B113364E5E57C /* CardPanelExample.swift in Sources */ = {isa = PBXBuildFile; fileRef = DEFFCC15438B36A4294562E6 /* CardPanelExample.swift */; };
@@ -25,8 +26,7 @@
 		38385A0FB4B6A2E52F293577 /* MonthCalendarExample.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8EE00705CDC3AA1C88AC3BBF /* MonthCalendarExample.swift */; };
 		420EF6027B1D2DCA1EF2D726 /* PhotoCropExample.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F78A887D8699A97FEFAD9ED /* PhotoCropExample.swift */; };
 		4260186F009492452AC405F5 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = DAE7925528F006F31D46E13D /* SceneDelegate.swift */; };
-		4CDA679C2A9814942035951C /* LumiKitDebug in Frameworks */ = {isa = PBXBuildFile; productRef = 59CFC77C4E33F266FA3913A2 /* LumiKitDebug */; };
-		4E903C4EB9BC9082407331D7 /* ToggleButtonExample.swift in Sources */ = {isa = PBXBuildFile; fileRef = E854DAC70D6FF831AB63B51F /* ToggleButtonExample.swift */; };
+		4CDA679C2A9814942035951C /* LumiKitPhoto in Frameworks */ = {isa = PBXBuildFile; productRef = A1DEB29B422064DFE99D3E9D /* LumiKitPhoto */; };
 		508A9B0554A46F1985BFF767 /* PickCropExample.swift in Sources */ = {isa = PBXBuildFile; fileRef = 531FF0DBD93E9EA01280D1AF /* PickCropExample.swift */; };
 		554531DDC48256D9293F2448 /* CheckboxRatingExample.swift in Sources */ = {isa = PBXBuildFile; fileRef = 59F3289FD12C58B870584572 /* CheckboxRatingExample.swift */; };
 		59417E8E774B88343CD0BC12 /* OverscrollFooterExample.swift in Sources */ = {isa = PBXBuildFile; fileRef = F260BC854A51B38683255D65 /* OverscrollFooterExample.swift */; };
@@ -34,6 +34,7 @@
 		65B4FCFE009B9938753DB34D /* ExampleAccessibilityAudit.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A97FFA9B861948008EB12C4 /* ExampleAccessibilityAudit.swift */; };
 		6CEDF2F38946A335378A9F59 /* DatePickerExample.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8988C81D3F580065FD86E857 /* DatePickerExample.swift */; };
 		6D4C2DC0E33680CFC2B030EE /* HapticsExample.swift in Sources */ = {isa = PBXBuildFile; fileRef = 746F36EDE3584F3FEB1A88AE /* HapticsExample.swift */; };
+		6E4D31CFE78CBFFE3AAEDA62 /* ButtonToggleExample.swift in Sources */ = {isa = PBXBuildFile; fileRef = 124196BE93AAE639027BEEE2 /* ButtonToggleExample.swift */; };
 		721C8BE94FC64C79378BEFB3 /* QRCodeExample.swift in Sources */ = {isa = PBXBuildFile; fileRef = 41B6D70320AC8C4B106226A1 /* QRCodeExample.swift */; };
 		72FB6B57229401E25992DF43 /* HighlightExample.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9E432F08774E14D6C246EAD3 /* HighlightExample.swift */; };
 		772FF8C27BCDAB5F98A70EC4 /* NetworkHistoryExample.swift in Sources */ = {isa = PBXBuildFile; fileRef = B7EBD33EC69029F5653CC1B6 /* NetworkHistoryExample.swift */; };
@@ -49,7 +50,6 @@
 		8F00B1F8FBAE6A036C6A062A /* DominantColorExample.swift in Sources */ = {isa = PBXBuildFile; fileRef = A77CE100E3D5039A9061B83A /* DominantColorExample.swift */; };
 		97D5ECD4A034B62FA9335F5E /* ExampleLaunchOptions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0F7F37CFA444807A545F79C0 /* ExampleLaunchOptions.swift */; };
 		9868A261D62C1F517D8C872B /* EmptyStateExample.swift in Sources */ = {isa = PBXBuildFile; fileRef = 02A879BD9F1C31556C253BCD /* EmptyStateExample.swift */; };
-		9C6E3ED589199E91D04ED7CF /* EnumSelectionExample.swift in Sources */ = {isa = PBXBuildFile; fileRef = 90BBC740C5B4AB3E0FF4C195 /* EnumSelectionExample.swift */; };
 		9C8DBF69C5F0854003599522 /* PhotoBrowserExample.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9181174D2D54521920EE56C /* PhotoBrowserExample.swift */; };
 		9E26C9C5E10A687E32753ED7 /* ShareExample.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E5762FD07D5AD709CD18012 /* ShareExample.swift */; };
 		A1759DA384CF708FA587B4B1 /* GlassExample.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7BB869A3128EA815CC8C5165 /* GlassExample.swift */; };
@@ -57,17 +57,19 @@
 		A2741F7FFA6687E88D9F7CA7 /* CardPageExample.swift in Sources */ = {isa = PBXBuildFile; fileRef = 48BE980555CF67F50F747A81 /* CardPageExample.swift */; };
 		A2FF711ECC5F404CAA663B56 /* SliderExample.swift in Sources */ = {isa = PBXBuildFile; fileRef = 19CCF9F7A8D5A7D8CEC8737E /* SliderExample.swift */; };
 		A3F57BD0FD2C2792F04D690B /* GradientExample.swift in Sources */ = {isa = PBXBuildFile; fileRef = 569C2FD97680688AA9558B48 /* GradientExample.swift */; };
-		A4EFC3AEBFBE25DAC25BC238 /* LumiKitLottie in Frameworks */ = {isa = PBXBuildFile; productRef = 3A5DB31C1485882D984D3686 /* LumiKitLottie */; };
+		A4EFC3AEBFBE25DAC25BC238 /* LumiKitDebug in Frameworks */ = {isa = PBXBuildFile; productRef = 59CFC77C4E33F266FA3913A2 /* LumiKitDebug */; };
 		A74A67E677F7E52B0926BA4F /* DetailCardsExample.swift in Sources */ = {isa = PBXBuildFile; fileRef = 204F1A05D1AFF859E357B50C /* DetailCardsExample.swift */; };
 		A7E7C0EB6C4558B0735DEA15 /* SwitchExample.swift in Sources */ = {isa = PBXBuildFile; fileRef = 17E7694091FF9EE701354BD7 /* SwitchExample.swift */; };
 		A943E70DDEF52A71C763178D /* FilterChipBarExample.swift in Sources */ = {isa = PBXBuildFile; fileRef = 55AC509BC86A1DD4110A06F7 /* FilterChipBarExample.swift */; };
 		A9B7FFB465ADD411C32BA792 /* DateFormattingExample.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94B406D89C36A21EF3BF35D9 /* DateFormattingExample.swift */; };
 		AE1879706BC226803F4B0D61 /* FloatingButtonExample.swift in Sources */ = {isa = PBXBuildFile; fileRef = 36095F38827D121CBC436B3D /* FloatingButtonExample.swift */; };
 		AED0CBCF06783C5BBCDD4F67 /* ExampleTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E83041427958D614AB1C07D /* ExampleTheme.swift */; };
+		AF764BD61FDD0E6CC1D83566 /* LumiKitLottie in Frameworks */ = {isa = PBXBuildFile; productRef = 3A5DB31C1485882D984D3686 /* LumiKitLottie */; };
 		B0B21FA36E5D41AACC1B4B34 /* TextFieldExample.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0528E1E671E59F4E172BC082 /* TextFieldExample.swift */; };
 		B81B4730DC5DBB752ECEB6FE /* TipViewExample.swift in Sources */ = {isa = PBXBuildFile; fileRef = 56BD2603827601A17F91A8A9 /* TipViewExample.swift */; };
 		BA5568C79CE5454D35676F92 /* ExampleCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 05CFB4061E5C8BAC2669CC5C /* ExampleCatalog.swift */; };
 		BB50C3AFE3CFDD56E1F010C4 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = F4FEA4A6AC67074774361233 /* Assets.xcassets */; };
+		BF4632A7F1E3FD553C5E9EC2 /* InspectorExample.swift in Sources */ = {isa = PBXBuildFile; fileRef = 16EB4138A56B2E004A93A1E7 /* InspectorExample.swift */; };
 		C1829D3CA2FEBF113D356C17 /* MenusExample.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13937BE9CF3230F7AC59ECF6 /* MenusExample.swift */; };
 		C452F40930C32A87BE5E027C /* ListRowExample.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0EE4E9B93D796135016DBF04 /* ListRowExample.swift */; };
 		C490F1DA7154D4ABDDACACA2 /* NavigationBarExample.swift in Sources */ = {isa = PBXBuildFile; fileRef = 02CDAD99F9F5BCABB8C8A8F7 /* NavigationBarExample.swift */; };
@@ -79,6 +81,7 @@
 		D0FC86541279ABB3EA0B8000 /* MarkdownExample.swift in Sources */ = {isa = PBXBuildFile; fileRef = AEB9F2532DC1D036B0194A12 /* MarkdownExample.swift */; };
 		D42458EE019F6742BB1E8058 /* ToastExample.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F1F3B7E801001EDC12BACFC /* ToastExample.swift */; };
 		D6E575A13179E209B3FE6C0E /* SegmentedPagesExample.swift in Sources */ = {isa = PBXBuildFile; fileRef = D44578D1C33C91A3E941B673 /* SegmentedPagesExample.swift */; };
+		D7AB5CA2719F8A71AC6B4BEA /* ExampleSweepProbes.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD00085A2EFED06F2BC1AB9E /* ExampleSweepProbes.swift */; };
 		D8A1C12278E82F96330138D6 /* ShadowExample.swift in Sources */ = {isa = PBXBuildFile; fileRef = 66CE4DA7EF66EC7976A1F97E /* ShadowExample.swift */; };
 		D91E40EC89F877818AD6EEB1 /* ThemeSwitcherExample.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1F881DEDD6852E8807DF1575 /* ThemeSwitcherExample.swift */; };
 		DDB0B41B523A3FAF272DC91C /* BottomSheetExample.swift in Sources */ = {isa = PBXBuildFile; fileRef = 816C1351EA0DAD71AB1EB229 /* BottomSheetExample.swift */; };
@@ -102,15 +105,17 @@
 		0EE4E9B93D796135016DBF04 /* ListRowExample.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ListRowExample.swift; sourceTree = "<group>"; };
 		0F7F37CFA444807A545F79C0 /* ExampleLaunchOptions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExampleLaunchOptions.swift; sourceTree = "<group>"; };
 		1035AED8A1327983D40EA2F6 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
+		124196BE93AAE639027BEEE2 /* ButtonToggleExample.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ButtonToggleExample.swift; sourceTree = "<group>"; };
 		13937BE9CF3230F7AC59ECF6 /* MenusExample.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenusExample.swift; sourceTree = "<group>"; };
 		13D9D0222B3651FEEA67B01A /* ExampleSelfSizingTableView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExampleSelfSizingTableView.swift; sourceTree = "<group>"; };
 		13F4DAB8C7D0F9A91CF407AB /* ColorsExample.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ColorsExample.swift; sourceTree = "<group>"; };
+		16EB4138A56B2E004A93A1E7 /* InspectorExample.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InspectorExample.swift; sourceTree = "<group>"; };
 		17E7694091FF9EE701354BD7 /* SwitchExample.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwitchExample.swift; sourceTree = "<group>"; };
 		19CCF9F7A8D5A7D8CEC8737E /* SliderExample.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SliderExample.swift; sourceTree = "<group>"; };
 		1F881DEDD6852E8807DF1575 /* ThemeSwitcherExample.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThemeSwitcherExample.swift; sourceTree = "<group>"; };
 		204F1A05D1AFF859E357B50C /* DetailCardsExample.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetailCardsExample.swift; sourceTree = "<group>"; };
 		21A598445434168C83367012 /* ProgressExample.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProgressExample.swift; sourceTree = "<group>"; };
-		2B9C75CF348A9670C0B7CEE4 /* LumiKitExample.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = LumiKitExample.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		2B9C75CF348A9670C0B7CEE4 /* LumiKitExample.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = LumiKitExample.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		2E5762FD07D5AD709CD18012 /* ShareExample.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareExample.swift; sourceTree = "<group>"; };
 		2E83041427958D614AB1C07D /* ExampleTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExampleTheme.swift; sourceTree = "<group>"; };
 		330B6FB19C2616C63E297548 /* FadeExample.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FadeExample.swift; sourceTree = "<group>"; };
@@ -143,7 +148,6 @@
 		8988C81D3F580065FD86E857 /* DatePickerExample.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DatePickerExample.swift; sourceTree = "<group>"; };
 		8CD8153517C1B7FF33B2F208 /* LoadingStateExample.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoadingStateExample.swift; sourceTree = "<group>"; };
 		8EE00705CDC3AA1C88AC3BBF /* MonthCalendarExample.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MonthCalendarExample.swift; sourceTree = "<group>"; };
-		90BBC740C5B4AB3E0FF4C195 /* EnumSelectionExample.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnumSelectionExample.swift; sourceTree = "<group>"; };
 		94B406D89C36A21EF3BF35D9 /* DateFormattingExample.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DateFormattingExample.swift; sourceTree = "<group>"; };
 		9A39D33D32270C4FE92DFFE5 /* UIColorExample.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UIColorExample.swift; sourceTree = "<group>"; };
 		9B50227ABA29034C8561A94D /* ExampleViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExampleViewController.swift; sourceTree = "<group>"; };
@@ -159,10 +163,10 @@
 		BC3D3234FF507C1C0B4E82D1 /* BannerExample.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BannerExample.swift; sourceTree = "<group>"; };
 		CFBCAFA23DB450BB379BE1E8 /* TextViewExample.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TextViewExample.swift; sourceTree = "<group>"; };
 		D44578D1C33C91A3E941B673 /* SegmentedPagesExample.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SegmentedPagesExample.swift; sourceTree = "<group>"; };
+		D5444D56D7A6518BA9853972 /* EnumPickerExample.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnumPickerExample.swift; sourceTree = "<group>"; };
 		DAE7925528F006F31D46E13D /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
 		DCF0C096C918EDB6AC60C91E /* PhotoGridExample.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoGridExample.swift; sourceTree = "<group>"; };
 		DEFFCC15438B36A4294562E6 /* CardPanelExample.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardPanelExample.swift; sourceTree = "<group>"; };
-		E854DAC70D6FF831AB63B51F /* ToggleButtonExample.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToggleButtonExample.swift; sourceTree = "<group>"; };
 		E9B4BFDF79F516316CE8D1C0 /* ActionSheetExample.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActionSheetExample.swift; sourceTree = "<group>"; };
 		ED29ED929C94E4A41551876A /* BadgesExample.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BadgesExample.swift; sourceTree = "<group>"; };
 		EFD4AC480AC7013D263B9E95 /* PageIndicatorExample.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PageIndicatorExample.swift; sourceTree = "<group>"; };
@@ -174,6 +178,7 @@
 		F4FEA4A6AC67074774361233 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		F845022971944A2A92E557C9 /* TypographyExample.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TypographyExample.swift; sourceTree = "<group>"; };
 		F9181174D2D54521920EE56C /* PhotoBrowserExample.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoBrowserExample.swift; sourceTree = "<group>"; };
+		FD00085A2EFED06F2BC1AB9E /* ExampleSweepProbes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExampleSweepProbes.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -181,10 +186,11 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				047822D6720CE3A9B3F0D39B /* LumiKitUI in Frameworks */,
-				22C56DB952D95C22A4EFA931 /* LumiKitPhoto in Frameworks */,
-				4CDA679C2A9814942035951C /* LumiKitDebug in Frameworks */,
-				A4EFC3AEBFBE25DAC25BC238 /* LumiKitLottie in Frameworks */,
+				047822D6720CE3A9B3F0D39B /* LumiKitCore in Frameworks */,
+				22C56DB952D95C22A4EFA931 /* LumiKitUI in Frameworks */,
+				4CDA679C2A9814942035951C /* LumiKitPhoto in Frameworks */,
+				A4EFC3AEBFBE25DAC25BC238 /* LumiKitDebug in Frameworks */,
+				AF764BD61FDD0E6CC1D83566 /* LumiKitLottie in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -204,13 +210,13 @@
 			children = (
 				5A190A1DEE13F79AB9AF032A /* ActionTileExample.swift */,
 				F062741D980A5749A057A10B /* ButtonsExample.swift */,
+				124196BE93AAE639027BEEE2 /* ButtonToggleExample.swift */,
 				59F3289FD12C58B870584572 /* CheckboxRatingExample.swift */,
 				36095F38827D121CBC436B3D /* FloatingButtonExample.swift */,
 				B9CB8FD3E04530697699A707 /* PhotoButtonCopyableLabelExample.swift */,
 				F37BAE652CEDBCFFF3A1F7AF /* SegmentedControlExample.swift */,
 				19CCF9F7A8D5A7D8CEC8737E /* SliderExample.swift */,
 				17E7694091FF9EE701354BD7 /* SwitchExample.swift */,
-				E854DAC70D6FF831AB63B51F /* ToggleButtonExample.swift */,
 			);
 			path = Controls;
 			sourceTree = "<group>";
@@ -229,6 +235,7 @@
 			isa = PBXGroup;
 			children = (
 				48BE980555CF67F50F747A81 /* CardPageExample.swift */,
+				16EB4138A56B2E004A93A1E7 /* InspectorExample.swift */,
 				13937BE9CF3230F7AC59ECF6 /* MenusExample.swift */,
 				02CDAD99F9F5BCABB8C8A8F7 /* NavigationBarExample.swift */,
 				895E2D556014AD52CF32CDBF /* NavigationControllerExample.swift */,
@@ -308,7 +315,7 @@
 				E9B4BFDF79F516316CE8D1C0 /* ActionSheetExample.swift */,
 				816C1351EA0DAD71AB1EB229 /* BottomSheetExample.swift */,
 				DEFFCC15438B36A4294562E6 /* CardPanelExample.swift */,
-				90BBC740C5B4AB3E0FF4C195 /* EnumSelectionExample.swift */,
+				D5444D56D7A6518BA9853972 /* EnumPickerExample.swift */,
 			);
 			path = Sheets;
 			sourceTree = "<group>";
@@ -374,6 +381,7 @@
 				1035AED8A1327983D40EA2F6 /* AppDelegate.swift */,
 				5A97FFA9B861948008EB12C4 /* ExampleAccessibilityAudit.swift */,
 				0F7F37CFA444807A545F79C0 /* ExampleLaunchOptions.swift */,
+				FD00085A2EFED06F2BC1AB9E /* ExampleSweepProbes.swift */,
 				55A1E675E37A0C65194E82F5 /* ExampleSweepRunner.swift */,
 				2E83041427958D614AB1C07D /* ExampleTheme.swift */,
 				DAE7925528F006F31D46E13D /* SceneDelegate.swift */,
@@ -447,6 +455,7 @@
 			);
 			name = LumiKitExample;
 			packageProductDependencies = (
+				0734FD4EE7A0A0B9E60447E6 /* LumiKitCore */,
 				2F68DA943A7AC838DB04D706 /* LumiKitUI */,
 				A1DEB29B422064DFE99D3E9D /* LumiKitPhoto */,
 				59CFC77C4E33F266FA3913A2 /* LumiKitDebug */,
@@ -483,7 +492,6 @@
 			packageReferences = (
 				3AE574CC1CCC09617706D3D7 /* XCLocalSwiftPackageReference ".." */,
 			);
-			preferredProjectObjectVersion = 77;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
@@ -516,6 +524,7 @@
 				C968051FC1426C713375EC1A /* BannerExample.swift in Sources */,
 				A25E1C12D8EA3DE5CDF9D566 /* BorderExample.swift in Sources */,
 				DDB0B41B523A3FAF272DC91C /* BottomSheetExample.swift in Sources */,
+				6E4D31CFE78CBFFE3AAEDA62 /* ButtonToggleExample.swift in Sources */,
 				F9AAC4CBB7EEA57E0169D368 /* ButtonsExample.swift in Sources */,
 				A2741F7FFA6687E88D9F7CA7 /* CardPageExample.swift in Sources */,
 				2C0494AA545B113364E5E57C /* CardPanelExample.swift in Sources */,
@@ -532,11 +541,12 @@
 				D0802A131CD1493BCB9F618C /* DividerExample.swift in Sources */,
 				8F00B1F8FBAE6A036C6A062A /* DominantColorExample.swift in Sources */,
 				9868A261D62C1F517D8C872B /* EmptyStateExample.swift in Sources */,
-				9C6E3ED589199E91D04ED7CF /* EnumSelectionExample.swift in Sources */,
+				0BBD4E92093D791080672A25 /* EnumPickerExample.swift in Sources */,
 				65B4FCFE009B9938753DB34D /* ExampleAccessibilityAudit.swift in Sources */,
 				BA5568C79CE5454D35676F92 /* ExampleCatalog.swift in Sources */,
 				97D5ECD4A034B62FA9335F5E /* ExampleLaunchOptions.swift in Sources */,
 				C581FA397C67DA202696B394 /* ExampleSelfSizingTableView.swift in Sources */,
+				D7AB5CA2719F8A71AC6B4BEA /* ExampleSweepProbes.swift in Sources */,
 				E417D638D3188C57F0BBD5BA /* ExampleSweepRunner.swift in Sources */,
 				AED0CBCF06783C5BBCDD4F67 /* ExampleTheme.swift in Sources */,
 				21FADE7A431E99C689E22BCD /* ExampleViewController.swift in Sources */,
@@ -549,6 +559,7 @@
 				6D4C2DC0E33680CFC2B030EE /* HapticsExample.swift in Sources */,
 				72FB6B57229401E25992DF43 /* HighlightExample.swift in Sources */,
 				799480E026381D6DBEF8BB02 /* ImageUtilitiesExample.swift in Sources */,
+				BF4632A7F1E3FD553C5E9EC2 /* InspectorExample.swift in Sources */,
 				27C95E01A063C1DB71F01A66 /* KeyboardDismissExample.swift in Sources */,
 				C452F40930C32A87BE5E027C /* ListRowExample.swift in Sources */,
 				E8727C3CC28E997E51B377EB /* LoadingStateExample.swift in Sources */,
@@ -583,7 +594,6 @@
 				D91E40EC89F877818AD6EEB1 /* ThemeSwitcherExample.swift in Sources */,
 				B81B4730DC5DBB752ECEB6FE /* TipViewExample.swift in Sources */,
 				D42458EE019F6742BB1E8058 /* ToastExample.swift in Sources */,
-				4E903C4EB9BC9082407331D7 /* ToggleButtonExample.swift in Sources */,
 				640FE6428684B2C78FFDB3A2 /* TypographyExample.swift in Sources */,
 				2C30F61CD61AA95EA8543D19 /* UIColorExample.swift in Sources */,
 			);
@@ -718,15 +728,14 @@
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_NSCameraUsageDescription = "Capture photos for the camera examples.";
 				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "Save photos from the share preview to your photo library.";
-				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Browse and select photos for the photo browser examples.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = UIInterfaceOrientationPortrait;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -750,15 +759,14 @@
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_NSCameraUsageDescription = "Capture photos for the camera examples.";
 				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "Save photos from the share preview to your photo library.";
-				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Browse and select photos for the photo browser examples.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = UIInterfaceOrientationPortrait;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -807,6 +815,10 @@
 /* End XCLocalSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		0734FD4EE7A0A0B9E60447E6 /* LumiKitCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = LumiKitCore;
+		};
 		2F68DA943A7AC838DB04D706 /* LumiKitUI */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = LumiKitUI;

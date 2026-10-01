@@ -42,6 +42,18 @@ struct LMKGradientViewTests {
     }
 
     @Test
+    func `A gradient is a backdrop: what a host puts on it stays reachable`() {
+        let gradient = LMKGradientView(colors: [.red, .blue])
+        let label = UILabel()
+        label.text = "Title"
+        gradient.addSubview(label)
+        #expect(!gradient.isAccessibilityElement)
+        #expect(!gradient.accessibilityElementsHidden, "the backdrop must not hide the label from VoiceOver")
+        #expect(label.superview === gradient)
+        #expect(LMKGradientView.Direction.angle(30).hashValue == LMKGradientView.Direction.angle(30).hashValue)
+    }
+
+    @Test
     func `Radial kind switches the layer type`() throws {
         let gradient = LMKGradientView(colors: [.white, .clear], kind: .radial)
         let gradientLayer = try #require(gradient.layer as? CAGradientLayer)

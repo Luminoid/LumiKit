@@ -4,7 +4,8 @@
 //
 //  A live range summary over a UICalendarView whose multi-date selection
 //  renders every day of the range. Selection runs through the shared
-//  `LMKCalendarSelection` reducer in range mode.
+//  `LMKCalendarSelection` reducer in range mode, styled from
+//  `theme.calendarRangeSelection`.
 //
 
 import LumiKitCore
@@ -20,7 +21,44 @@ import UIKit
 /// picker.onSelectionChange = { selection in ... }
 /// if let range = picker.selectedRange { ... }
 /// ```
-public final class LMKCalendarRangeSelectionView: UIView {
+public final class LMKCalendarRangeSelectionView: UIView, LMKThemeApplying {
+    // MARK: - Style
+
+    public nonisolated struct Style: Sendable, Equatable, LMKThemeExtension {
+        /// `nil` = `bodyMedium`.
+        public var summaryTextStyle: LMKTextStyle?
+        /// `nil` = `textPrimary`.
+        public var summaryColor: UIColor?
+        /// The calendar's selection tint; `nil` = `primary`.
+        public var tintColor: UIColor?
+        /// Gap between the summary and the calendar; `nil` = `xs`.
+        public var spacing: CGFloat?
+
+        public init(
+            summaryTextStyle: LMKTextStyle? = nil,
+            summaryColor: UIColor? = nil,
+            tintColor: UIColor? = nil,
+            spacing: CGFloat? = nil
+        ) {
+            self.summaryTextStyle = summaryTextStyle
+            self.summaryColor = summaryColor
+            self.tintColor = tintColor
+            self.spacing = spacing
+        }
+
+        public static let defaultValue = Self()
+
+        /// `other`'s non-nil fields over this style's.
+        public func merging(_ other: Self) -> Self {
+            Self(
+                summaryTextStyle: other.summaryTextStyle ?? summaryTextStyle,
+                summaryColor: other.summaryColor ?? summaryColor,
+                tintColor: other.tintColor ?? tintColor,
+                spacing: other.spacing ?? spacing
+            )
+        }
+    }
+
     // MARK: - Properties
 
     /// The reduced selection (`empty`, `start`, or `range`).
@@ -47,27 +85,56 @@ public final class LMKCalendarRangeSelectionView: UIView {
         didSet { refreshSummary() }
     }
 
+    /// Per-instance style; `nil` fields resolve from `theme.calendarRangeSelection`, then the built-in look.
+    public var style: Style {
+        didSet {
+            guard style != oldValue else { return }
+            applyTheme(traitCollection.lmkTheme)
+        }
+    }
+
+    /// Called at the end of every `applyTheme`, for tweaks the style does not cover.
+    public var didApplyStyle: ((LMKCalendarRangeSelectionView) -> Void)?
+
     public let summaryLabel = UILabel()
     public let calendarView = UICalendarView()
 
-    private let calendar: Calendar
+    /// The calendar the days and the summary are expressed in.
+    public let calendar: Calendar
+    /// The locale of the calendar grid and the summary.
+    public let locale: Locale
+
     private var multiDateSelection: UICalendarSelectionMultiDate?
+    private var resolved = Style()
+    private var spacingConstraint: Constraint?
+    private let intervalFormatter: DateIntervalFormatter
 
     /// Display cap: a selection is rebuilt day by day, so a typo'd year must not
     /// enumerate thousands of components.
     private static let maxSelectedDays = 366
 
-    private static let intervalFormatter: DateIntervalFormatter = {
-        let formatter = DateIntervalFormatter()
-        formatter.dateStyle = .medium
-        formatter.timeStyle = .none
-        return formatter
-    }()
-
     // MARK: - Initialization
 
-    public init(startDate: Date? = nil, endDate: Date? = nil, calendar: Calendar = LMKDate.calendar) {
+    /// - Parameters:
+    ///   - startDate: The first day of the initial range; `nil` starts with nothing selected.
+    ///   - endDate: The last day of the initial range; `nil` leaves the range open at `startDate`
+    ///     for the next tap to close.
+    ///   - calendar: The calendar (and time zone) the days are expressed in.
+    ///   - locale: The locale of the grid and the summary; `nil` = the current locale.
+    ///   - style: Per-instance overrides layered over `theme.calendarRangeSelection`.
+    public init(startDate: Date? = nil, endDate: Date? = nil, calendar: Calendar = LMKDate.calendar, locale: Locale? = nil, style: Style = Style()) {
         self.calendar = calendar
+        self.locale = locale ?? .current
+        self.style = style
+        // The summary must agree with the grid: both format in the view's calendar and time zone,
+        // not the device's, so a Tokyo start of day never reads as the previous evening.
+        let formatter = DateIntervalFormatter()
+        formatter.calendar = calendar
+        formatter.timeZone = calendar.timeZone
+        formatter.locale = self.locale
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .none
+        intervalFormatter = formatter
         selection = LMKCalendarSelection(
             start: startDate.map { LMKCalendarDay($0, calendar: calendar) },
             end: endDate.map { LMKCalendarDay($0, calendar: calendar) }
@@ -76,6 +143,7 @@ public final class LMKCalendarRangeSelectionView: UIView {
         setupUI()
         refreshSelection()
         refreshSummary()
+        lmk_startApplyingTheme()
     }
 
     @available(*, unavailable)
@@ -86,15 +154,13 @@ public final class LMKCalendarRangeSelectionView: UIView {
     // MARK: - Setup
 
     private func setupUI() {
-        summaryLabel.lmk_apply(.bodyMedium, color: LMKColor.textPrimary)
         summaryLabel.textAlignment = .center
 
         let behavior = UICalendarSelectionMultiDate(delegate: self)
         multiDateSelection = behavior
         calendarView.selectionBehavior = behavior
         calendarView.calendar = calendar
-        calendarView.locale = .current
-        calendarView.tintColor = LMKColor.primary
+        calendarView.locale = locale
         let anchor = selectedRange?.lowerBound ?? LMKDate.today
         calendarView.visibleDateComponents = calendar.dateComponents([.year, .month], from: anchor)
 
@@ -104,9 +170,19 @@ public final class LMKCalendarRangeSelectionView: UIView {
             make.top.leading.trailing.equalToSuperview()
         }
         calendarView.snp.makeConstraints { make in
-            make.top.equalTo(summaryLabel.snp.bottom).offset(LMKSpacing.xs)
+            spacingConstraint = make.top.equalTo(summaryLabel.snp.bottom).offset(0).constraint
             make.leading.trailing.bottom.equalToSuperview()
         }
+    }
+
+    // MARK: - Theme
+
+    public func applyTheme(_ theme: LMKTheme) {
+        resolved = theme.calendarRangeSelection.merging(style)
+        summaryLabel.lmk_apply(resolved.summaryTextStyle ?? .bodyMedium, color: resolved.summaryColor ?? LMKColor.textPrimary)
+        calendarView.tintColor = resolved.tintColor ?? LMKColor.primary
+        spacingConstraint?.update(offset: resolved.spacing ?? theme.spacing.xs)
+        didApplyStyle?(self)
     }
 
     // MARK: - State
@@ -131,7 +207,7 @@ public final class LMKCalendarRangeSelectionView: UIView {
 
     private func refreshSummary() {
         if let range = selectedRange {
-            summaryLabel.text = Self.intervalFormatter.string(from: range.lowerBound, to: range.upperBound)
+            summaryLabel.text = intervalFormatter.string(from: range.lowerBound, to: range.upperBound)
         } else {
             summaryLabel.text = strings.selectDatesPrompt
         }
@@ -166,5 +242,13 @@ extension LMKCalendarRangeSelectionView: UICalendarSelectionMultiDateDelegate {
             return
         }
         select(LMKCalendarDay(year: year, month: month, day: day))
+    }
+}
+
+public nonisolated extension LMKTheme {
+    /// App-wide default style for `LMKCalendarRangeSelectionView`.
+    var calendarRangeSelection: LMKCalendarRangeSelectionView.Style {
+        get { self[LMKCalendarRangeSelectionView.Style.self] }
+        set { self[LMKCalendarRangeSelectionView.Style.self] = newValue }
     }
 }

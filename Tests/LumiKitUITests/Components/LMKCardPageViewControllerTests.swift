@@ -12,6 +12,7 @@ struct LMKCardPageViewControllerTests {
     private final class TestPage: LMKCardPageViewController {
         var setupContentCalled = false
         var leadingTaps = 0
+        var themeCalls: [String] = []
 
         override func setupContent() {
             setupContentCalled = true
@@ -19,6 +20,10 @@ struct LMKCardPageViewControllerTests {
 
         override func leadingButtonTapped() {
             leadingTaps += 1
+        }
+
+        override func applyContentTheme(_ theme: LMKTheme) {
+            themeCalls.append("content")
         }
     }
 
@@ -45,6 +50,7 @@ struct LMKCardPageViewControllerTests {
         layout(page)
         #expect(page.headerView.frame.height == 52)
         #expect(page.leadingButton.frame.size == CGSize(width: 32, height: 32))
+        #expect(page.leadingButton.frame.minX == LMKSpacing.large)
         #expect(page.leadingButton.point(inside: CGPoint(x: -5, y: -5), with: nil), "the hit target stays 44pt")
     }
 
@@ -76,6 +82,33 @@ struct LMKCardPageViewControllerTests {
     }
 
     @Test
+    func `A titled item takes the width of its text in a capsule, and roles and badges render`() throws {
+        let page = TestPage(title: "T")
+        page.leadingItem = .init(title: "Cancel")
+        page.trailingItem = .init(title: "Save", role: .prominent, badge: .count(3))
+        page.loadViewIfNeeded()
+        layout(page)
+        let fittingWidth = page.leadingButton.intrinsicContentSize.width
+        #expect(fittingWidth > 32)
+        #expect(page.leadingButton.frame.width >= fittingWidth - 0.5, "the title is not truncated into a 32pt square")
+        #expect(page.leadingButton.frame.height == 32)
+        #expect(page.leadingButton.style.surface.corners == .capsule)
+        #expect(page.leadingButton.style.variant == .ghost)
+        #expect(page.trailingButton.style.variant == .filled, "prominent fills the capsule")
+        let badge = try #require(page.headerView.subviews.compactMap { $0 as? LMKBadgeView }.first)
+        #expect(badge.accessibilityLabel == "3")
+        #expect(abs(badge.center.x - (page.trailingButton.frame.maxX - LMKSpacing.xs)) < 0.5)
+
+        page.trailingItem = .init(systemName: "trash", role: .destructive)
+        #expect(page.trailingButton.style.role == .destructive)
+        #expect(page.trailingButton.style.tintColor === LMKColor.error)
+        #expect(page.trailingButton.style.surface.corners == .circle, "a glyph keeps the circle")
+        #expect(page.headerView.subviews.contains { $0 is LMKBadgeView } == false, "the badge goes with its item")
+        layout(page)
+        #expect(page.trailingButton.frame.size == CGSize(width: 32, height: 32))
+    }
+
+    @Test
     func `Push shows the back button and swaps the title; pop restores both`() async {
         let page = TestPage(title: "Root")
         page.leadingItem = nil
@@ -104,6 +137,64 @@ struct LMKCardPageViewControllerTests {
 
         page.popContentView(animated: false)
         #expect(!page.canPopContent, "popping at the root is a no-op")
+    }
+
+    @Test
+    func `Stacked content shows the back chevron whatever the leading item says`() async {
+        let page = TestPage(title: "Root")
+        page.leadingItem = .init(systemName: "xmark", accessibilityLabel: "Close", isEnabled: false, menu: UIMenu(children: [UIAction(title: "A") { _ in }]))
+        page.loadViewIfNeeded()
+        layout(page)
+        #expect(page.leadingButton.accessibilityLabel == "Close")
+        #expect(!page.leadingButton.isEnabled)
+        #expect(page.leadingButton.menu != nil)
+
+        let detail = UIView()
+        page.pushContentView(detail, animated: false)
+        #expect(page.leadingButton.accessibilityLabel == "Back")
+        #expect(page.leadingButton.image == UIImage(systemName: "chevron.backward"))
+        #expect(page.leadingButton.isEnabled, "a disabled item must not block the pop")
+        #expect(page.leadingButton.menu == nil, "a menu-only item must not open its menu instead of popping")
+        #expect(!page.leadingButton.showsMenuAsPrimaryAction)
+
+        page.leadingButton.didTap()
+        await LMKWait.until { detail.superview == nil }
+        #expect(page.leadingButton.accessibilityLabel == "Close")
+        #expect(!page.leadingButton.isEnabled)
+        #expect(page.leadingButton.menu != nil)
+    }
+
+    @Test
+    func `An animated push and pop in a window leaves the content visible`() async {
+        let page = TestPage(title: "Root")
+        let window = LMKThemeTesting.host(page.view)
+        defer { window.isHidden = true }
+        page.view.frame = window.bounds
+        window.layoutIfNeeded()
+        let detail = UIView()
+        page.pushContentView(detail, title: "Detail", animated: true)
+        await LMKWait.until { page.contentContainerView.superview == nil }
+        #expect(detail.superview != nil)
+
+        page.popContentView(animated: true)
+        await LMKWait.until { detail.superview == nil && page.contentContainerView.superview != nil }
+        #expect(page.contentContainerView.alpha == 1, "the root slid out faded; it comes back whole")
+        #expect(page.contentContainerView.transform == .identity)
+        #expect(detail.alpha == 1, "a popped view the host keeps is handed back whole")
+        #expect(detail.transform == .identity)
+
+        page.pushContentView(detail, title: "Detail", animated: true)
+        await LMKWait.until { page.contentContainerView.superview == nil }
+        #expect(detail.alpha == 1, "a view pushed a second time is visible")
+        #expect(detail.transform == .identity)
+    }
+
+    @Test
+    func `title set after load updates the header`() {
+        let page = TestPage(title: "Before")
+        page.loadViewIfNeeded()
+        page.title = "After"
+        #expect(page.headerTitleLabel.text == "After")
     }
 
     @Test
@@ -195,5 +286,28 @@ struct LMKCardPageViewControllerTests {
         page.applyTheme(page.traitCollection.lmkTheme)
         window.layoutIfNeeded()
         #expect(page.headerTitleLabel.font.pointSize > 17)
+    }
+
+    @Test
+    func `Header spacing follows the theme carried by the traits`() {
+        let page = TestPage(title: "T", style: LMKCardPageViewController.Style(showsDragIndicator: true))
+        let window = LMKThemeTesting.host(page.view, theme: LMKThemeTesting.distinct)
+        defer { window.isHidden = true }
+        page.view.frame = window.bounds
+        window.layoutIfNeeded()
+        let spacing = LMKThemeTesting.distinct.spacing
+        #expect(page.leadingButton.frame.minX == spacing.large)
+        #expect(page.dragIndicator.frame.minY == spacing.small)
+        #expect(page.headerView.frame.height == 52 + spacing.small + 5)
+    }
+
+    @Test
+    func `applyContentTheme runs on every apply, before didApplyStyle`() {
+        let page = TestPage(title: "T")
+        page.didApplyStyle = { page in (page as? TestPage)?.themeCalls.append("style") }
+        page.loadViewIfNeeded()
+        #expect(page.themeCalls == ["content", "style"])
+        page.style.showsHeaderSeparator = true
+        #expect(page.themeCalls == ["content", "style", "content", "style"])
     }
 }

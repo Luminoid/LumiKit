@@ -17,18 +17,23 @@ extension LMKSegmentedControl {
         resolved.layout ?? .equalWidth
     }
 
+    /// Whether the container can be wider than the control: the scrollable layout, and the
+    /// fit-content layout once its titles outgrow the host.
+    var scrollsContent: Bool {
+        // Fit-content hugs its titles, but at large Dynamic Type sizes they can outgrow the host;
+        // rather than let Auto Layout break one segment's width, the control scrolls sideways
+        // (no bounce, so the pill drag still wins while everything fits).
+        resolvedLayout.isScrollable || resolvedLayout == .fitContent
+    }
+
     // MARK: - Layout mode
 
     /// Configures scrolling, distribution, spacing, and layout priorities for the resolved layout.
     func applyLayoutMode(_ theme: LMKTheme) {
         let layout = resolvedLayout
         let scrollable = layout.isScrollable
-        // Fit-content hugs its titles, but at large Dynamic Type sizes they can outgrow the host;
-        // rather than let Auto Layout break one segment's width, the control scrolls sideways
-        // (no bounce, so the pill drag still wins while everything fits).
-        let scrollsWhenOverflowing = layout == .fitContent
-        scrollView.isScrollEnabled = (scrollable || scrollsWhenOverflowing) && isEnabled
-        scrollView.clipsToBounds = scrollable || scrollsWhenOverflowing
+        scrollView.isScrollEnabled = scrollsContent && isEnabled
+        scrollView.clipsToBounds = scrollsContent
         scrollView.bounces = scrollable
         panGesture?.isEnabled = !scrollable && isEnabled
         segmentStack.distribution = layout == .equalWidth ? .fillEqually : .fill
@@ -37,7 +42,7 @@ extension LMKSegmentedControl {
         } else {
             segmentStack.spacing = 0
         }
-        if scrollable || scrollsWhenOverflowing {
+        if scrollsContent {
             containerFillWidthConstraint?.deactivate()
             containerMinWidthConstraint?.activate()
         } else {
@@ -110,7 +115,6 @@ extension LMKSegmentedControl {
     /// Re-anchors the indicator to the selected label (hidden for no selection) and, when
     /// scrolling, brings the segment into view.
     func moveIndicator(animated: Bool) {
-        guard !segmentLabels.isEmpty else { return }
         guard segmentLabels.indices.contains(selectedSegmentIndex) else {
             indicatorLeading?.deactivate()
             indicatorTrailing?.deactivate()
@@ -130,17 +134,18 @@ extension LMKSegmentedControl {
             indicatorTrailing = make.trailing.equalTo(target).offset(-inset).constraint
         }
 
-        if resolvedLayout.isScrollable, !target.bounds.isEmpty {
+        if scrollsContent, !target.bounds.isEmpty {
             let padding = resolved.contentInset ?? Self.defaultContentInset
             let rect = containerView.convert(target.frame, from: segmentStack).insetBy(dx: -padding, dy: 0)
             scrollView.scrollRectToVisible(rect, animated: animated && LMKAnimation.shouldAnimate)
         }
 
         if animated, LMKAnimation.shouldAnimate {
+            let animation = traitCollection.lmkTheme.animation
             UIView.animate(
-                withDuration: LMKAnimation.Duration.fast,
+                withDuration: animation.fast,
                 delay: 0,
-                usingSpringWithDamping: LMKAnimation.spring.damping,
+                usingSpringWithDamping: animation.spring.damping,
                 initialSpringVelocity: 0,
                 options: .curveEaseInOut
             ) { [self] in

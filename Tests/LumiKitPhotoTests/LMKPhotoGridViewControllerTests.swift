@@ -241,28 +241,31 @@ struct LMKPhotoGridViewControllerTests {
     // MARK: - Photo Browser Integration
 
     @Test
-    func `conforms to photo browser data source`() async {
+    func `the browser bridge serves the grid's photos in display order`() async {
         let ds = MockPhotoGridDataSource(photoCount: 5)
         let grid = LMKPhotoGridViewController()
         grid.dataSource = ds
         grid.loadViewIfNeeded()
 
-        let browserDS: any LMKPhotoBrowserDataSource = grid
+        let browserDS: any LMKPhotoBrowserDataSource = grid.browserBridge
 
         #expect(browserDS.numberOfPhotos == 5)
         let photo = await browserDS.photo(at: 0)
         #expect(photo != nil)
+        #expect(ds.fullImageRequests == [4], "display index 0 is the newest photo, and the browser asks for the full-size image")
         #expect(browserDS.photoSubtitle(at: 0) == nil)
+        #expect(!(grid is any LMKPhotoBrowserDataSource), "the grid's own members speak data source indices")
+        #expect(!(grid is any LMKPhotoBrowserDelegate))
     }
 
     @Test
-    func `browser data source maps dates through sorted indices`() {
+    func `the browser bridge maps dates through sorted indices`() {
         let ds = MockPhotoGridDataSource(photoCount: 3, datesDescending: true)
         let grid = LMKPhotoGridViewController()
         grid.dataSource = ds
         grid.loadViewIfNeeded()
 
-        let browserDS: any LMKPhotoBrowserDataSource = grid
+        let browserDS: any LMKPhotoBrowserDataSource = grid.browserBridge
 
         // In descending order (default), the dates should be mapped through sorted indices
         let date0 = browserDS.photoDate(at: 0)
@@ -275,13 +278,13 @@ struct LMKPhotoGridViewControllerTests {
     }
 
     @Test
-    func `browser data source returns nil for out of bounds index`() async {
+    func `the browser bridge returns nil for an out of bounds index`() async {
         let ds = MockPhotoGridDataSource(photoCount: 3)
         let grid = LMKPhotoGridViewController()
         grid.dataSource = ds
         grid.loadViewIfNeeded()
 
-        let browserDS: any LMKPhotoBrowserDataSource = grid
+        let browserDS: any LMKPhotoBrowserDataSource = grid.browserBridge
 
         let photo = await browserDS.photo(at: 10)
         #expect(photo == nil)
@@ -289,7 +292,7 @@ struct LMKPhotoGridViewControllerTests {
     }
 
     @Test
-    func `conforms to photo browser delegate`() {
+    func `the browser bridge reports actions by data source index`() {
         let grid = LMKPhotoGridViewController()
         let gridDelegate = MockPhotoGridDelegate()
         let ds = MockPhotoGridDataSource(photoCount: 3)
@@ -297,11 +300,97 @@ struct LMKPhotoGridViewControllerTests {
         grid.delegate = gridDelegate
         grid.loadViewIfNeeded()
 
-        let browserDelegate: any LMKPhotoBrowserDelegate = grid
+        let browserDelegate: any LMKPhotoBrowserDelegate = grid.browserBridge
         let mockBrowser = LMKPhotoBrowserViewController(initialIndex: 0)
         browserDelegate.photoBrowser(mockBrowser, didRequestActionAt: 0)
 
         #expect(gridDelegate.didRequestActionCalled)
+        #expect(gridDelegate.lastActionIndex == 2, "display index 0 is data source index 2")
+    }
+
+    @Test
+    func `the presented browser is exposed and reloaded with the grid`() {
+        let ds = MockPhotoGridDataSource(photoCount: 3)
+        let grid = LMKPhotoGridViewController()
+        grid.dataSource = ds
+        let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 375, height: 812))
+        window.rootViewController = grid
+        window.makeKeyAndVisible()
+        grid.loadViewIfNeeded()
+        #expect(grid.browser == nil)
+
+        grid.collectionView(grid.collectionView, didSelectItemAt: IndexPath(item: 2, section: 0))
+        let browser = grid.browser
+        #expect(browser != nil)
+        #expect(browser === grid.presentedViewController)
+        browser?.loadViewIfNeeded()
+        browser?.viewWillAppear(false)
+        #expect(browser?.pageIndicator.numberOfPages == 3)
+        #expect(browser?.currentPhotoIndex == 2)
+
+        // A deletion the host reloads the grid for reaches the browser too.
+        ds.photoCount = 2
+        grid.reloadData()
+        #expect(browser?.pageIndicator.numberOfPages == 2)
+        #expect(browser?.currentPhotoIndex == 1, "the browser clamps its page to the new count")
+    }
+
+    @Test
+    func `cells ask for thumbnails sized for the cell, never the full image`() async {
+        let ds = MockPhotoGridDataSource(photoCount: 3)
+        let grid = LMKPhotoGridViewController(columnCount: 3)
+        grid.dataSource = ds
+        grid.view.frame = CGRect(x: 0, y: 0, width: 390, height: 844)
+        grid.view.layoutIfNeeded()
+        grid.collectionView.layoutIfNeeded()
+
+        await LMKWait.until { ds.thumbnailRequests.count == 3 }
+        #expect(ds.fullImageRequests.isEmpty)
+        let side = LMKPhotoGridViewController.cellSide(columnCount: 3, width: 390, spacing: 2)
+        let scale = LMKScene.displayScale(of: grid.view) ?? LMKScene.fallbackDisplayScale
+        #expect(ds.thumbnailRequests.allSatisfy { $0.pixelSize == LMKImage.pixelSize(CGSize(width: side, height: side), scale: scale) })
+        #expect(grid.thumbnailPixelSize.width == LMKImage.pixelSize(points: side, scale: scale))
+    }
+
+    @Test
+    func `the default thumbnail covers the pixel size, so an aspect-fill cell is never upscaled, and keeps its shape`() async throws {
+        let format = UIGraphicsImageRendererFormat()
+        format.scale = 1
+        let wide = UIGraphicsImageRenderer(size: CGSize(width: 1200, height: 600), format: format).image { context in
+            UIColor.red.setFill()
+            context.fill(CGRect(x: 0, y: 0, width: 1200, height: 600))
+        }
+        let thumbnail = try #require(await LMKPhotoGridViewController.thumbnail(of: wide, pixelSize: CGSize(width: 300, height: 300)))
+        let pixels = CGSize(width: CGFloat(thumbnail.cgImage?.width ?? 0), height: CGFloat(thumbnail.cgImage?.height ?? 0))
+        #expect(min(pixels.width, pixels.height) >= 300, "the shorter side covers the cell")
+        #expect(pixels.width < 1200, "it is still a downsample")
+        #expect(abs(pixels.width / pixels.height - 2) < 0.05, "the thumbnail keeps the photo's shape")
+
+        let small = UIImage.lmk_solidColor(.blue, size: CGSize(width: 10, height: 10))
+        let untouched = await LMKPhotoGridViewController.thumbnail(of: small, pixelSize: CGSize(width: 300, height: 300))
+        #expect(untouched === small, "an image already smaller than the cell is not touched")
+
+        let source = OnlyFullImageSource()
+        let viaDefault = try #require(await source.photoGridThumbnail(at: 0, pixelSize: CGSize(width: 100, height: 100)))
+        #expect(min(viaDefault.cgImage?.width ?? 0, viaDefault.cgImage?.height ?? 0) >= 100)
+        #expect(min(viaDefault.cgImage?.width ?? 0, viaDefault.cgImage?.height ?? 0) < 400, "decoded down from the full image")
+    }
+
+    @Test
+    func `a Live Photo cell says so to VoiceOver`() {
+        let ds = MockPhotoGridDataSource(photoCount: 3)
+        ds.liveIndices = [2]
+        let grid = LMKPhotoGridViewController(columnCount: 3)
+        grid.dataSource = ds
+        grid.view.frame = CGRect(x: 0, y: 0, width: 390, height: 844)
+        grid.view.layoutIfNeeded()
+        grid.collectionView.layoutIfNeeded()
+
+        // Display index 0 is data source index 2, the Live Photo.
+        let live = grid.collectionView.cellForItem(at: IndexPath(item: 0, section: 0))
+        let still = grid.collectionView.cellForItem(at: IndexPath(item: 1, section: 0))
+        #expect(live?.accessibilityLabel == "Photo 1 of 3, " + grid.strings.livePhotoAccessibilityLabel)
+        #expect(still?.accessibilityLabel == "Photo 2 of 3")
     }
 
     // MARK: - Reload Data
@@ -313,7 +402,7 @@ struct LMKPhotoGridViewControllerTests {
         grid.dataSource = ds
         grid.loadViewIfNeeded()
 
-        let browserDS: any LMKPhotoBrowserDataSource = grid
+        let browserDS: any LMKPhotoBrowserDataSource = grid.browserBridge
         #expect(browserDS.numberOfPhotos == 3)
 
         ds.photoCount = 5
@@ -339,11 +428,15 @@ struct LMKPhotoGridViewControllerTests {
     }
 
     @Test
-    func `photo browser strings can be customized`() {
+    func `photo browser strings default to the browser's process-wide strings and can be customized`() {
+        let original = LMKPhotoBrowserViewController.strings
+        defer { LMKPhotoBrowserViewController.strings = original }
+        LMKPhotoBrowserViewController.strings = LMKPhotoBrowserViewController.Strings(emptyText: "App Empty")
         let grid = LMKPhotoGridViewController()
+        #expect(grid.browserStrings.emptyText == "App Empty", "an app-level override reaches the grid's browser")
+
         let browserStrings = LMKPhotoBrowserViewController.Strings(emptyText: "Custom Browser Empty")
         grid.browserStrings = browserStrings
-
         #expect(grid.browserStrings.emptyText == "Custom Browser Empty")
     }
 
@@ -464,6 +557,52 @@ struct LMKPhotoGridViewControllerTests {
     }
 
     @Test
+    func `Every Style field reaches the view it styles`() throws {
+        let style = LMKPhotoGridViewController.Style(
+            minimumCellSize: 100,
+            maximumColumnCount: 8,
+            cellCorners: .fixed(9),
+            toolbarButton: LMKButton.Style(foregroundColor: .orange),
+            toolbarSpacing: 30,
+            toolbarBottomMargin: 40,
+            badgeSize: 30,
+            badgeTint: .magenta,
+            selectionTint: .cyan,
+            selectionOverlayAlpha: 0.5,
+            pinchThreshold: 0.6
+        )
+        let ds = MockPhotoGridDataSource(photoCount: 6)
+        ds.liveIndices = [5]
+        let grid = LMKPhotoGridViewController(columnCount: 3, style: style)
+        grid.dataSource = ds
+        let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 390, height: 844))
+        window.rootViewController = grid
+        window.makeKeyAndVisible()
+        grid.view.layoutIfNeeded()
+        grid.collectionView.layoutIfNeeded()
+
+        #expect(grid.maximumColumnCount == 3, "390pt of width holds three 100pt cells")
+        #expect(grid.resolvedStyle.columnCap == 8)
+        #expect(grid.sortButton.style.foregroundColor == .orange)
+        #expect(grid.toolbarView.frame.maxY == grid.view.safeAreaLayoutGuide.layoutFrame.maxY - 40)
+        #expect((grid.sortButton.superview as? UIStackView)?.spacing == 30)
+        #expect(grid.resolvedStyle.pinchStep == 0.6)
+
+        // Display index 0 is data source index 5, the Live Photo.
+        let cell = try #require(grid.collectionView.cellForItem(at: IndexPath(item: 0, section: 0)) as? LMKPhotoGridCell)
+        cell.setShowsSelected(true)
+        cell.layoutIfNeeded()
+        let imageView = try #require(cell.contentView.subviews.compactMap { $0 as? UIImageView }.first)
+        #expect(imageView.layer.cornerRadius == 9)
+        let overlay = try #require(cell.contentView.subviews.first { !($0 is UIImageView) && $0.backgroundColor != nil && !$0.isHidden && $0.bounds.size == cell.bounds.size })
+        #expect(overlay.backgroundColor == UIColor.cyan.withAlphaComponent(0.5))
+        let badges = cell.contentView.subviews.filter { $0.bounds.size == CGSize(width: 30, height: 30) }
+        #expect(badges.count == 2, "the LIVE badge and the checkmark take the badge size")
+        let glyph = try #require(badges.flatMap(\.subviews).compactMap { $0 as? UIImageView }.first)
+        #expect(glyph.tintColor == .magenta)
+    }
+
+    @Test
     func `browser style is forwarded when presenting`() {
         let ds = MockPhotoGridDataSource(photoCount: 1)
         let grid = LMKPhotoGridViewController()
@@ -515,7 +654,7 @@ struct LMKPhotoGridCellAsyncImageTests {
         #expect(cell.installedImage == nil)
         cell.loadImage { image }
 
-        await settleMainActor()
+        await LMKWait.until { cell.installedImage === image }
         #expect(cell.installedImage === image)
     }
 
@@ -536,12 +675,12 @@ struct LMKPhotoGridCellAsyncImageTests {
         cell.prepareForReuse()
         cell.configure(with: nil, contentMode: .scaleAspectFill)
         cell.loadImage { freshImage }
-        await settleMainActor()
+        await LMKWait.until { cell.installedImage === freshImage }
         #expect(cell.installedImage === freshImage)
 
         // Release the stale load: its result must be discarded.
         gate.open()
-        await settleMainActor()
+        await LMKWait.until(timeout: .milliseconds(300)) { cell.installedImage === staleImage }
         #expect(cell.installedImage === freshImage)
     }
 
@@ -576,7 +715,7 @@ struct LMKPhotoGridCellAsyncImageTests {
         // the pending load even without a reuse cycle.
         cell.configure(with: nil, contentMode: .scaleAspectFit)
         gate.open()
-        await settleMainActor()
+        await LMKWait.until(timeout: .milliseconds(300)) { cell.installedImage === staleImage }
         #expect(cell.installedImage == nil)
     }
 }
@@ -587,6 +726,9 @@ private final class MockPhotoGridDataSource: LMKPhotoGridDataSource {
     var photoCount: Int
     var prefetched: [Int] = []
     var cancelled: [Int] = []
+    var fullImageRequests: [Int] = []
+    var thumbnailRequests: [(index: Int, pixelSize: CGSize)] = []
+    var liveIndices: Set<Int> = []
     private let datesDescending: Bool
 
     init(photoCount: Int, datesDescending: Bool = false) {
@@ -599,8 +741,19 @@ private final class MockPhotoGridDataSource: LMKPhotoGridDataSource {
     }
 
     func photoGridImage(at index: Int) async -> UIImage? {
+        fullImageRequests.append(index)
         guard index >= 0, index < photoCount else { return nil }
         return UIImage.lmk_solidColor(.blue, size: CGSize(width: 100, height: 100))
+    }
+
+    func photoGridThumbnail(at index: Int, pixelSize: CGSize) async -> UIImage? {
+        thumbnailRequests.append((index, pixelSize))
+        guard index >= 0, index < photoCount else { return nil }
+        return UIImage.lmk_solidColor(.blue, size: CGSize(width: 10, height: 10))
+    }
+
+    func photoGridIsLivePhoto(at index: Int) -> Bool {
+        liveIndices.contains(index)
     }
 
     func photoGridDate(at index: Int) -> Date? {
@@ -616,6 +769,24 @@ private final class MockPhotoGridDataSource: LMKPhotoGridDataSource {
 
     func photoGridCancelPrefetch(indices: [Int]) {
         cancelled.append(contentsOf: indices)
+    }
+}
+
+/// A source with only full-size images, exercising the protocol's default thumbnail.
+private final class OnlyFullImageSource: LMKPhotoGridDataSource {
+    var numberOfPhotos: Int { 1 }
+
+    func photoGridImage(at _: Int) async -> UIImage? {
+        let format = UIGraphicsImageRendererFormat()
+        format.scale = 1
+        return UIGraphicsImageRenderer(size: CGSize(width: 800, height: 400), format: format).image { context in
+            UIColor.green.setFill()
+            context.fill(CGRect(x: 0, y: 0, width: 800, height: 400))
+        }
+    }
+
+    func photoGridDate(at _: Int) -> Date? {
+        nil
     }
 }
 

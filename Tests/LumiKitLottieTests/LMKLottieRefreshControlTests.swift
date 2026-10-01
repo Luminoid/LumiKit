@@ -3,10 +3,23 @@
 //  LumiKit
 //
 
+import Lottie
 import LumiKitUI
 import Testing
 import UIKit
 @testable import LumiKitLottie
+
+/// Polling wait for asynchronous work, as in the UI test target.
+@MainActor
+enum LMKWait {
+    /// Polls `condition` every 20 ms until it holds or `timeout` passes.
+    static func until(timeout: Duration = .seconds(10), _ condition: () -> Bool) async {
+        let deadline = ContinuousClock.now + timeout
+        while !condition(), ContinuousClock.now < deadline {
+            try? await Task.sleep(for: .milliseconds(20))
+        }
+    }
+}
 
 @MainActor
 struct LMKLottieRefreshControlTests {
@@ -64,9 +77,34 @@ struct LMKLottieRefreshControlTests {
         #expect(LMKLottieRefreshControl.pullProgress(offset: 10, threshold: 0) == 1)
 
         let timeline = LMKLottieRefreshControl.Timeline(phase1EndFrame: 60, totalFrames: 180)
-        #expect(abs(LMKLottieRefreshControl.phase1Progress(pull: 1, timeline: timeline) - 1 / 3) < 0.0001)
-        #expect(LMKLottieRefreshControl.phase1Progress(pull: 0, timeline: timeline) == 0)
+        #expect(LMKLottieRefreshControl.phase1Frame(pull: 1, timeline: timeline) == 60)
+        #expect(LMKLottieRefreshControl.phase1Frame(pull: 0.5, timeline: timeline) == 30)
+        #expect(LMKLottieRefreshControl.phase1Frame(pull: 0, timeline: timeline) == 0)
+        #expect(LMKLottieRefreshControl.phase1Frame(pull: 2, timeline: timeline) == 60, "clamped")
+        #expect(LMKLottieRefreshControl.phase1Frame(pull: 0.5, timeline: timeline, startFrame: 20) == 40, "an animation that starts late scrubs from its first frame")
         #expect(LMKLottieRefreshControl.Timeline(phase1EndFrame: 100, totalFrames: 50).totalFrames == 100, "the total never precedes phase one")
+    }
+
+    @Test
+    func `An injected animation gets a timeline from its marker, or loops whole`() throws {
+        let bundled = try #require(LMKLottieRefreshControl.bundledAnimation)
+        #expect(LMKLottieRefreshControl.Timeline(animation: bundled) == .bundled, "the bundled ring's markers describe its own timeline")
+
+        let unmarked = try LottieAnimation.from(data: Data(#"{"v":"5.9.6","fr":30,"ip":10,"op":90,"w":10,"h":10,"nm":"x","ddd":0,"assets":[],"layers":[]}"#.utf8))
+        let derived = LMKLottieRefreshControl.Timeline(animation: unmarked)
+        #expect(derived.phase1EndFrame == 10, "no marker: the pull holds the first frame")
+        #expect(derived.totalFrames == 90, "and the whole animation loops")
+
+        let control = LMKLottieRefreshControl(animation: unmarked, style: LMKLottieRefreshControl.Style(pullThreshold: 80))
+        let scrollView = makeScrollView()
+        scrollView.refreshControl = control
+        scrollView.contentOffset = CGPoint(x: 0, y: -40)
+        control.updatePullProgress(scrollView: scrollView)
+        #expect(control.animationView.currentFrame == 10, "the pull never runs into the loop")
+
+        control.style = LMKLottieRefreshControl.Style(pullThreshold: 80, timeline: LMKLottieRefreshControl.Timeline(phase1EndFrame: 50, totalFrames: 90))
+        control.updatePullProgress(scrollView: scrollView)
+        #expect(control.animationView.currentFrame == 30, "a style timeline wins over the derived one")
     }
 
     @Test
@@ -86,6 +124,42 @@ struct LMKLottieRefreshControlTests {
         #expect(refreshControl.handleEndDragging(scrollView: scrollView))
         #expect(refreshes == 1)
         #expect(refreshControl.handleEndDragging(scrollView: scrollView) == false, "already refreshing")
+    }
+
+    @Test
+    func `A pull that drops back below the threshold does not refresh on release`() {
+        let scrollView = makeScrollView()
+        let refreshControl = LMKLottieRefreshControl(style: LMKLottieRefreshControl.Style(pullThreshold: 80, haptics: false))
+        scrollView.refreshControl = refreshControl
+        var refreshes = 0
+        refreshControl.onRefresh = { refreshes += 1 }
+
+        scrollView.contentOffset = CGPoint(x: 0, y: -120)
+        refreshControl.updatePullProgress(scrollView: scrollView)
+        #expect(!refreshControl.animationView.isHidden)
+        scrollView.contentOffset = CGPoint(x: 0, y: -20)
+        refreshControl.updatePullProgress(scrollView: scrollView)
+        scrollView.contentOffset = .zero
+        refreshControl.updatePullProgress(scrollView: scrollView)
+        #expect(refreshControl.animationView.isHidden, "the ring goes away at rest")
+
+        #expect(refreshControl.handleEndDragging(scrollView: scrollView) == false, "the threshold is a state, not a latch")
+        #expect(refreshes == 0)
+    }
+
+    @Test
+    func `Plain scrolling with the ring at rest writes nothing to the animation view`() {
+        let scrollView = makeScrollView()
+        let refreshControl = LMKLottieRefreshControl(style: LMKLottieRefreshControl.Style(pullThreshold: 80))
+        scrollView.refreshControl = refreshControl
+        #expect(refreshControl.animationView.isHidden)
+        refreshControl.animationView.currentFrame = 42
+
+        scrollView.contentOffset = CGPoint(x: 0, y: 200)
+        refreshControl.updatePullProgress(scrollView: scrollView)
+
+        #expect(refreshControl.animationView.currentFrame == 42, "no frame write while hidden at rest")
+        #expect(refreshControl.animationView.isHidden)
     }
 
     @Test
@@ -152,18 +226,24 @@ struct LMKLottieRefreshControlTests {
     }
 
     @Test
-    func `Ending a refresh with no minimum spin finishes`() {
+    func `Ending a refresh with no minimum spin finishes`() async {
         let scrollView = makeScrollView()
         let refreshControl = LMKLottieRefreshControl(style: LMKLottieRefreshControl.Style(minimumSpinDuration: 0))
         scrollView.refreshControl = refreshControl
 
         refreshControl.beginRefreshing()
+        #expect(refreshControl.isAnimatingRefresh)
         refreshControl.endRefreshing()
-        refreshControl.beginRefreshing()
-        refreshControl.endRefreshing()
+        #expect(!refreshControl.hasPendingEndRefresh, "nothing to wait out")
+        await LMKWait.until { !refreshControl.isAnimatingRefresh }
+        #expect(!refreshControl.isAnimatingRefresh, "the fade completes and the spinner is down")
+        #expect(refreshControl.animationView.isHidden)
 
-        // The fade-out completion lands asynchronously; the control must at least accept the cycle.
-        #expect(refreshControl.attachedScrollView == nil)
+        refreshControl.beginRefreshing()
+        #expect(refreshControl.isAnimatingRefresh, "a new cycle starts cleanly")
+        refreshControl.endRefreshing()
+        await LMKWait.until { !refreshControl.isAnimatingRefresh }
+        #expect(!refreshControl.isAnimatingRefresh)
     }
 
     @Test
@@ -193,5 +273,43 @@ struct LMKLottieRefreshControlTests {
         #expect(merged.tintColor == .red)
         #expect(merged.appliesTint == false)
         #expect(merged.haptics == false)
+    }
+
+    @Test
+    func `Every style field resolves through the control`() {
+        let timeline = LMKLottieRefreshControl.Timeline(phase1EndFrame: 10, totalFrames: 20)
+        let style = LMKLottieRefreshControl.Style(
+            pullThreshold: 55,
+            timeline: timeline,
+            minimumSpinDuration: 3,
+            size: 24,
+            tintColor: .systemPink,
+            tintKeypath: "Ring.**.Color",
+            appliesTint: true,
+            haptics: false
+        )
+        let refreshControl = LMKLottieRefreshControl(style: style)
+        refreshControl.applyTheme(.default)
+
+        #expect(refreshControl.resolvedStyle == style)
+        #expect(refreshControl.resolvedStyle.timeline == timeline)
+        #expect(refreshControl.resolvedStyle.tintKeypath == "Ring.**.Color")
+        let merged = LMKLottieRefreshControl.Style().merging(style)
+        #expect(merged == style, "merging carries every field")
+        #expect(style.merging(LMKLottieRefreshControl.Style()) == style, "nil fields do not clear")
+
+        refreshControl.frame = CGRect(x: 0, y: 0, width: 200, height: 60)
+        refreshControl.layoutSubviews()
+        #expect(refreshControl.animationView.frame.width == 24, "size drives the animation view")
+
+        let scrollView = makeScrollView()
+        scrollView.refreshControl = refreshControl
+        scrollView.contentOffset = CGPoint(x: 0, y: -55)
+        refreshControl.updatePullProgress(scrollView: scrollView)
+        #expect(refreshControl.animationView.currentFrame == 10, "pullThreshold and timeline drive the scrub")
+        #expect(refreshControl.handleEndDragging(scrollView: scrollView))
+        refreshControl.endRefreshing()
+        #expect(refreshControl.hasPendingEndRefresh, "minimumSpinDuration defers the end")
+        refreshControl.cancelPendingEndRefresh()
     }
 }

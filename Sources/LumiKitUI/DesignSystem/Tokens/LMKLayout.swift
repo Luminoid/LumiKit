@@ -65,9 +65,9 @@ public nonisolated enum LMKLayout {
         1 / max(1, scale)
     }
 
-    /// One physical pixel on the key window's display (falls back to 2x when there is no window).
+    /// One physical pixel on the key window's display (`LMKScene.screenScale`, which assumes 3x without a window).
     @MainActor public static var hairline: CGFloat {
-        hairline(forScale: LMKScene.displayScale(of: LMKScene.keyWindow) ?? 2)
+        hairline(forScale: LMKScene.screenScale)
     }
 
     /// One physical pixel on the display `view` is rendered on.

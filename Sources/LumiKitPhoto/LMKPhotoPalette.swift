@@ -16,4 +16,8 @@ nonisolated enum LMKPhotoPalette {
     static let background = UIColor(white: 0.1, alpha: 1)
     /// Foreground on the dark stage (counter, buttons, crop handles).
     static let foreground = UIColor.white
+    /// Backing of the LIVE badge over a photo (at an alpha), in the grid as in the browser: the
+    /// badge sits on the photo, not on the screen's background, so it keeps one look in every
+    /// appearance mode.
+    static let badgeBacking = UIColor.black
 }

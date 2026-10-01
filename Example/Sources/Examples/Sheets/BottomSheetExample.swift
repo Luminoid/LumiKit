@@ -12,26 +12,24 @@ import UIKit
 // MARK: - Bottom Sheet
 
 final class BottomSheetDetailViewController: DetailViewController {
-    override func viewDidLoad() {
-        super.viewDidLoad()
-
+    override func setupStackContent() {
         addSectionHeader("Keyboard Avoidance")
-        stack.addArrangedSubview(UILabel.lmk_make(
+        stackView.addArrangedSubview(UILabel.lmk_make(
             .caption,
             text: "avoidsKeyboard (default true) lifts the sheet by the keyboard's actual overlap with it, using the keyboard's own "
                 + "animation curve, and restores on hide. Starting a drag on the sheet resigns the first responder. Esc and Command-W dismiss."
         ))
         let presentButton = LMKButton(title: "Show Sheet with Text Field", style: .filled(.primary), target: self, action: #selector(showKeyboardSheet))
-        stack.addArrangedSubview(presentButton)
+        stackView.addArrangedSubview(presentButton)
 
         addDivider()
         addSectionHeader("Style")
-        stack.addArrangedSubview(UILabel.lmk_make(
+        stackView.addArrangedSubview(UILabel.lmk_make(
             .caption,
             text: "Style hides the drag indicator and cancel button, retunes the dimming, and restyles the container. onDismiss reports why the sheet went away."
         ))
         let minimalButton = LMKButton(title: "Show Minimal Sheet", style: .filled(.secondary), target: self, action: #selector(showMinimalSheet))
-        stack.addArrangedSubview(minimalButton)
+        stackView.addArrangedSubview(minimalButton)
     }
 
     @objc private func showKeyboardSheet() {

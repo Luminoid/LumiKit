@@ -72,12 +72,29 @@ struct LMKFileTests {
     }
 
     @Test
-    func `clearTemporaryFiles async variant removes off the calling task`() async throws {
+    func `clearTemporaryFiles keeps an item whose age is unknown when an age is given`() throws {
+        let prefix = "lmk_dangling_\(UUID().uuidString)_"
+        let link = tmpDir.appendingPathComponent("\(prefix)link")
+        try FileManager.default.createSymbolicLink(at: link, withDestinationURL: tmpDir.appendingPathComponent("\(prefix)missing"))
+        defer { try? FileManager.default.removeItem(at: link) }
+        #expect((try? FileManager.default.destinationOfSymbolicLink(atPath: link.path)) != nil)
+
+        let removedWithAge = LMKFile.clearTemporaryFiles(olderThan: 600, matchingPrefix: prefix)
+        #expect(removedWithAge == 0)
+        #expect((try? FileManager.default.destinationOfSymbolicLink(atPath: link.path)) != nil, "a dangling link has no modification date, so the age filter cannot claim it")
+
+        let removedWithoutAge = LMKFile.clearTemporaryFiles(matchingPrefix: prefix)
+        #expect(removedWithoutAge == 1, "without an age filter every match goes")
+        #expect((try? FileManager.default.destinationOfSymbolicLink(atPath: link.path)) == nil)
+    }
+
+    @Test
+    func `clearTemporaryFilesInBackground removes off the calling task`() async throws {
         let prefix = "lmk_async_\(UUID().uuidString)_"
         let url = tmpDir.appendingPathComponent("\(prefix)file.txt")
         try "test".write(to: url, atomically: true, encoding: .utf8)
 
-        let removed = await LMKFile.clearTemporaryFiles(matchingPrefix: prefix)
+        let removed = await LMKFile.clearTemporaryFilesInBackground(matchingPrefix: prefix)
 
         #expect(removed == 1)
         #expect(!FileManager.default.fileExists(atPath: url.path))

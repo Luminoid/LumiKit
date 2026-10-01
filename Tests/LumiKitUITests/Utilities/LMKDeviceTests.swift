@@ -62,25 +62,39 @@ struct LMKDeviceTests {
     // MARK: - Device type
 
     @Test
-    func `deviceType returns a valid case`() {
+    func `deviceType is the interface idiom and the flags follow it`() {
         let type = LMKDevice.deviceType
-        // Should be one of the valid cases (we can't predict which in tests)
-        switch type {
-        case .iPhone, .iPad, .macCatalyst, .other:
-            break // All valid
-        }
+        #if targetEnvironment(macCatalyst)
+            #expect(type == .macCatalyst)
+        #else
+            let expected: LMKDevice.Kind = switch UIDevice.current.userInterfaceIdiom {
+            case .phone: .iPhone
+            case .pad: .iPad
+            default: .other
+            }
+            #expect(type == expected)
+            #expect(LMKDevice.kind(for: .phone) == .iPhone)
+            #expect(LMKDevice.kind(for: .pad) == .iPad)
+            #expect(LMKDevice.kind(for: .tv) == .other)
+            #expect(LMKDevice.kind(for: .unspecified) == nil)
+        #endif
+        #expect(LMKDevice.isIPad == (type == .iPad))
+        #expect(LMKDevice.isMacCatalyst == (type == .macCatalyst))
     }
 
+    /// The regression: the members are `nonisolated`, and a read off the main thread trapped
+    /// on `MainActor.assumeIsolated`. The off-main resolver must agree with the main-thread one.
     @Test
-    func `isIPad and isMacCatalyst are consistent`() {
-        let type = LMKDevice.deviceType
-        if type == .iPad {
-            #expect(LMKDevice.isIPad)
-            #expect(!LMKDevice.isMacCatalyst)
-        } else if type == .macCatalyst {
-            #expect(!LMKDevice.isIPad)
-            #expect(LMKDevice.isMacCatalyst)
-        }
+    func `deviceType reads the same value from a detached task`() async {
+        let onMain = LMKDevice.deviceType
+        let detached = await Task.detached { (LMKDevice.deviceType, LMKDevice.isIPad, LMKDevice.isMacCatalyst) }.value
+        #expect(detached.0 == onMain)
+        #expect(detached.1 == (onMain == .iPad))
+        #expect(detached.2 == (onMain == .macCatalyst))
+        #if !targetEnvironment(macCatalyst)
+            let uncached = await Task.detached { LMKDevice.kindFromCurrentTraits() }.value
+            #expect(uncached == onMain, "the thread's traits or the hardware family classify like UIDevice")
+        #endif
     }
 
     // MARK: - Classification
@@ -168,18 +182,31 @@ struct LMKDeviceTests {
     }
 
     @Test
-    func `screenSize(for:) on the key window matches the static lookup`() {
-        guard let window = LMKScene.keyWindow else { return }
-        #expect(LMKDevice.screenSize(for: window) == LMKDevice.screenSize)
+    func `screenSize(for:) on a window classifies its bounds and size classes`() {
+        let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 390, height: 844))
+        window.isHidden = false
+        defer { window.isHidden = true }
+        let traits = window.traitCollection
+        let expected = LMKDevice.screenSize(
+            forWindowSize: window.bounds.size,
+            horizontalSizeClass: traits.horizontalSizeClass,
+            verticalSizeClass: traits.verticalSizeClass
+        )
+        #expect(LMKDevice.screenSize(for: window) == expected)
+        #expect(expected == (traits.horizontalSizeClass == .regular && traits.verticalSizeClass == .regular ? .extraLarge : .regular))
     }
 
     @Test
-    func `screenSize returns a valid case`() {
-        let size = LMKDevice.screenSize
-        switch size {
-        case .compact, .regular, .large, .extraLarge:
-            break // All valid
+    func `The static screenSize reads the key window or the documented fallback`() {
+        let expected: LMKDevice.ScreenSize = if let window = LMKScene.keyWindow {
+            LMKDevice.screenSize(for: window)
+        } else {
+            switch LMKDevice.deviceType {
+            case .iPad, .macCatalyst: .extraLarge
+            case .iPhone, .other: .regular
+            }
         }
+        #expect(LMKDevice.screenSize == expected)
     }
 
     // MARK: - Display cutout

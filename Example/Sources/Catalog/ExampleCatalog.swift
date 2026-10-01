@@ -93,7 +93,7 @@ let exampleSections: [ExampleSection] = [
             iconName: "rectangle.and.hand.point.up.left",
             makeViewController: { ButtonsDetailViewController() }
         ),
-        ExampleItem(title: "Toggle Button", subtitle: "LMKButton.isToggle with on and off content", iconName: "togglepower", makeViewController: { ToggleButtonDetailViewController() }),
+        ExampleItem(title: "Toggle Button", subtitle: "LMKButton.isToggle with on and off content", iconName: "togglepower", makeViewController: { ButtonToggleDetailViewController() }),
         ExampleItem(title: "Switch", subtitle: "LMKSwitch with a spring thumb and custom tints", iconName: "switch.2", makeViewController: { SwitchDetailViewController() }),
         ExampleItem(title: "Checkbox & Rating", subtitle: "LMKCheckbox and LMKRatingControl", iconName: "star.leadinghalf.filled", makeViewController: { CheckboxRatingDetailViewController() }),
         ExampleItem(
@@ -208,6 +208,12 @@ let exampleSections: [ExampleSection] = [
         ),
         ExampleItem(title: "Card Page", subtitle: "A header and pages that push inside a card", iconName: "square.stack", makeViewController: { CardPageDetailViewController() }),
         ExampleItem(
+            title: "Split View Inspector",
+            subtitle: "lmk_setInspector: the iOS 26 inspector column, inert before",
+            iconName: "sidebar.trailing",
+            makeViewController: { InspectorDetailViewController() }
+        ),
+        ExampleItem(
             title: "Menus",
             subtitle: "LMKMenu: choices, toggles, commands, submenus; LMKSortMenu",
             iconName: "filemenu.and.selection",
@@ -248,7 +254,7 @@ let exampleSections: [ExampleSection] = [
             makeViewController: { BottomSheetDetailViewController() }
         ),
         ExampleItem(title: "Action Sheet", subtitle: "Actions with icons, sub-pages, and custom content", iconName: "list.bullet", makeViewController: { ActionSheetDetailViewController() }),
-        ExampleItem(title: "Enum Selection", subtitle: "LMKEnumPicker: single and multiple choice", iconName: "checklist", makeViewController: { EnumSelectionDetailViewController() }),
+        ExampleItem(title: "Enum Picker", subtitle: "LMKEnumPicker: single and multiple choice", iconName: "checklist", makeViewController: { EnumPickerDetailViewController() }),
         ExampleItem(title: "Card Panel", subtitle: "A floating card in an overlay window", iconName: "rectangle.inset.filled", makeViewController: { CardPanelDetailViewController() }),
     ]),
     ExampleSection(title: "Photos & Media", summary: "Browsing, cropping, sharing, and reading images.", items: [

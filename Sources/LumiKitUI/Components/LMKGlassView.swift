@@ -14,7 +14,7 @@ import UIKit
 /// over scrolling content or imagery, and add content to `contentView`:
 ///
 /// ```swift
-/// let glass = LMKGlassView(style: .regular, cornerRadius: LMKCornerRadius.xl)
+/// let glass = LMKGlassView(variant: .regular, cornerRadius: LMKCornerRadius.xl)
 /// glass.contentView.addSubview(label)
 /// ```
 ///
@@ -80,7 +80,7 @@ public final class LMKGlassView: UIVisualEffectView, LMKThemeApplying {
 
     /// Corner radius of the surface (a fixed radius; see `style.corners` for capsules and concentric corners).
     public var cornerRadius: CGFloat {
-        get { resolved.corners?.resolvedRadius(for: bounds) ?? LMKCornerRadius.large }
+        get { resolved.corners?.resolvedRadius(for: bounds) ?? traitCollection.lmkTheme.cornerRadius.large }
         set { style.corners = .fixed(newValue) }
     }
 
@@ -106,6 +106,16 @@ public final class LMKGlassView: UIVisualEffectView, LMKThemeApplying {
     public var didApplyStyle: ((LMKGlassView) -> Void)?
 
     private var resolved = Style()
+    /// What the installed effect was built from, so a theme pass that changes nothing about
+    /// the glass (a radius, Dynamic Type) does not rebuild it.
+    private var appliedEffect: EffectKey?
+
+    /// The inputs of a `UIGlassEffect`.
+    private struct EffectKey: Equatable {
+        var variant: Variant
+        var tintColor: UIColor?
+        var isInteractive: Bool
+    }
 
     // MARK: - Init
 
@@ -116,7 +126,7 @@ public final class LMKGlassView: UIVisualEffectView, LMKThemeApplying {
     ///   - cornerRadius: Surface corner radius; default `LMKCornerRadius.large`.
     ///   - usesConcentricCorners: Container-concentric on iOS 26 with `cornerRadius` as the floor; default `false`.
     public convenience init(
-        style variant: Variant = .regular,
+        variant: Variant = .regular,
         tintColor: UIColor? = nil,
         isInteractive: Bool = false,
         cornerRadius: CGFloat = LMKCornerRadius.large,
@@ -162,15 +172,21 @@ public final class LMKGlassView: UIVisualEffectView, LMKThemeApplying {
 
     public func applyTheme(_ theme: LMKTheme) {
         resolved = theme.glass.merging(style)
-        let variant = resolved.variant ?? .regular
+        let key = EffectKey(variant: resolved.variant ?? .regular, tintColor: resolved.tintColor, isInteractive: resolved.isInteractive ?? false)
+        if key != appliedEffect {
+            appliedEffect = key
+            if #available(iOS 26, *) {
+                let glass = UIGlassEffect(style: key.variant == .clear ? .clear : .regular)
+                glass.tintColor = key.tintColor
+                glass.isInteractive = key.isInteractive
+                effect = glass
+            } else {
+                effect = UIBlurEffect(style: .systemMaterial)
+            }
+        }
         if #available(iOS 26, *) {
-            let glass = UIGlassEffect(style: variant == .clear ? .clear : .regular)
-            glass.tintColor = resolved.tintColor
-            glass.isInteractive = resolved.isInteractive ?? false
-            effect = glass
             contentView.backgroundColor = nil
         } else {
-            effect = UIBlurEffect(style: .systemMaterial)
             contentView.backgroundColor = resolved.tintColor?.withAlphaComponent(theme.alpha.small)
         }
         applyCorners(theme: theme)
@@ -184,48 +200,25 @@ public final class LMKGlassView: UIVisualEffectView, LMKThemeApplying {
         }
     }
 
+    /// The glass takes its shape from `cornerConfiguration` on iOS 26 (per corner, so a
+    /// top-rounded surface stays square at the bottom); the blur fallback rounds the layer.
     private func applyCorners(theme: LMKTheme) {
         let corners = resolved.corners ?? .fixed(theme.cornerRadius.large)
         if #available(iOS 26, *) {
-            switch corners.radius {
-            case .none: cornerConfiguration = .corners(radius: .fixed(0))
-            case let .fixed(radius): cornerConfiguration = .corners(radius: .fixed(radius))
-            case .capsule, .circle: cornerConfiguration = .capsule()
-            case let .concentric(minimum): cornerConfiguration = .corners(radius: .containerConcentric(minimum: minimum))
+            let configuration: UICornerConfiguration = switch corners.radius {
+            case .square: .corners(radius: .fixed(0))
+            case let .fixed(radius): Self.lmk_configuration(radius: .fixed(radius), corners: corners.maskedCorners)
+            case .capsule, .circle: .capsule()
+            case let .concentric(minimum): .corners(radius: .containerConcentric(minimum: minimum))
+            }
+            if cornerConfiguration != configuration {
+                cornerConfiguration = configuration
             }
         } else {
             layer.cornerRadius = corners.resolvedRadius(for: bounds)
             layer.cornerCurve = corners.curve.layerCurve
             layer.maskedCorners = corners.maskedCorners
             clipsToBounds = true
-        }
-    }
-}
-
-/// A `UIGlassContainerEffect` host (iOS 26) that merges nearby ``LMKGlassView`` children
-/// added to its `contentView`; before iOS 26 it carries no effect.
-public final class LMKGlassContainerView: UIVisualEffectView {
-    /// Distance under which children merge into one shape (iOS 26).
-    public var spacing: CGFloat {
-        didSet { applyEffect() }
-    }
-
-    public init(spacing: CGFloat = LMKSpacing.small) {
-        self.spacing = spacing
-        super.init(effect: nil)
-        applyEffect()
-    }
-
-    @available(*, unavailable)
-    required init?(coder: NSCoder) {
-        fatalError("init(coder:) has not been implemented")
-    }
-
-    private func applyEffect() {
-        if #available(iOS 26, *) {
-            let container = UIGlassContainerEffect()
-            container.spacing = spacing
-            effect = container
         }
     }
 }

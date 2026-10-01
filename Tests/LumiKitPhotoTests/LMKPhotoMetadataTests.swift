@@ -146,8 +146,52 @@ struct LMKPhotoMetadataTests {
         #expect(metadata.date == date)
         #expect(try abs(#require(metadata.coordinate?.latitude) - -12.5) < 0.0001)
         #expect(try abs(#require(metadata.coordinate?.longitude) - 130.25) < 0.0001)
-        #expect(metadata.pixelSize == CGSize(width: 40, height: 30), "pixels are copied through")
+        #expect(metadata.pixelSize == CGSize(width: 40, height: 30))
         #expect(stamped.prefix(2) == Data([0xFF, 0xD8]))
+    }
+
+    @Test
+    func `Writing metadata copies the encoded pixels through untouched`() throws {
+        // Noise re-encodes with visible differences at any JPEG quality; a copy has none.
+        let original = makeNoisyJPEG()
+        let stamped = try #require(LMKPhotoMetadata.write(date: Date(), coordinate: CLLocationCoordinate2D(latitude: 1, longitude: 2), to: original))
+        #expect(try decodedPixels(of: stamped) == decodedPixels(of: original))
+        #expect(LMKPhotoMetadata.read(from: stamped).coordinate?.latitude == 1)
+    }
+
+    @Test
+    func `The written date carries its zone and fraction, so it reads back as the same instant anywhere`() throws {
+        let date = Date(timeIntervalSince1970: 1_746_515_289.25)
+        let stamped = try #require(LMKPhotoMetadata.write(date: date, coordinate: nil, to: makeJPEG()))
+        let source = try #require(CGImageSourceCreateWithData(stamped as CFData, nil))
+        let properties = try #require(CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [String: Any])
+        let exif = try #require(properties[kCGImagePropertyExifDictionary as String] as? [String: Any])
+        let offset = try #require(exif[kCGImagePropertyExifOffsetTimeOriginal as String] as? String)
+        let seconds = TimeZone.current.secondsFromGMT(for: date)
+        #expect(offset == String(format: "%@%02d:%02d", seconds < 0 ? "-" : "+", abs(seconds) / 3600, abs(seconds) % 3600 / 60))
+        #expect(exif[kCGImagePropertyExifOffsetTimeDigitized as String] as? String == offset)
+        #expect("\(exif[kCGImagePropertyExifSubsecTimeOriginal as String] ?? "")" == "250")
+        #expect(LMKPhotoMetadata.read(from: stamped).date == date)
+    }
+
+    @Test
+    func `A stale offset is replaced by the write, and an offset in the file is honored by the read`() throws {
+        let inTokyo = makeJPEG(metadata: [
+            kCGImagePropertyExifDictionary as String: [
+                kCGImagePropertyExifDateTimeOriginal as String: "2024:03:15 14:30:45",
+                kCGImagePropertyExifOffsetTimeOriginal as String: "+09:00",
+                kCGImagePropertyExifSubsecTimeOriginal as String: "5",
+            ],
+        ])
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy:MM:dd HH:mm:ssxxx"
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        let instant = try #require(formatter.date(from: "2024:03:15 14:30:45+09:00")).addingTimeInterval(0.5)
+        #expect(LMKPhotoMetadata.read(from: inTokyo).date == instant, "the wall time is read in the zone the file names, not the device's")
+
+        let date = try #require(exifDate("2025:05:06 07:08:09"))
+        let restamped = try #require(LMKPhotoMetadata.write(date: date, coordinate: nil, to: inTokyo))
+        #expect(LMKPhotoMetadata.read(from: restamped).date == date, "the old +09:00 does not shift the new wall time")
     }
 
     @Test
@@ -169,6 +213,18 @@ struct LMKPhotoMetadataTests {
         let stamped = try #require(LMKPhotoMetadata.write(date: nil, coordinate: CLLocationCoordinate2D(latitude: 200, longitude: 0), to: makeJPEG()))
         #expect(LMKPhotoMetadata.read(from: stamped).coordinate == nil)
         #expect(LMKPhotoMetadata.write(date: Date(), coordinate: nil, to: Data([1, 2, 3])) == nil)
+    }
+
+    @Test
+    func `A file that is not an image is left as it was`() throws {
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("lmk-notimage-\(UUID().uuidString).jpg")
+        let bytes = Data([1, 2, 3, 4])
+        try bytes.write(to: url)
+        defer { try? FileManager.default.removeItem(at: url) }
+        #expect(throws: CocoaError.self) {
+            try LMKPhotoMetadata.write(date: Date(), coordinate: nil, to: url)
+        }
+        #expect(try Data(contentsOf: url) == bytes)
     }
 
     @Test
@@ -199,6 +255,36 @@ struct LMKPhotoMetadataTests {
 }
 
 // MARK: - Test Helpers
+
+/// A 64 x 64 JPEG of pseudo-random pixels, encoded lossily.
+private func makeNoisyJPEG() -> Data {
+    let side = 64
+    var bytes = [UInt8](repeating: 0, count: side * side * 4)
+    var seed: UInt32 = 12345
+    for index in bytes.indices {
+        seed = seed &* 1_103_515_245 &+ 12345
+        bytes[index] = UInt8((seed >> 16) & 0xFF)
+    }
+    guard let provider = CGDataProvider(data: Data(bytes) as CFData),
+          let image = CGImage(
+              width: side, height: side, bitsPerComponent: 8, bitsPerPixel: 32, bytesPerRow: side * 4,
+              space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.noneSkipLast.rawValue),
+              provider: provider, decode: nil, shouldInterpolate: false, intent: .defaultIntent
+          ) else { return Data() }
+    let mutableData = NSMutableData()
+    guard let destination = CGImageDestinationCreateWithData(mutableData, UTType.jpeg.identifier as CFString, 1, nil) else { return Data() }
+    CGImageDestinationAddImage(destination, image, [kCGImageDestinationLossyCompressionQuality: 0.7] as CFDictionary)
+    CGImageDestinationFinalize(destination)
+    return mutableData as Data
+}
+
+/// The decoded pixel bytes of an image file.
+private func decodedPixels(of data: Data) throws -> [UInt8] {
+    let source = try #require(CGImageSourceCreateWithData(data as CFData, nil))
+    let image = try #require(CGImageSourceCreateImageAtIndex(source, 0, nil))
+    let pixels = try #require(image.dataProvider?.data) as Data
+    return [UInt8](pixels)
+}
 
 private func makeJPEG(width: Int = 10, height: Int = 10, metadata: [String: Any] = [:]) -> Data {
     let format = UIGraphicsImageRendererFormat.default()

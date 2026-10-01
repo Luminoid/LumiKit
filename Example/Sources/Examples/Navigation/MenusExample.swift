@@ -72,32 +72,34 @@ final class MenusDetailViewController: DetailViewController {
             LMKMenu.makeBarButtonItem(menu: optionsMenu, systemImageName: "ellipsis", accessibilityLabel: "Options"),
             LMKSortMenu.makeBarButtonItem(menu: sortMenu),
         ]
+    }
 
+    override func setupStackContent() {
         addSectionHeader("LMKMenu")
-        stack.addArrangedSubview(UILabel.lmk_make(
+        stackView.addArrangedSubview(UILabel.lmk_make(
             .caption,
             text: "Native UIMenus from sections: single choices, toggles that flip in place while the menu stays open, sorts with a direction, commands, and submenus. "
                 + "Every section reads the screen's state when the menu opens and after each toggle. Anchors natively on iPad and Mac. Try the bar buttons above or the buttons below."
         ))
-        stack.addArrangedSubview(optionsReadout)
+        stackView.addArrangedSubview(optionsReadout)
         let filterButton = LMKMenu.makeButton(menu: optionsMenu, systemImageName: "line.3.horizontal.decrease", accessibilityLabel: "Options")
         let moreButton = LMKMenu.makeButton(menu: optionsMenu, systemImageName: "ellipsis", accessibilityLabel: "More", style: .ghost(.neutral))
         let titled = LMKButton(title: "Options", style: LMKButton.Style(variant: .tinted, size: .small, showsMenuIndicator: true))
         titled.menu = optionsMenu
         titled.showsMenuAsPrimaryAction = true
-        stack.addArrangedSubview(UIStackView(lmk_axis: .horizontal, spacing: LMKSpacing.medium, alignment: .center, arrangedSubviews: [filterButton, moreButton, titled, UIView()]))
+        stackView.addArrangedSubview(UIStackView(lmk_axis: .horizontal, spacing: LMKSpacing.medium, alignment: .center, arrangedSubviews: [filterButton, moreButton, titled, UIView()]))
 
         addDivider()
         addSectionHeader("LMKSortMenu")
-        stack.addArrangedSubview(UILabel.lmk_make(
+        stackView.addArrangedSubview(UILabel.lmk_make(
             .caption,
             text: "The sort menu is LMKMenu with a sort section and an optional layout section: "
                 + "the selected row carries a live direction arrow and stays open when tapped again, other rows select ascending and close."
         ))
-        stack.addArrangedSubview(sortReadout)
+        stackView.addArrangedSubview(sortReadout)
         let sortButton = LMKSortMenu.makeButton(menu: sortMenu, style: .tinted())
         let plainSortButton = LMKSortMenu.makeButton(menu: sortMenu)
-        stack.addArrangedSubview(UIStackView(lmk_axis: .horizontal, spacing: LMKSpacing.medium, alignment: .center, arrangedSubviews: [sortButton, plainSortButton, UIView()]))
+        stackView.addArrangedSubview(UIStackView(lmk_axis: .horizontal, spacing: LMKSpacing.medium, alignment: .center, arrangedSubviews: [sortButton, plainSortButton, UIView()]))
         updateReadouts()
     }
 
@@ -107,9 +109,9 @@ final class MenusDetailViewController: DetailViewController {
         case .date: "Date added"
         case .kind: "Kind"
         }
-        sortReadout.text = "Sort: \(sortName) \(direction == .ascending ? "↑" : "↓") · Layout: \(layout == .list ? "List" : "Grid")"
+        sortReadout.lmk_setText("Sort: \(sortName) \(direction == .ascending ? "↑" : "↓") · Layout: \(layout == .list ? "List" : "Grid")")
         let shown = Filter.allCases.filter(filters.contains).map(\.rawValue).joined(separator: ", ")
-        optionsReadout.text = "Show: \(shown.isEmpty ? "nothing extra" : shown) · Group by: \(grouping.rawValue)"
+        optionsReadout.lmk_setText("Show: \(shown.isEmpty ? "nothing extra" : shown) · Group by: \(grouping.rawValue)")
     }
 
     private func toast(_ message: String) {

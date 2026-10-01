@@ -15,37 +15,35 @@ final class GlassDetailViewController: DetailViewController {
     private var tapCount = 0
     private lazy var tapLabel = UILabel.lmk_make(.caption, text: "Taps: 0")
 
-    override func viewDidLoad() {
-        super.viewDidLoad()
-
+    override func setupStackContent() {
         addSectionHeader("LMKGlassView")
         let probe = LMKGlassView()
-        stack.addArrangedSubview(UILabel.lmk_make(.caption, text: probe.isGlass
+        stackView.addArrangedSubview(UILabel.lmk_make(.caption, text: probe.isGlass
                 ? "This device renders Liquid Glass (UIGlassEffect, iOS 26+). No availability gate needed in app code."
                 : "This device is below iOS 26, so LMKGlassView renders the systemMaterial blur fallback. Same API, no gate."))
 
-        addSectionHeader("Styles")
+        addSectionHeader("Variants")
         let stylesBackdrop = makeBackdrop()
         let pills = UIStackView(lmk_axis: .horizontal, spacing: LMKSpacing.medium)
         pills.distribution = .fillEqually
-        pills.addArrangedSubview(makePill(LMKGlassView(style: .regular), title: "regular"))
-        pills.addArrangedSubview(makePill(LMKGlassView(style: .clear), title: "clear"))
-        pills.addArrangedSubview(makePill(LMKGlassView(style: .regular, tintColor: LMKColor.primary), title: "tinted"))
+        pills.addArrangedSubview(makePill(LMKGlassView(variant: .regular), title: "regular"))
+        pills.addArrangedSubview(makePill(LMKGlassView(variant: .clear), title: "clear"))
+        pills.addArrangedSubview(makePill(LMKGlassView(variant: .regular, tintColor: LMKColor.primary), title: "tinted"))
         stylesBackdrop.addSubview(pills)
         pills.snp.makeConstraints { make in
             make.leading.trailing.equalToSuperview().inset(LMKSpacing.large)
             make.centerY.equalToSuperview()
         }
-        stack.addArrangedSubview(stylesBackdrop)
+        stackView.addArrangedSubview(stylesBackdrop)
 
         addDivider()
         addSectionHeader("isInteractive")
-        stack.addArrangedSubview(UILabel.lmk_make(
+        stackView.addArrangedSubview(UILabel.lmk_make(
             .caption,
             text: "Interactive glass reacts to touches, the fit for button backgrounds. usesConcentricCorners: true lets the radius follow the nearest published container corner."
         ))
         let interactiveBackdrop = makeBackdrop()
-        let button = LMKGlassView(style: .regular, isInteractive: true, cornerRadius: LMKCornerRadius.xxl, usesConcentricCorners: true)
+        let button = LMKGlassView(variant: .regular, isInteractive: true, cornerRadius: LMKCornerRadius.xxl, usesConcentricCorners: true)
         let buttonLabel = UILabel.lmk_make(.bodyMedium, text: "Tap me")
         buttonLabel.textAlignment = .center
         button.contentView.addSubview(buttonLabel)
@@ -56,12 +54,12 @@ final class GlassDetailViewController: DetailViewController {
         button.contentView.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(glassTapped)))
         interactiveBackdrop.addSubview(button)
         button.snp.makeConstraints { $0.center.equalToSuperview() }
-        stack.addArrangedSubview(interactiveBackdrop)
-        stack.addArrangedSubview(tapLabel)
+        stackView.addArrangedSubview(interactiveBackdrop)
+        stackView.addArrangedSubview(tapLabel)
 
         addDivider()
         addSectionHeader("makeContainer(spacing:)")
-        stack.addArrangedSubview(UILabel.lmk_make(
+        stackView.addArrangedSubview(UILabel.lmk_make(
             .caption,
             text: "Glass views hosted in a container merge into one shape once they come within the spacing (iOS 26). Before iOS 26 they render on their own."
         ))
@@ -82,14 +80,14 @@ final class GlassDetailViewController: DetailViewController {
         }
         container.contentView.addSubview(dots)
         dots.snp.makeConstraints { $0.edges.equalToSuperview() }
-        stack.addArrangedSubview(containerBackdrop)
+        stackView.addArrangedSubview(containerBackdrop)
     }
 
     // MARK: - Actions
 
     @objc private func glassTapped() {
         tapCount += 1
-        tapLabel.text = "Taps: \(tapCount)"
+        tapLabel.lmk_setText("Taps: \(tapCount)")
     }
 
     // MARK: - Builders

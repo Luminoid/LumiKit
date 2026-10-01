@@ -18,6 +18,8 @@ targets:
       - Resources
     dependencies:
       - package: LumiKit
+        product: LumiKitCore
+      - package: LumiKit
         product: LumiKitUI
       - package: LumiKit
         product: LumiKitPhoto
@@ -40,10 +42,10 @@ targets:
         INFOPLIST_KEY_UIApplicationSceneManifest_Generation: true
         INFOPLIST_KEY_UILaunchScreen_Generation: true
         INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad: "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
-        INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone: "UIInterfaceOrientationPortrait"
+        # Landscape on iPhone too, so per-edge safe areas, the floating button's clamp, and rotation are testable.
+        INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone: "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
+        # Only add-only saving (the share preview); PHPicker needs no library permission.
         INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription: "Save photos from the share preview to your photo library."
-        INFOPLIST_KEY_NSPhotoLibraryUsageDescription: "Browse and select photos for the photo browser examples."
-        INFOPLIST_KEY_NSCameraUsageDescription: "Capture photos for the camera examples."
       configs:
         debug:
           SWIFT_ACTIVE_COMPILATION_CONDITIONS: DEBUG

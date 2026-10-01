@@ -6,28 +6,22 @@
 //
 
 import LumiKitUI
-import SnapKit
 import UIKit
 
 // MARK: - Badges
 
 final class BadgesDetailViewController: DetailViewController {
-    override func viewDidLoad() {
-        super.viewDidLoad()
-
+    override func setupStackContent() {
         addSectionHeader("Badge Styles")
         let row = UIStackView(lmk_axis: .horizontal, spacing: LMKSpacing.xxl)
         row.alignment = .center
 
-        let configs: [(String, () -> Void)] = [
-            ("Count", { [self] in addBadgeColumn(to: row, label: "Count") { $0.configure(.count(5)) } }),
-            ("Text", { [self] in addBadgeColumn(to: row, label: "Text") { $0.configure(.text("New")) } }),
-            ("99+", { [self] in addBadgeColumn(to: row, label: "99+") { $0.configure(.count(150)) } }),
-            ("Dot", { [self] in addBadgeColumn(to: row, label: "Dot") { $0.configure(.dot) } }),
-        ]
-        configs.forEach { $0.1() }
+        addBadgeColumn(to: row, label: "Count") { $0.configure(.count(5)) }
+        addBadgeColumn(to: row, label: "Text") { $0.configure(.text("New")) }
+        addBadgeColumn(to: row, label: "99+") { $0.configure(.count(150)) }
+        addBadgeColumn(to: row, label: "Dot") { $0.configure(.dot) }
         row.addArrangedSubview(UIView())
-        stack.addArrangedSubview(row)
+        stackView.addArrangedSubview(row)
 
         addDivider()
         addSectionHeader("Custom Colors")
@@ -45,7 +39,7 @@ final class BadgesDetailViewController: DetailViewController {
             colorRow.addArrangedSubview(col)
         }
         colorRow.addArrangedSubview(UIView())
-        stack.addArrangedSubview(makeScrollingRow(colorRow))
+        stackView.addArrangedSubview(makeScrollingRow(colorRow))
     }
 
     private func addBadgeColumn(to row: UIStackView, label text: String, configure: (LMKBadgeView) -> Void) {

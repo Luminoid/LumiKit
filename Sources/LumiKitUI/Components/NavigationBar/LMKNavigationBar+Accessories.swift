@@ -21,9 +21,10 @@ public extension LMKNavigationBar {
         rightAccessoryView = view
         guard let view else { return }
         buttonRow.addSubview(view)
+        let theme = traitCollection.lmkTheme
         view.snp.makeConstraints { make in
             make.centerY.equalTo(rightItemsStack)
-            make.trailing.equalTo(rightItemsStack.snp.leading).offset(-LMKSpacing.small)
+            rightAccessoryGapConstraint = make.trailing.equalTo(rightItemsStack.snp.leading).offset(-theme.spacing.small).constraint
         }
     }
 
@@ -36,10 +37,11 @@ public extension LMKNavigationBar {
         largeTitleAccessoryView = view
         guard let view else { return }
         largeTitleRow.addSubview(view)
+        let theme = traitCollection.lmkTheme
         view.snp.makeConstraints { make in
-            make.leading.equalTo(largeTitleLabel.snp.trailing).offset(LMKSpacing.small)
+            largeTitleAccessoryGapConstraint = make.leading.equalTo(largeTitleLabel.snp.trailing).offset(theme.spacing.small).constraint
             make.centerY.equalTo(largeTitleLabel)
-            make.trailing.lessThanOrEqualToSuperview().offset(-(resolved.contentMargin ?? LMKSpacing.large))
+            largeTitleAccessoryTrailingConstraint = make.trailing.lessThanOrEqualToSuperview().inset(resolved.contentMargin ?? theme.spacing.large).constraint
         }
     }
 

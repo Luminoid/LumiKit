@@ -38,19 +38,19 @@ public nonisolated struct LMKSpacingTheme: Sendable {
     public var iconToText: CGFloat
     /// Card padding for Mac Catalyst.
     public var cardPaddingMac: CGFloat
-    /// Card padding for small iPads (≤768pt longest side).
+    /// Card padding for small iPads (≤768pt shortest window side).
     public var cardPaddingIPadCompact: CGFloat
-    /// Card padding for regular iPads (≤1024pt longest side).
+    /// Card padding for regular iPads (≤834pt shortest window side).
     public var cardPaddingIPadRegular: CGFloat
-    /// Card padding for large iPads (>1024pt longest side).
+    /// Card padding for large iPads (>834pt shortest window side).
     public var cardPaddingIPadLarge: CGFloat
     /// Cell vertical padding for Mac Catalyst.
     public var cellPaddingVerticalMac: CGFloat
-    /// Cell vertical padding for small iPads (≤768pt longest side).
+    /// Cell vertical padding for small iPads (≤768pt shortest window side).
     public var cellPaddingVerticalIPadCompact: CGFloat
-    /// Cell vertical padding for regular iPads (≤834pt longest side).
+    /// Cell vertical padding for regular iPads (≤834pt shortest window side).
     public var cellPaddingVerticalIPadRegular: CGFloat
-    /// Cell vertical padding for large iPads (>834pt longest side).
+    /// Cell vertical padding for large iPads (>834pt shortest window side).
     public var cellPaddingVerticalIPadLarge: CGFloat
     /// Text view vertical content inset.
     public var textViewPaddingVertical: CGFloat

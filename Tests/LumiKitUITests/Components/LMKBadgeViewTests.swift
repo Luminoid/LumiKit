@@ -3,6 +3,7 @@
 //  LumiKit
 //
 
+import LumiKitCore
 import SnapKit
 import Testing
 import UIKit
@@ -33,6 +34,9 @@ struct LMKBadgeViewTests {
         #expect(badge.accessibilityLabel == "150")
         badge.style.overflowText = "∞"
         #expect(badge.countLabel.text == "∞")
+        badge.configure(.count(1500))
+        #expect(badge.accessibilityLabel == LMKFormat.number(1500), "counts read in the locale's digits and grouping")
+        #expect(badge.accessibilityLabel != "1500")
     }
 
     @Test

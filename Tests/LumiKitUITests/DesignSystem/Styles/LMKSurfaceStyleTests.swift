@@ -13,12 +13,12 @@ struct LMKSurfaceStyleTests {
     @Test
     func `merging lets the other style's non-nil fields win`() {
         let base = LMKSurfaceStyle(background: .solid(.red), corners: .capsule, border: .solid(.blue), shadow: .level(.level2), contentInsets: .lmk_all(4))
-        let override = LMKSurfaceStyle(corners: .fixed(8), shadow: LMKShadowSource.none)
+        let override = LMKSurfaceStyle(corners: .fixed(8), shadow: LMKShadowSource.hidden)
         let merged = base.merging(override)
         #expect(merged.background == .solid(.red))
         #expect(merged.corners == .fixed(8))
         #expect(merged.border == .solid(.blue))
-        #expect(merged.shadow == LMKShadowSource.none)
+        #expect(merged.shadow == LMKShadowSource.hidden)
         #expect(merged.contentInsets == .lmk_all(4))
     }
 
@@ -37,13 +37,13 @@ struct LMKSurfaceStyleTests {
         #expect(LMKBorderStyle.dashed([4, 2]).needsShapeLayer)
         #expect(LMKBorderStyle(inset: 3).needsShapeLayer)
         #expect(!LMKBorderStyle.solid().needsShapeLayer)
-        #expect(LMKBorderStyle.none.width == 0)
+        #expect(LMKBorderStyle.hidden.width == 0)
         #expect(LMKBorderStyle(inset: -5).inset == 0)
     }
 
     @Test
     func `Shadow sources know whether they draw`() {
-        #expect(!LMKShadowSource.none.isVisible)
+        #expect(!LMKShadowSource.hidden.isVisible)
         #expect(!LMKShadowSource.level(.none).isVisible)
         #expect(LMKShadowSource.level(.level1).isVisible)
         #expect(!LMKShadowSource.custom(LMKShadowStyle(color: .black, offset: .zero, radius: 4, opacity: 0)).isVisible)
@@ -153,7 +153,7 @@ struct UIViewSurfaceTests {
     @Test
     func `An explicit no-border override removes a default border`() {
         let view = UIView(frame: CGRect(x: 0, y: 0, width: 100, height: 40))
-        view.lmk_apply(surface: LMKSurfaceStyle(border: LMKBorderStyle.none), defaults: LMKSurfaceStyle(border: .solid(.red, width: 2)))
+        view.lmk_apply(surface: LMKSurfaceStyle(border: LMKBorderStyle.hidden), defaults: LMKSurfaceStyle(border: .solid(.red, width: 2)))
         #expect(view.layer.borderWidth == 0)
     }
 

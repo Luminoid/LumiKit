@@ -50,6 +50,21 @@ struct LMKSceneGeometryTests {
         #expect(reports.count == 2)
     }
 
+    /// The regression: `deinit` asserted the main actor, so an observation whose last
+    /// reference went away on another thread trapped.
+    @Test
+    func `Releasing the observation off the main actor cancels it without trapping`() async {
+        let window = makeWindow()
+        let subviewsBefore = window.subviews.count
+        let holder = ObservationHolder(LMKScene.observeGeometry(of: window) { _ in })
+        #expect(window.subviews.count == subviewsBefore + 1)
+        await Task.detached {
+            holder.release()
+        }.value
+        await LMKWait.until { window.subviews.count == subviewsBefore }
+        #expect(window.subviews.count == subviewsBefore)
+    }
+
     @Test
     func `cancel detaches the sentinel and stops the callbacks`() {
         let window = makeWindow()
@@ -95,5 +110,18 @@ struct LMKSceneGeometryTests {
         window.frame = CGRect(x: 0, y: 0, width: 320, height: 568)
         window.layoutIfNeeded()
         #expect(tiers == [.regular, .compact])
+    }
+}
+
+/// Owns the only reference to an observation so a detached task can drop it off the main actor.
+private final class ObservationHolder: @unchecked Sendable {
+    private var observation: LMKSceneGeometryObservation?
+
+    init(_ observation: LMKSceneGeometryObservation) {
+        self.observation = observation
+    }
+
+    func release() {
+        observation = nil
     }
 }

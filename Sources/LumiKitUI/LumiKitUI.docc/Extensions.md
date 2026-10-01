@@ -11,7 +11,7 @@ Every member added to a UIKit or Foundation type carries the `lmk_` prefix.
 | `UIView` surfaces | `lmk_apply(surface:defaults:)` for an ``LMKSurfaceStyle`` |
 | `UIView` layout | `lmk_pinReadableWidth(in:maxWidth:horizontalInset:)`, `lmk_readableWidthGuide`, `lmk_displayScale`, `lmk_forceLayoutDirection(_:)`, `lmk_forcedLayoutDirection` |
 | `UIStackView` | `init(lmk_axis:...)`, `lmk_addArrangedSubviews(_:)`, `lmk_removeAllArrangedSubviews()` |
-| `UIControl` | `lmk_hitTestInsets` with `lmk_point(inside:with:)` for custom controls |
+| `UIControl` | `lmk_hitTestInsets` with `lmk_point(inside:with:)` for custom controls (hidden answers `false`, disabled answers its bounds, enabled the inset area) |
 
 ## Text
 
@@ -35,9 +35,9 @@ Every member added to a UIKit or Foundation type carries the `lmk_` prefix.
 
 | Extension | Members |
 |---|---|
-| `UIViewController` | `lmk_formKeyCommands(save:cancel:)`, `lmk_dismissKeyboardOnTap()`, `lmk_topViewController`, `lmk_configurePopover(...)`, `lmk_centeredPopoverSourceRect`, `lmk_windowOrientation`, the orientation-lock helpers |
-| `UIScrollView` | `lmk_enableKeyboardAdjustment()`, `lmk_disableKeyboardAdjustment()` |
-| `UINavigationItem` | `lmk_setItems(leading:trailing:tintColor:)`, `lmk_setSubtitle(_:)` |
+| `UIViewController` | `lmk_formKeyCommands(save:cancel:)` with an overridable `lmk_cancelFromKeyCommand()`, `lmk_dismissKeyboardOnTap()`, `lmk_topViewController(controller:)` (static), `lmk_presentAlertOnTop(_:animated:)`, `lmk_configurePopoverForActionSheet(_:)`, `lmk_centeredPopoverSourceRect`, `lmk_windowOrientation` (camera and media rotation only) |
+| `UIScrollView` | `lmk_enableKeyboardAdjustment()` and `lmk_disableKeyboardAdjustment()` (restores the insets it grew) |
+| `UINavigationItem` | `lmk_setItems(leading:trailing:tintColor:)` (an omitted side is left alone, `[]` clears it), `lmk_setSubtitle(_:)` |
 | `UISplitViewController` | `lmk_setInspector(_:preferredWidth:)`, `lmk_supportsInspector`, `lmk_inspector`, `lmk_isShowingInspector`, `lmk_setInspectorShown(_:)`, `lmk_toggleInspector()` |
 
 ## Foundation (LumiKitCore)

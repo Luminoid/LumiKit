@@ -8,25 +8,26 @@
 import LumiKitCore
 import LumiKitPhoto
 import LumiKitUI
-import PhotosUI
 import SnapKit
 import UIKit
-import UniformTypeIdentifiers
 
 // MARK: - Photo Grid
 
 final class PhotoGridDetailViewController: UIViewController, LMKPhotoGridDataSource, LMKPhotoGridDelegate {
     /// JPEG bytes rather than decoded images: the grid data source is async,
     /// and this page demonstrates the intended conformance shape for disk- or
-    /// network-backed sources — decode off the main actor per request and
-    /// return a ready-to-display image.
+    /// network-backed sources: decode off the main actor per request, at the
+    /// size asked for, and return a ready-to-display image.
     private var sampleImageData: [Data] = []
     private var sampleDates: [Date] = []
     private var gridVC: LMKPhotoGridViewController?
     private var showsEmptyState = false
+    /// The catalog's title, restored when selection mode ends.
+    private var pageTitle: String?
 
     override func viewDidLoad() {
         super.viewDidLoad()
+        pageTitle = title
         view.backgroundColor = LMKColor.backgroundPrimary
         generateSampleData()
         setupGrid()
@@ -47,7 +48,7 @@ final class PhotoGridDetailViewController: UIViewController, LMKPhotoGridDataSou
         guard let gridVC else { return }
         gridVC.allowsMultipleSelection.toggle()
         navigationItem.rightBarButtonItems?.last?.title = gridVC.allowsMultipleSelection ? "Done" : "Select"
-        title = gridVC.allowsMultipleSelection ? "0 selected" : nil
+        title = gridVC.allowsMultipleSelection ? "0 selected" : pageTitle
     }
 
     private static let sampleSymbols = [
@@ -137,22 +138,25 @@ final class PhotoGridDetailViewController: UIViewController, LMKPhotoGridDataSou
 
     var numberOfPhotos: Int { showsEmptyState ? 0 : sampleImageData.count }
 
-    /// The reference async conformance: hop off the main actor, decode, and
-    /// hand back a ready-to-display image. The grid shows its neutral
-    /// placeholder meanwhile, and its generation token drops results that
-    /// land after the cell was recycled — no reuse bookkeeping needed here.
+    /// The full-size image, for the browser: decoded off the main actor and prepared for display.
     func photoGridImage(at index: Int) async -> UIImage? {
-        guard index >= 0, index < sampleImageData.count else { return nil }
-        let data = sampleImageData[index]
+        guard let data = sampleImageData[lmk_safe: index] else { return nil }
         return await Task.detached { () -> UIImage? in
             guard let image = UIImage(data: data) else { return nil }
             return image.preparingForDisplay() ?? image
         }.value
     }
 
+    /// A cell's thumbnail, decoded straight to the cell's pixel size (never a full-size decode).
+    /// The grid shows its neutral placeholder meanwhile, and its generation token drops results
+    /// that land after the cell was recycled, so no reuse bookkeeping is needed here.
+    func photoGridThumbnail(at index: Int, pixelSize: CGSize) async -> UIImage? {
+        guard let data = sampleImageData[lmk_safe: index] else { return nil }
+        return await LMKImage.downsample(data: data, maxPixelSize: max(pixelSize.width, pixelSize.height))
+    }
+
     func photoGridDate(at index: Int) -> Date? {
-        guard index >= 0, index < sampleDates.count else { return nil }
-        return sampleDates[index]
+        sampleDates[lmk_safe: index]
     }
 
     /// Demo: mark every 5th cell as a Live Photo so the LIVE badge overlay is
@@ -164,7 +168,8 @@ final class PhotoGridDetailViewController: UIViewController, LMKPhotoGridDataSou
 
     // MARK: - LMKPhotoGridDelegate
 
+    /// Runs while the browser is on top, so the toast goes there.
     func photoGrid(_ grid: LMKPhotoGridViewController, didRequestActionForPhotoAt index: Int) {
-        LMKToast.show(.info, "Action for photo \(index + 1)", in: self)
+        LMKToast.show(.info, "Action for photo \(index + 1)", in: grid.browser ?? self)
     }
 }

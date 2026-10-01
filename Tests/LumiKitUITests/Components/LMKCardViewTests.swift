@@ -20,9 +20,33 @@ struct LMKCardViewTests {
         #expect(card.layer.shadowRadius == LMKTheme.current.shadow.level3.radius)
         #expect(card.backgroundColor == LMKColor.backgroundSecondary)
         #expect(card.contentView.superview === card)
-        #expect(card.contentView.layer.cornerRadius == 0)
+        #expect(card.contentView.backgroundColor == UIColor.clear, "the card's layer draws the fill once")
+        #expect(card.contentView.layer.cornerRadius == 0, "the large insets leave no concentric radius")
         #expect(card.contentView.layer.masksToBounds)
         #expect(!card.isAccessibilityElement)
+    }
+
+    @Test
+    func `Edge-to-edge content clips to the corners of an elevated card`() {
+        let card = LMKCardView(style: .elevated)
+        card.style.surface.contentInsets = .lmk_all(0)
+        card.frame = CGRect(x: 0, y: 0, width: 200, height: 100)
+        card.layoutIfNeeded()
+        #expect(!card.layer.masksToBounds, "the shadow needs an unclipped layer")
+        #expect(card.contentView.layer.cornerRadius == LMKCornerRadius.medium, "so the content clips to the same radius")
+        #expect(card.contentView.layer.masksToBounds)
+        #expect(card.contentView.layer.cornerCurve == .continuous)
+
+        card.style.surface.contentInsets = .lmk_all(4)
+        #expect(card.contentView.layer.cornerRadius == LMKCornerRadius.medium - 4, "concentric inside the inset")
+
+        card.style.surface.corners = .capsule
+        card.style.surface.contentInsets = .lmk_all(0)
+        card.layoutIfNeeded()
+        #expect(card.contentView.layer.cornerRadius == 50, "a capsule tracks the bounds")
+        card.frame = CGRect(x: 0, y: 0, width: 200, height: 60)
+        card.layoutIfNeeded()
+        #expect(card.contentView.layer.cornerRadius == 30)
     }
 
     @Test
@@ -45,14 +69,15 @@ struct LMKCardViewTests {
         card.style.surface.contentInsets = .lmk_all(3)
         #expect(card.layer.cornerRadius == 20)
         #expect(card.backgroundColor == UIColor.red)
-        #expect(card.contentView.backgroundColor == UIColor.red)
+        #expect(card.contentView.backgroundColor == UIColor.clear, "a translucent fill is never composited twice")
+        #expect(card.contentView.layer.cornerRadius == 17)
         #expect(card.lmk_resolvedSurface?.contentInsets == .lmk_all(3))
     }
 
     @Test
     func `theme.card supplies app-wide defaults`() {
         var theme = LMKTheme()
-        theme.card = LMKCardView.Style(surface: LMKSurfaceStyle(corners: .fixed(2), shadow: LMKShadowSource.none))
+        theme.card = LMKCardView.Style(surface: LMKSurfaceStyle(corners: .fixed(2), shadow: LMKShadowSource.hidden))
         let card = LMKCardView()
         let window = LMKThemeTesting.host(card, theme: theme)
         defer { window.isHidden = true }
@@ -81,6 +106,24 @@ struct LMKCardViewTests {
         card.onTap = nil
         #expect(!card.isAccessibilityElement)
         #expect(!card.accessibilityActivate())
+    }
+
+    @Test
+    func `A tappable card names itself from its content unless the host names it`() {
+        let card = LMKCardView()
+        let title = UILabel.lmk_make(.body, text: "Ficus")
+        let detail = UILabel.lmk_make(.caption, text: "Watered today")
+        let hidden = UILabel.lmk_make(.caption, text: "Secret")
+        hidden.isHidden = true
+        let stack = UIStackView(arrangedSubviews: [title, detail, hidden])
+        card.contentView.addSubview(stack)
+        #expect(card.accessibilityLabel == nil, "a plain card is a container")
+        card.onTap = {}
+        #expect(card.accessibilityLabel == "Ficus, Watered today")
+        card.accessibilityLabel = "Ficus card"
+        #expect(card.accessibilityLabel == "Ficus card")
+        card.accessibilityLabel = nil
+        #expect(card.accessibilityLabel == "Ficus, Watered today")
     }
 
     @Test

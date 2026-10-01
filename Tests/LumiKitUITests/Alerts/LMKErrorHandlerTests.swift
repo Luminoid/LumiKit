@@ -105,11 +105,40 @@ struct LMKErrorHandlerTests {
     }
 
     @Test
-    func `The async form resolves false for toasts and custom presentations`() async {
+    func `The async form resolves false for toasts and for a custom presentation that drops the context`() async {
         let (host, window) = makeHost()
         defer { window.isHidden = true }
         let retried = await LMKErrorHandler.confirmRetry(from: host, message: "Note", severity: .info)
         #expect(!retried)
         LMKToast.dismissAll(in: host)
+
+        let original = LMKErrorHandler.policy
+        defer { LMKErrorHandler.policy = original }
+        LMKErrorHandler.policy = LMKErrorHandler.Policy { _, _ in .custom { _ in } }
+        let dropped = await LMKErrorHandler.confirmRetry(from: host, message: "Custom", severity: .critical)
+        #expect(!dropped)
+    }
+
+    @Test
+    func `A custom presentation reports a retry by running the context's retryAction`() async {
+        let (host, window) = makeHost()
+        defer { window.isHidden = true }
+        let original = LMKErrorHandler.policy
+        defer { LMKErrorHandler.policy = original }
+        LMKErrorHandler.policy = LMKErrorHandler.Policy { _, _ in
+            .custom { context in context.retryAction?() }
+        }
+        let retried = await LMKErrorHandler.confirmRetry(from: host, message: "Sync failed", severity: .error)
+        #expect(retried)
+    }
+
+    @Test
+    func `The async alert resolves false when the host cannot present`() async {
+        let (host, window) = makeHost()
+        defer { window.isHidden = true }
+        LMKAlert.present(from: host, title: "Busy")
+        let retried = await LMKErrorHandler.confirmRetry(from: host, message: "Sync failed", severity: .critical)
+        #expect(!retried)
+        #expect((host.presentedViewController as? UIAlertController)?.title == "Busy")
     }
 }

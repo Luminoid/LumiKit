@@ -7,7 +7,6 @@
 //
 
 import LumiKitCore
-import SnapKit
 import UIKit
 
 /// Presents `UIDatePicker` flows inside `LMKActionSheet`.
@@ -20,6 +19,13 @@ import UIKit
 ///
 /// Bounds are normalized (a minimum past the maximum swaps them) and the initial
 /// date is clamped into them, so a stale default never leaves the picker unusable.
+/// Every presenter takes an `onCancel` that runs when the sheet goes away without
+/// confirming (Cancel, dimming tap, drag, key command).
+///
+/// `Configuration.pickerStyle` is the request; the picker on screen uses
+/// `Configuration.resolvedPickerStyle(for:)`, which swaps `.wheels` for the style Apple
+/// uses under the Mac idiom (`.inline` for dates, `.compact` for a time), where a wheel
+/// picker is not supported and would throw on its way into a window.
 public enum LMKDatePicker {
     // MARK: - Configuration
 
@@ -39,6 +45,7 @@ public enum LMKDatePicker {
         public var title: String
         public var message: String?
         public var mode: Mode
+        /// The requested style; see `resolvedPickerStyle(for:)` for the one that shows.
         public var pickerStyle: PickerStyle
         /// The initial date; `nil` = today (clamped into the bounds).
         public var initial: Date?
@@ -99,6 +106,14 @@ public enum LMKDatePicker {
             if let maximum = bounds.maximum { date = min(date, maximum) }
             return date
         }
+
+        /// The style the picker shows under `idiom`: `pickerStyle`, except that `.wheels` under
+        /// the Mac idiom becomes `.inline` (date modes) or `.compact` (time), the styles Apple
+        /// uses there. A wheel picker throws when it enters a window in a Mac-idiom Catalyst app.
+        public func resolvedPickerStyle(for idiom: UIUserInterfaceIdiom) -> PickerStyle {
+            guard idiom == .mac, pickerStyle == .wheels else { return pickerStyle }
+            return mode == .time ? .compact : .inline
+        }
     }
 
     // MARK: - Strings
@@ -155,7 +170,7 @@ public enum LMKDatePicker {
         ), from: host)
     }
 
-    /// Presents an unbounded date picker.
+    /// Presents a date picker built from the arguments (bounds are optional and normalized).
     @discardableResult
     public static func present(
         from host: UIViewController,
@@ -164,9 +179,17 @@ public enum LMKDatePicker {
         initial: Date? = nil,
         minimum: Date? = nil,
         maximum: Date? = nil,
-        onConfirm: @escaping (Date) -> Void
+        strings: Strings = Self.strings,
+        onConfirm: @escaping (Date) -> Void,
+        onCancel: (() -> Void)? = nil
     ) -> LMKActionSheetViewController {
-        present(Configuration(title: title, message: message, initial: initial, minimum: minimum, maximum: maximum), from: host, onConfirm: onConfirm)
+        present(
+            Configuration(title: title, message: message, initial: initial, minimum: minimum, maximum: maximum),
+            from: host,
+            strings: strings,
+            onConfirm: onConfirm,
+            onCancel: onCancel
+        )
     }
 
     // MARK: - Range
@@ -180,19 +203,26 @@ public enum LMKDatePicker {
         start: Date? = nil,
         end: Date? = nil,
         strings: Strings = Self.strings,
-        onConfirm: @escaping (Date, Date) -> Void
+        onConfirm: @escaping (Date, Date) -> Void,
+        onCancel: (() -> Void)? = nil
     ) -> LMKActionSheetViewController {
         let startDate = start ?? LMKDate.today
         let endDate = end ?? defaultRangeEndDate
         let fromPicker = makePicker(Configuration(title: title, pickerStyle: .compact, initial: min(startDate, endDate)))
         let toPicker = makePicker(Configuration(title: title, pickerStyle: .compact, initial: max(startDate, endDate)))
-        fromPicker.addAction(UIAction { _ in
+        // Weak: each picker retains its action, and a strong capture of the pair would keep
+        // both alive after the sheet is gone.
+        fromPicker.addAction(UIAction { [weak fromPicker, weak toPicker] _ in
+            guard let fromPicker, let toPicker else { return }
             if fromPicker.date > toPicker.date { toPicker.date = fromPicker.date }
         }, for: .valueChanged)
-        toPicker.addAction(UIAction { _ in
+        toPicker.addAction(UIAction { [weak fromPicker, weak toPicker] _ in
+            guard let fromPicker, let toPicker else { return }
             if toPicker.date < fromPicker.date { fromPicker.date = toPicker.date }
         }, for: .valueChanged)
 
+        // A static presenter builds a one-shot stack for the sheet; there is no theme argument or component to re-apply it.
+        // swiftlint:disable:next no_global_token_proxies_in_components
         let rows = UIStackView(lmk_axis: .vertical, spacing: LMKSpacing.large)
         rows.addArrangedSubview(makeRow(label: strings.fromLabel, picker: fromPicker))
         rows.addArrangedSubview(makeRow(label: strings.toLabel, picker: toPicker))
@@ -202,7 +232,8 @@ public enum LMKDatePicker {
             message: message,
             contentView: rows,
             confirmTitle: strings.confirm,
-            onConfirm: { onConfirm(fromPicker.date.lmk_startOfDay, toPicker.date.lmk_startOfDay) }
+            onConfirm: { onConfirm(fromPicker.date.lmk_startOfDay, toPicker.date.lmk_startOfDay) },
+            onCancel: onCancel
         ), from: host)
     }
 
@@ -217,7 +248,8 @@ public enum LMKDatePicker {
         start: Date? = nil,
         end: Date? = nil,
         strings: Strings = Self.strings,
-        onConfirm: @escaping (Date, Date) -> Void
+        onConfirm: @escaping (Date, Date) -> Void,
+        onCancel: (() -> Void)? = nil
     ) -> LMKActionSheetViewController {
         let rangeView = LMKCalendarRangeSelectionView(startDate: start, endDate: end)
         rangeView.strings = strings
@@ -230,7 +262,8 @@ public enum LMKDatePicker {
                 if let range = rangeView.selectedRange {
                     onConfirm(range.lowerBound, range.upperBound)
                 }
-            }
+            },
+            onCancel: onCancel
         ), from: host)
     }
 
@@ -244,13 +277,16 @@ public enum LMKDatePicker {
         from host: UIViewController,
         placeholder: String? = nil,
         strings: Strings = Self.strings,
-        onConfirm: @escaping (Date, String?) -> Void
+        onConfirm: @escaping (Date, String?) -> Void,
+        onCancel: (() -> Void)? = nil
     ) -> LMKActionSheetViewController {
         let field = LMKTextField()
         field.placeholder = placeholder ?? strings.textFieldPlaceholder
         field.textField.autocapitalizationType = .sentences
         field.textField.lmk_dismissKeyboardOnReturn()
         let picker = makePicker(configuration)
+        // A static presenter builds a one-shot stack for the sheet; there is no theme argument or component to re-apply it.
+        // swiftlint:disable:next no_global_token_proxies_in_components
         let stack = UIStackView(lmk_axis: .vertical, spacing: LMKSpacing.medium)
         stack.addArrangedSubview(field)
         stack.addArrangedSubview(picker)
@@ -262,13 +298,15 @@ public enum LMKDatePicker {
             onConfirm: {
                 let notes = field.text?.trimmingCharacters(in: .whitespacesAndNewlines)
                 onConfirm(picker.date, notes.lmk_nonEmpty)
-            }
+            },
+            onCancel: onCancel
         ), from: host)
     }
 
     // MARK: - Helpers
 
-    /// A `UIDatePicker` configured from `configuration`, bounds normalized and the date clamped.
+    /// A `UIDatePicker` configured from `configuration`: bounds normalized, the date clamped, and
+    /// the style resolved for the running idiom (`Configuration.resolvedPickerStyle(for:)`).
     public static func makePicker(_ configuration: Configuration) -> UIDatePicker {
         let picker = UIDatePicker()
         picker.datePickerMode = switch configuration.mode {
@@ -276,7 +314,7 @@ public enum LMKDatePicker {
         case .time: .time
         case .dateAndTime: .dateAndTime
         }
-        picker.preferredDatePickerStyle = switch configuration.pickerStyle {
+        picker.preferredDatePickerStyle = switch configuration.resolvedPickerStyle(for: UIDevice.current.userInterfaceIdiom) {
         case .wheels: .wheels
         case .inline: .inline
         case .compact: .compact
@@ -292,6 +330,8 @@ public enum LMKDatePicker {
 
     private static func makeRow(label text: String, picker: UIDatePicker) -> UIStackView {
         let label = UILabel.lmk_make(.bodyMedium, text: text, color: LMKColor.textPrimary, numberOfLines: 1)
+        // A static presenter builds a one-shot row for the sheet; there is no theme argument or component to re-apply it.
+        // swiftlint:disable:next no_global_token_proxies_in_components
         let row = UIStackView(lmk_axis: .horizontal, spacing: LMKSpacing.medium)
         row.alignment = .center
         row.addArrangedSubview(label)

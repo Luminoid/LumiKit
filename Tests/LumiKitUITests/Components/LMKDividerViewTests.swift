@@ -47,6 +47,14 @@ struct LMKDividerViewTests {
         #expect(shape?.isHidden == false)
         #expect(shape?.lineDashPattern == [4, 2])
         #expect(shape?.path != nil)
+        #expect(shape?.lineWidth == 1)
+
+        let hairline = LMKDividerView(style: LMKDividerView.Style(color: .red, thickness: 0.4, dash: [2, 2]))
+        hairline.frame = CGRect(x: 0, y: 0, width: 100, height: 1)
+        hairline.layoutIfNeeded()
+        let hairlineShape = hairline.layer.sublayers?.compactMap { $0 as? CAShapeLayer }.first
+        #expect(hairlineShape?.lineWidth == LMKLayout.pixelAligned(0.4, for: hairline), "the dash is drawn in whole pixels")
+        #expect((hairlineShape?.lineWidth ?? 0) >= 1 / LMKScene.screenScale)
     }
 
     @Test

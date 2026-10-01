@@ -7,7 +7,7 @@ LumiKit 1.0 renames most of the public surface, splits the package into five pro
 | You use | Link | Import |
 |---|---|---|
 | Tokens, components, controls, alerts, utilities | `LumiKitUI` | `import LumiKitUI` |
-| Foundation-only helpers in a non-UI target (logging, dates, validation) | `LumiKitCore` | `import LumiKitCore` (also re-exported through `LumiKitUI`) |
+| Foundation-only helpers (logging, dates, validation) | `LumiKitCore` | `import LumiKitCore` in each file that names a Core type (linking `LumiKitUI` brings the module along; it is not re-exported) |
 | Photo browser, photo grid, crop editor, pick-and-crop coordinator, share preview, `LMKPhotoMetadata` | `LumiKitPhoto` | `import LumiKitPhoto` in each file that names one of those types |
 | Network logging and the request inspector | `LumiKitDebug` (formerly `LumiKitNetwork`) | `import LumiKitDebug` under `#if DEBUG` |
 | Lottie pull-to-refresh | `LumiKitLottie` | `import LumiKitLottie` |
@@ -18,11 +18,12 @@ LumiKit 1.0 renames most of the public surface, splits the package into five pro
 
 ```bash
 # From the LumiKit checkout (the `make migrate` target wraps the same call):
-Scripts/migrate-1.0.sh ../MyApp --dry-run    # counts and the report, nothing written
+Scripts/migrate-1.0.sh ../MyApp --dry-run    # counts and the report (computed over a rewritten mirror), nothing written
 Scripts/migrate-1.0.sh ../MyApp              # rewrite, then print the report
 Scripts/migrate-1.0.sh ../MyApp --docs       # also rewrite *.md
 ```
 
+- Commit or stash first. A consumer inside a git work tree with uncommitted changes is refused (nothing else can undo the rewrite); `--allow-dirty` overrides that. The script also refuses to run over the LumiKit checkout it lives in, and skips a LumiKit checkout vendored inside the consumer.
 - The script edits `*.swift`, `project.pbxproj`, `Package.swift`, and `project.yml` under the directory, skipping `.build`, `DerivedData`, `build`, `Pods`, and `node_modules`.
 - Passes run in a fixed order: product names, dotted paths written against the old type name, one simultaneous rename of type identifiers (this is what makes the `LMKThemeManager` to `LMKTheme` and `LMKTheme` to `LMKColorTheme` swap safe), call-shape regexes, type-blind member renames (`--no-members` skips them if a name collides with your own API), and file-conditional edits.
 - The run is not idempotent because `LMKTheme` is both an old and a new name. A `.lumikit-1.0-migrated` marker at the consumer root blocks a second run; `--force` overrides it once you have reverted to a pre-migration tree.
@@ -69,7 +70,7 @@ card.cardCornerRadius = 20              // 0.x
 card.style.surface.corners = .fixed(20) // 1.0
 ```
 
-Base-controller overrides (`override var headerHeight`, `cardMaxWidth`, `stackSpacing`, ...) became `style.<field> = ...` in `init`. Behavior hooks (`usesFullWidthSwipe`, `dismissesOnBackgroundTap`) stay overridable.
+Base-controller overrides (`override var headerHeight`, `cardMaxWidth`, `stackSpacing`, ...) became `style.<field> = ...` in `init`; the panel's `cardMaxHeightRatio` is `LMKCardPanelViewController.Style.heightRatio`, an exact height fraction rather than a cap. Behavior hooks (`usesFullWidthSwipe`, `dismissesOnBackgroundTap`) stay overridable. Subclasses that styled their content after `super.applyTheme(_:)` do it in `applyContentTheme(_:)` instead, which every open base calls just before `didApplyStyle`.
 
 ### Buttons and labels
 
@@ -93,7 +94,7 @@ UILabel.lmk_make(.caption, text: "Hint")
 LMKBottomSheetController.addAsChild(sheet, in: self)   // 0.x
 sheet.present(from: self)                              // 1.0
 
-LMKCardPanelController.show(panel, in: self)           // 0.x
+LMKCardPanelController.show(panel, in: window)         // 0.x
 panel.present(from: self)                              // 1.0
 
 LMKToast.showSuccess(message: "Saved", on: self)       // 0.x
@@ -120,6 +121,8 @@ crop.onCancel = { ... }
 ```
 
 `LMKSharePreviewViewController` follows the same pattern with `onShare`, `onSave`, `onFailure`, and `onDismiss`.
+
+Closures that already existed keep their names through the member pass but two payloads changed: `LMKTextField` / `LMKTextView.onTextChange` (0.x `textChangedHandler`) carries `String`, not `String?`, and `LMKCheckboxCell.onValueChange` (0.x `onToggle`) carries the new `isDone`. `LMKShare.file(at:)` keeps the shared file unless `deletesAfterShare: true` is passed (0.x `shareFile` always deleted it), and `LMKImage.encodeJPEG(_:maxPixelSize:quality:)` caps in pixels where 0.x `maxDimension:` was in points.
 
 ### Enum pickers
 
@@ -150,8 +153,8 @@ let data = try? LMKConcurrency.encode(value)            // 1.0: the script inser
 let url = LMKFileUtil.generateTempFileURL(fileExtension: .jpeg)   // 0.x: URL?
 let url = LMKFile.temporaryURL(extension: .jpeg)                  // 1.0: URL
 
-LMKDateFormatterHelper.formatDate(date, style: .medium)  // 0.x
-LMKDateFormat.string(date, date: .medium)                // 1.0; a stored user pattern goes through preferredDatePattern
+LMKDateFormatterHelper.formatDate(date, includeTime: true)   // 0.x
+LMKDateFormat.string(date, includeTime: true)                // 1.0, or string(date, date: .medium, time: .short); a stored user pattern goes through preferredDatePattern
 ```
 
 ### Strings
@@ -191,7 +194,7 @@ button.title = name                     // 1.0
 
 ### App components with a LumiKit counterpart
 
-The report flags app-local copies of things the kit now ships: month calendar grids (`LMKMonthCalendarView`), sort menus (`LMKSortMenu`), tab bar controllers (`LMKTabBarController`), detail card chrome (`LMKDetailPageViewController`), list cells (`LMKListRowConfiguration`), action tiles, star ratings, copyable labels, photo buttons, checkboxes, date formatter caches (`LMKDateFormat`), image downsamplers (`LMKImage.downsample`), EXIF writers (`LMKPhotoMetadata.write`), Mac window configuration (`LMKScene.configureMacWindow`), and form key commands (`lmk_formKeyCommands`). Adopting them is optional but each replaces a hundred or more lines.
+LumiKit now ships counterparts for things apps tend to write themselves: month calendar grids (`LMKMonthCalendarView`), sort menus (`LMKSortMenu`), tab bar controllers (`LMKTabBarController`), detail card chrome (`LMKDetailPageViewController`), list cells (`LMKListRowConfiguration`), action tiles, star ratings, copyable labels, photo buttons, checkboxes, date formatter caches (`LMKDateFormat`), image downsamplers (`LMKImage.downsample`), EXIF writers (`LMKPhotoMetadata.write`), Mac window configuration (`LMKScene.configureMacWindow`), and form key commands (`lmk_formKeyCommands`). The last group of report recipes looks for such copies by the names they had in the apps LumiKit grew out of, so it flags little in another code base; search for your own. Adopting them is optional but each replaces a hundred or more lines.
 
 ## 4. Checklist
 
@@ -383,7 +386,7 @@ Generated from `Scripts/migrate-1.0.rules` by `Scripts/migrate-1.0.sh . --print-
 | `\.(filled\|outlined\|ghost\|iconOnly)\(LMKColor\.textPrimary\)` | `.${1}(.neutral)` |
 | `LMKButtonFactory\.(filled\|outlined\|ghost)\(\s*role:\s*(\.\w+),\s*title:\s*("[^"]*"\|[\w.()]+),` | `LMKButton(title: $3, style: .${1}(${2}),` |
 | `LMKButtonFactory\.iconOnly\(\s*role:\s*(\.\w+),\s*iconName:\s*("[^"]*"\|[\w.()]+),` | `LMKButton(systemImage: $2, style: .iconOnly(${1}),` |
-| `LMKLabelFactory\.(body\|bodyMedium\|bodyBold\|subbodyMedium\|caption\|captionMedium\|small\|smallMedium\|title\|subtitle)\(text:` | `UILabel.lmk_make(.${1}, text:` |
+| `LMKLabelFactory\.(body\|bodyMedium\|bodyBold\|subbodyMedium\|caption\|captionMedium\|small\|smallMedium)\(text:` | `UILabel.lmk_make(.${1}, text:` |
 | `LMKCardFactory\.elevatedCardView\(\)` | `LMKCardView(style: .elevated)` |
 | `LMKCardFactory\.flatCardView\(\)` | `LMKCardView(style: .flat)` |
 | `LMKCardFactory\.cardView\(\)` | `LMKCardView(style: .cell)` |
@@ -435,7 +438,8 @@ Generated from `Scripts/migrate-1.0.rules` by `Scripts/migrate-1.0.sh . --print-
 | `\bLMKTheme\.apply\(` | Theme registration: pass a LMKTheme value. Convert `struct XTheme: LMKColorTheme { … }` into `extension LMKTheme { static let x = LMKTheme(colors: LMKColorTheme(primary: …)) }` and call `LMKTheme.apply(.x)`; only the colors that differ from the defaults need arguments. |
 | `:\s*LMKColorTheme\s*\{` | LMKColorTheme is a struct now: replace the conformance with `extension LMKTheme { static let x = LMKTheme(colors: LMKColorTheme(…)) }` (see the theme recipe in docs/MIGRATION-1.0.md). |
 | `LMKTheme\.apply\(\s*(colors\|typography\|spacing\|cornerRadius\|shadow\|alpha\|layout\|animation\|badge):` | reshape: per-category `apply(spacing: x)` became `LMKTheme.update { $0.spacing = x }` (reads: `LMKTheme.current.spacing`). |
-| `LMKTheme\.configure\(` | remove: `configure(colors:…)` is gone; build one `LMKTheme(colors:typography:spacing:…)` value and call `LMKTheme.apply(_:)`. |
+| `\bLMKTheme(?:\.shared)?\.configure\(` | remove: `configure(colors:…)` is gone; build one `LMKTheme(colors:typography:spacing:…)` value and call `LMKTheme.apply(_:)`. |
+| `\bLMKTheme\.shared\b(?!\.configure\()` | remove: `LMKThemeManager.shared` is gone; the theme is static API on `LMKTheme` (`LMKTheme.current.spacing`, `LMKTheme.current.badge` for the badge metrics, `LMKTheme.apply(_:)` and `LMKTheme.update { … }` to change it), so a stored manager reference goes away. |
 | `LMKColor\.(onAccent\|scrim)\b` | Review: `white` became `onAccent` (text on a filled accent) and `black` became `scrim` (dimming). Use literal `.white` / `.black` where the old token meant the actual color (forced-dark chrome, `layer.shadowColor`). |
 | `LMKColor\.photoBrowserBackground` | remove: set `LMKPhotoBrowserViewController.Style.backgroundColor` (per instance or `theme.photoBrowser`) instead. |
 | `\.addAsChild\(` | remove: `LMKBottomSheetViewController.addAsChild(sheet, in: host)` became the instance method `sheet.present(from: host)`. |
@@ -443,7 +447,7 @@ Generated from `Scripts/migrate-1.0.rules` by `Scripts/migrate-1.0.sh . --print-
 | `LMKSearchBarDelegate\|lmkSearchBar\w*\(` | remove: the search-bar delegate is gone; set `onTextChange`, `onSearch`, `onBeginEditing`, `onEndEditing`, `onCancel` closures on the bar instead. |
 | `LMKPhotoCropDelegate\|photoCropViewController\w*\(` | remove: the crop delegate is gone; set `onCrop` / `onCancel` on `LMKPhotoCropViewController`. |
 | `LMKSharePreviewDelegate\|sharePreview\w*\(` | remove: the share-preview delegate is gone; set `onShare` / `onSave` / `onFailure` on `LMKSharePreviewViewController`. |
-| `\.configure\(count:\|\.configure\(text:\s*[^,)]*\)\s*$\|badge\.configure\(\)` | reshape (LMKBadgeView only): `configure(count: n)` became `configure(.count(n))`, `configure(text: s)` became `configure(.text(s))`, the dot badge is `configure(.dot)`. |
+| `\.configure\(count:\|(?m:\.configure\(text:\s*[^,)]*\)[ \t]*$)\|badge\.configure\(\)` | reshape (LMKBadgeView only): `configure(count: n)` became `configure(.count(n))`, `configure(text: s)` became `configure(.text(s))`, the dot badge is `configure(.dot)`. |
 | `\.(badgeColor\|borderColor)\s*=\|LMKDividerView\.defaultThickness\|\.thickness\s*=` | reshape: badge and divider colors/thickness are `style` fields (`badge.style.surface.background = .solid(c)`, `divider.style.thickness = t`). |
 | `LMKLoadingStateView\([^)]*overlayStyle:` | reshape: `LMKLoadingStateView(overlayStyle: true)` became `LMKLoadingStateView(style: .overlay)`. |
 | `\.configure\(message:\|LMKEmptyStateView\.(inlineCellHeight\|cardCellHeight\|fullScreenCellHeight\|inlineHorizontalInsets)` | reshape: `configure(message:icon:style:action:)` became `configure(LMKEmptyStateView.Content(title:message:icon: .system("name"), primaryAction:))` with the layout in `style.layout`; size the row yourself. |
@@ -456,7 +460,7 @@ Generated from `Scripts/migrate-1.0.rules` by `Scripts/migrate-1.0.sh . --print-
 | `\.chipColor\b` | reshape: `chipColor` became `style.tintColor` (`chip.style = .filled.tint(color)` or `chip.style.tintColor = color`). |
 | `\.(cardBackgroundColor\|cardCornerRadius)\b\|LMKCardView\(\)\.contentInsets\|card\.contentInsets\s*=` | reshape: card appearance is `style.surface` (`card.style.surface.background = .solid(c)`, `.corners = .fixed(r)`, `.contentInsets = …`). |
 | `LMKStatus\.\w+\.iconName\|status\.iconName\|type\.iconName` | reshape: `LMKStatus.iconName` became `systemImageName: String?` (`.neutral` has none). |
-| `LMKToastView\.defaultDuration\|\.showOnWindow\(` | reshape: `LMKToast.defaultDuration`; window presentation is `LMKToast.show(.status, message:)` with no `in:` (or `presentation: .inWindowScene(nil)`). |
+| `LMKToastView\.defaultDuration\|\.showOnWindow\(` | reshape: `LMKToast.defaultDuration`; window presentation is `LMKToast.show(.status, message)` with no `in:` (or `presentation: .inWindowScene(nil)`). |
 | `\.didTapHandler\b` | remove: `didTapHandler` is gone; use `onTap` and capture the button. |
 | `\.applyStyle\(\|\.applyIconStyle\(` | remove: `applyStyle(.filled(c), title: t)` became `button.style = .filled(.role); button.title = t`; `applyIconStyle` became `button.style = .iconOnly(); button.setSymbol("name")`. |
 | `\.configuration\?\.(title\|image\|imagePlacement\|imagePadding\|contentInsets)\s*=` | Review: LMKButton now exposes `title`, `image`, `setSymbol(_:)`, and `style.imagePlacement` / `style.imagePadding` / `style.surface.contentInsets`; keep `configuration?` only on plain UIButtons. |
@@ -473,10 +477,10 @@ Generated from `Scripts/migrate-1.0.rules` by `Scripts/migrate-1.0.sh . --print-
 | `LMKPhotoMetadata\.(extractDate\|extractLocation)\(` | remove: `await LMKPhotoMetadata.read(from: pickerResult).date` / `.coordinate`; pass raw `Data`, never a decoded `UIImage`. |
 | `LMKDateFormat\.(dateFormatter\|configure)\(` | remove: `LMKDateFormat.string(date, date: .medium, time: .none)`; a user-chosen pattern goes through `LMKDateFormat.preferredDatePattern`. |
 | `\.presentMultiSelect\(` | remove: `LMKEnumPicker.present(from:title:options:selection:onSelect:)` with a `Set<T>` selection (multi-select is chosen by the selection type). |
-| `LMKLayout\.(searchBarHeight\|searchBarIconSize\|clearButtonSize\|pullThreshold\|cellHeightMin)\b` | Review: search-bar metrics moved to `LMKSearchBar.Style`, `pullThreshold` to the refresh control Style, `cellHeightMin` to `LMKLayout.rowHeightCompact`. |
+| `LMKLayout\.(searchBarHeight\|searchBarIconSize\|clearButtonSize)\b` | Review: the search-bar metrics moved to `LMKSearchBar.Style` (`height`, `iconSize`, `clearButtonSize`). |
 | `\bLMKBadge\.\|\bLMKBadgeTheme\b` | remove: badge metrics live on `LMKBadgeView.Style` (app-wide via `theme.badge`). |
 | `LMKBottomSheetLayout\|LMKCardPageLayout\|LMKCardPanelLayout\|LMKTipLayout\|LMKFloatingButtonLayout\|LMKPhotoBrowserConfig` | remove: the constant bags are gone; themeable values are `Style` fields on the owning component. |
-| `override (open \|public )?var (headerHeight\|showsLeadingButton\|showsTrailingButton\|showsHeaderSeparator\|trailingButtonSymbol\|leadingButtonSymbol\|cardMaxWidth\|cardHorizontalInset\|cardMaxHeightRatio\|dismissesOnBackgroundTap\|stackSpacing\|contentInsets\|keyboardDismissMode\|alwaysBounceVertical\|scrollViewUseSafeArea\|edgePanBandWidth\|commitVelocityThreshold)\b` | Review: appearance overrides on the base controllers became `Style` fields (`style.headerHeight = …` in `init`); `dismissesOnBackgroundTap` is an instance property. |
+| `override (open \|public )?var (headerHeight\|showsLeadingButton\|showsTrailingButton\|showsHeaderSeparator\|trailingButtonSymbol\|leadingButtonSymbol\|cardMaxWidth\|cardHorizontalInset\|cardMaxHeightRatio\|dismissesOnBackgroundTap\|stackSpacing\|contentInsets\|keyboardDismissMode\|alwaysBounceVertical\|scrollViewUseSafeArea\|edgePanBandWidth\|commitVelocityThreshold)\b` | Review: appearance overrides on the base controllers became `Style` fields (`style.headerHeight = …` in `init`; `cardMaxHeightRatio` is `LMKCardPanelViewController.Style.heightRatio`, an exact height fraction); `dismissesOnBackgroundTap` is an instance property. |
 | `override (open \|public )?func (dismissSheet\|dismissPanel\|onDismissTapped)\b` | Review: `dismiss()` is the single dismissal; `onDismissTapped()` became `onDismiss: ((DismissReason) -> Void)?`. |
 | `\.(selectedIndex\|setSelectedIndex\(\|selectedIndices\|setSelectedIndices\(\|allowsMultipleSelection)\b` | Review (LMKFilterChipBar only): selection is one `selection: Set<Int>` with `setSelection(_:animated:)`, `selectionMode`, and `onSelectionChange: (Set<Int>) -> Void`. |
 | `\.(fitsSegmentsToContent\|isScrollable\|scrollableItemPadding\|itemSpacing\|makeScrollableContainer\|itemPadding)\b` | Review (LMKSegmentedControl only): the layout knobs became `style.layout = .equalWidth \| .fitContent \| .scrollable(padding:spacing:)` and `itemPadding` moved to `style.itemPadding`; the control owns its scroll view. |
@@ -545,3 +549,9 @@ Generated from `Scripts/migrate-1.0.rules` by `Scripts/migrate-1.0.sh . --print-
 | `LMKLogger\.logStore\?\.entries\|\.formattedMessage\|LMKLogEntry\b` | Review (optional): `LMKLogEntry.message` is the raw message now (the call site is in `file` / `function` / `line`, `formattedMessage` joins them); the store's `formatted()` output is unchanged. |
 | `LMKURLValidator\.validateHTTPSURL\(` | Review (optional): `validate(_:maxLength:requiredScheme:)` returns `Result<URL, ValidationError>` with the rejection reason; `validateHTTPSURL` still returns the trimmed string or nil. |
 | `\.trimmingCharacters\(in: \.whitespacesAndNewlines\)[^\n]*isEmpty` | Review (optional): `lmk_trimmedOrNil` trims and returns nil for a blank string. |
+| `LMKImage\.encodeJPEG\([^)]*\bmaxDimension:` | reshape: `encodeJPEG(_:maxDimension:quality:)` became `encodeJPEG(_:maxPixelSize:quality:)`, and the cap is in pixels of the image (points times `scale`), like `downsample`; rename the label and pass a pixel size (a value that was in points is multiplied by the display scale). |
+| `LMKShare\.file\(` | Review: `LMKShare.file(at:)` keeps the file after sharing (0.x `shareFile` always deleted it); pass `deletesAfterShare: true` for a temporary export, which is then removed on cancel too. |
+| `\.onToggle\s*=` | reshape (LMKCheckboxCell only): `onToggle: () -> Void` became `onValueChange: (Bool) -> Void` carrying the new `isDone` (the cell flips itself first, so `{ [weak self] in … }` becomes `{ [weak self] isDone in … }`); `setDone(_:animated:)` changes the row silently. |
+| `\.onTextChange\s*=` | Review (LMKTextField / LMKTextView): `onTextChange` (0.x `textChangedHandler`) carries `String`, not `String?`; drop the `?? ""` and the optional binding on the payload. `LMKSearchBar.onTextChange` is unchanged. |
+| `(?<!func )\b(animateIn\(\)\|animateOut\(velocity:)` | Review (LMKBottomSheetViewController / LMKCardPanelViewController subclasses): `animateIn()` / `animateOut(velocity:completion:)` are internal on `LMKBottomSheetViewController` and `LMKCardPanelViewController`; `present(from:)` slides in and `dismiss(reason:completion:)` (the panel: `dismiss(completion:)`) slides out. |
+| `\.(numberOfPhotos\b\|photoDate\(at:\|photoSubtitle\(at:\|photoIsLivePhoto\(at:\|photoLivePhoto\(at:)` | Review (LMKPhotoGridViewController): the grid is no longer the browser's data source or delegate (an internal bridge is), so its display-index members (`numberOfPhotos`, `photo(at:)`, `photoDate(at:)`, …) are gone; ask your own data source (display order follows `sortOrder`), and reach the presented browser through `grid.browser`. |

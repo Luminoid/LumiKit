@@ -23,7 +23,7 @@ Five test targets mirror the source folders: `LumiKitCoreTests`, `LumiKitUITests
 
 ```swift
 let traits = LMKThemeTesting.traits(for: LMKThemeTesting.distinct, style: .dark, contrast: .high)
-let view = LMKChipView(title: "x")
+let view = LMKChipView(text: "x")
 view.traitOverrides.lmkTheme = LMKThemeReference(LMKThemeTesting.distinct)   // per-view scoping, no global mutation
 LMKThemeTesting.fit(view, width: 320)                                          // lays out at a width
 await LMKWait.until { toast.isPresented }                                      // poll instead of a fixed sleep
@@ -35,7 +35,9 @@ await LMKWait.until { toast.isPresented }                                      /
 ## xctest-Host Gotchas
 
 - `UIControl.sendActions(for:)` delivers nothing: call the handler or the `on*` closure directly
-- UIKit modal `present` / `dismiss` completions never run; `UIRefreshControl.isRefreshing` never turns true; `becomeFirstResponder()` on a view controller hangs; `UIPasteboard.general` blocks forever
+- UIKit modal `present` / `dismiss` completions never run, and UIKit keeps a dismissed alert alive, so an awaited `LMKAlert.confirm` dismissed programmatically never resumes in the host (test the continuation helper instead); `UIRefreshControl.isRefreshing` never turns true; `becomeFirstResponder()` on a view controller hangs; `UIPasteboard.general` blocks forever
+- `accessibilityPerformEscapeBlock`'s getter raises `unrecognized selector` in the host: components answer the escape gesture by overriding `accessibilityPerformEscape()` on a view subclass
+- iOS 26.2: a `UISlider` whose `trackConfiguration` is set back to `nil` ignores every later `value` (pinned to the minimum); replace a published configuration with a plain one instead of clearing it
 - `UIView.setAnimationsEnabled` is process-global and unsafe across parallel suites; parallel suites can hold the main actor for seconds, so wait with `LMKWait.until` and a deadline
 - Trait overrides propagate only inside a window; reading `traitOverrides` without an override traps
 - Compare `CGFloat`s against a single literal (`#expect(x == 351)`), not an `Int` expression

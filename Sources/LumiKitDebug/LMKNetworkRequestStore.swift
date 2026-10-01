@@ -4,10 +4,10 @@
 //
 //  Thread-safe in-memory store for captured network requests: a bounded ring
 //  buffer with O(1) insertion, eviction, and lookup by id.
-//  DEBUG builds only — zero footprint in release.
+//  Debug builds only (`LMK_ENABLE_NETWORK_LOGGING`) — zero footprint in release.
 //
 
-#if DEBUG
+#if LMK_ENABLE_NETWORK_LOGGING
 
     import Foundation
     import os
@@ -77,11 +77,10 @@
         // MARK: - Initialization
 
         /// - Parameters:
-        ///   - maxRecords: Maximum number of requests to retain. Oldest are evicted first.
+        ///   - maxRecords: Maximum number of requests to retain (values below 1 keep one). Oldest are evicted first.
         ///   - onChange: Called after every add, update, and clear.
         init(maxRecords: Int, onChange: (@Sendable () -> Void)? = nil) {
-            precondition(maxRecords > 0, "maxRecords must be positive")
-            lock = OSAllocatedUnfairLock(initialState: Buffer(capacity: maxRecords))
+            lock = OSAllocatedUnfairLock(initialState: Buffer(capacity: max(1, maxRecords)))
             self.onChange = onChange
         }
 
@@ -112,12 +111,12 @@
         // MARK: - Mutation
 
         /// Add a new request. Evicts the oldest request if at capacity.
-        func addRequest(_ url: URL, method: String, headers: [String: String], body: Data?) -> UUID {
+        func addRequest(_ url: URL, method: String, headers: [String: String], body: Data?, isBodyTruncated: Bool = false) -> UUID {
             let id = UUID()
             let record = LMKNetworkRequestRecord(
                 id: id,
                 timestamp: Date(),
-                request: .init(url: url, method: method, headers: headers, body: body),
+                request: .init(url: url, method: method, headers: headers, body: body, isBodyTruncated: isBodyTruncated),
                 response: nil,
                 errorDescription: nil,
                 duration: nil
@@ -128,14 +127,14 @@
         }
 
         /// Update a request with response data.
-        func updateResponse(id: UUID, statusCode: Int, headers: [String: String], body: Data?, duration: TimeInterval) {
+        func updateResponse(id: UUID, statusCode: Int, headers: [String: String], body: Data?, isBodyTruncated: Bool = false, duration: TimeInterval) {
             let updated = lock.withLock { buffer in
                 buffer.update(id: id) { existing in
                     LMKNetworkRequestRecord(
                         id: existing.id,
                         timestamp: existing.timestamp,
                         request: existing.request,
-                        response: .init(statusCode: statusCode, headers: headers, body: body),
+                        response: .init(statusCode: statusCode, headers: headers, body: body, isBodyTruncated: isBodyTruncated),
                         errorDescription: nil,
                         duration: duration
                     )

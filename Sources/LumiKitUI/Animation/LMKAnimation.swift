@@ -211,30 +211,12 @@ public enum LMKAnimation {
     // MARK: - Error Shake Animation
 
     private static let errorShakeBorderWidth: CGFloat = 2
+    private static let errorFlashLayerName = "lmk.errorFlash"
 
     /// Shakes `view` horizontally; under Reduce Motion it flashes an error border instead.
     public static func animateErrorShake(on view: UIView, completion: (() -> Void)? = nil) {
-        let shouldReduceMotion = !shouldAnimate
-
-        if shouldReduceMotion {
-            let originalBorderColor = view.layer.borderColor
-            view.layer.borderWidth = errorShakeBorderWidth
-            view.layer.borderColor = LMKColor.error.cgColor
-            UIView.animate(
-                withDuration: Duration.moderate,
-                animations: { view.alpha = LMKAlpha.xl },
-                completion: { _ in
-                    UIView.animate(
-                        withDuration: Duration.moderate,
-                        animations: {
-                            view.alpha = 1.0
-                            view.layer.borderColor = originalBorderColor
-                            view.layer.borderWidth = 0
-                        },
-                        completion: { _ in completion?() }
-                    )
-                }
-            )
+        guard shouldAnimate else {
+            flashErrorBorder(on: view, completion: completion)
             return
         }
 
@@ -243,9 +225,42 @@ public enum LMKAnimation {
         animation.values = [-10, 10, -10, 10, -5, 5, -2.5, 2.5, 0]
         animation.duration = Duration.slow
 
+        let finish = LMKOnceCompletion(after: Duration.slow) { completion?() }
         CATransaction.begin()
-        CATransaction.setCompletionBlock { completion?() }
+        CATransaction.setCompletionBlock { finish.fire() }
         view.layer.add(animation, forKey: "shake")
+        CATransaction.commit()
+    }
+
+    /// The Reduce Motion form of the error shake: an error-colored border on a temporary
+    /// sublayer that holds for a moment and fades, so the view's own border, corners, and
+    /// alpha are never touched. A flash already showing is replaced.
+    static func flashErrorBorder(on view: UIView, completion: (() -> Void)?) {
+        view.layer.sublayers?.filter { $0.name == errorFlashLayerName }.forEach { $0.removeFromSuperlayer() }
+        let flash = CALayer()
+        flash.name = errorFlashLayerName
+        flash.frame = view.bounds
+        flash.cornerRadius = view.layer.cornerRadius
+        flash.cornerCurve = view.layer.cornerCurve
+        flash.maskedCorners = view.layer.maskedCorners
+        flash.borderWidth = LMKLayout.pixelAligned(errorShakeBorderWidth, for: view)
+        flash.borderColor = LMKColor.error.resolvedColor(with: view.traitCollection).cgColor
+        view.layer.addSublayer(flash)
+
+        let fade = CABasicAnimation(keyPath: "opacity")
+        fade.fromValue = 1
+        fade.toValue = 0
+        fade.beginTime = CACurrentMediaTime() + Duration.moderate
+        fade.duration = Duration.moderate
+        fade.fillMode = .forwards
+        fade.isRemovedOnCompletion = false
+        let finish = LMKOnceCompletion(after: 2 * Duration.moderate) {
+            flash.removeFromSuperlayer()
+            completion?()
+        }
+        CATransaction.begin()
+        CATransaction.setCompletionBlock { finish.fire() }
+        flash.add(fade, forKey: "fade")
         CATransaction.commit()
     }
 

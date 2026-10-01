@@ -65,6 +65,25 @@ struct LMKNamingRulesTests {
         #expect(offenders.isEmpty, "\(offenders)")
     }
 
+    @Test
+    func `Public callbacks are present tense and a value change is onValueChange`() throws {
+        let patterns = try [
+            #"^\s*(public|open) var on[A-Z]\w*ed\b"#,
+            #"^\s*(public|open) var on(Change|Editing\w*Change)\b"#,
+        ].map { try NSRegularExpression(pattern: $0) }
+        var offenders: [String] = []
+        for (file, contents) in try sourceFiles() {
+            for line in contents.split(separator: "\n", omittingEmptySubsequences: false) {
+                let text = String(line)
+                let range = NSRange(text.startIndex..., in: text)
+                if patterns.contains(where: { $0.firstMatch(in: text, range: range) != nil }) {
+                    offenders.append("\(file): \(text.trimmingCharacters(in: .whitespaces))")
+                }
+            }
+        }
+        #expect(offenders.isEmpty, "\(offenders)")
+    }
+
     // MARK: - Source scanning
 
     private static let sourcesDirectory: URL = {

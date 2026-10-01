@@ -24,9 +24,9 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/SnapKit/SnapKit.git", from: "6.0.0"),
-        // SwiftPM resolves the full dependency graph, so consumers of non-Lottie
-        // products still fetch this package's metadata at resolve time. The binary
-        // artifact itself downloads only when LumiKitLottie is linked.
+        // SwiftPM resolves the full dependency graph, so every consumer, even one that
+        // links only LumiKitCore, fetches this package and its binary artifact at resolve
+        // time; only LumiKitLottie links it.
         .package(url: "https://github.com/airbnb/lottie-spm.git", from: "4.4.0"),
     ],
     targets: [
@@ -67,10 +67,12 @@ let package = Package(
             ] + warningsAsErrors
         ),
 
-        // MARK: - Debug (DEBUG-only network logging + inspector UI)
+        // MARK: - Debug (debug-only network logging + inspector UI)
 
+        // The whole target compiles only under LMK_ENABLE_NETWORK_LOGGING (debug configurations).
         // The inspector screens need LumiKitUI (UIKit); the URLProtocol logger is Foundation-only
-        // so the target still builds and tests natively on macOS without the UI dependency.
+        // so the target still builds natively on macOS without the UI dependency (its tests run on the
+        // simulator: `swift test` would link the UIKit test targets too).
         .target(
             name: "LumiKitDebug",
             dependencies: [

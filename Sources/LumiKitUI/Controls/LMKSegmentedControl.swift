@@ -209,6 +209,8 @@ public final class LMKSegmentedControl: UIControl, LMKThemeApplying {
     override public var isEnabled: Bool {
         didSet {
             guard isEnabled != oldValue else { return }
+            // Disabling mid-drag abandons the drag: the indicator returns to the pre-drag segment.
+            if !isEnabled { endIndicatorDrag(committing: false) }
             applyTheme(traitCollection.lmkTheme)
         }
     }
@@ -281,13 +283,15 @@ public final class LMKSegmentedControl: UIControl, LMKThemeApplying {
         applyTheme(traitCollection.lmkTheme)
     }
 
-    /// Inserts a segment; the selection follows its segment.
+    /// Inserts a segment; the selection follows its segment. Into an empty control, the new
+    /// segment takes the default selection (index 0), as `setItems` would.
     public func insertSegment(withTitle title: String, at index: Int) {
         let index = min(max(index, 0), items.count)
         isRebuilding = true
+        let hadSelection = items.indices.contains(selectedSegmentIndex)
         items.insert(title, at: index)
         disabledSegments = Set(disabledSegments.map { $0 >= index ? $0 + 1 : $0 })
-        if selectedSegmentIndex >= index {
+        if hadSelection, selectedSegmentIndex >= index {
             selectedSegmentIndex += 1
         }
         isRebuilding = false
@@ -378,9 +382,11 @@ public final class LMKSegmentedControl: UIControl, LMKThemeApplying {
 
         let tap = UITapGestureRecognizer(target: self, action: #selector(handleTap(_:)))
         addGestureRecognizer(tap)
+        // Gated in `gestureRecognizerShouldBegin`: horizontal drags that start on the indicator.
         let pan = UIPanGestureRecognizer(target: self, action: #selector(handlePan(_:)))
         addGestureRecognizer(pan)
         panGesture = pan
+        addInteraction(UIPointerInteraction(delegate: self))
 
         isAccessibilityElement = false
         accessibilityContainerType = .semanticGroup
@@ -414,8 +420,10 @@ public final class LMKSegmentedControl: UIControl, LMKThemeApplying {
         intrinsicSize(theme: traitCollection.lmkTheme)
     }
 
+    /// A disabled control absorbs a touch inside its bounds, like `UISegmentedControl`; an enabled one answers the minimum touch target.
     override public func point(inside point: CGPoint, with event: UIEvent?) -> Bool {
-        guard isEnabled, !isHidden else { return bounds.contains(point) }
+        guard !isHidden else { return false }
+        guard isEnabled else { return bounds.contains(point) }
         return lmk_hitTestBounds(minimumSide: traitCollection.lmkTheme.layout.minimumTouchTarget).contains(point)
     }
 
@@ -433,7 +441,7 @@ public final class LMKSegmentedControl: UIControl, LMKThemeApplying {
             defaults: LMKSurfaceStyle(
                 background: .solid(LMKColor.backgroundTertiary),
                 corners: corners == .pill ? .capsule : .fixed(mediumRadius),
-                shadow: LMKShadowSource.none
+                shadow: LMKShadowSource.hidden
             )
         )
         var indicator = resolved.indicator
@@ -445,11 +453,13 @@ public final class LMKSegmentedControl: UIControl, LMKThemeApplying {
             defaults: LMKSurfaceStyle(
                 background: .solid(LMKColor.primary.withAlphaComponent(theme.alpha.xs)),
                 corners: corners == .pill ? .capsule : .fixed(max(0, mediumRadius - contentInset - indicatorInset)),
-                shadow: LMKShadowSource.none
+                shadow: LMKShadowSource.hidden
             )
         )
         stackInsetsConstraint?.update(inset: contentInset)
         indicatorVerticalConstraint?.update(inset: indicatorInset)
+        indicatorLeading?.update(offset: indicatorInset)
+        indicatorTrailing?.update(offset: -indicatorInset)
 
         applyLayoutMode(theme)
         recomputeReferenceWidths()
@@ -490,6 +500,24 @@ public final class LMKSegmentedControl: UIControl, LMKThemeApplying {
             if !isEnabled || !isEnabledForSegment(at: index) { traits.insert(.notEnabled) }
             label.accessibilityTraits = traits
         }
+    }
+}
+
+// MARK: - UIPointerInteractionDelegate
+
+extension LMKSegmentedControl: UIPointerInteractionDelegate {
+    /// One hover region per segment, so the pointer highlights the segment under it.
+    public func pointerInteraction(_: UIPointerInteraction, regionFor request: UIPointerRegionRequest, defaultRegion _: UIPointerRegion) -> UIPointerRegion? {
+        guard isEnabled else { return nil }
+        let location = convert(request.location, to: segmentStack)
+        guard let index = segmentIndex(atX: location.x, clampingToEdges: false), isEnabledForSegment(at: index),
+              let label = segmentLabels[lmk_safe: index] else { return nil }
+        return UIPointerRegion(rect: convert(label.frame, from: segmentStack), identifier: index)
+    }
+
+    public func pointerInteraction(_: UIPointerInteraction, styleFor region: UIPointerRegion) -> UIPointerStyle? {
+        guard let index = region.identifier as? Int, let label = segmentLabels[lmk_safe: index] else { return nil }
+        return LMKPointerStyle.hover(for: label)
     }
 }
 

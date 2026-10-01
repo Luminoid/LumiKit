@@ -17,7 +17,7 @@ import UIKit
 /// run loop turn, so a delegate can be called with a view that has since left the hierarchy:
 /// a cell recycled by scrolling, a snapshot applied under the cursor, a sheet dismissed
 /// mid-hover, a view controller popped while the pointer rests on a row. Guarding
-/// `interaction.view != nil` does not cover this — the interaction stays attached to a
+/// `interaction.view != nil` does not cover this: the interaction stays attached to a
 /// recycled cell whose `window` is already nil. `superview` is not equivalent either,
 /// since reuse pools and detached containers keep one.
 ///

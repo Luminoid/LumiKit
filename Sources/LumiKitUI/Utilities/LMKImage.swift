@@ -35,7 +35,7 @@ public nonisolated enum LMKImage {
         }
 
         /// How variable-value layers render (iOS 26 `UIImage.SymbolVariableValueMode`).
-        public enum VariableValueMode: Sendable, Equatable, CaseIterable {
+        public enum VariableValueMode: Sendable, Hashable, CaseIterable {
             case automatic
             /// Each variable layer is either on or off against its threshold.
             case color
@@ -44,7 +44,7 @@ public nonisolated enum LMKImage {
         }
 
         /// How color layers render (iOS 26 `UIImage.SymbolColorRenderingMode`).
-        public enum ColorRenderingMode: Sendable, Equatable, CaseIterable {
+        public enum ColorRenderingMode: Sendable, Hashable, CaseIterable {
             case automatic
             case flat
             case gradient
@@ -184,13 +184,14 @@ public nonisolated enum LMKImage {
     ///
     /// - Parameters:
     ///   - image: The image to encode.
-    ///   - maxDimension: Longest edge of the output in points; larger images are downsampled (never upscaled).
+    ///   - maxPixelSize: Longest edge of the output in pixels (the image's point size times its
+    ///     `scale`); larger images are downsampled, never upscaled.
     ///   - quality: JPEG compression quality (0.0--1.0). Default 0.8.
     /// - Returns: Opaque JPEG data, or `nil` if the image is empty or the encode fails.
-    public static func encodeJPEG(_ image: UIImage, maxDimension: CGFloat, quality: CGFloat = 0.8) -> Data? {
-        let size = image.size
-        guard size.width > 0, size.height > 0, maxDimension > 0 else { return nil }
-        let scale = min(1, maxDimension / max(size.width, size.height))
+    public static func encodeJPEG(_ image: UIImage, maxPixelSize: CGFloat, quality: CGFloat = 0.8) -> Data? {
+        let size = pixelSize(image.size, scale: image.scale)
+        guard size.width > 0, size.height > 0, maxPixelSize > 0 else { return nil }
+        let scale = min(1, maxPixelSize / max(size.width, size.height))
         let pixelWidth = Int((size.width * scale).rounded())
         let pixelHeight = Int((size.height * scale).rounded())
         guard pixelWidth > 0, pixelHeight > 0 else { return nil }
@@ -323,7 +324,7 @@ public nonisolated enum LMKImage {
     /// one-call import path for picked photos: never a full-resolution decode, orientation baked in.
     public static func downsampledJPEG(data: Data, maxPixelSize: CGFloat, quality: CGFloat = 0.8) -> Data? {
         guard let image = downsample(data: data, maxPixelSize: maxPixelSize) else { return nil }
-        return encodeJPEG(image, maxDimension: maxPixelSize, quality: quality)
+        return encodeJPEG(image, maxPixelSize: maxPixelSize, quality: quality)
     }
 
     /// The pixel size of the image in `data` with its EXIF orientation applied, read from the
@@ -346,7 +347,8 @@ public nonisolated enum LMKImage {
         let thumbnailOptions: [CFString: Any] = [
             kCGImageSourceCreateThumbnailFromImageAlways: options.alwaysFromImage,
             kCGImageSourceCreateThumbnailFromImageIfAbsent: true,
-            kCGImageSourceThumbnailMaxPixelSize: Int(maxPixelSize.rounded(.up)),
+            // Capped so "no limit" (`.infinity`, `.greatestFiniteMagnitude`) converts instead of trapping.
+            kCGImageSourceThumbnailMaxPixelSize: Int(min(maxPixelSize.rounded(.up), CGFloat(Int32.max))),
             kCGImageSourceCreateThumbnailWithTransform: options.appliesOrientation,
             kCGImageSourceShouldCacheImmediately: options.cachesImmediately,
         ]
@@ -371,7 +373,8 @@ public nonisolated enum LMKImage {
 
     // MARK: - Pixel Buffer
 
-    private static let ciContext = CIContext()
+    /// One Core Image context for the module's renders (the QR generator shares it).
+    static let ciContext = CIContext()
 
     /// Convert a `CVPixelBuffer` to JPEG `Data`.
     /// - Parameters:

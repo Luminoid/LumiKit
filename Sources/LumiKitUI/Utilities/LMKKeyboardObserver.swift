@@ -28,7 +28,7 @@ final class LMKKeyboardObserver {
         let height: CGFloat
         /// Keyboard end frame in screen coordinates (`keyboardFrameEndUserInfoKey`).
         /// Convert into a local view (`view.convert(frameEnd, from: nil)`) and
-        /// intersect to get the actual overlap — the raw `height` overstates it
+        /// intersect to get the actual overlap; the raw `height` overstates it
         /// for floating keyboards, short windows, and side-by-side layouts.
         let frameEnd: CGRect
         /// Animation duration.

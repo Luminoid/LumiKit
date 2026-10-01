@@ -209,6 +209,8 @@ public enum LMKMenu {
     /// Point size and weight of an anchor glyph: `symbolRow`, medium. Bar glyphs at the symbol's
     /// natural size read larger than the text and chevrons beside them.
     public static var anchorSymbolConfiguration: UIImage.SymbolConfiguration {
+        // A static anchor configuration: `LMKMenu` is a namespace with no theme or traits to read from.
+        // swiftlint:disable:next no_global_token_proxies_in_components
         UIImage.SymbolConfiguration(pointSize: LMKLayout.symbolRow, weight: .medium)
     }
 
@@ -244,6 +246,8 @@ public enum LMKMenu {
     ///     (about 32pt across; the hit target is still 44pt).
     public static func makeButton(menu: UIMenu, systemImageName: String, accessibilityLabel: String, style: LMKButton.Style = LMKButton.Style()) -> LMKButton {
         var base = LMKButton.Style(role: .primary, variant: .tinted, surface: LMKSurfaceStyle(corners: .circle))
+        // A static builder: the button it returns re-resolves its style against its own traits.
+        // swiftlint:disable:next no_global_token_proxies_in_components
         base.symbolPointSize = LMKLayout.symbolRow
         base.symbolWeight = .medium
         let button = LMKButton(systemImage: systemImageName, style: base.merging(style))
@@ -302,7 +306,9 @@ public extension LMKMenu.Section {
                     state: current.contains(option.id) ? .on : .off
                 ) { action in
                     MainActor.assumeIsolated {
-                        let isOn = action.state != .on
+                        // From the host's state, not the row's: a row that is not rebuilt (a
+                        // menu nested in a host menu) would otherwise report the same value twice.
+                        let isOn = !selected().contains(option.id)
                         action.state = isOn ? .on : .off
                         onToggle(option.id, isOn)
                         if keepsMenuOpen {

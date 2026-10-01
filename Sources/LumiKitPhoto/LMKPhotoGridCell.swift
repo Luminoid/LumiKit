@@ -25,9 +25,11 @@ final class LMKPhotoGridCell: UICollectionViewCell {
     private let selectionOverlay = UIView()
     private let checkmarkView = UIImageView()
     private var liveBadgeSizeConstraint: Constraint?
+    private var liveBadgeInsetConstraint: Constraint?
     private var checkmarkSizeConstraint: Constraint?
+    private var checkmarkInsetConstraint: Constraint?
     private var liveIconSizeConstraint: Constraint?
-    private var corners = LMKCornerStyle.none
+    private var corners = LMKCornerStyle.square
     private var pressedAlpha: CGFloat = 0.7
 
     /// Monotonic token identifying the latest configure/reuse cycle. Every `configure` and
@@ -37,6 +39,7 @@ final class LMKPhotoGridCell: UICollectionViewCell {
     private var imageLoadTask: Task<Void, Never>?
 
     /// The currently displayed image, if any (nil while showing the placeholder).
+    /// Test hook
     var installedImage: UIImage? { imageView.image }
 
     /// Whether the cell draws its selected state.
@@ -74,25 +77,26 @@ final class LMKPhotoGridCell: UICollectionViewCell {
             make.edges.equalToSuperview()
         }
 
+        // Sizes and insets start at zero and take their values from the theme in `apply`.
         liveBadgeView.isHidden = true
         liveBadgeIcon.contentMode = .scaleAspectFit
         liveBadgeView.addSubview(liveBadgeIcon)
         liveBadgeIcon.snp.makeConstraints { make in
             make.center.equalToSuperview()
-            liveIconSizeConstraint = make.size.equalTo(LMKLayout.symbolInline).constraint
+            liveIconSizeConstraint = make.size.equalTo(0).constraint
         }
         contentView.addSubview(liveBadgeView)
         liveBadgeView.snp.makeConstraints { make in
-            make.top.leading.equalToSuperview().inset(LMKSpacing.xs)
-            liveBadgeSizeConstraint = make.size.equalTo(LMKPhotoGridViewController.Style.defaultBadgeSize).constraint
+            liveBadgeInsetConstraint = make.top.leading.equalToSuperview().inset(0).constraint
+            liveBadgeSizeConstraint = make.size.equalTo(0).constraint
         }
 
         checkmarkView.isHidden = true
         checkmarkView.contentMode = .scaleAspectFit
         contentView.addSubview(checkmarkView)
         checkmarkView.snp.makeConstraints { make in
-            make.bottom.trailing.equalToSuperview().inset(LMKSpacing.xs)
-            checkmarkSizeConstraint = make.size.equalTo(LMKPhotoGridViewController.Style.defaultBadgeSize).constraint
+            checkmarkInsetConstraint = make.bottom.trailing.equalToSuperview().inset(0).constraint
+            checkmarkSizeConstraint = make.size.equalTo(0).constraint
         }
     }
 
@@ -102,16 +106,17 @@ final class LMKPhotoGridCell: UICollectionViewCell {
     func apply(style: LMKPhotoGridViewController.Style, theme: LMKTheme) {
         imageView.backgroundColor = style.placeholder
         pressedAlpha = style.pressedAlpha ?? theme.alpha.xl
-        corners = style.cellCorners ?? .none
+        corners = style.cellCorners ?? .square
         imageView.lmk_applyCornerStyle(corners)
         selectionOverlay.lmk_applyCornerStyle(corners)
 
         let side = style.badgeSide
         liveBadgeView.lmk_apply(
             surface: style.liveBadge,
-            defaults: LMKSurfaceStyle(background: .solid(UIColor.black.withAlphaComponent(theme.alpha.xl)), corners: .circle)
+            defaults: LMKSurfaceStyle(background: .solid(LMKPhotoPalette.badgeBacking.withAlphaComponent(theme.alpha.xl)), corners: .circle)
         )
         liveBadgeSizeConstraint?.update(offset: side)
+        liveBadgeInsetConstraint?.update(inset: theme.spacing.xs)
         liveIconSizeConstraint?.update(offset: theme.layout.symbolInline)
         liveBadgeIcon.image = UIImage(systemName: "livephoto", withConfiguration: UIImage.SymbolConfiguration(pointSize: theme.layout.symbolBadge, weight: .semibold))
         liveBadgeIcon.tintColor = style.badgeGlyphTint
@@ -119,6 +124,7 @@ final class LMKPhotoGridCell: UICollectionViewCell {
         let selection = style.selectionColor
         selectionOverlay.backgroundColor = selection.withAlphaComponent(style.selectionOverlayAlpha ?? theme.alpha.small)
         checkmarkSizeConstraint?.update(offset: side)
+        checkmarkInsetConstraint?.update(inset: theme.spacing.xs)
         let palette = UIImage.SymbolConfiguration(paletteColors: [style.badgeGlyphTint, selection])
         checkmarkView.image = UIImage(systemName: "checkmark.circle.fill", withConfiguration: UIImage.SymbolConfiguration(pointSize: side, weight: .semibold).applying(palette))
         checkmarkView.preferredSymbolConfiguration = palette
@@ -164,6 +170,7 @@ final class LMKPhotoGridCell: UICollectionViewCell {
     }
 
     /// Whether the photo is dimmed for a touch.
+    /// Test hook
     var isPressed: Bool { imageView.alpha < 1 }
 
     /// Draws or clears the selected state (checkmark and overlay).

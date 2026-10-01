@@ -45,7 +45,11 @@ extension LMKPhotoBrowserViewController {
         dismiss(animated: true)
     }
 
+    /// Reports the dismissal once per presentation: a key command during a swipe's exit
+    /// animation and that animation's own completion both come through here.
     private func notifyDismiss() {
+        guard !didNotifyDismiss else { return }
+        didNotifyDismiss = true
         delegate?.photoBrowserDidDismiss(self)
         onDismiss?()
     }

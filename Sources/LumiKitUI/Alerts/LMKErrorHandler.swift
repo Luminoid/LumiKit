@@ -49,7 +49,8 @@ public enum LMKErrorHandler {
         public let title: String
         public let message: String
         public let severity: Severity
-        /// Runs a retry, when the caller offered one.
+        /// Runs the retry, when the caller offered one. Under `confirmRetry` calling it resolves
+        /// the await as `true`; releasing the context without calling it resolves `false`.
         public let retryAction: (() -> Void)?
     }
 
@@ -111,27 +112,34 @@ public enum LMKErrorHandler {
 
     /// Presents `error` (its description plus any recovery suggestion) by severity.
     public static func present(from host: UIViewController, error: Error, severity: Severity = .error, retryAction: (() -> Void)? = nil) {
-        let message = message(for: error)
-        if logsErrors {
-            LMKLogger.error("Presenting \(severity) to user: \(message)", error: error, category: .error)
-        }
-        present(from: host, message: message, severity: severity, retryAction: retryAction)
+        show(from: host, title: nil, message: message(for: error), error: error, severity: severity, retryAction: retryAction, onRetryChosen: nil)
     }
 
     /// Presents `message` by severity.
     public static func present(from host: UIViewController, title: String? = nil, message: String, severity: Severity = .error, retryAction: (() -> Void)? = nil) {
-        show(from: host, title: title, message: message, severity: severity, retryAction: retryAction, onRetryChosen: nil)
+        show(from: host, title: title, message: message, error: nil, severity: severity, retryAction: retryAction, onRetryChosen: nil)
     }
 
     /// Presents `message` by severity and waits for the user; `true` when a retry was chosen.
     /// Retry is offered when the policy presents an alert with retry. Named apart from
     /// `present` so the async overload never shadows it inside async code.
+    ///
+    /// Resolves `false` when the presentation is a toast, when an alert cannot be presented
+    /// (the host is off screen or already presenting) or goes away without an action, and
+    /// when a custom presentation releases its context without running `retryAction`.
     @discardableResult
     public static func confirmRetry(from host: UIViewController, title: String? = nil, message: String, severity: Severity = .error) async -> Bool {
         await withCheckedContinuation { continuation in
-            show(from: host, title: title, message: message, severity: severity, retryAction: {}, onRetryChosen: { chosen in
-                continuation.resume(returning: chosen)
-            })
+            let resolution = LMKOnceContinuation(continuation, fallback: false)
+            show(
+                from: host,
+                title: title,
+                message: message,
+                error: nil,
+                severity: severity,
+                retryAction: { resolution.resolve(true) },
+                onRetryChosen: { resolution.resolve($0) }
+            )
         }
     }
 
@@ -151,6 +159,7 @@ public enum LMKErrorHandler {
         from host: UIViewController,
         title: String?,
         message: String,
+        error: Error?,
         severity: Severity,
         retryAction: (() -> Void)?,
         onRetryChosen: ((Bool) -> Void)?
@@ -159,13 +168,18 @@ public enum LMKErrorHandler {
         let presentation = policy.resolve(severity, hasRetry)
         let resolvedTitle = title ?? defaultTitle(for: severity)
         if logsErrors {
-            log(severity: severity, message: message)
+            log(severity: severity, message: message, error: error)
         }
         switch presentation {
         case .toast:
             LMKToast.show(status(for: severity), message, in: host)
             onRetryChosen?(false)
         case let .alert(showsRetry):
+            guard host.lmk_canPresentAlert else {
+                LMKLogger.warning("LMKErrorHandler: \(type(of: host)) cannot present “\(resolvedTitle)”: off screen or already presenting", category: .ui)
+                onRetryChosen?(false)
+                return
+            }
             let alert = UIAlertController(title: resolvedTitle, message: message, preferredStyle: .alert)
             if showsRetry, let retryAction {
                 alert.addAction(UIAlertAction(title: strings.retry, style: .default) { _ in
@@ -178,8 +192,9 @@ public enum LMKErrorHandler {
             }
             host.present(alert, animated: true)
         case let .custom(handler):
+            // The context carries the retry; an awaiting `confirmRetry` resolves when it runs or
+            // when the handler releases the context without it.
             handler(Context(host: host, title: resolvedTitle, message: message, severity: severity, retryAction: retryAction))
-            onRetryChosen?(false)
         }
     }
 
@@ -199,11 +214,11 @@ public enum LMKErrorHandler {
         }
     }
 
-    private static func log(severity: Severity, message: String) {
+    private static func log(severity: Severity, message: String, error: Error?) {
         switch severity {
         case .info: LMKLogger.info("Showing info: \(message)", category: .ui)
         case .warning: LMKLogger.warning("Showing warning: \(message)", category: .ui)
-        case .error, .critical: LMKLogger.error("Showing \(severity): \(message)", category: .error)
+        case .error, .critical: LMKLogger.error("Showing \(severity): \(message)", error: error, category: .error)
         }
     }
 }

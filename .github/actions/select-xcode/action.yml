@@ -1,0 +1,33 @@
+name: Select Xcode
+description: Points xcode-select at the newest release build (no beta) of the requested Xcode major on the runner.
+
+inputs:
+  major:
+    description: Xcode major version to select (26 or 27).
+    required: false
+    default: "26"
+
+runs:
+  using: composite
+  steps:
+    - name: Select Xcode ${{ inputs.major }}
+      shell: bash
+      env:
+        MAJOR: ${{ inputs.major }}
+      run: |
+        # The images ship version aliases as symlinks (Xcode_27.2.app -> Xcode_27.2_beta.app), so
+        # resolve each candidate before deciding whether it is a beta.
+        selected=""
+        while IFS= read -r app; do
+          [ -n "$app" ] || continue
+          case "$(readlink -f "$app")" in *[Bb]eta*) continue ;; esac
+          selected="$app"
+        done < <(ls -d /Applications/Xcode_"$MAJOR"*.app 2>/dev/null | sort -V)
+        if [ -z "$selected" ]; then
+          echo "::error::no Xcode $MAJOR release build on this runner"
+          ls -d /Applications/Xcode*.app
+          exit 1
+        fi
+        echo "Using $selected ($(readlink -f "$selected"))"
+        sudo xcode-select -s "$selected"
+        xcodebuild -version

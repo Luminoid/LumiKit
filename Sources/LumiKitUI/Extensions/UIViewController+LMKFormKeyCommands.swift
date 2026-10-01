@@ -53,10 +53,12 @@ public extension UIViewController {
         }
         return commands
     }
+}
 
+extension UIViewController {
     /// The default Escape action: dismisses a presented view controller, or pops one that was
     /// pushed. Override in a subclass to confirm unsaved changes first.
-    @objc func lmk_cancelFromKeyCommand() {
+    @objc open func lmk_cancelFromKeyCommand() {
         if let navigationController, navigationController.viewControllers.count > 1, navigationController.topViewController === self {
             navigationController.popViewController(animated: true)
         } else if presentingViewController != nil {

@@ -2,13 +2,10 @@
 //  AsyncImageTestSupport.swift
 //  LumiKit
 //
-//  Shared helpers for async photo data source tests: a resumable gate to hold
-//  an in-flight image load open, and a main-actor settling loop.
+//  Shared helper for async photo data source tests: a resumable gate to hold
+//  an in-flight image load open. Tests wait for the load's effect with
+//  `LMKWait.until`, never for a fixed number of turns.
 //
-
-import LumiKitUI
-import UIKit
-@testable import LumiKitPhoto
 
 /// Holds async callers until `open()` is called — used to keep a fake image
 /// load in flight while the test reconfigures or reuses the cell, proving the
@@ -27,14 +24,5 @@ final class AsyncGate {
         isOpen = true
         continuations.forEach { $0.resume() }
         continuations.removeAll()
-    }
-}
-
-/// Yields the main actor repeatedly so cooperatively scheduled load tasks can
-/// run to completion before the test asserts.
-@MainActor
-func settleMainActor(iterations: Int = 50) async {
-    for _ in 0 ..< iterations {
-        await Task.yield()
     }
 }

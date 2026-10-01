@@ -6,15 +6,12 @@
 //
 
 import LumiKitUI
-import SnapKit
 import UIKit
 
 // MARK: - Markdown
 
 final class MarkdownDetailViewController: DetailViewController {
-    override func viewDidLoad() {
-        super.viewDidLoad()
-
+    override func setupStackContent() {
         addSectionHeader("Bold & Italic")
         addMarkdownLabel("This is **bold**, this is *italic*, and this is ***both***.")
 
@@ -35,35 +32,35 @@ final class MarkdownDetailViewController: DetailViewController {
         addMarkdownLabel("**Important**: The `config` value *must* be set **before** calling `setup()`. See the ~~old~~ new docs.")
 
         addDivider()
-        addSectionHeader("Custom Font — H3")
+        addSectionHeader("Text Style: h3")
         addMarkdownLabel(
             "Heading with **emphasis** rendered at a larger size.",
-            font: LMKTypography.h3
+            style: .h3
         )
 
         addDivider()
-        addSectionHeader("Custom Font — Caption")
+        addSectionHeader("Text Style: caption")
         addMarkdownLabel(
             "Small print with *italic* and **bold** at caption size.",
-            font: LMKTypography.caption
+            style: .caption
         )
 
         addDivider()
-        addSectionHeader("Custom Color — Success")
+        addSectionHeader("Color: success")
         addMarkdownLabel(
             "Operation **completed** successfully. All *checks* passed.",
             color: LMKColor.success
         )
 
         addDivider()
-        addSectionHeader("Custom Color — Warning")
+        addSectionHeader("Color: warning")
         addMarkdownLabel(
             "**Warning**: This action is *irreversible*. Proceed with caution.",
             color: LMKColor.warning
         )
 
         addDivider()
-        addSectionHeader("Custom Color — Error")
+        addSectionHeader("Color: error")
         addMarkdownLabel(
             "**Error**: Failed to connect. Check your *network settings*.",
             color: LMKColor.error
@@ -72,8 +69,8 @@ final class MarkdownDetailViewController: DetailViewController {
         addDivider()
         addSectionHeader("Font + Color Combined")
         addMarkdownLabel(
-            "**Tip**: Use `LMKColor.info` with `LMKTypography.caption` for *subtle hints*.",
-            font: LMKTypography.caption,
+            "**Tip**: Use `LMKColor.info` with the `.caption` text style for *subtle hints*.",
+            style: .caption,
             color: LMKColor.info
         )
 
@@ -90,7 +87,7 @@ final class MarkdownDetailViewController: DetailViewController {
         addMarkdownLabel("No markdown here, just plain text with the base font and color applied.")
 
         addDivider()
-        addSectionHeader("Full Markdown — Report")
+        addSectionHeader("Full Markdown: Report")
         addFullMarkdownTextView("""
         ## Q1 Performance Review
 
@@ -131,7 +128,7 @@ final class MarkdownDetailViewController: DetailViewController {
         """)
 
         addDivider()
-        addSectionHeader("Full Markdown — Code & Tables")
+        addSectionHeader("Full Markdown: Code & Tables")
         addFullMarkdownTextView("""
         Here's how to **debounce** a Swift `Task` so only the *final* call runs:
 
@@ -160,19 +157,29 @@ final class MarkdownDetailViewController: DetailViewController {
         """)
     }
 
+    /// The renderer takes a concrete font, so the label renders again at the font the traits
+    /// resolve to whenever Dynamic Type or the theme changes (as LMKDetailCard's text rows do).
     private func addMarkdownLabel(
         _ markdown: String,
-        font: UIFont = LMKTypography.body,
+        style: LMKTextStyle = .body,
         color: UIColor = LMKColor.textPrimary
     ) {
         let label = UILabel()
         label.numberOfLines = 0
-        label.attributedText = LMKMarkdownRenderer.render(markdown, font: font, color: color)
-        stack.addArrangedSubview(label)
+        let render = { (label: UILabel) in
+            let traits = label.traitCollection
+            let font = traits.lmkTheme.typography.font(for: style, compatibleWith: traits)
+            label.attributedText = LMKMarkdownRenderer.render(markdown, font: font, color: color)
+        }
+        render(label)
+        label.registerForTraitChanges([UITraitPreferredContentSizeCategory.self, LMKThemeTrait.self]) { (label: UILabel, _) in
+            render(label)
+        }
+        stackView.addArrangedSubview(label)
     }
 
     private func addMarkdownTextView(_ markdown: String) {
-        stack.addArrangedSubview(LMKMarkdownRenderer.makeInlineTextView(markdown: markdown))
+        stackView.addArrangedSubview(LMKMarkdownRenderer.makeInlineTextView(markdown: markdown))
     }
 
     private func addFullMarkdownTextView(_ markdown: String) {
@@ -188,6 +195,6 @@ final class MarkdownDetailViewController: DetailViewController {
             right: LMKSpacing.small
         )
         textView.attributedText = LMKMarkdownRenderer.renderFull(markdown)
-        stack.addArrangedSubview(textView)
+        stackView.addArrangedSubview(textView)
     }
 }

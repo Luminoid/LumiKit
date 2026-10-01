@@ -18,6 +18,11 @@ struct LMKTabSearchTests {
         ]
         let controller = LMKTabBarController(tabs: tabs, style: LMKTabBarController.Style(automaticallyActivatesSearch: false))
         controller.loadViewIfNeeded()
+        if #available(iOS 26, *) {
+            // The first theme pass ran inside `super.init`, before the tabs existed.
+            let activating = LMKTabBarController(tabs: [LMKTab.search { UIViewController() }], style: LMKTabBarController.Style(automaticallyActivatesSearch: true))
+            #expect((activating.tabs.first as? UISearchTab)?.automaticallyActivatesSearch == true, "applied to the real tabs right after init")
+        }
 
         #expect(tabs[1].role == .search)
         #expect(tabs[0].role == .standard)

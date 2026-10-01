@@ -22,7 +22,8 @@ import UIKit
 /// present(crop, animated: true)
 /// ```
 ///
-/// Command-Return crops and Escape cancels on a hardware keyboard.
+/// Command-Return crops and Escape cancels on a hardware keyboard. Under VoiceOver the crop
+/// frame is an adjustable element: swiping up or down resizes it, and custom actions move it.
 public final class LMKPhotoCropViewController: UIViewController, LMKThemeApplying {
     /// Process-wide strings, read when a crop editor is created. Override at app launch to localize.
     public nonisolated(unsafe) static var strings = Strings()
@@ -93,7 +94,6 @@ public final class LMKPhotoCropViewController: UIViewController, LMKThemeApplyin
     var initialTouchPoint: CGPoint = .zero
     var isResizing = false
     var activeResizeHandle: ResizeHandle?
-    var isMoving = false
     var needsInitialLayout = true
 
     var currentZoomScale: CGFloat = 1
@@ -104,9 +104,16 @@ public final class LMKPhotoCropViewController: UIViewController, LMKThemeApplyin
 
     private var cropTask: Task<Void, Never>?
     private var cancelButtonSizeConstraint: Constraint?
+    private var cancelButtonTopConstraint: Constraint?
+    private var cancelButtonLeadingConstraint: Constraint?
     private var doneButtonSizeConstraint: Constraint?
+    private var doneButtonTopConstraint: Constraint?
+    private var doneButtonTrailingConstraint: Constraint?
     private var aspectControlInsetConstraint: Constraint?
+    private var aspectControlBottomConstraint: Constraint?
     lazy var gestureDelegate = LMKPhotoCropGestureDelegate(controller: self)
+    /// The crop frame as VoiceOver sees it (the frame view itself carries the handles).
+    lazy var cropFrameAccessibilityElement = LMKPhotoCropFrameAccessibilityElement(controller: self)
 
     // MARK: - Init
 
@@ -133,6 +140,8 @@ public final class LMKPhotoCropViewController: UIViewController, LMKThemeApplyin
         super.init(nibName: nil, bundle: nil)
         modalPresentationStyle = .overFullScreen
         modalPresentationCapturesStatusBarAppearance = true
+        // Read by the navigation controller at push time, before the view loads.
+        hidesBottomBarWhenPushed = true
     }
 
     @available(*, unavailable)
@@ -149,10 +158,10 @@ public final class LMKPhotoCropViewController: UIViewController, LMKThemeApplyin
     override public func viewDidLoad() {
         super.viewDidLoad()
         overrideUserInterfaceStyle = .dark
-        hidesBottomBarWhenPushed = true
         setupUI()
         setupHandleViews()
         setupCachedLayers()
+        setupAccessibility()
         applyStrings()
         lmk_startApplyingTheme()
     }
@@ -176,6 +185,14 @@ public final class LMKPhotoCropViewController: UIViewController, LMKThemeApplyin
         lmk_formKeyCommands(save: #selector(doneTapped), cancel: #selector(cancelTapped))
     }
 
+    /// The VoiceOver escape gesture cancels, like the cancel button.
+    override public func accessibilityPerformEscape() -> Bool {
+        cancelTapped()
+        return true
+    }
+
+    /// iOS 26 only: earlier systems have no per-controller lock, so the editor rotates there
+    /// and re-fits the crop frame to the photo.
     @available(iOS 26.0, *)
     override public var prefersInterfaceOrientationLocked: Bool {
         resolvedStyle.locksOrientation ?? true
@@ -184,22 +201,25 @@ public final class LMKPhotoCropViewController: UIViewController, LMKThemeApplyin
     // MARK: - Setup
 
     private func setupUI() {
+        // Spacing constraints start at zero and take their values from the theme in `applyTheme`.
         cancelButton.setSymbol("xmark")
         cancelButton.onTap = { [weak self] in self?.cancelTapped() }
         view.addSubview(cancelButton)
         cancelButton.snp.makeConstraints { make in
-            make.top.equalTo(view.safeAreaLayoutGuide).offset(LMKSpacing.large)
-            make.leading.equalTo(view.safeAreaLayoutGuide).offset(LMKSpacing.large)
-            cancelButtonSizeConstraint = make.size.equalTo(LMKLayout.minimumTouchTarget).constraint
+            cancelButtonTopConstraint = make.top.equalTo(view.safeAreaLayoutGuide).offset(0).constraint
+            cancelButtonLeadingConstraint = make.leading.equalTo(view.safeAreaLayoutGuide).offset(0).constraint
+            // 999: the button's own minimum height is required, and `applyTheme` sets both to
+            // the same side; until then the floor wins without a conflict.
+            cancelButtonSizeConstraint = make.size.equalTo(0).priority(999).constraint
         }
 
         doneButton.setSymbol("checkmark")
         doneButton.onTap = { [weak self] in self?.doneTapped() }
         view.addSubview(doneButton)
         doneButton.snp.makeConstraints { make in
-            make.top.equalTo(view.safeAreaLayoutGuide).offset(LMKSpacing.large)
-            make.trailing.equalTo(view.safeAreaLayoutGuide).offset(-LMKSpacing.large)
-            doneButtonSizeConstraint = make.size.equalTo(LMKLayout.minimumTouchTarget).constraint
+            doneButtonTopConstraint = make.top.equalTo(view.safeAreaLayoutGuide).offset(0).constraint
+            doneButtonTrailingConstraint = make.trailing.equalTo(view.safeAreaLayoutGuide).offset(0).constraint
+            doneButtonSizeConstraint = make.size.equalTo(0).priority(999).constraint
         }
 
         aspectRatioControl.selectedSegmentIndex = aspectRatios.firstIndex(of: currentAspectRatio) ?? 0
@@ -209,8 +229,8 @@ public final class LMKPhotoCropViewController: UIViewController, LMKThemeApplyin
         }
         view.addSubview(aspectRatioControl)
         aspectRatioControl.snp.makeConstraints { make in
-            make.bottom.equalTo(view.safeAreaLayoutGuide).offset(-LMKSpacing.xl)
-            aspectControlInsetConstraint = make.leading.trailing.equalTo(view.safeAreaLayoutGuide).inset(LMKSpacing.xl).constraint
+            aspectControlBottomConstraint = make.bottom.equalTo(view.safeAreaLayoutGuide).offset(0).constraint
+            aspectControlInsetConstraint = make.leading.trailing.equalTo(view.safeAreaLayoutGuide).inset(0).constraint
         }
 
         // Frames are assigned directly: no Auto Layout during gestures.
@@ -238,11 +258,19 @@ public final class LMKPhotoCropViewController: UIViewController, LMKThemeApplyin
         resizePanGesture.delegate = gestureDelegate
         view.addGestureRecognizer(resizePanGesture)
 
+        // On the editor's view, not the image view: touches inside the crop frame hit-test to
+        // the frame view above the image, and a pinch must work with the fingers there too.
         let pinchGesture = UIPinchGestureRecognizer(target: self, action: #selector(handlePinch(_:)))
         pinchGesture.delegate = gestureDelegate
-        imageView.addGestureRecognizer(pinchGesture)
+        view.addGestureRecognizer(pinchGesture)
 
         bringChromeToFront()
+    }
+
+    /// VoiceOver walks cancel, the crop frame, the ratio control, then done; the image and
+    /// the dimming stay out of the way.
+    private func setupAccessibility() {
+        view.accessibilityElements = [cancelButton, cropFrameAccessibilityElement, aspectRatioControl, doneButton]
     }
 
     /// Handle views are created once and only repositioned afterwards.
@@ -279,11 +307,13 @@ public final class LMKPhotoCropViewController: UIViewController, LMKThemeApplyin
     }
 
     private func applyStrings() {
+        title = strings.title
         cancelButton.accessibilityLabel = strings.cancel
         doneButton.accessibilityLabel = strings.done
         aspectRatioControl.accessibilityLabel = strings.aspectRatioAccessibilityLabel
         aspectRatioControl.setItems(aspectRatios.map { $0 == .free ? strings.free : $0.displayName })
         aspectRatioControl.selectedSegmentIndex = aspectRatios.firstIndex(of: currentAspectRatio) ?? 0
+        cropFrameAccessibilityElement.apply(strings: strings)
     }
 
     // MARK: - Theme
@@ -302,9 +332,16 @@ public final class LMKPhotoCropViewController: UIViewController, LMKThemeApplyin
         let buttonSide = resolved.buttonSize(theme: theme)
         cancelButtonSizeConstraint?.update(offset: buttonSide)
         doneButtonSizeConstraint?.update(offset: buttonSide)
+        let margin = theme.spacing.large
+        cancelButtonTopConstraint?.update(offset: margin)
+        cancelButtonLeadingConstraint?.update(offset: margin)
+        doneButtonTopConstraint?.update(offset: margin)
+        doneButtonTrailingConstraint?.update(offset: -margin)
 
         aspectRatioControl.style = resolved.aspectControlStyle(theme: theme)
-        aspectControlInsetConstraint?.update(inset: resolved.padding(theme: theme))
+        let padding = resolved.padding(theme: theme)
+        aspectControlInsetConstraint?.update(inset: padding)
+        aspectControlBottomConstraint?.update(offset: -padding)
 
         let border = resolved.cropFrameBorder ?? .solid(chrome, width: LMKPhotoCropMetrics.cropFrameBorderWidth)
         cropFrameView.lmk_applyBorder(color: border.color ?? chrome, width: border.width ?? LMKPhotoCropMetrics.cropFrameBorderWidth)
@@ -352,14 +389,17 @@ public final class LMKPhotoCropViewController: UIViewController, LMKThemeApplyin
 
     // MARK: - Actions
 
+    /// Cancels, dropping a render still under way so `onCrop` cannot follow `onCancel`.
     @objc func cancelTapped() {
+        cropTask?.cancel()
+        cropTask = nil
+        isCropping = false
         onCancel?()
     }
 
     @objc func doneTapped() {
         guard !isCropping else { return }
-        guard cropFrame.width > 0, cropFrame.height > 0,
-              let pixelRect = Self.cropRect(cropFrame: cropFrame, imageFrame: imageView.frame, imageSize: image.size) else {
+        guard cropFrame.width > 0, cropFrame.height > 0, let pixelRect = currentCropRect else {
             LMKLogger.warning("Crop frame is empty; delivering the original image", category: .ui)
             onCrop?(image)
             return
@@ -383,10 +423,16 @@ public final class LMKPhotoCropViewController: UIViewController, LMKThemeApplyin
         }
     }
 
+    /// The crop frame in the image's point space, its height derived from its width under a
+    /// locked ratio.
+    private var currentCropRect: CGRect? {
+        Self.cropRect(cropFrame: cropFrame, imageFrame: imageView.frame, imageSize: image.size, ratio: currentAspectRatio.ratio)
+    }
+
     /// The image cropped to the current frame, rendered off the main actor. `nil` when the
     /// crop frame is empty or the render fails.
     public func croppedImage() async -> UIImage? {
-        guard let pixelRect = Self.cropRect(cropFrame: cropFrame, imageFrame: imageView.frame, imageSize: image.size) else { return nil }
+        guard let pixelRect = currentCropRect else { return nil }
         return await Self.render(image: image, cropRect: pixelRect)
     }
 }

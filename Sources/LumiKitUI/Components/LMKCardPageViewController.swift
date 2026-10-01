@@ -14,16 +14,17 @@ import UIKit
 /// Base class for card-embedded pages with design-token styling.
 ///
 /// The header shows `leadingItem` (a back chevron by default), the title, and
-/// `trailingItem` (none by default). Subclasses override `setupContent()` to build
+/// `trailingItem` (none by default). Items render as a glyph in a circle or as a
+/// titled capsule, honor their `role` and `badge`, and the leading button always
+/// pops while content is stacked. Subclasses override `setupContent()` to build
 /// their content in `contentContainerView`; `pushContentView(_:title:)` and
-/// `popContentView()` slide between content views, and the leading button pops
-/// while pages are stacked.
+/// `popContentView()` slide between content views.
 ///
 /// ```swift
 /// final class SettingsPage: LMKCardPageViewController {
 ///     init() {
 ///         super.init(title: "Settings")
-///         trailingItem = .init(systemName: "xmark") { [weak self] in self?.dismiss(animated: true) }
+///         trailingItem = .init(systemName: "xmark") { [weak self] in self?.lmk_cardPanel?.dismiss() }
 ///         style.showsHeaderSeparator = true
 ///         style.showsDragIndicator = true   // in a sheet the user can drag down
 ///     }
@@ -33,7 +34,8 @@ import UIKit
 /// ```
 ///
 /// Designed for a `UINavigationController` with a hidden system bar (the header
-/// replaces it) or an `LMKCardPanelViewController`.
+/// replaces it) or an `LMKCardPanelViewController`: the default back action pops
+/// the navigation stack, and dismisses the enclosing panel from its root page.
 open class LMKCardPageViewController: UIViewController, LMKThemeApplying {
     // MARK: - Style
 
@@ -48,7 +50,8 @@ open class LMKCardPageViewController: UIViewController, LMKThemeApplying {
         public var titleTextStyle: LMKTextStyle?
         /// `nil` = `textPrimary`.
         public var titleColor: UIColor?
-        /// Visual side of the header buttons; `nil` = 32 (the hit target stays 44).
+        /// Visual side of a glyph button, and the height of a titled one; `nil` = 32 (the hit
+        /// target stays 44). A titled item grows wider than this to fit its text.
         public var buttonSize: CGFloat?
         /// `nil` = `secondary`.
         public var buttonTint: UIColor?
@@ -170,11 +173,14 @@ open class LMKCardPageViewController: UIViewController, LMKThemeApplying {
     /// The root content; subclasses add their views here in `setupContent()`.
     public let contentContainerView = UIView()
     private let pageContainerView = UIView()
+    private var leadingBadgeView: LMKBadgeView?
+    private var trailingBadgeView: LMKBadgeView?
 
     // MARK: - State
 
     /// The leading header item; a back chevron by default, `nil` for none. An item without
-    /// an action calls `leadingButtonTapped()`.
+    /// an action calls `leadingButtonTapped()`. While content is stacked the button shows the
+    /// back chevron and pops, whatever the item says.
     public var leadingItem: LMKNavigationBarItem? {
         didSet { configureHeaderButtons() }
     }
@@ -182,6 +188,11 @@ open class LMKCardPageViewController: UIViewController, LMKThemeApplying {
     /// The trailing header item; `nil` (the default) shows none.
     public var trailingItem: LMKNavigationBarItem? {
         didSet { configureHeaderButtons() }
+    }
+
+    /// The header title; `title` on the controller and the label stay in step.
+    override open var title: String? {
+        didSet { headerTitleLabel.lmk_setText(title) }
     }
 
     /// Per-instance style; `nil` fields resolve from `theme.cardPage`, then the built-in look.
@@ -209,8 +220,11 @@ open class LMKCardPageViewController: UIViewController, LMKThemeApplying {
     private var pageStack: [PageSnapshot] = []
     private var isTransitioning = false
     private var headerHeightConstraint: Constraint?
-    private var buttonSizeConstraints: [Constraint] = []
+    private var buttonHeightConstraints: [Constraint] = []
+    private var buttonWidthConstraints: [Constraint] = []
+    private var buttonEdgeConstraints: [Constraint] = []
     private var separatorHeightConstraint: Constraint?
+    private var dragIndicatorTopConstraint: Constraint?
     private var dragIndicatorWidthConstraint: Constraint?
     private var dragIndicatorHeightConstraint: Constraint?
     private var headerContentTopConstraint: Constraint?
@@ -220,12 +234,17 @@ open class LMKCardPageViewController: UIViewController, LMKThemeApplying {
     private var titleLeadingToEdge: Constraint?
     private var titleTrailingToButton: Constraint?
     private var titleTrailingToEdge: Constraint?
+    /// The glyph button look resolved by the last `applyTheme`; items layer their role on it.
+    private var itemButtonStyle = LMKButton.Style()
 
     static let defaultHeaderHeight: CGFloat = 52
     static let defaultButtonSize: CGFloat = 32
     static let defaultSymbolPointSize: CGFloat = 16
     static let defaultDragIndicatorSize = CGSize(width: 40, height: 5)
     static let backItemIdentifier = "lmk.cardPage.back"
+    private static var backItem: LMKNavigationBarItem {
+        LMKNavigationBarItem(identifier: backItemIdentifier, systemName: "chevron.backward")
+    }
 
     // MARK: - Initialization
 
@@ -233,7 +252,7 @@ open class LMKCardPageViewController: UIViewController, LMKThemeApplying {
         self.style = style
         super.init(nibName: nil, bundle: nil)
         self.title = title
-        leadingItem = LMKNavigationBarItem(identifier: Self.backItemIdentifier, systemName: "chevron.backward")
+        leadingItem = Self.backItem
     }
 
     @available(*, unavailable)
@@ -248,7 +267,6 @@ open class LMKCardPageViewController: UIViewController, LMKThemeApplying {
         setupHeader()
         setupPageContainer()
         setupContent()
-        configureHeaderButtons()
         lmk_startApplyingTheme()
     }
 
@@ -258,10 +276,19 @@ open class LMKCardPageViewController: UIViewController, LMKThemeApplying {
     open func setupContent() {}
 
     /// Called when the leading item has no action and no content is stacked. Pops the
-    /// enclosing navigation controller by default.
+    /// enclosing navigation controller by default; from the root page of an
+    /// `LMKCardPanelViewController` it dismisses the panel.
     open func leadingButtonTapped() {
-        navigationController?.popViewController(animated: true)
+        if let navigationController, navigationController.viewControllers.first !== self {
+            navigationController.popViewController(animated: true)
+        } else if let panel = lmk_cardPanel {
+            panel.dismiss()
+        }
     }
+
+    /// Called at the end of every `applyTheme`, before `didApplyStyle`, for subclasses to
+    /// style their own content from `theme` and `resolvedStyle`.
+    open func applyContentTheme(_ theme: LMKTheme) {}
 
     // MARK: - Setup
 
@@ -281,7 +308,7 @@ open class LMKCardPageViewController: UIViewController, LMKThemeApplying {
         dragIndicator.isAccessibilityElement = false
         headerView.addSubview(dragIndicator)
         dragIndicator.snp.makeConstraints { make in
-            make.top.equalToSuperview().offset(LMKSpacing.small)
+            dragIndicatorTopConstraint = make.top.equalToSuperview().offset(0).constraint
             make.centerX.equalToSuperview()
             dragIndicatorWidthConstraint = make.width.equalTo(Self.defaultDragIndicatorSize.width).constraint
             dragIndicatorHeightConstraint = make.height.equalTo(Self.defaultDragIndicatorSize.height).constraint
@@ -294,27 +321,33 @@ open class LMKCardPageViewController: UIViewController, LMKThemeApplying {
 
         leadingButton.onTap = { [weak self] in self?.leadingTapped() }
         trailingButton.onTap = { [weak self] in self?.trailingItem?.action?() }
-        headerView.addSubview(leadingButton)
-        leadingButton.snp.makeConstraints { make in
-            make.leading.equalToSuperview().inset(LMKSpacing.large)
-            make.centerY.equalTo(headerContentGuide)
-            buttonSizeConstraints.append(make.size.equalTo(Self.defaultButtonSize).constraint)
+        for button in [leadingButton, trailingButton] {
+            // A titled item keeps its text whole; the title label gives way instead.
+            button.setContentCompressionResistancePriority(.required, for: .horizontal)
+            button.setContentHuggingPriority(.required, for: .horizontal)
+            headerView.addSubview(button)
         }
-        headerView.addSubview(trailingButton)
-        trailingButton.snp.makeConstraints { make in
-            make.trailing.equalToSuperview().inset(LMKSpacing.large)
+        leadingButton.snp.makeConstraints { make in
+            buttonEdgeConstraints.append(make.leading.equalToSuperview().inset(0).constraint)
             make.centerY.equalTo(headerContentGuide)
-            buttonSizeConstraints.append(make.size.equalTo(Self.defaultButtonSize).constraint)
+            buttonHeightConstraints.append(make.height.equalTo(Self.defaultButtonSize).constraint)
+            buttonWidthConstraints.append(make.width.greaterThanOrEqualTo(Self.defaultButtonSize).constraint)
+        }
+        trailingButton.snp.makeConstraints { make in
+            buttonEdgeConstraints.append(make.trailing.equalToSuperview().inset(0).constraint)
+            make.centerY.equalTo(headerContentGuide)
+            buttonHeightConstraints.append(make.height.equalTo(Self.defaultButtonSize).constraint)
+            buttonWidthConstraints.append(make.width.greaterThanOrEqualTo(Self.defaultButtonSize).constraint)
         }
 
         headerView.addSubview(headerTitleLabel)
         headerTitleLabel.snp.makeConstraints { make in
             make.centerX.equalToSuperview()
             make.centerY.equalTo(headerContentGuide)
-            titleLeadingToButton = make.leading.greaterThanOrEqualTo(leadingButton.snp.trailing).offset(LMKSpacing.small).constraint
-            titleLeadingToEdge = make.leading.greaterThanOrEqualToSuperview().inset(LMKSpacing.large).constraint
-            titleTrailingToButton = make.trailing.lessThanOrEqualTo(trailingButton.snp.leading).offset(-LMKSpacing.small).constraint
-            titleTrailingToEdge = make.trailing.lessThanOrEqualToSuperview().inset(LMKSpacing.large).constraint
+            titleLeadingToButton = make.leading.greaterThanOrEqualTo(leadingButton.snp.trailing).offset(0).constraint
+            titleLeadingToEdge = make.leading.greaterThanOrEqualToSuperview().inset(0).constraint
+            titleTrailingToButton = make.trailing.lessThanOrEqualTo(trailingButton.snp.leading).offset(0).constraint
+            titleTrailingToEdge = make.trailing.lessThanOrEqualToSuperview().inset(0).constraint
         }
 
         headerView.addSubview(headerSeparator)
@@ -341,10 +374,14 @@ open class LMKCardPageViewController: UIViewController, LMKThemeApplying {
         guard isViewLoaded else { return }
         let showsLeading = leadingItem != nil || canPopContent
         let showsTrailing = trailingItem != nil
-        configure(leadingButton, with: leadingItem ?? LMKNavigationBarItem(identifier: Self.backItemIdentifier, systemName: "chevron.backward"), fallbackLabel: strings.leadingButtonAccessibilityLabel)
+        // Stacked content owns the leading button: the back chevron, enabled, without the item's menu.
+        let leading = canPopContent ? Self.backItem : (leadingItem ?? Self.backItem)
+        configure(leadingButton, with: leading, fallbackLabel: strings.leadingButtonAccessibilityLabel)
+        leadingBadgeView = updateBadge(leadingBadgeView, for: showsLeading ? leading : nil, on: leadingButton)
         if let trailingItem {
             configure(trailingButton, with: trailingItem, fallbackLabel: strings.trailingButtonAccessibilityLabel)
         }
+        trailingBadgeView = updateBadge(trailingBadgeView, for: trailingItem, on: trailingButton)
         leadingButton.isHidden = !showsLeading
         trailingButton.isHidden = !showsTrailing
         if showsLeading {
@@ -364,6 +401,7 @@ open class LMKCardPageViewController: UIViewController, LMKThemeApplying {
     }
 
     private func configure(_ button: LMKButton, with item: LMKNavigationBarItem, fallbackLabel: String) {
+        button.style = buttonStyle(for: item)
         button.image = item.image
         button.title = item.title
         button.isEnabled = item.isEnabled
@@ -371,6 +409,51 @@ open class LMKCardPageViewController: UIViewController, LMKThemeApplying {
         button.showsMenuAsPrimaryAction = item.menu != nil && item.action == nil
         button.accessibilityLabel = item.accessibilityLabel ?? item.title ?? fallbackLabel
         button.accessibilityIdentifier = item.identifier
+    }
+
+    /// The glyph look from the last `applyTheme`, opened into a capsule for a titled item,
+    /// then the role's overrides (filled for `prominent`, the error tint for `destructive`).
+    private func buttonStyle(for item: LMKNavigationBarItem) -> LMKButton.Style {
+        let theme = traitCollection.lmkTheme
+        var style = itemButtonStyle
+        if item.title != nil {
+            style.surface.corners = .capsule
+            style.surface.contentInsets = .lmk_symmetric(vertical: 0, horizontal: theme.spacing.small)
+            style.textStyle = .body
+        }
+        switch item.role {
+        case .plain:
+            break
+        case .prominent:
+            style = style.merging(LMKButton.Style(variant: .filled, textStyle: .subbodyMedium))
+        case .destructive:
+            style = style.merging(LMKButton.Style(role: .destructive, tintColor: LMKColor.error))
+        }
+        return style
+    }
+
+    /// Keeps a badge over `button`'s top trailing corner while `item` carries one.
+    private func updateBadge(_ badgeView: LMKBadgeView?, for item: LMKNavigationBarItem?, on button: LMKButton) -> LMKBadgeView? {
+        guard let content = item?.badge else {
+            badgeView?.removeFromSuperview()
+            return nil
+        }
+        let badge = badgeView ?? {
+            let badge = LMKBadgeView()
+            badge.isUserInteractionEnabled = false
+            headerView.addSubview(badge)
+            return badge
+        }()
+        // Remade on every pass (`applyTheme` comes through here), so the theme's inset holds.
+        let inset = traitCollection.lmkTheme.spacing.xs
+        badge.snp.remakeConstraints { make in
+            make.centerX.equalTo(button.snp.trailing).offset(-inset).priority(.high)
+            make.centerY.equalTo(button.snp.top).offset(inset).priority(.high)
+            make.top.greaterThanOrEqualTo(headerContentGuide)
+            make.trailing.lessThanOrEqualToSuperview()
+        }
+        badge.configure(content)
+        return badge
     }
 
     private func leadingTapped() {
@@ -391,13 +474,13 @@ open class LMKCardPageViewController: UIViewController, LMKThemeApplying {
         view.backgroundColor = resolved.backgroundColor ?? LMKColor.backgroundPrimary
         headerView.lmk_apply(
             surface: resolved.header,
-            defaults: LMKSurfaceStyle(background: .solid(LMKColor.backgroundPrimary), corners: LMKCornerStyle.none, shadow: LMKShadowSource.none),
+            defaults: LMKSurfaceStyle(background: .solid(LMKColor.backgroundPrimary), corners: LMKCornerStyle.square, shadow: LMKShadowSource.hidden),
             clipsContent: false
         )
         let titleStyle = resolved.titleTextStyle ?? .bodyBold
         headerTitleLabel.lmk_apply(titleStyle, color: resolved.titleColor ?? LMKColor.textPrimary)
 
-        let buttonStyle = LMKButton.Style(
+        itemButtonStyle = LMKButton.Style(
             variant: .ghost,
             surface: LMKSurfaceStyle(corners: .circle, contentInsets: .lmk_all(0)),
             tintColor: resolved.buttonTint ?? LMKColor.secondary,
@@ -406,10 +489,15 @@ open class LMKCardPageViewController: UIViewController, LMKThemeApplying {
             pressAnimation: false,
             haptics: false
         )
-        leadingButton.style = buttonStyle
-        trailingButton.style = buttonStyle
         let buttonSize = resolved.buttonSize ?? Self.defaultButtonSize
-        buttonSizeConstraints.forEach { $0.update(offset: buttonSize) }
+        buttonHeightConstraints.forEach { $0.update(offset: buttonSize) }
+        buttonWidthConstraints.forEach { $0.update(offset: buttonSize) }
+        buttonEdgeConstraints.forEach { $0.update(inset: theme.spacing.large) }
+        titleLeadingToButton?.update(offset: theme.spacing.small)
+        titleTrailingToButton?.update(offset: -theme.spacing.small)
+        titleLeadingToEdge?.update(inset: theme.spacing.large)
+        titleTrailingToEdge?.update(inset: theme.spacing.large)
+        configureHeaderButtons()
 
         headerSeparator.isHidden = !(resolved.showsHeaderSeparator ?? false)
         headerSeparator.backgroundColor = resolved.separatorColor ?? LMKColor.divider
@@ -419,6 +507,7 @@ open class LMKCardPageViewController: UIViewController, LMKThemeApplying {
         let indicatorSize = resolved.dragIndicatorSize ?? Self.defaultDragIndicatorSize
         dragIndicator.isHidden = !showsIndicator
         dragIndicator.lmk_apply(surface: LMKSurfaceStyle(background: .solid(resolved.dragIndicatorColor ?? LMKColor.divider), corners: .capsule))
+        dragIndicatorTopConstraint?.update(offset: theme.spacing.small)
         dragIndicatorWidthConstraint?.update(offset: indicatorSize.width)
         dragIndicatorHeightConstraint?.update(offset: indicatorSize.height)
         // The indicator's band sits over the header's own height, so the title keeps its room.
@@ -428,6 +517,7 @@ open class LMKCardPageViewController: UIViewController, LMKThemeApplying {
         let lineHeight = LMKTextMeasurement.lineHeight(of: titleStyle, traits: traitCollection)
         let floor = max(lineHeight, buttonSize) + theme.spacing.small * 2
         headerHeightConstraint?.update(offset: max(resolved.headerHeight ?? Self.defaultHeaderHeight, floor) + indicatorBand)
+        applyContentTheme(theme)
         didApplyStyle?(self)
     }
 
@@ -441,7 +531,6 @@ open class LMKCardPageViewController: UIViewController, LMKThemeApplying {
         pageStack.append(PageSnapshot(contentView: current, title: self.title))
         if let title {
             self.title = title
-            headerTitleLabel.lmk_setText(title)
         }
         configureHeaderButtons()
         transition(to: contentView, direction: .forward, animated: animated)
@@ -452,7 +541,6 @@ open class LMKCardPageViewController: UIViewController, LMKThemeApplying {
         guard !isTransitioning, let snapshot = pageStack.popLast() else { return }
         if let previousTitle = snapshot.title {
             title = previousTitle
-            headerTitleLabel.lmk_setText(previousTitle)
         }
         configureHeaderButtons()
         transition(to: snapshot.contentView, direction: .backward, animated: animated)
@@ -461,6 +549,9 @@ open class LMKCardPageViewController: UIViewController, LMKThemeApplying {
     private func transition(to newView: UIView, direction: LMKPageTransition.Direction, animated: Bool) {
         let oldView = pageContainerView.subviews.first
         isTransitioning = true
+        // A view that slid out earlier comes back faded and translated: show it whole again.
+        newView.alpha = 1
+        newView.transform = .identity
         LMKPageTransition.run(
             in: pageContainerView,
             from: oldView,

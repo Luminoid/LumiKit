@@ -4,7 +4,7 @@
 //
 //  The row views of a detail card: key/value, text, chips, progress,
 //  navigation, link, rating, image, divider, custom. Each renders one
-//  `LMKDetailCard.Row` and updates in place.
+//  `LMKDetailCard.Row` against the card's `RowContext` and updates in place.
 //
 
 import LumiKitCore
@@ -47,10 +47,12 @@ final class LMKDetailKeyValueRowView: UIView, LMKDetailRowView {
         fatalError("init(coder:) has not been implemented")
     }
 
-    func update(_ row: LMKDetailCard.Row, style: LMKDetailCardView.Style, theme: LMKTheme) {
+    func update(_ row: LMKDetailCard.Row, context: LMKDetailCardView.RowContext) {
         guard case let .keyValue(model) = row else { return }
+        let style = context.style
+        let theme = context.theme
         // At accessibility text sizes an inline pair leaves the value a few characters of width, so it stacks.
-        let inline = model.layout == .inline && !traitCollection.preferredContentSizeCategory.isAccessibilityCategory
+        let inline = model.layout == .inline && !context.traits.preferredContentSizeCategory.isAccessibilityCategory
         pairStack.axis = inline ? .horizontal : .vertical
         pairStack.alignment = inline ? .firstBaseline : .fill
         pairStack.spacing = style.keyValueSpacing ?? (inline ? theme.spacing.small : theme.spacing.xs)
@@ -61,12 +63,14 @@ final class LMKDetailKeyValueRowView: UIView, LMKDetailRowView {
         keyLabel.setContentCompressionResistancePriority(inline ? .required : .defaultHigh, for: .horizontal)
         valueLabel.lmk_apply(style.valueTextStyle ?? .body, color: model.valueColor ?? style.valueColor ?? LMKColor.textPrimary)
         valueLabel.lmk_setText(model.value)
-        valueLabel.textAlignment = inline ? (style.inlineValueAlignment ?? .right) : .natural
+        // The inline value sits against the trailing edge, which is the left one in RTL.
+        let trailing: NSTextAlignment = effectiveUserInterfaceLayoutDirection == .rightToLeft ? .left : .right
+        valueLabel.textAlignment = inline ? (style.inlineValueAlignment ?? trailing) : .natural
         valueLabel.setContentHuggingPriority(.defaultLow, for: .horizontal)
         valueLabel.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
         valueLabel.isCopyEnabled = model.isCopyable
         valueLabel.copyTextProvider = model.copyText.map { text in { text } }
-        descriptionLabel.lmk_apply(style.descriptionTextStyle ?? .caption, color: style.descriptionColor ?? LMKColor.textTertiary)
+        descriptionLabel.lmk_apply(style.descriptionTextStyle ?? .caption, color: style.descriptionColor ?? LMKColor.textSecondary)
         descriptionLabel.lmk_setText(model.description)
         descriptionLabel.isHidden = model.description == nil
         onTap = model.onTap
@@ -90,7 +94,15 @@ final class LMKDetailTextRowView: UIView, LMKDetailRowView {
     let kind = 1
     let stack = UIStackView()
     let titleLabel = UILabel()
+    /// Plain content, styled through `lmk_apply`.
     let textLabel = UILabel()
+    /// Markdown and attributed content. It never goes through `lmk_apply`: a label whose font is
+    /// re-applied on a Dynamic Type change flattens its runs to that one font, so this label
+    /// re-renders the rich string itself from its own trait handler.
+    let richTextLabel = UILabel()
+    private var content: LMKDetailCard.TextContent?
+    private var textStyle: LMKTextStyle = .body
+    private var color: UIColor = LMKColor.textPrimary
 
     init(rowID: String) {
         self.rowID = rowID
@@ -100,10 +112,16 @@ final class LMKDetailTextRowView: UIView, LMKDetailRowView {
         titleLabel.numberOfLines = 0
         titleLabel.accessibilityTraits = .header
         textLabel.numberOfLines = 0
+        richTextLabel.numberOfLines = 0
+        richTextLabel.isHidden = true
         stack.addArrangedSubview(titleLabel)
         stack.addArrangedSubview(textLabel)
+        stack.addArrangedSubview(richTextLabel)
         addSubview(stack)
         stack.snp.makeConstraints { $0.edges.equalToSuperview() }
+        registerForTraitChanges([UITraitPreferredContentSizeCategory.self, LMKThemeTrait.self]) { (view: Self, _) in
+            view.applyRichText(traits: view.traitCollection)
+        }
     }
 
     @available(*, unavailable)
@@ -111,22 +129,39 @@ final class LMKDetailTextRowView: UIView, LMKDetailRowView {
         fatalError("init(coder:) has not been implemented")
     }
 
-    func update(_ row: LMKDetailCard.Row, style: LMKDetailCardView.Style, theme: LMKTheme) {
+    func update(_ row: LMKDetailCard.Row, context: LMKDetailCardView.RowContext) {
         guard case let .text(model) = row else { return }
+        let style = context.style
+        let theme = context.theme
         stack.spacing = theme.spacing.small
         titleLabel.lmk_apply(style.textTitleTextStyle ?? .h4, color: style.textColor ?? LMKColor.textPrimary)
         titleLabel.lmk_setText(model.title)
         titleLabel.isHidden = model.title == nil
-        let textStyle = model.textStyle ?? style.textStyle ?? .body
-        let color = model.color ?? style.textColor ?? LMKColor.textPrimary
+        textStyle = model.textStyle ?? style.textStyle ?? .body
+        color = model.color ?? style.textColor ?? LMKColor.textPrimary
+        content = model.content
         textLabel.lmk_apply(textStyle, color: color)
-        switch model.content {
-        case let .plain(text):
+        if case let .plain(text) = model.content {
             textLabel.lmk_setText(text)
+            textLabel.isHidden = false
+            richTextLabel.isHidden = true
+        } else {
+            textLabel.isHidden = true
+            richTextLabel.isHidden = false
+            applyRichText(traits: context.traits)
+        }
+    }
+
+    /// Renders markdown at the font `traits` resolve to, or the attributed string as the host gave it.
+    private func applyRichText(traits: UITraitCollection) {
+        switch content {
         case let .markdown(markdown):
-            textLabel.attributedText = LMKMarkdownRenderer.render(markdown, font: LMKTypography.font(for: textStyle, compatibleWith: traitCollection), color: color)
+            let font = traits.lmkTheme.typography.font(for: textStyle, compatibleWith: traits)
+            richTextLabel.attributedText = LMKMarkdownRenderer.render(markdown, font: font, color: color)
         case let .attributed(attributed):
-            textLabel.attributedText = attributed
+            richTextLabel.attributedText = attributed
+        case .plain, nil:
+            break
         }
     }
 }
@@ -139,6 +174,7 @@ final class LMKDetailChipsRowView: UIView, LMKDetailRowView {
     let scrollView = UIScrollView()
     let stack = UIStackView()
     private(set) var chips: [LMKChipView] = []
+    private var chipIDs: [String] = []
 
     init(rowID: String) {
         self.rowID = rowID
@@ -161,21 +197,32 @@ final class LMKDetailChipsRowView: UIView, LMKDetailRowView {
         fatalError("init(coder:) has not been implemented")
     }
 
-    func update(_ row: LMKDetailCard.Row, style: LMKDetailCardView.Style, theme: LMKTheme) {
+    /// Chips are reused by `Chip.id`, so a reconfigure restyles them in place instead of
+    /// rebuilding the row.
+    func update(_ row: LMKDetailCard.Row, context: LMKDetailCardView.RowContext) {
         guard case let .chips(model) = row else { return }
-        stack.spacing = style.chipSpacing ?? theme.spacing.small
-        for chip in chips {
+        let style = context.style
+        stack.spacing = style.chipSpacing ?? context.theme.spacing.small
+        var existing = Dictionary(zip(chipIDs, chips), uniquingKeysWith: { first, _ in first })
+        var ordered: [LMKChipView] = []
+        for item in model.items {
+            let chip = existing.removeValue(forKey: item.id) ?? LMKChipView(text: item.text, icon: item.icon)
+            chip.text = item.text
+            chip.icon = item.icon
+            chip.style = item.tint.map { style.chip.tint($0) } ?? style.chip
+            chip.onTap = item.onTap
+            chip.accessibilityIdentifier = item.id
+            ordered.append(chip)
+        }
+        for chip in existing.values {
             stack.removeArrangedSubview(chip)
             chip.removeFromSuperview()
         }
-        chips = model.items.map { item in
-            let chipStyle = item.tint.map { style.chip.tint($0) } ?? style.chip
-            let chip = LMKChipView(text: item.text, icon: item.icon, style: chipStyle)
-            chip.onTap = item.onTap
-            chip.accessibilityIdentifier = item.id
-            stack.addArrangedSubview(chip)
-            return chip
+        for (index, chip) in ordered.enumerated() where stack.arrangedSubviews[lmk_safe: index] !== chip {
+            stack.insertArrangedSubview(chip, at: index)
         }
+        chips = ordered
+        chipIDs = model.items.map(\.id)
     }
 }
 
@@ -226,11 +273,16 @@ final class LMKDetailProgressRowView: UIView, LMKDetailRowView {
         fatalError("init(coder:) has not been implemented")
     }
 
+    /// The fraction the bar shows (`0 ... 1`).
     private(set) var value: Float = 0
 
-    func update(_ row: LMKDetailCard.Row, style: LMKDetailCardView.Style, theme: LMKTheme) {
+    func update(_ row: LMKDetailCard.Row, context: LMKDetailCardView.RowContext) {
         guard case let .progress(model) = row else { return }
-        value = model.value
+        let style = context.style
+        let theme = context.theme
+        // The model clamps too; a non-finite multiplier would still throw inside Auto Layout.
+        let fraction = model.value.isFinite ? min(max(model.value, 0), 1) : 0
+        value = fraction
         stack.spacing = theme.spacing.xs
         textRow.spacing = theme.spacing.medium
         titleLabel.lmk_apply(style.stackedKeyTextStyle ?? .captionMedium, color: style.keyColor ?? LMKColor.textSecondary)
@@ -243,10 +295,10 @@ final class LMKDetailProgressRowView: UIView, LMKDetailRowView {
         _ = barView.lmk_apply(surface: LMKSurfaceStyle(background: .solid(model.tint ?? style.progressTint ?? LMKColor.primary), corners: .capsule))
         barView.snp.remakeConstraints { make in
             make.leading.top.bottom.equalToSuperview()
-            make.width.equalTo(trackView).multipliedBy(CGFloat(model.value))
+            make.width.equalTo(trackView).multipliedBy(CGFloat(fraction))
         }
         accessibilityLabel = model.title
-        accessibilityValue = model.detail ?? LMKFormat.progressPercent(model.value)
+        accessibilityValue = model.detail ?? LMKFormat.progressPercent(fraction)
     }
 }
 
@@ -278,6 +330,7 @@ final class LMKDetailNavigationRowView: UIControl, LMKDetailRowView {
         lmk_layoutSurfaceIfNeeded()
     }
 
+    /// The press reaches the row through the configuration state, as a cell's would.
     override var isHighlighted: Bool {
         didSet {
             guard isHighlighted != oldValue, var configuration else { return }
@@ -286,24 +339,31 @@ final class LMKDetailNavigationRowView: UIControl, LMKDetailRowView {
         }
     }
 
-    func update(_ row: LMKDetailCard.Row, style: LMKDetailCardView.Style, theme _: LMKTheme) {
+    /// The pressed look a navigation row shows on its own (a cell would show its background's).
+    static let defaultRowStyle = LMKListRowConfiguration.Style(highlighted: LMKControlStateStyle(background: .solid(LMKColor.pressedOverlay)))
+
+    func update(_ row: LMKDetailCard.Row, context: LMKDetailCardView.RowContext) {
         guard case let .navigation(model) = row else { return }
+        let style = context.style
         var configuration = model.configuration
         configuration.trailing = .disclosure
-        configuration.style = style.navigationRow.merging(configuration.style)
+        configuration.style = Self.defaultRowStyle.merging(style.navigationRow).merging(configuration.style)
+        configuration.isHighlighted = isHighlighted
         self.configuration = configuration
         onTap = model.onTap
+        surface = style.navigationRowSurface
+        let resolvedSurface = lmk_apply(surface: surface, defaults: LMKSurfaceStyle(background: .clear), clipsContent: false)
         if let contentView {
+            contentView.stateBackgroundCorners = resolvedSurface.corners ?? .square
             contentView.configuration = configuration
         } else {
-            let view = LMKListRowContentView(configuration: configuration)
-            view.isUserInteractionEnabled = false
-            addSubview(view)
-            view.snp.makeConstraints { $0.edges.equalToSuperview() }
-            contentView = view
+            let content = LMKListRowContentView(configuration: configuration)
+            content.stateBackgroundCorners = resolvedSurface.corners ?? .square
+            content.isUserInteractionEnabled = false
+            addSubview(content)
+            content.snp.makeConstraints { $0.edges.equalToSuperview() }
+            contentView = content
         }
-        surface = style.navigationRowSurface
-        _ = lmk_apply(surface: surface, defaults: LMKSurfaceStyle(background: .clear), clipsContent: false)
     }
 
     @objc private func handleTap() {
@@ -329,12 +389,10 @@ final class LMKDetailLinkRowView: UIView, LMKDetailRowView {
     let titleLabel = UILabel()
     let subtitleLabel = UILabel()
     let removeButton = LMKButton(systemImage: "trash", style: .iconOnly(.neutral))
-    private let strings: LMKDetailCardView.Strings
     private var model: LMKDetailCard.Link?
 
-    init(rowID: String, strings: LMKDetailCardView.Strings) {
+    init(rowID: String) {
         self.rowID = rowID
-        self.strings = strings
         super.init(frame: .zero)
         let row = UIStackView(lmk_axis: .horizontal, alignment: .center)
         openStack.axis = .horizontal
@@ -368,8 +426,10 @@ final class LMKDetailLinkRowView: UIView, LMKDetailRowView {
         fatalError("init(coder:) has not been implemented")
     }
 
-    func update(_ row: LMKDetailCard.Row, style: LMKDetailCardView.Style, theme: LMKTheme) {
+    func update(_ row: LMKDetailCard.Row, context: LMKDetailCardView.RowContext) {
         guard case let .link(model) = row else { return }
+        let style = context.style
+        let theme = context.theme
         self.model = model
         openStack.spacing = theme.spacing.medium
         textStack.spacing = theme.spacing.xxs
@@ -378,7 +438,7 @@ final class LMKDetailLinkRowView: UIView, LMKDetailRowView {
             iconView.image = icon.image
             iconView.tintColor = icon.tint ?? LMKColor.primary
             iconView.snp.remakeConstraints { make in
-                make.width.height.equalTo(theme.layout.iconMedium)
+                make.width.height.equalTo(theme.layout.iconMedium).priority(999)
             }
             iconView.isHidden = false
         } else {
@@ -388,7 +448,7 @@ final class LMKDetailLinkRowView: UIView, LMKDetailRowView {
         titleLabel.lmk_apply(textStyle, color: linkColor)
         if style.underlinesLinks ?? false {
             titleLabel.attributedText = NSAttributedString(string: model.title, attributes: [
-                .font: LMKTypography.font(for: textStyle, compatibleWith: traitCollection),
+                .font: theme.typography.font(for: textStyle, compatibleWith: context.traits),
                 .foregroundColor: linkColor,
                 .underlineStyle: NSUnderlineStyle.single.rawValue,
             ])
@@ -399,7 +459,7 @@ final class LMKDetailLinkRowView: UIView, LMKDetailRowView {
         subtitleLabel.lmk_setText(model.subtitle)
         subtitleLabel.isHidden = model.subtitle == nil
         removeButton.isHidden = model.onRemove == nil
-        removeButton.accessibilityLabel = strings.removeLinkAccessibilityLabel
+        removeButton.accessibilityLabel = context.strings.removeLinkAccessibilityLabel
         openControl.accessibilityLabel = model.title
         openControl.accessibilityValue = model.subtitle ?? model.url?.host
     }
@@ -442,16 +502,17 @@ final class LMKDetailRatingRowView: UIView, LMKDetailRowView {
         fatalError("init(coder:) has not been implemented")
     }
 
-    func update(_ row: LMKDetailCard.Row, style: LMKDetailCardView.Style, theme: LMKTheme) {
+    func update(_ row: LMKDetailCard.Row, context: LMKDetailCardView.RowContext) {
         guard case let .rating(model) = row else { return }
-        stack.spacing = theme.spacing.medium
+        let style = context.style
+        stack.spacing = context.theme.spacing.medium
         titleLabel.lmk_apply(style.inlineKeyTextStyle ?? .subbodyMedium, color: style.keyColor ?? LMKColor.textSecondary)
         titleLabel.lmk_setText(model.title)
         ratingControl.style = style.rating
         ratingControl.maximum = max(1, model.maximum)
         ratingControl.value = model.value
-        ratingControl.isInteractive = model.onChange != nil
-        ratingControl.onChange = model.onChange
+        ratingControl.isInteractive = model.onValueChange != nil
+        ratingControl.onValueChange = model.onValueChange
         ratingControl.accessibilityLabel = model.title
     }
 }
@@ -465,8 +526,11 @@ final class LMKDetailImageRowView: UIView, LMKDetailRowView {
     private var loadTask: Task<Void, Never>?
     private var generation = 0
     private var onTap: (() -> Void)?
-    private var maxHeight: CGFloat = 240
+    private var maxHeight: CGFloat = LMKDetailImageRowView.defaultMaxHeight
     private lazy var tap = UITapGestureRecognizer(target: self, action: #selector(handleTap))
+
+    /// The height cap behind `Style.imageMaxHeight == nil`.
+    static let defaultMaxHeight: CGFloat = 240
 
     init(rowID: String) {
         self.rowID = rowID
@@ -493,9 +557,13 @@ final class LMKDetailImageRowView: UIView, LMKDetailRowView {
         imageView.lmk_layoutSurfaceIfNeeded()
     }
 
-    func update(_ row: LMKDetailCard.Row, style: LMKDetailCardView.Style, theme: LMKTheme) {
+    /// A row with a `load` keeps the image it has while the next load runs, so a reconfigure
+    /// never collapses the page; it hides only while there has never been one.
+    func update(_ row: LMKDetailCard.Row, context: LMKDetailCardView.RowContext) {
         guard case let .image(model) = row else { return }
-        maxHeight = model.maxHeight ?? style.imageMaxHeight ?? 240
+        let style = context.style
+        let theme = context.theme
+        maxHeight = model.maxHeight ?? style.imageMaxHeight ?? Self.defaultMaxHeight
         imageView.contentMode = model.contentMode
         _ = imageView.lmk_apply(surface: LMKSurfaceStyle(
             background: .solid(style.imageBackgroundColor ?? LMKColor.backgroundSecondary),
@@ -513,7 +581,7 @@ final class LMKDetailImageRowView: UIView, LMKDetailRowView {
         if let image = model.image {
             setImage(image)
         } else if let load = model.load {
-            setImage(nil)
+            setImage(imageView.image)
             loadTask = Task { [weak self] in
                 let image = await load()
                 guard let self, current == generation, !Task.isCancelled else { return }
@@ -564,7 +632,7 @@ final class LMKDetailDividerRowView: UIView, LMKDetailRowView {
         fatalError("init(coder:) has not been implemented")
     }
 
-    func update(_: LMKDetailCard.Row, style _: LMKDetailCardView.Style, theme _: LMKTheme) {}
+    func update(_: LMKDetailCard.Row, context _: LMKDetailCardView.RowContext) {}
 }
 
 final class LMKDetailCustomRowView: UIView, LMKDetailRowView {
@@ -582,12 +650,16 @@ final class LMKDetailCustomRowView: UIView, LMKDetailRowView {
         fatalError("init(coder:) has not been implemented")
     }
 
-    func update(_ row: LMKDetailCard.Row, style _: LMKDetailCardView.Style, theme _: LMKTheme) {
+    /// Hosts the view; a previous one is removed only while it is still ours (another row may
+    /// have taken it), and the same view is re-added when something else took it meanwhile.
+    func update(_ row: LMKDetailCard.Row, context _: LMKDetailCardView.RowContext) {
         guard case let .custom(_, view) = row else { return }
-        guard hostedView !== view else { return }
-        hostedView?.removeFromSuperview()
-        addSubview(view)
-        view.snp.makeConstraints { $0.edges.equalToSuperview() }
+        if let old = hostedView, old !== view, old.superview === self {
+            old.removeFromSuperview()
+        }
         hostedView = view
+        guard view.superview !== self else { return }
+        addSubview(view)
+        view.snp.remakeConstraints { $0.edges.equalToSuperview() }
     }
 }

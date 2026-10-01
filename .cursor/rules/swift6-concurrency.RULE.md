@@ -1,9 +1,9 @@
 ---
-description: "Swift 6.2 strict concurrency patterns for LumiKit"
+description: "Swift 6.2 / 6.4 strict concurrency patterns for LumiKit"
 alwaysApply: true
 ---
 
-# Swift 6.2 Concurrency
+# Swift 6 Concurrency
 
 ## Target-Level Default Isolation
 
@@ -11,6 +11,7 @@ LumiKitUI, LumiKitPhoto, and LumiKitLottie set `defaultIsolation: MainActor` in 
 
 - **All types** in these targets are implicitly `@MainActor`; **do NOT** add `@MainActor` to views, view controllers, or components
 - **LumiKitCore** and **LumiKitDebug** have no default isolation; their types are `nonisolated` by default
+- **Swift 6.4 (Xcode 27)**: the members of an `extension` follow the module's default actor even when the extended type is nonisolated, so an extension meant to run anywhere (`UIImage`, `LMKTheme` style slots, protocol defaults) is a `nonisolated extension` and gets a case in `LMKNonisolatedSurfaceTests`; a subclass of a package controller declares `isolated deinit`
 
 ## Opting Out of MainActor
 
@@ -27,12 +28,12 @@ public nonisolated enum LMKImage { ... }                                  // sta
 
 ## Shared State
 
-- **ALWAYS** guard process-wide mutable state in Core with `Mutex` (`LMKLogger`, `LMKDate`, `LMKLogStore`); `nonisolated(unsafe)` only for a `static let` observer token that Swift cannot prove Sendable
-- **NEVER** `nonisolated(unsafe) static var` for configuration read from multiple threads
+- **ALWAYS** guard process-wide mutable state in Core with a lock: `Mutex` (`LMKLogger`, `LMKDate`, `LMKLogStore`) or `NSLock` (`LMKDateFormat.strings`); `nonisolated(unsafe)` is reserved for a `static let` observer token Swift cannot prove Sendable and for the `static var strings` defaults below
+- **NEVER** `nonisolated(unsafe) static var` for configuration that is mutated after launch while other threads read it
 
 ## Strings
 
-- Every configurable string is a nested `Strings: Sendable, Equatable` struct with `LMKLocalized` defaults, a `static var strings` (main-actor isolated in UI targets, lock-guarded in Core), and an instance `strings` on host-created types; see `naming.RULE.md`
+- Every configurable string is a nested `Strings: Sendable, Equatable` struct with `LMKLocalized` defaults, a `nonisolated(unsafe) static var strings` process-wide default (written once at launch before any read; Core guards its copy with a lock), and an instance `strings` on host-created types; see `naming.RULE.md`
 
 ## Tasks and Hops
 

@@ -30,6 +30,20 @@ struct CollectionLMKTests {
     }
 
     @Test
+    func `Safe subscript honors a slice's own index range`() {
+        let slice = [10, 20, 30, 40][2...]
+        #expect(slice[lmk_safe: 2] == 30)
+        #expect(slice[lmk_safe: 3] == 40)
+        #expect(slice[lmk_safe: 1] == nil, "before the slice's start index")
+        #expect(slice[lmk_safe: 4] == nil, "at the end index")
+
+        let text = "héllo"
+        #expect(text[lmk_safe: text.startIndex] == "h")
+        #expect(text[lmk_safe: text.endIndex] == nil)
+        #expect(text[lmk_safe: text.index(text.startIndex, offsetBy: 4)] == "o")
+    }
+
+    @Test
     func `lmk_uniqued preserves order and removes duplicates`() {
         let items = [1, 2, 2, 3, 1, 4]
         #expect(items.lmk_uniqued() == [1, 2, 3, 4])

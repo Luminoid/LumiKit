@@ -31,9 +31,14 @@ private extension LMKButton.Role {
 // MARK: - Buttons
 
 final class ButtonsDetailViewController: DetailViewController {
-    override func viewDidLoad() {
-        super.viewDidLoad()
+    /// The simulated work behind the loading buttons; cancelled when the page goes away.
+    private var demoTask: Task<Void, Never>?
 
+    isolated deinit {
+        demoTask?.cancel()
+    }
+
+    override func setupStackContent() {
         addSectionHeader("Filled")
         for role in LMKButton.Role.allRoles {
             let btn = LMKButton(title: role.displayName, style: .filled(role))
@@ -41,7 +46,7 @@ final class ButtonsDetailViewController: DetailViewController {
                 guard let self else { return }
                 LMKToast.show(.success, "Filled \(role.displayName) tapped", in: self)
             }
-            stack.addArrangedSubview(btn)
+            stackView.addArrangedSubview(btn)
         }
 
         addDivider()
@@ -52,7 +57,7 @@ final class ButtonsDetailViewController: DetailViewController {
                 guard let self else { return }
                 LMKToast.show(.info, "Outlined \(role.displayName) tapped", in: self)
             }
-            stack.addArrangedSubview(btn)
+            stackView.addArrangedSubview(btn)
         }
 
         addDivider()
@@ -63,7 +68,7 @@ final class ButtonsDetailViewController: DetailViewController {
                 guard let self else { return }
                 LMKToast.show(.info, "Ghost \(role.displayName) tapped", in: self)
             }
-            stack.addArrangedSubview(btn)
+            stackView.addArrangedSubview(btn)
         }
 
         addDivider()
@@ -81,7 +86,7 @@ final class ButtonsDetailViewController: DetailViewController {
             iconRow.addArrangedSubview(btn)
         }
         iconRow.addArrangedSubview(UIView())
-        stack.addArrangedSubview(iconRow)
+        stackView.addArrangedSubview(iconRow)
 
         addDivider()
         addSectionHeader("Tinted, Glass, and Sizes")
@@ -91,7 +96,7 @@ final class ButtonsDetailViewController: DetailViewController {
         variantRow.addArrangedSubview(LMKButton(title: "Small", style: .filled(.secondary).size(.small)))
         variantRow.addArrangedSubview(LMKButton(title: "Large", style: .filled(.secondary).size(.large)))
         variantRow.addArrangedSubview(UIView())
-        stack.addArrangedSubview(variantRow)
+        stackView.addArrangedSubview(variantRow)
 
         addDivider()
         addSectionHeader("Custom Surface")
@@ -100,33 +105,34 @@ final class ButtonsDetailViewController: DetailViewController {
         boxed.surface.border = .solid(nil, width: 2)
         boxed.surface.shadow = .level(.level2)
         let boxedButton = LMKButton(title: "Square corners, 2pt outline, shadow", style: boxed)
-        stack.addArrangedSubview(boxedButton)
+        stackView.addArrangedSubview(boxedButton)
         let disabledButton = LMKButton(title: "Disabled", style: .filled())
         disabledButton.isEnabled = false
-        stack.addArrangedSubview(disabledButton)
+        stackView.addArrangedSubview(disabledButton)
 
         addDivider()
         addSectionHeader("Loading State")
+        stackView.addArrangedSubview(UILabel.lmk_make(.caption, text: "isLoading swaps the title for a spinner and absorbs taps until the work is done."))
         let loadingBtn = LMKButton(title: "Tap to Load", style: .filled(.primary))
-        loadingBtn.isLoading = true
-        stack.addArrangedSubview(loadingBtn)
+        loadingBtn.onTap = { [weak self, weak loadingBtn] in
+            self?.simulateWork(on: loadingBtn, toast: nil)
+        }
+        stackView.addArrangedSubview(loadingBtn)
+        let alwaysLoading = LMKButton(title: "Loading", style: .outlined(.secondary))
+        alwaysLoading.isLoading = true
+        stackView.addArrangedSubview(alwaysLoading)
 
         addDivider()
         addSectionHeader("onTap with a captured button")
         let typedBtn = LMKButton(title: "Button Reference Handler", style: .filled(.primary))
         typedBtn.onTap = { [weak self, weak typedBtn] in
-            guard let self, let button = typedBtn else { return }
-            button.isLoading = true
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
-                button.isLoading = false
-                LMKToast.show(.success, "Async operation complete", in: self)
-            }
+            self?.simulateWork(on: typedBtn, toast: "Async operation complete")
         }
-        stack.addArrangedSubview(typedBtn)
+        stackView.addArrangedSubview(typedBtn)
 
         addDivider()
         addSectionHeader("Press Animation on Any UIControl")
-        stack
+        stackView
             .addArrangedSubview(UILabel.lmk_make(
                 .caption,
                 text: "`LMKAnimation.animateButtonPressDown/Up` accept any UIControl, so custom tiles reuse the spring press effect. LMKButton adds pointer hover feedback on iPad and Mac."
@@ -137,8 +143,22 @@ final class ButtonsDetailViewController: DetailViewController {
             guard let self else { return }
             LMKToast.show(.success, "Custom UIControl tapped", in: self)
         }
-        tile.snp.makeConstraints { $0.height.equalTo(64) }
-        stack.addArrangedSubview(tile)
+        stackView.addArrangedSubview(tile)
+    }
+
+    /// Puts `button` in its loading state for a moment, then restores it (and toasts, if asked).
+    private func simulateWork(on button: LMKButton?, toast message: String?) {
+        guard let button else { return }
+        button.isLoading = true
+        demoTask?.cancel()
+        demoTask = Task { [weak self, weak button] in
+            try? await Task.sleep(for: .seconds(1.5))
+            guard !Task.isCancelled else { return }
+            button?.isLoading = false
+            if let self, let message {
+                LMKToast.show(.success, message, in: self)
+            }
+        }
     }
 }
 
@@ -158,7 +178,11 @@ private final class PressableTileControl: UIControl {
     override init(frame: CGRect) {
         super.init(frame: frame)
         backgroundColor = LMKColor.backgroundSecondary
-        layer.cornerRadius = LMKCornerRadius.medium
+        lmk_applyCornerRadius(LMKCornerRadius.medium)
+        // A plain UIControl is invisible to VoiceOver until it says what it is.
+        isAccessibilityElement = true
+        accessibilityTraits = .button
+        accessibilityLabel = titleLabel.text
 
         addSubview(iconView)
         addSubview(titleLabel)
@@ -167,11 +191,13 @@ private final class PressableTileControl: UIControl {
             make.centerY.equalToSuperview()
             make.size.equalTo(LMKLayout.iconMedium)
         }
+        // A floor plus top and bottom constraints, so the tile grows with Dynamic Type.
         titleLabel.snp.makeConstraints { make in
             make.leading.equalTo(iconView.snp.trailing).offset(LMKSpacing.medium)
             make.trailing.lessThanOrEqualToSuperview().inset(LMKSpacing.large)
-            make.centerY.equalToSuperview()
+            make.top.bottom.equalToSuperview().inset(LMKSpacing.large)
         }
+        snp.makeConstraints { $0.height.greaterThanOrEqualTo(LMKLayout.rowHeightComfortable) }
 
         addTarget(self, action: #selector(pressDown), for: [.touchDown, .touchDragEnter])
         addTarget(self, action: #selector(pressUp), for: [.touchUpOutside, .touchCancel, .touchDragExit])

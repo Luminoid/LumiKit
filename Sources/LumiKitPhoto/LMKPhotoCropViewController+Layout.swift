@@ -35,11 +35,19 @@ extension LMKPhotoCropViewController {
 
     func updateLayout() {
         guard view.bounds.width > 0, view.bounds.height > 0 else { return }
+        // A new view size (a rotation, a window resize, another padding) moves the image; the
+        // crop frame follows the part of the photo it covered, instead of staying put over
+        // another part of it.
+        let imageMoved = view.bounds.size != lastViewSize
+        let previousImageFrame = imageView.frame
         updateImageViewFrame()
         if needsInitialLayout {
             needsInitialLayout = false
             createInitialCropFrame()
         } else {
+            if imageMoved, !previousImageFrame.isEmpty {
+                cropFrame = Self.remapped(cropFrame, from: previousImageFrame, to: imageView.frame)
+            }
             updateCropFrame()
         }
         updateOverlayMask()
@@ -79,12 +87,19 @@ extension LMKPhotoCropViewController {
         updateCropFrame()
     }
 
-    /// Clamps the crop frame into the crop area and the minimum size, then moves the view.
+    /// Fits the crop frame into the crop area (keeping a locked ratio: the frame shrinks as a
+    /// whole when the area shrinks, never one side alone) and above the minimum size, then
+    /// moves the view.
     func updateCropFrame(updateHandles: Bool = true) {
         let bounds = cropArea
         let minimum = resolvedStyle.minimumCropSide(theme: traitCollection.lmkTheme)
-        cropFrame = Self.clamped(cropFrame, within: bounds, minimumSize: minimum)
+        var frame = cropFrame
+        if let ratio = currentAspectRatio.ratio {
+            frame = Self.reshaped(frame, toRatio: ratio, maximum: bounds.size)
+        }
+        cropFrame = Self.clamped(frame, within: bounds, minimumSize: minimum)
         cropFrameView.frame = cropFrame
+        cropFrameAccessibilityElement.update()
         if updateHandles {
             updateHandlePositions()
             updateGridLines()
@@ -94,10 +109,25 @@ extension LMKPhotoCropViewController {
     /// Reshapes the crop frame around its center to the current preset.
     func applyAspectRatioToCropFrame() {
         guard let ratio = currentAspectRatio.ratio else { return }
-        let bounds = cropArea
+        cropFrame = Self.reshaped(cropFrame, toRatio: ratio, maximum: cropArea.size)
+    }
+
+    /// Scales the crop frame by `factor` around its center, for the VoiceOver adjustments;
+    /// the crop area and the minimum size apply as for a drag.
+    func scaleCropFrame(by factor: CGFloat) {
+        guard factor > 0 else { return }
         let center = CGPoint(x: cropFrame.midX, y: cropFrame.midY)
-        let size = Self.reshaped(cropFrame.size, toRatio: ratio, maximum: bounds.size)
+        let size = CGSize(width: cropFrame.width * factor, height: cropFrame.height * factor)
         cropFrame = CGRect(x: center.x - size.width / 2, y: center.y - size.height / 2, width: size.width, height: size.height)
+        updateCropFrame()
+        updateOverlayMask()
+    }
+
+    /// Moves the crop frame by `delta`, for the VoiceOver actions; the crop area applies.
+    func moveCropFrame(by delta: CGPoint) {
+        cropFrame = cropFrame.offsetBy(dx: delta.x, dy: delta.y)
+        updateCropFrame()
+        updateOverlayMask()
     }
 
     // MARK: - Overlay, handles, grid
@@ -183,6 +213,26 @@ extension LMKPhotoCropViewController {
             width = height * ratio
         }
         return CGSize(width: width, height: height)
+    }
+
+    /// `frame` reshaped around its center to `ratio`, capped to `maximum`.
+    nonisolated static func reshaped(_ frame: CGRect, toRatio ratio: CGFloat, maximum: CGSize) -> CGRect {
+        let size = reshaped(frame.size, toRatio: ratio, maximum: maximum)
+        return CGRect(x: frame.midX - size.width / 2, y: frame.midY - size.height / 2, width: size.width, height: size.height)
+    }
+
+    /// `frame`, given in the same coordinates as `source`, over the same part of the image once
+    /// the image sits at `target` (the image moved or changed size under it).
+    nonisolated static func remapped(_ frame: CGRect, from source: CGRect, to target: CGRect) -> CGRect {
+        guard source.width > 0, source.height > 0, target.width > 0, target.height > 0 else { return frame }
+        let scaleX = target.width / source.width
+        let scaleY = target.height / source.height
+        return CGRect(
+            x: target.minX + (frame.minX - source.minX) * scaleX,
+            y: target.minY + (frame.minY - source.minY) * scaleY,
+            width: frame.width * scaleX,
+            height: frame.height * scaleY
+        )
     }
 
     /// `frame` moved and shrunk into `bounds`, never below `minimumSize` on either side.

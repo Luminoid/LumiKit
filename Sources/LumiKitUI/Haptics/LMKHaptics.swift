@@ -10,7 +10,7 @@ import UIKit
 /// Centralized haptic feedback helper.
 ///
 /// On Mac Catalyst, haptic feedback is a no-op (Taptic Engine is not available).
-/// No audible or visual alternative is provided — callers should handle
+/// No audible or visual alternative is provided; callers should handle
 /// Mac-specific feedback if needed.
 ///
 /// Call `prepare` methods when a haptic interaction is anticipated (e.g. when a view appears
@@ -118,7 +118,7 @@ public enum LMKHaptics {
         }
     }
 
-    /// Prepare all generators. Use sparingly — prefer targeted prepare methods.
+    /// Prepare all generators. Use sparingly; prefer targeted prepare methods.
     public static func prepare() {
         impactLight.prepare()
         impactMedium.prepare()

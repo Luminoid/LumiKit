@@ -54,6 +54,22 @@ struct LMKCalendarSelectionTests {
     }
 
     @Test
+    func `A range built with its bounds reversed reads in order everywhere`() throws {
+        // The case is public, so `.range(checkOut, checkIn)` reaches every query; `start ... end` once trapped.
+        let reversed = LMKCalendarSelection.range(day(9), day(5))
+        #expect(reversed.selectedRange == day(5) ... day(9))
+        #expect(reversed.earliest == day(5) && reversed.latest == day(9))
+        #expect(reversed.isStart(day(5)) && reversed.isEnd(day(9)))
+        #expect(reversed.contains(day(5)) && reversed.contains(day(7)) && reversed.contains(day(9)))
+        #expect(!reversed.contains(day(4)) && !reversed.contains(day(10)))
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = try #require(TimeZone(identifier: "UTC"))
+        #expect(reversed.days(calendar: calendar) == [day(5), day(6), day(7), day(8), day(9)])
+        #expect(reversed.tapping(day(7), mode: .multiple, calendar: calendar) == .multiple([day(5), day(6), day(8), day(9)]))
+        #expect(LMKCalendarSelection.range(day(9), day(9)).days(calendar: calendar) == [day(9)])
+    }
+
+    @Test
     func `days() enumerates in order and caps long ranges`() throws {
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = try #require(TimeZone(identifier: "UTC"))
@@ -99,6 +115,16 @@ struct LMKCalendarSelectionTests {
         #expect(one.tapping(day(2), mode: .multiple) == .empty, "removing the last day empties the selection")
         #expect(LMKCalendarSelection.single(day(3)).tapping(day(4), mode: .multiple) == .multiple([day(3), day(4)]), "a single day joins the set")
         #expect(LMKCalendarSelection.range(day(3), day(4)).tapping(day(4), mode: .multiple) == .multiple([day(3)]), "a range expands into days first")
+    }
+
+    @Test
+    func `A range expands into the days of the calendar it belongs to`() throws {
+        // Hebrew months are 29 or 30 days; the range's days are civil days, so the crossing lands on October 1.
+        var hebrew = Calendar(identifier: .hebrew)
+        hebrew.timeZone = try #require(TimeZone(identifier: "UTC"))
+        let crossing = LMKCalendarSelection.range(day(30), day(1, month: 10))
+        #expect(crossing.tapping(day(2, month: 10), mode: .multiple, calendar: hebrew) == .multiple([day(30), day(1, month: 10), day(2, month: 10)]))
+        #expect(crossing.days(calendar: hebrew) == [day(30), day(1, month: 10)])
     }
 
     @Test

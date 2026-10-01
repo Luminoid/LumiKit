@@ -36,6 +36,23 @@ private final class RefreshingVC: LMKScrollStackViewController {
     }
 }
 
+/// Adds its own `.header` label and themes it from the content hook.
+private final class OwnHeaderVC: LMKScrollStackViewController {
+    let ownHeader = UILabel.lmk_make(.h1, text: "Mine")
+    var contentThemes = 0
+
+    override func setupStackContent() {
+        ownHeader.accessibilityTraits = .header
+        stackView.addArrangedSubview(ownHeader)
+        addSectionHeader("Kit")
+    }
+
+    override func applyContentTheme(_ theme: LMKTheme) {
+        contentThemes += 1
+        ownHeader.lmk_apply(.h1, color: LMKColor.link)
+    }
+}
+
 @MainActor
 struct LMKScrollStackViewControllerTests {
     private func host(_ controller: UIViewController) -> UIWindow {
@@ -116,7 +133,14 @@ struct LMKScrollStackViewControllerTests {
     }
 
     @Test
-    func `reloadContent empties the stack and rebuilds it`() {
+    func `reloadContent empties the stack and rebuilds it, and does nothing before the view loads`() {
+        let early = TestScrollVC()
+        early.reloadContent()
+        #expect(!early.isViewLoaded)
+        early.loadViewIfNeeded()
+        #expect(early.setupCalls == 1)
+        #expect(early.stackView.arrangedSubviews.count == 1, "viewDidLoad builds the content once")
+
         let controller = TestScrollVC()
         controller.loadViewIfNeeded()
         #expect(controller.stackView.arrangedSubviews.count == 1)
@@ -124,6 +148,65 @@ struct LMKScrollStackViewControllerTests {
         #expect(controller.setupCalls == 2)
         #expect(controller.stackView.arrangedSubviews.count == 1)
         #expect((controller.stackView.arrangedSubviews.first as? UILabel)?.text == "Row 2")
+    }
+
+    @Test
+    func `applyTheme restyles the kit's section headers only, after the content hook`() {
+        let controller = OwnHeaderVC()
+        controller.loadViewIfNeeded()
+        #expect(controller.contentThemes >= 1)
+        #expect(controller.ownHeader.lmk_textStyle == .h1, "a host's own header keeps its style")
+        #expect(controller.ownHeader.textColor === LMKColor.link)
+        let kitHeader = controller.stackView.arrangedSubviews.last as? UILabel
+        #expect(kitHeader?.lmk_textStyle == .h3)
+        controller.style.sectionHeaderTextStyle = .h4
+        controller.style.sectionHeaderColor = .purple
+        #expect(kitHeader?.lmk_textStyle == .h4)
+        #expect(kitHeader?.textColor == UIColor.purple)
+        #expect(controller.ownHeader.lmk_textStyle == .h1)
+
+        var order: [String] = []
+        controller.didApplyStyle = { [unowned controller] _ in order = ["content:\(controller.contentThemes)", "didApplyStyle"] }
+        let before = controller.contentThemes
+        controller.applyTheme(LMKTheme())
+        #expect(order == ["content:\(before + 1)", "didApplyStyle"], "the hook ran before didApplyStyle")
+
+        controller.reloadContent()
+        controller.style.sectionHeaderColor = .orange
+        #expect((controller.stackView.arrangedSubviews.last as? UILabel)?.textColor == UIColor.orange, "headers made after a reload are tracked")
+    }
+
+    @Test
+    func `scrollTo brings a stacked view into the viewport`() {
+        let controller = TestScrollVC()
+        let window = host(controller)
+        defer { window.isHidden = true }
+        let target = UIView()
+        for _ in 0 ..< 30 {
+            let filler = UIView()
+            filler.snp.makeConstraints { $0.height.equalTo(100) }
+            controller.stackView.addArrangedSubview(filler)
+        }
+        target.snp.makeConstraints { $0.height.equalTo(50) }
+        controller.stackView.addArrangedSubview(target)
+        controller.view.layoutIfNeeded()
+        let restingOffset = controller.scrollView.contentOffset.y
+        controller.scrollTo(target, animated: false)
+        #expect(controller.scrollView.contentOffset.y > restingOffset)
+        let visible = controller.scrollView.convert(target.bounds, from: target)
+        #expect(controller.scrollView.bounds.contains(visible))
+    }
+
+    @Test
+    func `Scroll edge effects follow the style and come back when it is cleared`() {
+        let controller = TestScrollVC(style: LMKScrollStackViewController.Style(showsScrollEdgeEffects: false))
+        controller.loadViewIfNeeded()
+        if #available(iOS 26, *) {
+            #expect(controller.scrollView.topEdgeEffect.isHidden)
+            controller.style.showsScrollEdgeEffects = nil
+            #expect(!controller.scrollView.topEdgeEffect.isHidden, "nil is the system default, not the last value")
+            #expect(!controller.scrollView.bottomEdgeEffect.isHidden)
+        }
     }
 
     @Test

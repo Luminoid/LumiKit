@@ -197,6 +197,8 @@ public enum LMKActionSheet {
         public var highlightColor: UIColor?
         /// Gap between icon, text, and accessory; `nil` = `medium`.
         public var spacing: CGFloat?
+        /// The disabled look; `alpha` `nil` = `alpha.disabled`.
+        public var disabled: LMKControlStateStyle?
 
         public init(
             minimumHeight: CGFloat? = nil,
@@ -210,7 +212,8 @@ public enum LMKActionSheet {
             checkmarkColor: UIColor? = nil,
             destructiveColor: UIColor? = nil,
             highlightColor: UIColor? = nil,
-            spacing: CGFloat? = nil
+            spacing: CGFloat? = nil,
+            disabled: LMKControlStateStyle? = nil
         ) {
             self.minimumHeight = minimumHeight
             self.surface = surface
@@ -224,6 +227,7 @@ public enum LMKActionSheet {
             self.destructiveColor = destructiveColor
             self.highlightColor = highlightColor
             self.spacing = spacing
+            self.disabled = disabled
         }
 
         /// `other`'s non-nil fields over this style's.
@@ -240,7 +244,8 @@ public enum LMKActionSheet {
                 checkmarkColor: other.checkmarkColor ?? checkmarkColor,
                 destructiveColor: other.destructiveColor ?? destructiveColor,
                 highlightColor: other.highlightColor ?? highlightColor,
-                spacing: other.spacing ?? spacing
+                spacing: other.spacing ?? spacing,
+                disabled: LMKControlStateStyle.merge(disabled, other.disabled)
             )
         }
     }

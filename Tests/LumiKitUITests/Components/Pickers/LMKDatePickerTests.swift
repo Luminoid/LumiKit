@@ -31,6 +31,26 @@ struct LMKDatePickerConfigurationTests {
     }
 
     @Test
+    func `The wheel style resolves to Apple's Mac styles under the Mac idiom and stays elsewhere`() {
+        let date = LMKDatePicker.Configuration(title: "T")
+        #expect(date.pickerStyle == .wheels, "the request is kept as written")
+        #expect(date.resolvedPickerStyle(for: .mac) == .inline)
+        #expect(LMKDatePicker.Configuration(title: "T", mode: .dateAndTime).resolvedPickerStyle(for: .mac) == .inline)
+        #expect(LMKDatePicker.Configuration(title: "T", mode: .time).resolvedPickerStyle(for: .mac) == .compact)
+        for idiom in [UIUserInterfaceIdiom.phone, .pad, .mac] {
+            for style in LMKDatePicker.Configuration.PickerStyle.allCases {
+                let resolved = LMKDatePicker.Configuration(title: "T", pickerStyle: style).resolvedPickerStyle(for: idiom)
+                if idiom == .mac {
+                    #expect(resolved != .wheels, "a wheel picker throws on its way into a Mac-idiom window")
+                }
+                if style != .wheels || idiom != .mac {
+                    #expect(resolved == style, "only wheels under the Mac idiom change")
+                }
+            }
+        }
+    }
+
+    @Test
     func `past and future presets set the bounds`() {
         let past = LMKDatePicker.Configuration.past(title: "Log", initial: day(365))
         #expect(past.maximum == LMKDate.today)
@@ -120,6 +140,45 @@ struct LMKDatePickerTests {
     }
 
     @Test
+    func `presentRange releases both pickers once the sheet is gone`() async {
+        let (host, window) = makeHost()
+        defer { window.isHidden = true }
+        weak var from: UIDatePicker?
+        weak var to: UIDatePicker?
+        var sheet: LMKActionSheetViewController? = LMKDatePicker.presentRange(from: host, title: "Range") { _, _ in }
+        do {
+            let pickers = find(UIDatePicker.self, in: sheet?.view ?? UIView())
+            from = pickers.first
+            to = pickers.last
+        }
+        #expect(from != nil && to != nil)
+        sheet?.dismiss(reason: .dimmingTap)
+        await LMKWait.until { host.children.isEmpty }
+        sheet = nil
+        await LMKWait.until(timeout: .seconds(3)) { from == nil && to == nil }
+        #expect(from == nil, "the value-changed actions retained the pair")
+        #expect(to == nil)
+    }
+
+    @Test
+    func `Every presenter reports a cancellation`() async {
+        let (host, window) = makeHost()
+        defer { window.isHidden = true }
+        var cancels: [String] = []
+        let sheets = [
+            LMKDatePicker.present(from: host, title: "Short", onConfirm: { _ in }, onCancel: { cancels.append("short") }),
+            LMKDatePicker.presentRange(from: host, title: "Range", onConfirm: { _, _ in }, onCancel: { cancels.append("range") }),
+            LMKDatePicker.presentCalendarRange(from: host, title: "Calendar", onConfirm: { _, _ in }, onCancel: { cancels.append("calendar") }),
+            LMKDatePicker.presentWithTextField(.past(title: "Notes"), from: host, onConfirm: { _, _ in }, onCancel: { cancels.append("notes") }),
+        ]
+        for sheet in sheets {
+            sheet.dismiss(reason: .dimmingTap)
+        }
+        await LMKWait.until { cancels.count == 4 }
+        #expect(Set(cancels) == ["short", "range", "calendar", "notes"])
+    }
+
+    @Test
     func `presentCalendarRange shows a calendar and confirms only with a selection`() async {
         let (host, window) = makeHost()
         defer { window.isHidden = true }
@@ -150,7 +209,7 @@ struct LMKDatePickerTests {
 
         result = nil
         let empty = LMKDatePicker.presentWithTextField(.past(title: "Entry"), from: host) { result = ($0, $1) }
-        #expect(find(LMKTextField.self, in: empty.view).first?.placeholder == "Add notes...")
+        #expect(find(LMKTextField.self, in: empty.view).first?.placeholder == "Add notes…")
         empty.confirmTapped()
         await LMKWait.until { result != nil }
         #expect(result != nil)
@@ -163,7 +222,7 @@ struct LMKDatePickerTests {
         #expect(strings.confirm == "OK")
         #expect(strings.fromLabel == "From")
         #expect(strings.toLabel == "To")
-        #expect(strings.textFieldPlaceholder == "Add notes...")
+        #expect(strings.textFieldPlaceholder == "Add notes…")
         #expect(strings.selectDatesPrompt == "Select dates")
     }
 }
@@ -209,5 +268,51 @@ struct LMKCalendarRangeSelectionTests {
         full.multiDateSelection(selection, didDeselectDate: calendar.dateComponents([.year, .month, .day], from: day(2)))
         #expect(full.selection == .start(calendarDay(2)))
         #expect(full.summaryLabel.text != "Select dates")
+    }
+
+    @Test
+    func `The summary formats in the view's calendar, time zone, and locale, like the grid`() throws {
+        var tokyo = Calendar(identifier: .gregorian)
+        tokyo.timeZone = try #require(TimeZone(identifier: "Asia/Tokyo"))
+        tokyo.locale = Locale(identifier: "en_US")
+        let start = try #require(tokyo.date(from: DateComponents(year: 2026, month: 3, day: 10)))
+        let end = try #require(tokyo.date(from: DateComponents(year: 2026, month: 3, day: 12)))
+        let view = LMKCalendarRangeSelectionView(startDate: start, endDate: end, calendar: tokyo, locale: Locale(identifier: "en_US"))
+        #expect(view.calendarView.calendar.timeZone.identifier == "Asia/Tokyo")
+        #expect(view.calendarView.locale.identifier == "en_US")
+        let expected = DateIntervalFormatter()
+        expected.calendar = tokyo
+        expected.timeZone = tokyo.timeZone
+        expected.locale = Locale(identifier: "en_US")
+        expected.dateStyle = .medium
+        expected.timeStyle = .none
+        #expect(view.summaryLabel.text == expected.string(from: start, to: end))
+        #expect(view.summaryLabel.text?.contains("10") == true, "the Tokyo day, not the device's evening before")
+        #expect(view.summaryLabel.text?.contains("12") == true)
+        #expect(view.summaryLabel.text?.contains("Mar") == true, "the locale formats the month")
+    }
+
+    @Test
+    func `Style and theme.calendarRangeSelection style the summary, tint, and gap`() {
+        let view = LMKCalendarRangeSelectionView(style: LMKCalendarRangeSelectionView.Style(summaryTextStyle: .h4, summaryColor: .purple, tintColor: .orange, spacing: 17))
+        var applied = 0
+        view.didApplyStyle = { _ in applied += 1 }
+        #expect(view.summaryLabel.textColor == UIColor.purple)
+        #expect(view.summaryLabel.font.pointSize == LMKTypography.font(for: .h4, compatibleWith: view.traitCollection).pointSize)
+        #expect(view.calendarView.tintColor == UIColor.orange)
+        LMKThemeTesting.fit(view, width: 320)
+        #expect(abs(view.calendarView.frame.minY - view.summaryLabel.frame.maxY - 17) < 0.5)
+        view.style.summaryColor = .brown
+        #expect(view.summaryLabel.textColor == UIColor.brown)
+        #expect(applied == 1)
+
+        var theme = LMKTheme()
+        theme.calendarRangeSelection = LMKCalendarRangeSelectionView.Style(summaryColor: .magenta, tintColor: .cyan)
+        let themed = LMKCalendarRangeSelectionView()
+        let window = LMKThemeTesting.host(themed, theme: theme)
+        defer { window.isHidden = true }
+        #expect(themed.summaryLabel.textColor == UIColor.magenta)
+        #expect(themed.calendarView.tintColor == UIColor.cyan)
+        #expect(LMKCalendarRangeSelectionView.Style(spacing: 3).merging(LMKCalendarRangeSelectionView.Style(summaryColor: .red)) == LMKCalendarRangeSelectionView.Style(summaryColor: .red, spacing: 3))
     }
 }

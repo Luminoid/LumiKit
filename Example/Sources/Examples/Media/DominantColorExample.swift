@@ -5,29 +5,23 @@
 //  Dominant Color: Histogram color extraction, with a subject-lifted mode.
 //
 
-import LumiKitCore
-import LumiKitPhoto
 import LumiKitUI
-import PhotosUI
 import SnapKit
 import UIKit
-import UniformTypeIdentifiers
 
 // MARK: - Dominant Color
 
 final class DominantColorDetailViewController: DetailViewController {
-    override func viewDidLoad() {
-        super.viewDidLoad()
-        title = "Dominant Color"
-        view.backgroundColor = LMKColor.backgroundPrimary
-
-        // Section 1 — all three strategies side-by-side, across subject types
-        stack.addArrangedSubview(sectionHeader("Strategy comparison"))
-        stack.addArrangedSubview(sectionDescription(
-            "Same image, three strategies. " +
-                "Modal = densest bucket (subject identity). " +
-                "Average = pixel mean (overall vibe, muddy for subjects). " +
-                "Vibrant = most saturated bucket (accent color)."
+    override func setupStackContent() {
+        // Section 1: all three strategies side by side, across subject types
+        addSectionHeader("Strategy comparison")
+        stackView.addArrangedSubview(UILabel.lmk_make(
+            .caption,
+            text: "Same image, three strategies. "
+                + "Modal = densest bucket (subject identity). "
+                + "Average = pixel mean (overall vibe, muddy for subjects). "
+                + "Vibrant = most saturated bucket (accent color).",
+            color: LMKColor.textSecondary
         ))
 
         let strategySamples: [(label: String, image: UIImage, ignoringTransparent: Bool)] = [
@@ -73,15 +67,16 @@ final class DominantColorDetailViewController: DetailViewController {
             ),
         ]
         for sample in strategySamples {
-            stack.addArrangedSubview(makeAllStrategiesRow(for: sample))
+            stackView.addArrangedSubview(makeAllStrategiesRow(for: sample))
         }
 
-        // Section 2 — palette extraction
-        stack.addArrangedSubview(sectionDivider())
-        stack.addArrangedSubview(sectionHeader("Palette (top-N buckets)"))
-        stack.addArrangedSubview(sectionDescription(
-            "Top-5 densest histogram buckets, sorted by frequency. May return fewer for " +
-                "low-variation images."
+        // Section 2: palette extraction
+        addDivider()
+        addSectionHeader("Palette (top-N buckets)")
+        stackView.addArrangedSubview(UILabel.lmk_make(
+            .caption,
+            text: "Top-5 densest histogram buckets, sorted by frequency. May return fewer for low-variation images.",
+            color: LMKColor.textSecondary
         ))
 
         let paletteSamples: [(label: String, image: UIImage)] = [
@@ -112,18 +107,14 @@ final class DominantColorDetailViewController: DetailViewController {
             ),
         ]
         for sample in paletteSamples {
-            stack.addArrangedSubview(makePaletteRow(for: sample))
+            stackView.addArrangedSubview(makePaletteRow(for: sample))
         }
     }
 
     private func makeAllStrategiesRow(for sample: (label: String, image: UIImage, ignoringTransparent: Bool)) -> UIView {
         let imageView = makeThumbnail(image: sample.image)
 
-        let titleLabel = UILabel()
-        titleLabel.text = sample.label
-        titleLabel.font = LMKTypography.bodyMedium
-        titleLabel.textColor = LMKColor.textPrimary
-        titleLabel.numberOfLines = 0
+        let titleLabel = UILabel.lmk_make(.bodyMedium, text: sample.label)
 
         let strategies: [(name: String, strategy: LMKImage.DominantColorStrategy)] = [
             ("modal", .modal),
@@ -157,22 +148,14 @@ final class DominantColorDetailViewController: DetailViewController {
     private func makeLabeledSwatch(label: String, color: UIColor?) -> UIView {
         let swatch = makeSwatch(color: color, side: 28)
 
-        let labelView = UILabel()
-        labelView.text = label
-        labelView.font = LMKTypography.captionMedium
-        labelView.textColor = LMKColor.textSecondary
-        labelView.adjustsFontForContentSizeCategory = true
-
-        // A hex code under a swatch column: shrink rather than clip at accessibility sizes.
-        let hexLabel = UILabel()
-        hexLabel.text = color?.lmk_hexString ?? "—"
-        hexLabel.font = LMKTypography.caption
-        hexLabel.textColor = LMKColor.textTertiary
-        hexLabel.adjustsFontForContentSizeCategory = true
-        hexLabel.adjustsFontSizeToFitWidth = true
-        hexLabel.minimumScaleFactor = 0.6
+        // A name and a hex code under a swatch column: one line each, shrinking rather than
+        // clipping at accessibility sizes.
+        let labelView = UILabel.lmk_make(.captionMedium, text: label, color: LMKColor.textSecondary, numberOfLines: 1)
         labelView.adjustsFontSizeToFitWidth = true
         labelView.minimumScaleFactor = 0.6
+        let hexLabel = UILabel.lmk_make(.caption, text: color?.lmk_hexString ?? "—", color: LMKColor.textSecondary, numberOfLines: 1)
+        hexLabel.adjustsFontSizeToFitWidth = true
+        hexLabel.minimumScaleFactor = 0.6
 
         let textStack = UIStackView(arrangedSubviews: [labelView, hexLabel])
         textStack.axis = .vertical
@@ -190,16 +173,8 @@ final class DominantColorDetailViewController: DetailViewController {
 
         let imageView = makeThumbnail(image: sample.image)
 
-        let titleLabel = UILabel()
-        titleLabel.text = sample.label
-        titleLabel.font = LMKTypography.bodyMedium
-        titleLabel.textColor = LMKColor.textPrimary
-        titleLabel.numberOfLines = 0
-
-        let countLabel = UILabel()
-        countLabel.text = "\(palette.count) color\(palette.count == 1 ? "" : "s")"
-        countLabel.font = LMKTypography.caption
-        countLabel.textColor = LMKColor.textSecondary
+        let titleLabel = UILabel.lmk_make(.bodyMedium, text: sample.label)
+        let countLabel = UILabel.lmk_make(.caption, text: "\(palette.count) color\(palette.count == 1 ? "" : "s")", color: LMKColor.textSecondary)
 
         let swatchRow = UIStackView()
         swatchRow.axis = .horizontal
@@ -207,7 +182,7 @@ final class DominantColorDetailViewController: DetailViewController {
         for color in palette {
             swatchRow.addArrangedSubview(makeSwatch(color: color, side: 28))
         }
-        // Right-align: trailing spacer
+        // A trailing spacer keeps the swatches at the leading edge.
         swatchRow.addArrangedSubview(UIView())
 
         let textStack = UIStackView(arrangedSubviews: [titleLabel, countLabel, swatchRow])
@@ -222,29 +197,6 @@ final class DominantColorDetailViewController: DetailViewController {
     }
 
     // MARK: - View builders
-
-    private func sectionHeader(_ text: String) -> UILabel {
-        let label = UILabel()
-        label.text = text
-        label.font = LMKTypography.h3
-        label.textColor = LMKColor.textPrimary
-        return label
-    }
-
-    private func sectionDescription(_ text: String) -> UILabel {
-        let label = UILabel()
-        label.text = text
-        label.font = LMKTypography.caption
-        label.textColor = LMKColor.textSecondary
-        label.numberOfLines = 0
-        return label
-    }
-
-    private func sectionDivider() -> UIView {
-        let spacer = UIView()
-        spacer.snp.makeConstraints { $0.height.equalTo(LMKSpacing.medium) }
-        return spacer
-    }
 
     private func makeThumbnail(image: UIImage) -> UIImageView {
         let imageView = UIImageView(image: image)

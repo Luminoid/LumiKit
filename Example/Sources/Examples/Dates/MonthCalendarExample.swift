@@ -7,7 +7,6 @@
 
 import LumiKitCore
 import LumiKitUI
-import SnapKit
 import UIKit
 
 // MARK: - Month Calendar
@@ -18,11 +17,9 @@ final class MonthCalendarDetailViewController: DetailViewController {
     private let modeControl = LMKSegmentedControl(items: ["Single", "Range", "Multiple"])
     private var decorations: [LMKCalendarDay: LMKCalendarDayDecoration] = [:]
 
-    override func viewDidLoad() {
-        super.viewDidLoad()
-
+    override func setupStackContent() {
         addSectionHeader("LMKMonthCalendarView")
-        stack.addArrangedSubview(UILabel.lmk_make(
+        stackView.addArrangedSubview(UILabel.lmk_make(
             .caption,
             text: "Swipe the grid or use the chevrons to page months; the grid follows your finger and settles. "
                 + "Taps run through the LMKCalendarSelection reducer in the chosen mode. Dots, badges, and glyphs come from per-day decorations."
@@ -32,27 +29,27 @@ final class MonthCalendarDetailViewController: DetailViewController {
             guard let self else { return }
             calendar.selectionMode = [.single, .range, .multiple][index]
             calendar.setSelection(.empty)
-            readout.text = "Nothing selected"
+            readout.lmk_setText("Nothing selected")
         }
-        stack.addArrangedSubview(modeControl)
+        stackView.addArrangedSubview(modeControl)
 
         seedDecorations(for: calendar.visibleMonth)
         calendar.style = LMKMonthCalendarView.Style(showsTodayButton: true)
-        calendar.configure(month: .current(), today: .today(), decorations: decorations)
+        calendar.configure(month: .current(), decorations: decorations)
         calendar.onSelectionChange = { [weak self] selection in
-            self?.readout.text = self?.describe(selection) ?? ""
+            self?.readout.lmk_setText(self?.describe(selection) ?? "")
         }
-        calendar.onMonthChanged = { [weak self] month in
+        calendar.onMonthChange = { [weak self] month in
             guard let self else { return }
             seedDecorations(for: month)
             calendar.setDecorations(decorations)
         }
-        stack.addArrangedSubview(calendar)
-        stack.addArrangedSubview(readout)
+        stackView.addArrangedSubview(calendar)
+        stackView.addArrangedSubview(readout)
 
         addDivider()
         addSectionHeader("Leading title, ring selection, fixed six rows")
-        stack.addArrangedSubview(UILabel.lmk_make(
+        stackView.addArrangedSubview(UILabel.lmk_make(
             .caption,
             text: "A second instance with a leading header (tappable title, Today button), a ring selection, today as a rounded outline, dimmed adjacent days hidden, "
                 + "and always six rows so the height never changes."
@@ -69,30 +66,31 @@ final class MonthCalendarDetailViewController: DetailViewController {
             todayStyle: .ringRoundedRect
         ))
         styled.selectionMode = .range
-        styled.configure(month: .current(), today: .today())
-        styled.onMonthTitleTapped = { [weak self] in
+        styled.configure(month: .current())
+        styled.onMonthTitleTap = { [weak self] in
             guard let self else { return }
             LMKToast.show(.info, "Title tapped: present a month picker here", in: self)
         }
-        stack.addArrangedSubview(styled)
+        stackView.addArrangedSubview(styled)
 
         addDivider()
         addSectionHeader("Stateless contract with bounds")
-        stack.addArrangedSubview(UILabel.lmk_make(
+        stackView.addArrangedSubview(UILabel.lmk_make(
             .caption,
-            text: "onMonthChangeProposed is set, so this calendar never repages itself: the host decides and calls configure. "
+            text: "onMonthChangeRequest is set, so this calendar never repages itself: the host decides and calls configure. "
                 + "Days outside the next 30 days are disabled and months beyond them cannot be shown."
         ))
         let bounded = LMKMonthCalendarView(style: LMKMonthCalendarView.Style(paging: .discrete))
         let today = LMKCalendarDay.today()
         bounded.minimumDay = today
         bounded.maximumDay = today.adding(days: 30)
-        bounded.configure(month: .current(), today: today)
-        bounded.onMonthChangeProposed = { [weak bounded] month in
+        // No `today:` argument: the mark follows the system day, across midnight too.
+        bounded.configure(month: .current())
+        bounded.onMonthChangeRequest = { [weak bounded] month in
             // A host would consult its own state here; this one always agrees.
-            bounded?.configure(month: month, today: today)
+            bounded?.configure(month: month)
         }
-        stack.addArrangedSubview(bounded)
+        stackView.addArrangedSubview(bounded)
     }
 
     private func seedDecorations(for month: LMKCalendarMonth) {

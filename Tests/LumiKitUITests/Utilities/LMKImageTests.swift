@@ -93,16 +93,16 @@ struct LMKImageEncodeJPEGTests {
     @Test
     func `Encodes valid JPEG data`() {
         let image = makeImage(width: 100, height: 50)
-        let data = LMKImage.encodeJPEG(image, maxDimension: 2048)
+        let data = LMKImage.encodeJPEG(image, maxPixelSize: 2048)
         #expect(data != nil)
         // JPEG magic bytes.
         #expect(data?.prefix(2) == Data([0xFF, 0xD8]))
     }
 
     @Test
-    func `Downsamples the longest edge to maxDimension`() {
+    func `Downsamples the longest edge to maxPixelSize`() {
         let image = makeImage(width: 400, height: 200)
-        let data = LMKImage.encodeJPEG(image, maxDimension: 100)
+        let data = LMKImage.encodeJPEG(image, maxPixelSize: 100)
         let decoded = data.flatMap(UIImage.init(data:))
         #expect(decoded?.size.width == 100)
         #expect(decoded?.size.height == 50)
@@ -111,10 +111,23 @@ struct LMKImageEncodeJPEGTests {
     @Test
     func `Never upscales a smaller image`() {
         let image = makeImage(width: 80, height: 40)
-        let data = LMKImage.encodeJPEG(image, maxDimension: 2048)
+        let data = LMKImage.encodeJPEG(image, maxPixelSize: 2048)
         let decoded = data.flatMap(UIImage.init(data:))
         #expect(decoded?.size.width == 80)
         #expect(decoded?.size.height == 40)
+    }
+
+    @Test
+    func `The cap is in pixels, so a scale-3 image keeps its pixels under it`() throws {
+        // 400x200pt at 3x is 1200x600px: under a 2048px cap nothing is dropped, and a 300px
+        // cap works on the pixel size.
+        let base = makeImage(width: 1200, height: 600)
+        let scaled = try UIImage(cgImage: #require(base.cgImage), scale: 3, orientation: .up)
+        #expect(scaled.size == CGSize(width: 400, height: 200))
+        let full = LMKImage.encodeJPEG(scaled, maxPixelSize: 2048).flatMap(UIImage.init(data:))
+        #expect(full?.size == CGSize(width: 1200, height: 600))
+        let capped = LMKImage.encodeJPEG(scaled, maxPixelSize: 300).flatMap(UIImage.init(data:))
+        #expect(capped?.size == CGSize(width: 300, height: 150))
     }
 
     @Test
@@ -126,7 +139,7 @@ struct LMKImageEncodeJPEGTests {
         }
         // A .left-oriented image reports a swapped (60x100) display size.
         let oriented = UIImage(cgImage: cgImage, scale: 1, orientation: .left)
-        let data = LMKImage.encodeJPEG(oriented, maxDimension: 2048)
+        let data = LMKImage.encodeJPEG(oriented, maxPixelSize: 2048)
         let decoded = data.flatMap(UIImage.init(data:))
         #expect(decoded?.imageOrientation == .up)
         #expect(decoded?.size.width == 60)
@@ -144,21 +157,21 @@ struct LMKImageEncodeJPEGTests {
             UIColor.systemBlue.withAlphaComponent(0.5).setFill()
             context.fill(CGRect(x: 0, y: 0, width: 40, height: 40))
         }
-        let data = LMKImage.encodeJPEG(translucent, maxDimension: 2048)
+        let data = LMKImage.encodeJPEG(translucent, maxPixelSize: 2048)
         let decodedAlphaInfo = data.flatMap(UIImage.init(data:))?.cgImage?.alphaInfo
         #expect(decodedAlphaInfo == CGImageAlphaInfo.none || decodedAlphaInfo == .noneSkipLast || decodedAlphaInfo == .noneSkipFirst)
     }
 
     @Test
     func `Returns nil for an empty image`() {
-        #expect(LMKImage.encodeJPEG(UIImage(), maxDimension: 2048) == nil)
+        #expect(LMKImage.encodeJPEG(UIImage(), maxPixelSize: 2048) == nil)
     }
 
     @Test
     func `Lower quality produces no larger data`() {
         let image = makeImage(width: 300, height: 300)
-        let high = LMKImage.encodeJPEG(image, maxDimension: 2048, quality: 1.0)
-        let low = LMKImage.encodeJPEG(image, maxDimension: 2048, quality: 0.1)
+        let high = LMKImage.encodeJPEG(image, maxPixelSize: 2048, quality: 1.0)
+        let low = LMKImage.encodeJPEG(image, maxPixelSize: 2048, quality: 0.1)
         guard let high, let low else {
             Issue.record("Encode failed")
             return
@@ -197,6 +210,14 @@ struct LMKImageDownsampleTests {
         #expect(large?.size == CGSize(width: 400, height: 200))
         #expect(LMKImage.downsample(data: data, maxPixelSize: 0) == nil)
         #expect(LMKImage.downsample(data: Data([0, 1, 2]), maxPixelSize: 100) == nil)
+    }
+
+    @Test
+    func `downsample treats an unbounded cap as no limit`() {
+        let data = makeJPEG(width: 400, height: 200)
+        #expect(LMKImage.downsample(data: data, maxPixelSize: .infinity)?.size == CGSize(width: 400, height: 200))
+        #expect(LMKImage.downsample(data: data, maxPixelSize: .greatestFiniteMagnitude)?.size == CGSize(width: 400, height: 200))
+        #expect(LMKImage.downsample(data: data, maxPixelSize: .nan) == nil)
     }
 
     @Test

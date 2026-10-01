@@ -31,7 +31,7 @@ import UIKit
 /// bar.title = "Items"
 /// bar.subtitle = "12 due today"
 /// bar.largeTitleEnabled = true
-/// bar.setRightItems([.init(identifier: "add", systemName: "plus") { self.addTapped() }])
+/// bar.setRightItems([.init(identifier: "add", systemName: "plus") { [weak self] in self?.addTapped() }])
 /// bar.install(in: view)
 /// bar.pinScrollView(tableView)
 /// ```
@@ -340,7 +340,12 @@ public final class LMKNavigationBar: UIView, LMKThemeApplying {
 
     var resolved = Style()
     var badgeViews: [String: LMKBadgeView] = [:]
-    var itemSizeConstraints: [Constraint] = []
+    var leftItemSizeConstraints: [Constraint] = []
+    var rightItemSizeConstraints: [Constraint] = []
+    var titleGapConstraints: [Constraint] = []
+    var rightAccessoryGapConstraint: Constraint?
+    var largeTitleAccessoryGapConstraint: Constraint?
+    var largeTitleAccessoryTrailingConstraint: Constraint?
     var buttonRowHeightConstraint: Constraint?
     var largeTitleRowHeightConstraint: Constraint?
     var backLeadingConstraint: Constraint?
@@ -389,7 +394,7 @@ public final class LMKNavigationBar: UIView, LMKThemeApplying {
     /// Sets the leading items; while non-empty they replace the back button.
     public func setLeftItems(_ items: [LMKNavigationBarItem]) {
         leftItems = items
-        leftItemButtons = rebuildItems(items, in: leftItemsStack, replacing: leftItemButtons)
+        (leftItemButtons, leftItemSizeConstraints) = rebuildItems(items, in: leftItemsStack, replacing: leftItemButtons)
         leftItemsStack.isHidden = items.isEmpty
         updateBackButtonVisibility()
         updateItemGlass()
@@ -398,7 +403,7 @@ public final class LMKNavigationBar: UIView, LMKThemeApplying {
     /// Sets the trailing items.
     public func setRightItems(_ items: [LMKNavigationBarItem]) {
         rightItems = items
-        rightItemButtons = rebuildItems(items, in: rightItemsStack, replacing: rightItemButtons)
+        (rightItemButtons, rightItemSizeConstraints) = rebuildItems(items, in: rightItemsStack, replacing: rightItemButtons)
         updateItemGlass()
     }
 
@@ -457,9 +462,11 @@ public final class LMKNavigationBar: UIView, LMKThemeApplying {
         largeTitleRow.addSubview(largeTitleStack)
         addSubview(separatorView)
 
+        // Both rows keep clear of the side safe areas (landscape, the Dynamic Island); the
+        // surface and the background content stay full-bleed.
         buttonRow.snp.makeConstraints { make in
             make.top.equalTo(safeAreaLayoutGuide.snp.top)
-            make.leading.trailing.equalToSuperview()
+            make.leading.trailing.equalTo(safeAreaLayoutGuide)
             buttonRowHeightConstraint = make.height.equalTo(Self.defaultButtonRowHeight).constraint
         }
 
@@ -499,15 +506,17 @@ public final class LMKNavigationBar: UIView, LMKThemeApplying {
             // center, and a required centerX would force UIKit to break a button's minimum.
             make.centerX.equalToSuperview().priority(.high)
             make.centerY.equalToSuperview()
-            make.leading.greaterThanOrEqualTo(backButton.snp.trailing).offset(LMKSpacing.small)
-            make.leading.greaterThanOrEqualTo(leftItemsStack.snp.trailing).offset(LMKSpacing.small)
-            make.trailing.lessThanOrEqualTo(rightItemsStack.snp.leading).offset(-LMKSpacing.small)
+            titleGapConstraints = [
+                make.leading.greaterThanOrEqualTo(backButton.snp.trailing).offset(0).constraint,
+                make.leading.greaterThanOrEqualTo(leftItemsStack.snp.trailing).offset(0).constraint,
+                make.trailing.lessThanOrEqualTo(rightItemsStack.snp.leading).offset(0).constraint,
+            ]
         }
 
         largeTitleRow.isHidden = true
         largeTitleRow.snp.makeConstraints { make in
             make.top.equalTo(buttonRow.snp.bottom)
-            make.leading.trailing.equalToSuperview()
+            make.leading.trailing.equalTo(safeAreaLayoutGuide)
             largeTitleRowHeightConstraint = make.height.equalTo(Self.defaultLargeTitleRowHeight).constraint
         }
         largeTitleStack.axis = .vertical
@@ -566,7 +575,9 @@ public final class LMKNavigationBar: UIView, LMKThemeApplying {
 
     // MARK: - Item rendering
 
-    private func rebuildItems(_ items: [LMKNavigationBarItem], in stack: UIStackView, replacing old: [LMKButton]) -> [LMKButton] {
+    /// Builds one button per item in `stack`, replacing `old`; the size constraints come back
+    /// with the buttons so a side's list is replaced, never appended to.
+    private func rebuildItems(_ items: [LMKNavigationBarItem], in stack: UIStackView, replacing old: [LMKButton]) -> (buttons: [LMKButton], sizeConstraints: [Constraint]) {
         for button in old {
             button.removeFromSuperview()
         }
@@ -575,15 +586,17 @@ public final class LMKNavigationBar: UIView, LMKThemeApplying {
             badgeViews[identifier]?.removeFromSuperview()
             badgeViews[identifier] = nil
         }
-        return items.map { item in
+        var sizeConstraints: [Constraint] = []
+        let buttons = items.map { item in
             let button = LMKButton(style: LMKButton.Style())
             stack.addArrangedSubview(button)
             button.snp.makeConstraints { make in
-                itemSizeConstraints.append(make.width.height.greaterThanOrEqualTo(resolved.itemSize ?? Self.defaultButtonRowHeight).constraint)
+                sizeConstraints.append(make.width.height.greaterThanOrEqualTo(resolved.itemSize ?? Self.defaultButtonRowHeight).constraint)
             }
             configure(button, with: item)
             return button
         }
+        return (buttons, sizeConstraints)
     }
 
     /// Applies `item`'s content, state, menu, badge, and role style to `button`.
@@ -613,13 +626,14 @@ public final class LMKNavigationBar: UIView, LMKThemeApplying {
             badgeViews[item.identifier] = badge
             return badge
         }()
+        let nudge = traitCollection.lmkTheme.spacing.xs
         badge.snp.remakeConstraints { make in
-            // On the item's top trailing corner, and inside the bar: a host that clips the bar
-            // (a card, a rounded container) never cuts the badge.
-            make.centerX.equalTo(button.snp.trailing).offset(-LMKSpacing.xs).priority(.high)
-            make.centerY.equalTo(button.snp.top).offset(LMKSpacing.xs).priority(.high)
+            // On the item's top trailing corner, and inside the bar's safe area: a host that
+            // clips the bar (a card, a rounded container) never cuts the badge.
+            make.centerX.equalTo(button.snp.trailing).offset(-nudge).priority(.high)
+            make.centerY.equalTo(button.snp.top).offset(nudge).priority(.high)
             make.top.greaterThanOrEqualTo(self)
-            make.trailing.lessThanOrEqualTo(self)
+            make.trailing.lessThanOrEqualTo(safeAreaLayoutGuide)
         }
         badge.configure(content)
     }
@@ -735,7 +749,7 @@ public final class LMKNavigationBar: UIView, LMKThemeApplying {
         resolved = theme.navigationBar.merging(style)
         lmk_apply(
             surface: resolved.surface,
-            defaults: LMKSurfaceStyle(background: .solid(LMKColor.backgroundPrimary), corners: LMKCornerStyle.none, shadow: LMKShadowSource.none),
+            defaults: LMKSurfaceStyle(background: .solid(LMKColor.backgroundPrimary), corners: LMKCornerStyle.square, shadow: LMKShadowSource.hidden),
             clipsContent: false
         )
         if let backgroundContentHost {
@@ -772,9 +786,16 @@ public final class LMKNavigationBar: UIView, LMKThemeApplying {
         // On glass the chevron's circle starts at the content margin, like the items' capsules.
         backLeadingConstraint?.update(offset: resolved.backChevronLeading ?? (isGlass ? margin : theme.spacing.small))
         backSizeConstraint?.update(offset: itemSize)
-        itemSizeConstraints.forEach { $0.update(offset: itemSize) }
+        (leftItemSizeConstraints + rightItemSizeConstraints).forEach { $0.update(offset: itemSize) }
         leftMarginConstraint?.update(offset: margin)
         rightMarginConstraint?.update(inset: margin)
+        let gap = theme.spacing.small
+        for (index, constraint) in titleGapConstraints.enumerated() {
+            constraint.update(offset: index == titleGapConstraints.count - 1 ? -gap : gap)
+        }
+        rightAccessoryGapConstraint?.update(offset: -gap)
+        largeTitleAccessoryGapConstraint?.update(offset: gap)
+        largeTitleAccessoryTrailingConstraint?.update(inset: margin)
         updateItemGlass()
         largeTitleLeadingConstraint?.update(offset: margin)
         largeTitleTrailingConstraint?.update(inset: margin)

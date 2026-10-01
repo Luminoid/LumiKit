@@ -17,7 +17,7 @@ public enum LMKURLValidator {
     // MARK: - Types
 
     /// Why a URL was rejected.
-    public enum ValidationError: Error, Equatable, Sendable {
+    public enum ValidationError: Error, Hashable, Sendable {
         /// Empty after trimming.
         case empty
         /// Longer than the allowed maximum.
@@ -73,33 +73,76 @@ public enum LMKURLValidator {
     ///     extension (`data.json`) is a file, not a base, and is returned unchanged.
     public static func normalizeBaseURL(_ input: String, preservingPathExtension: Bool = true) -> String {
         if input.hasSuffix("/") { return input }
-        if preservingPathExtension {
-            if let url = URL(string: input) {
-                if !url.pathExtension.isEmpty { return input }
-            } else if input.lowercased().hasSuffix(".json") {
-                return input
-            }
-        }
+        if preservingPathExtension, let url = URL(string: input), !url.pathExtension.isEmpty { return input }
         return input + "/"
     }
 
     // MARK: - Host blocklist
 
-    /// Whether `host` is localhost, an unspecified, loopback, private, link-local, CGNAT, or multicast address.
+    /// Whether `host` is localhost (or a `.localhost` name), or an unspecified, loopback, private,
+    /// link-local, CGNAT, or multicast address, in dotted, shorthand (`127.1`, `2130706433`,
+    /// `0x7f.0.0.1`), or IPv6 form. A trailing dot and IPv6 brackets are ignored.
     public static func isBlockedHost(_ host: String) -> Bool {
+        var host = host
+        if host.hasSuffix(".") { host.removeLast() }
+        if host.hasPrefix("["), host.hasSuffix("]") {
+            host = String(host.dropFirst().dropLast())
+        }
         let lower = host.lowercased()
-        if lower == "localhost" || lower.hasPrefix("localhost.") {
+        if lower == "localhost" || lower.hasPrefix("localhost.") || lower.hasSuffix(".localhost") {
             return true
         }
         var addr6 = in6_addr()
         if inet_pton(AF_INET6, host, &addr6) == 1 {
             return isBlockedIPv6(&addr6)
         }
+        // A dotted quad is checked as `inet_pton` reads it and as `inet_aton` and the resolvers
+        // read it (`0177.0.0.1` is 177.0.0.1 to one and 127.0.0.1 to the other); either
+        // reading being blocked blocks the host.
         var addr4 = in_addr()
-        if inet_pton(AF_INET, host, &addr4) == 1 {
-            return isBlockedIPv4(addr4)
+        if inet_pton(AF_INET, host, &addr4) == 1, isBlockedIPv4(addr4) {
+            return true
+        }
+        if let octets = shorthandIPv4Octets(host), isBlockedIPv4(octets: octets) {
+            return true
         }
         return false
+    }
+
+    /// The four octets of an IPv4 address as `inet_aton` and the resolvers read it: one to four
+    /// parts (`127.1`, `10.1`, `2130706433`), each decimal, octal with a leading zero
+    /// (`0177.0.0.1`), or hexadecimal (`0x7f.0.0.1`), the last part filling the remaining bytes.
+    /// `nil` for anything else.
+    private static func shorthandIPv4Octets(_ host: String) -> [UInt8]? {
+        let parts = host.split(separator: ".", omittingEmptySubsequences: false)
+        guard (1 ... 4).contains(parts.count) else { return nil }
+        var values: [UInt64] = []
+        for part in parts {
+            guard let value = numericPart(part) else { return nil }
+            values.append(value)
+        }
+        // The last part fills every remaining byte, as in `inet_aton`.
+        let leading = values.dropLast()
+        guard leading.allSatisfy({ $0 <= 0xFF }), let last = values.last else { return nil }
+        let lastByteCount = 4 - leading.count
+        guard last < (1 << (8 * UInt64(lastByteCount))) else { return nil }
+        var octets = leading.map { UInt8($0) }
+        for shift in stride(from: (lastByteCount - 1) * 8, through: 0, by: -8) {
+            octets.append(UInt8((last >> UInt64(shift)) & 0xFF))
+        }
+        return octets
+    }
+
+    private static func numericPart(_ part: Substring) -> UInt64? {
+        let lower = part.lowercased()
+        if lower.hasPrefix("0x") {
+            let digits = lower.dropFirst(2)
+            return digits.isEmpty ? nil : UInt64(digits, radix: 16)
+        }
+        if lower.count > 1, lower.hasPrefix("0") {
+            return UInt64(lower.dropFirst(), radix: 8)
+        }
+        return UInt64(lower, radix: 10)
     }
 
     private static func isBlockedIPv4(_ addr: in_addr) -> Bool {

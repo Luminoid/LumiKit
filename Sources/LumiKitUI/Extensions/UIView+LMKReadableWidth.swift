@@ -27,9 +27,12 @@ public extension UIView {
     ///   - container: The view to lay out against; default the superview (the view must already be added).
     ///   - maxWidth: Width cap; `nil` = `LMKLayout.readableContentMaxWidth`.
     ///   - horizontalInset: Minimum distance to the container's leading and trailing edges; `nil` = `LMKSpacing.large`.
+    ///
+    /// A view with neither a container nor a superview is left alone (an assertion in debug builds).
     func lmk_pinReadableWidth(in container: UIView? = nil, maxWidth: CGFloat? = nil, horizontalInset: CGFloat? = nil) {
         guard let container = container ?? superview else {
-            preconditionFailure("lmk_pinReadableWidth needs a container or a superview")
+            assertionFailure("lmk_pinReadableWidth needs a container or a superview")
+            return
         }
         let cap = maxWidth ?? LMKLayout.readableContentMaxWidth
         let inset = horizontalInset ?? LMKSpacing.large

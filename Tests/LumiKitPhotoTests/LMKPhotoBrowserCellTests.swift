@@ -14,6 +14,11 @@ struct LMKPhotoBrowserCellTests {
         LMKPhotoBrowserCell(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
     }
 
+    private func imageView(of cell: LMKPhotoBrowserCell) throws -> UIImageView {
+        let scrollView = try #require(cell.contentView.subviews.compactMap { $0 as? UIScrollView }.first)
+        return try #require(scrollView.subviews.compactMap { $0 as? UIImageView }.first)
+    }
+
     // MARK: - Initialization
 
     @Test
@@ -32,7 +37,7 @@ struct LMKPhotoBrowserCellTests {
         for size in [CGSize(width: 100, height: 100), CGSize(width: 100, height: 200), CGSize(width: 200, height: 100)] {
             let image = UIImage.lmk_solidColor(.red, size: size)
             cell.configure(with: image, screenSize: CGSize(width: 375, height: 667))
-            #expect(cell.installedImage === image)
+            #expect(cell.displayedImage === image)
             cell.configure(with: image, screenSize: CGSize(width: 320, height: 568))
             cell.configure(with: image, screenSize: CGSize(width: 428, height: 926))
         }
@@ -40,7 +45,7 @@ struct LMKPhotoBrowserCellTests {
         cell.layoutSubviews()
         #expect(!cell.isZoomed)
         cell.prepareForReuse()
-        #expect(cell.installedImage == nil)
+        #expect(cell.displayedImage == nil)
     }
 
     @Test
@@ -54,15 +59,38 @@ struct LMKPhotoBrowserCellTests {
     // MARK: - Style
 
     @Test
-    func `apply(style:) keeps the page clear and sets the dynamic range and the badge`() {
+    func `apply(style:) keeps the page clear and forwards the dynamic range to the image view`() throws {
         let cell = makeCell()
         cell.apply(style: LMKPhotoBrowserViewController.Style(backgroundColor: .purple), theme: .default, dynamicRange: .high)
         cell.apply(strings: LMKPhotoBrowserViewController.Strings(liveBadge: "VIVO"))
+        let imageView = try imageView(of: cell)
 
         #expect(cell.backgroundColor == .clear, "the stage is the browser's layer, not the page's")
-        #expect(cell.preferredImageDynamicRange == .high)
+        #expect(imageView.preferredImageDynamicRange == .high)
         cell.preferredImageDynamicRange = .standard
-        #expect(cell.preferredImageDynamicRange == .standard)
+        #expect(imageView.preferredImageDynamicRange == .standard, "the page forwards the range to the view that draws the still")
+    }
+
+    @Test
+    func `The page is the VoiceOver element for its photo`() {
+        let cell = makeCell()
+        #expect(cell.isAccessibilityElement)
+        #expect(cell.accessibilityTraits.contains(.image))
+        cell.apply(accessibilityLabel: "3 of 12, Live Photo", hint: "Tap to toggle")
+        #expect(cell.accessibilityLabel == "3 of 12, Live Photo")
+        #expect(cell.accessibilityHint == "Tap to toggle")
+    }
+
+    @Test
+    func `The LIVE badge height is a floor, so its label can grow with Dynamic Type`() throws {
+        let cell = makeCell()
+        cell.apply(style: LMKPhotoBrowserViewController.Style(), theme: .default, dynamicRange: .standard)
+        cell.apply(strings: LMKPhotoBrowserViewController.Strings())
+        cell.configure(with: UIImage.lmk_solidColor(.red, size: CGSize(width: 100, height: 100)), screenSize: CGSize(width: 375, height: 667), isLive: true)
+        cell.layoutIfNeeded()
+        let badge = try #require(cell.contentView.subviews.first { !($0 is UIScrollView) && !$0.isHidden })
+        #expect(badge.bounds.height >= LMKPhotoBrowserMetrics.liveBadgeHeight)
+        #expect(badge.constraints.allSatisfy { $0.firstAttribute != .height || $0.relation != .equal }, "no fixed height on the badge")
     }
 
     // MARK: - Async Image Loading
@@ -73,10 +101,10 @@ struct LMKPhotoBrowserCellTests {
         let image = UIImage.lmk_solidColor(.red, size: CGSize(width: 100, height: 50))
 
         cell.configure(screenSize: CGSize(width: 375, height: 667)) { image }
-        #expect(cell.installedImage == nil)
+        #expect(cell.displayedImage == nil)
 
-        await settleMainActor()
-        #expect(cell.installedImage === image)
+        await LMKWait.until { cell.displayedImage === image }
+        #expect(cell.displayedImage === image)
     }
 
     @Test
@@ -94,12 +122,12 @@ struct LMKPhotoBrowserCellTests {
         // Recycle the page for another index while the first load is in flight.
         cell.prepareForReuse()
         cell.configure(screenSize: CGSize(width: 375, height: 667)) { freshImage }
-        await settleMainActor()
-        #expect(cell.installedImage === freshImage)
+        await LMKWait.until { cell.displayedImage === freshImage }
+        #expect(cell.displayedImage === freshImage)
 
         gate.open()
-        await settleMainActor()
-        #expect(cell.installedImage === freshImage)
+        await LMKWait.until(timeout: .milliseconds(300)) { cell.displayedImage === staleImage }
+        #expect(cell.displayedImage === freshImage)
     }
 
     @Test
@@ -116,8 +144,8 @@ struct LMKPhotoBrowserCellTests {
         cell.configure(with: syncImage, screenSize: CGSize(width: 375, height: 667))
 
         gate.open()
-        await settleMainActor()
-        #expect(cell.installedImage === syncImage)
+        await LMKWait.until(timeout: .milliseconds(300)) { cell.displayedImage === asyncImage }
+        #expect(cell.displayedImage === syncImage)
     }
 
     @Test
@@ -131,12 +159,12 @@ struct LMKPhotoBrowserCellTests {
             return image
         }
         cell.refitInstalledImage(to: CGSize(width: 667, height: 375))
-        #expect(cell.installedImage == nil)
+        #expect(cell.displayedImage == nil)
 
         gate.open()
-        await settleMainActor()
+        await LMKWait.until { cell.displayedImage === image }
         cell.refitInstalledImage(to: CGSize(width: 667, height: 375))
-        #expect(cell.installedImage === image)
+        #expect(cell.displayedImage === image)
     }
 
     @Test
@@ -151,11 +179,13 @@ struct LMKPhotoBrowserCellTests {
             await gate.wait()
             return nil
         }
+        await LMKWait.until { providerCalls == 1 }
         cell.prepareForReuse()
         gate.open()
-        await settleMainActor()
+        await LMKWait.until(timeout: .milliseconds(200)) { cell.isShowingLivePhoto }
 
         #expect(providerCalls == 1)
-        #expect(cell.installedImage == nil)
+        #expect(cell.displayedImage == nil)
+        #expect(!cell.isShowingLivePhoto)
     }
 }

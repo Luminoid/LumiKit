@@ -73,6 +73,34 @@ struct LMKMarkdownRendererFullBlockTests {
         #expect(result.string == "Title\n\nSome bold text\n- one\n- two")
     }
 
+    /// The regression: the parser joins a code span across a line break, which dropped a line
+    /// and moved every later heading's style onto the line after it.
+    @Test
+    func `headings keep their style when the inline parser changes the line count`() throws {
+        let markdown = "Use `foo\nbar` here\n## Next\nBody"
+        let result = LMKMarkdownRenderer.renderFull(markdown, font: UIFont.systemFont(ofSize: 10))
+        let lines = result.string.components(separatedBy: "\n")
+        let nextLine = try #require(lines.firstIndex(of: "Next"))
+        let nextRange = (result.string as NSString).range(of: "Next")
+        let bodyRange = (result.string as NSString).range(of: "Body")
+        let nextFont = try #require(result.attribute(.font, at: nextRange.location, effectiveRange: nil) as? UIFont)
+        let bodyFont = try #require(result.attribute(.font, at: bodyRange.location, effectiveRange: nil) as? UIFont)
+        #expect(nextLine == lines.count - 2)
+        #expect(nextFont.pointSize == 13.5, "an h2 is 1.35 times the base")
+        #expect(nextFont.fontDescriptor.symbolicTraits.contains(.traitBold))
+        #expect(bodyFont.pointSize == 10)
+        #expect(!bodyFont.fontDescriptor.symbolicTraits.contains(.traitBold))
+    }
+
+    @Test
+    func `CRLF input renders like LF input, tables included`() {
+        let crlf = "# T\r\n| a | b |\r\n|---|---|\r\n| 1 | 2 |\r\nEnd"
+        let lf = "# T\n| a | b |\n|---|---|\n| 1 | 2 |\nEnd"
+        #expect(LMKMarkdownRenderer.renderFull(crlf).string == LMKMarkdownRenderer.renderFull(lf).string)
+        #expect(!LMKMarkdownRenderer.renderFull(crlf).string.contains("|"), "the table was detected")
+        #expect(LMKMarkdownRenderer.render("a\r\nb").string == "a\nb")
+    }
+
     @Test
     func `fenced code block preserves content verbatim`() {
         let markdown = "Here:\n```swift\nlet x = 1\n```"

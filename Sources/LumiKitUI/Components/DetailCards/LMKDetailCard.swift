@@ -144,7 +144,8 @@ public struct LMKDetailCard: Identifiable {
 
     public enum TextContent {
         case plain(String)
-        /// Inline markdown (bold, italic, links) rendered with `LMKMarkdownRenderer`.
+        /// Inline markdown (bold, italic, code) rendered with `LMKMarkdownRenderer`; the row is a
+        /// label, so use a `.link` row for URLs.
         case markdown(String)
         case attributed(NSAttributedString)
     }
@@ -235,8 +236,12 @@ public struct LMKDetailCard: Identifiable {
     public struct Progress {
         public var id: String
         public var title: String
-        /// `0 ... 1`, clamped.
-        public var value: Float
+        /// `0 ... 1`, clamped on every write; a NaN or infinite value (`done / total` with
+        /// `total == 0`) becomes `0` instead of reaching Auto Layout.
+        public var value: Float {
+            didSet { value = Self.clamped(value) }
+        }
+
         /// Trailing text ("3 days", "60%").
         public var detail: String?
         public var tint: UIColor?
@@ -244,9 +249,14 @@ public struct LMKDetailCard: Identifiable {
         public init(id: String, title: String, value: Float, detail: String? = nil, tint: UIColor? = nil) {
             self.id = id
             self.title = title
-            self.value = min(max(value, 0), 1)
+            self.value = Self.clamped(value)
             self.detail = detail
             self.tint = tint
+        }
+
+        /// `value` in `0 ... 1`; `0` when it is not a finite number.
+        static func clamped(_ value: Float) -> Float {
+            value.isFinite ? min(max(value, 0), 1) : 0
         }
     }
 
@@ -299,14 +309,14 @@ public struct LMKDetailCard: Identifiable {
         public var value: Int
         public var maximum: Int
         /// Called on user changes; `nil` renders read-only.
-        public var onChange: ((Int) -> Void)?
+        public var onValueChange: ((Int) -> Void)?
 
-        public init(id: String, title: String, value: Int, maximum: Int = 5, onChange: ((Int) -> Void)? = nil) {
+        public init(id: String, title: String, value: Int, maximum: Int = 5, onValueChange: ((Int) -> Void)? = nil) {
             self.id = id
             self.title = title
             self.value = value
             self.maximum = maximum
-            self.onChange = onChange
+            self.onValueChange = onValueChange
         }
     }
 

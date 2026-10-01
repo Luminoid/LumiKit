@@ -16,7 +16,8 @@ import UIKit
 /// LMKTip.show(message: "Tap here to add a photo", placement: .pointed(sourceView: addButton), in: self)
 /// ```
 ///
-/// Tap anywhere outside the bubble to dismiss.
+/// Tap anywhere outside the bubble to dismiss. The tip is a VoiceOver modal: the bubble's
+/// text and button come first, then the dismiss area, and the escape gesture dismisses.
 public final class LMKTipView: UIView, LMKThemeApplying {
     // MARK: - Placement
 
@@ -35,6 +36,10 @@ public final class LMKTipView: UIView, LMKThemeApplying {
         /// Centered card with a dimming overlay and a dismiss button.
         case center
         /// A bubble with an arrow pointing at `sourceView`; `sourceOffset` shifts the anchor.
+        ///
+        /// The tip reads the source's frame each time it lays out (a rotation, a resize, a Dynamic
+        /// Type change) and never constrains the source, so the source keeps its size and position.
+        /// After moving the source in code, call `setNeedsLayout()` on the tip.
         case pointed(sourceView: UIView, arrowDirection: ArrowDirection = .automatic, sourceOffset: CGPoint = .zero)
     }
 
@@ -67,15 +72,18 @@ public final class LMKTipView: UIView, LMKThemeApplying {
         /// continue; `nil` = `backgroundSecondary`. A solid bubble colors its own arrow.
         public var arrowColor: UIColor?
         /// Dimming behind a centered tip; `nil` = `scrim` at `dimming`. `.clear` disables it.
+        /// A pointed tip never dims.
         public var dimmingColor: UIColor?
         /// `nil` = 300.
         public var maxWidth: CGFloat?
-        /// Distance from the host's edges; `nil` = `large`.
+        /// Distance from the host's safe area; `nil` = `large`.
         public var minMargin: CGFloat?
         /// Gap between arrow tip and source; `nil` = `xs`.
         public var sourceSpacing: CGFloat?
         /// Style of the dismiss button; `nil` = ghost primary, small.
         public var button: LMKButton.Style?
+        /// A light haptic when the tip shows; `nil` = yes.
+        public var haptics: Bool?
 
         public init(
             surface: LMKSurfaceStyle = LMKSurfaceStyle(),
@@ -93,7 +101,8 @@ public final class LMKTipView: UIView, LMKThemeApplying {
             maxWidth: CGFloat? = nil,
             minMargin: CGFloat? = nil,
             sourceSpacing: CGFloat? = nil,
-            button: LMKButton.Style? = nil
+            button: LMKButton.Style? = nil,
+            haptics: Bool? = nil
         ) {
             self.surface = surface
             self.titleTextStyle = titleTextStyle
@@ -111,6 +120,7 @@ public final class LMKTipView: UIView, LMKThemeApplying {
             self.minMargin = minMargin
             self.sourceSpacing = sourceSpacing
             self.button = button
+            self.haptics = haptics
         }
 
         public static let defaultValue = Self()
@@ -133,7 +143,8 @@ public final class LMKTipView: UIView, LMKThemeApplying {
                 maxWidth: other.maxWidth ?? maxWidth,
                 minMargin: other.minMargin ?? minMargin,
                 sourceSpacing: other.sourceSpacing ?? sourceSpacing,
-                button: other.button.map { button?.merging($0) ?? $0 } ?? button
+                button: other.button.map { button?.merging($0) ?? $0 } ?? button,
+                haptics: other.haptics ?? haptics
             )
         }
     }
@@ -163,7 +174,7 @@ public final class LMKTipView: UIView, LMKThemeApplying {
 
     // MARK: - Properties
 
-    /// Called after the tip is dismissed.
+    /// Called once after the tip is dismissed.
     public var onDismiss: (() -> Void)?
 
     /// Per-instance style; `nil` fields resolve from `theme.tip`, then the built-in look.
@@ -212,6 +223,9 @@ public final class LMKTipView: UIView, LMKThemeApplying {
         }
     }
 
+    /// The direction a pointed tip resolved to; `nil` for a centered tip.
+    private(set) var pointedDirection: ArrowDirection?
+
     private let outerStack = UIStackView()
     private let iconRow = UIStackView()
     private let textStack = UIStackView()
@@ -219,7 +233,20 @@ public final class LMKTipView: UIView, LMKThemeApplying {
     private var iconBackgroundConstraint: Constraint?
     private var contentInsetsConstraint: Constraint?
     private var placement: Placement = .center
-    private var pendingArrow: (direction: ArrowDirection, sourceFrame: CGRect)?
+    /// The pointed tip's source, read live at every layout so the bubble and the arrow follow a resize.
+    private weak var sourceView: UIView?
+    private var sourceOffset: CGPoint = .zero
+    /// The source's frame (plus `sourceOffset`) in this view's coordinates; the bubble anchors to
+    /// it. A constraint to the source itself would let Auto Layout stretch or move the source to
+    /// center the bubble wherever the source's own size is held below `.high`.
+    private let sourceGuide = UILayoutGuide()
+    private var sourceGuideFrame: CGRect?
+    private var sourceGuideLeftConstraint: Constraint?
+    private var sourceGuideTopConstraint: Constraint?
+    private var sourceGuideWidthConstraint: Constraint?
+    private var sourceGuideHeightConstraint: Constraint?
+    private var animator: UIViewPropertyAnimator?
+    private var isDismissing = false
 
     // MARK: - Initialization
 
@@ -249,6 +276,14 @@ public final class LMKTipView: UIView, LMKThemeApplying {
         dimmingView.snp.makeConstraints { $0.edges.equalToSuperview() }
 
         addSubview(bubbleView)
+        // Frames are not mirrored in a right-to-left layout, so the guide is placed by left and top.
+        addLayoutGuide(sourceGuide)
+        sourceGuide.snp.makeConstraints { make in
+            sourceGuideLeftConstraint = make.left.equalTo(snp.left).constraint
+            sourceGuideTopConstraint = make.top.equalTo(snp.top).constraint
+            sourceGuideWidthConstraint = make.width.equalTo(0).constraint
+            sourceGuideHeightConstraint = make.height.equalTo(0).constraint
+        }
 
         iconView.contentMode = .scaleAspectFit
         iconView.image = icon
@@ -284,7 +319,7 @@ public final class LMKTipView: UIView, LMKThemeApplying {
         outerStack.addArrangedSubview(dismissButton)
         bubbleView.addSubview(outerStack)
         outerStack.snp.makeConstraints { make in
-            contentInsetsConstraint = make.edges.equalToSuperview().constraint
+            contentInsetsConstraint = make.directionalEdges.equalToSuperview().constraint
         }
 
         // Sublayers of the bubble, so they inherit the bubble's alpha animation.
@@ -293,28 +328,46 @@ public final class LMKTipView: UIView, LMKThemeApplying {
         arrowLayer.isHidden = true
         bubbleView.layer.addSublayer(arrowLayer)
         // Layer colors are resolved values: re-resolve them when the appearance changes.
-        registerForTraitChanges([UITraitUserInterfaceStyle.self, UITraitAccessibilityContrast.self]) { (self: Self, _: UITraitCollection) in
+        registerForTraitChanges([UITraitUserInterfaceStyle.self, UITraitAccessibilityContrast.self, UITraitUserInterfaceLevel.self]) { (self: Self, _: UITraitCollection) in
             self.applyTheme(self.traitCollection.lmkTheme)
         }
 
+        // A VoiceOver modal: the bubble's content, then the dismiss area; escape dismisses.
         isAccessibilityElement = false
-        bubbleView.isAccessibilityElement = true
-        bubbleView.accessibilityLabel = [title, message].compactMap(\.self).joined(separator: ". ")
+        accessibilityViewIsModal = true
+        accessibilityElements = [bubbleView, dimmingView]
+        bubbleView.isAccessibilityElement = false
+        titleLabel.accessibilityTraits.insert(.header)
+        updateBubbleAccessibilityElements()
         applyStrings()
     }
 
     private func applyStrings() {
-        dimmingView.accessibilityLabel = strings.dismissAccessibilityHint
-        bubbleView.accessibilityHint = strings.dismissAccessibilityHint
+        dimmingView.accessibilityLabel = strings.dismissButtonTitle
+        dimmingView.accessibilityHint = strings.dismissAccessibilityHint
         dismissButton.title = strings.dismissButtonTitle
     }
 
+    /// The bubble reads as its visible text and button, in order.
+    private func updateBubbleAccessibilityElements() {
+        var elements: [UIView] = []
+        if title != nil { elements.append(titleLabel) }
+        elements.append(messageLabel)
+        if !dismissButton.isHidden { elements.append(dismissButton) }
+        bubbleView.accessibilityElements = elements
+    }
+
     override public func layoutSubviews() {
+        // Before super: the bubble is placed from the source's frame of this pass.
+        updateSourceGuide()
         super.layoutSubviews()
         bubbleView.lmk_layoutSurfaceIfNeeded()
-        if let pendingArrow {
-            drawArrow(direction: pendingArrow.direction, sourceFrame: pendingArrow.sourceFrame)
-        }
+        drawArrowIfPointed()
+    }
+
+    override public func accessibilityPerformEscape() -> Bool {
+        dismiss()
+        return true
     }
 
     // MARK: - Theme
@@ -332,14 +385,15 @@ public final class LMKTipView: UIView, LMKThemeApplying {
         if drawsOutline {
             // The outline layer paints these around the bubble and the arrow together.
             bubbleSurface.background = .clear
-            bubbleSurface.border = LMKBorderStyle.none
-            bubbleSurface.shadow = LMKShadowSource.none
+            bubbleSurface.border = LMKBorderStyle.hidden
+            bubbleSurface.shadow = LMKShadowSource.hidden
         }
         let applied = bubbleView.lmk_apply(surface: bubbleSurface, clipsContent: false)
         let insets = applied.contentInsets ?? .lmk_symmetric(vertical: theme.spacing.medium, horizontal: theme.spacing.large)
-        contentInsetsConstraint?.update(inset: UIEdgeInsets(top: insets.top, left: insets.leading, bottom: insets.bottom, right: insets.trailing))
+        contentInsetsConstraint?.update(inset: insets)
 
-        dimmingView.backgroundColor = resolved.dimmingColor ?? LMKColor.scrim.withAlphaComponent(theme.alpha.dimming)
+        // The placement decides the dimming: a pointed tip leaves the screen readable.
+        dimmingView.backgroundColor = isPointed ? .clear : (resolved.dimmingColor ?? LMKColor.scrim.withAlphaComponent(theme.alpha.dimming))
         let tint = resolved.iconTint ?? LMKColor.primary
         iconView.tintColor = tint
         iconBackgroundView.backgroundColor = tint.withAlphaComponent(theme.alpha.xxs)
@@ -363,7 +417,6 @@ public final class LMKTipView: UIView, LMKThemeApplying {
     static let defaultArrowWidth: CGFloat = 16
     static let defaultArrowHeight: CGFloat = 8
     static let defaultArrowTipRadius: CGFloat = 2
-    private static let estimatedBubbleHeight: CGFloat = 120
     private static let centerEntranceScale: CGFloat = 0.85
     private static let pointedEntranceScale: CGFloat = 0.95
 
@@ -385,8 +438,8 @@ public final class LMKTipView: UIView, LMKThemeApplying {
             outlineLayer.lineDashPattern = nil
         }
         outlineLayer.lineJoin = .round
-        let shadow: LMKShadowStyle? = switch resolvedSurface.shadow ?? .none {
-        case .none: nil
+        let shadow: LMKShadowStyle? = switch resolvedSurface.shadow ?? .hidden {
+        case .hidden: nil
         case let .level(level): theme.shadow.shadow(for: level).style
         case let .custom(style): style
         }
@@ -408,15 +461,16 @@ public final class LMKTipView: UIView, LMKThemeApplying {
         show(placement: placement, in: hostView)
     }
 
-    /// Shows the tip over `hostView`, replacing any tip there.
+    /// Shows the tip over `hostView`, replacing any tip there. A dismissed tip can be shown again.
     public func show(placement: Placement, in hostView: UIView) {
-        for subview in hostView.subviews where subview is Self {
+        for subview in hostView.subviews where subview is Self && subview !== self {
             (subview as? Self)?.dismiss()
         }
+        settleAnimator()
+        isDismissing = false
+        alpha = 1
         self.placement = placement
         let theme = traitCollection.lmkTheme
-        // The placement decides who draws the bubble.
-        applyTheme(theme)
 
         switch placement {
         case .center:
@@ -426,71 +480,118 @@ public final class LMKTipView: UIView, LMKThemeApplying {
                 titleLabel.textAlignment = .center
                 messageLabel.textAlignment = .center
             }
-        case .pointed:
+            sourceView = nil
+            sourceOffset = .zero
+            pointedDirection = nil
+        case let .pointed(source, _, offset):
             dismissButton.isHidden = true
-            dimmingView.backgroundColor = .clear
+            sourceView = source
+            sourceOffset = offset
         }
+        updateBubbleAccessibilityElements()
+        // The placement decides who draws the bubble and whether the host dims.
+        applyTheme(theme)
 
         hostView.addSubview(self)
-        snp.makeConstraints { $0.edges.equalToSuperview() }
+        snp.remakeConstraints { $0.edges.equalToSuperview() }
         let maxWidth = resolved.maxWidth ?? Self.defaultMaxWidth
         let margin = resolved.minMargin ?? theme.spacing.large
 
         switch placement {
         case .center:
-            bubbleView.snp.makeConstraints { make in
-                make.center.equalToSuperview()
+            bubbleView.snp.remakeConstraints { make in
+                make.center.equalToSuperview().priority(.high)
                 make.width.lessThanOrEqualTo(maxWidth)
-                make.leading.greaterThanOrEqualToSuperview().offset(margin)
-                make.trailing.lessThanOrEqualToSuperview().offset(-margin)
+                clamp(make, inside: safeAreaLayoutGuide, margin: margin)
             }
-        case let .pointed(sourceView, arrowDirection, sourceOffset):
-            let sourceFrame = sourceView.convert(sourceView.bounds, to: hostView).offsetBy(dx: sourceOffset.x, dy: sourceOffset.y)
-            let direction = resolveDirection(arrowDirection, sourceFrame: sourceFrame, hostView: hostView)
-            let arrowHeight = resolved.arrowHeight ?? Self.defaultArrowHeight
-            let sourceSpacing = resolved.sourceSpacing ?? theme.spacing.xs
-            bubbleView.snp.makeConstraints { make in
+        case let .pointed(source, arrowDirection, offset):
+            let direction = resolveDirection(arrowDirection, sourceView: source, sourceOffset: offset, hostView: hostView, maxWidth: maxWidth, margin: margin)
+            pointedDirection = direction
+            let gap = (resolved.arrowHeight ?? Self.defaultArrowHeight) + (resolved.sourceSpacing ?? theme.spacing.xs)
+            // Anchored to the source's frame, read at every layout, so a rotation or a resize moves
+            // the bubble with it while the source's own layout stays untouched.
+            updateSourceGuide()
+            bubbleView.snp.remakeConstraints { make in
                 make.width.lessThanOrEqualTo(maxWidth)
-                make.leading.greaterThanOrEqualToSuperview().offset(margin)
-                make.trailing.lessThanOrEqualToSuperview().offset(-margin)
-                make.centerX.equalTo(sourceFrame.midX).priority(.high)
+                make.centerX.equalTo(sourceGuide.snp.centerX).priority(.high)
                 switch direction {
-                case .up: make.top.equalToSuperview().offset(sourceFrame.maxY + arrowHeight + sourceSpacing)
-                case .down: make.bottom.equalToSuperview().offset(-(hostView.bounds.height - sourceFrame.minY + arrowHeight + sourceSpacing))
+                case .up: make.top.equalTo(sourceGuide.snp.bottom).offset(gap).priority(.high)
+                case .down: make.bottom.equalTo(sourceGuide.snp.top).offset(-gap).priority(.high)
                 case .automatic: break
                 }
+                clamp(make, inside: safeAreaLayoutGuide, margin: margin)
             }
-            pendingArrow = (direction, sourceFrame)
         }
 
         // Resolve the bubble's frame before drawing the arrow and animating in.
         hostView.layoutIfNeeded()
-        if let pendingArrow {
-            drawArrow(direction: pendingArrow.direction, sourceFrame: pendingArrow.sourceFrame)
-        }
+        drawArrowIfPointed()
         animateIn()
-        LMKHaptics.light()
-        UIAccessibility.post(notification: .announcement, argument: message)
+        if resolved.haptics ?? true {
+            LMKHaptics.light()
+        }
+        UIAccessibility.post(notification: .screenChanged, argument: title == nil ? messageLabel : titleLabel)
     }
 
-    /// Dismisses the tip.
+    /// Keeps the bubble inside `guide` by `margin` on every edge.
+    private func clamp(_ make: ConstraintMaker, inside guide: UILayoutGuide, margin: CGFloat) {
+        make.leading.greaterThanOrEqualTo(guide).offset(margin)
+        make.trailing.lessThanOrEqualTo(guide).offset(-margin)
+        make.top.greaterThanOrEqualTo(guide).offset(margin)
+        make.bottom.lessThanOrEqualTo(guide).offset(-margin)
+    }
+
+    /// Dismisses the tip. A second call, or a call after the tip is gone, does nothing;
+    /// `onDismiss` fires once.
     public func dismiss() {
-        let duration = LMKAnimation.shouldAnimate ? LMKAnimation.Duration.normal : 0
-        UIView.animate(
-            withDuration: duration,
-            animations: { self.alpha = 0 },
-            completion: { _ in
-                self.removeFromSuperview()
-                self.onDismiss?()
-            }
-        )
+        guard !isDismissing else { return }
+        isDismissing = true
+        settleAnimator()
+        run(duration: LMKAnimation.Duration.normal, spring: false) { [weak self] in
+            self?.alpha = 0
+        } completion: { [weak self] in
+            guard let self else { return }
+            removeFromSuperview()
+            onDismiss?()
+        }
     }
 
-    private func resolveDirection(_ direction: ArrowDirection, sourceFrame: CGRect, hostView: UIView) -> ArrowDirection {
+    /// Moves `sourceGuide` onto the source's live frame (plus `sourceOffset`); a no-op for a
+    /// centered tip or a source this view cannot measure (not in a window, not under the host).
+    private func updateSourceGuide() {
+        guard isPointed, let sourceView, let superview,
+              (sourceView.window != nil && window != nil) || sourceView.isDescendant(of: superview) else { return }
+        let frame = convert(sourceView.bounds, from: sourceView).offsetBy(dx: sourceOffset.x, dy: sourceOffset.y)
+        guard frame != sourceGuideFrame else { return }
+        sourceGuideFrame = frame
+        sourceGuideLeftConstraint?.update(offset: frame.minX)
+        sourceGuideTopConstraint?.update(offset: frame.minY)
+        sourceGuideWidthConstraint?.update(offset: frame.width)
+        sourceGuideHeightConstraint?.update(offset: frame.height)
+    }
+
+    /// Redraws the arrow toward the source; a no-op for a centered tip.
+    private func drawArrowIfPointed() {
+        guard let pointedDirection, let sourceGuideFrame else { return }
+        drawArrow(direction: pointedDirection, sourceFrame: sourceGuideFrame)
+    }
+
+    /// Picks `.down` (bubble above the source) when the bubble fits above, `.up` when it fits
+    /// below, else the side with more room, measuring the bubble at `maxWidth`.
+    private func resolveDirection(_ direction: ArrowDirection, sourceView: UIView, sourceOffset: CGPoint, hostView: UIView, maxWidth: CGFloat, margin: CGFloat) -> ArrowDirection {
         guard direction == .automatic else { return direction }
-        let spaceAbove = sourceFrame.minY - hostView.safeAreaInsets.top
-        let needed = Self.estimatedBubbleHeight + (resolved.arrowHeight ?? Self.defaultArrowHeight) + (resolved.sourceSpacing ?? traitCollection.lmkTheme.spacing.xs)
-        return spaceAbove >= needed ? .down : .up
+        let sourceFrame = sourceView.convert(sourceView.bounds, to: hostView).offsetBy(dx: sourceOffset.x, dy: sourceOffset.y)
+        let bubbleHeight = bubbleView.systemLayoutSizeFitting(
+            CGSize(width: maxWidth, height: UIView.layoutFittingCompressedSize.height),
+            withHorizontalFittingPriority: .required,
+            verticalFittingPriority: .fittingSizeLevel
+        ).height
+        let needed = bubbleHeight + (resolved.arrowHeight ?? Self.defaultArrowHeight) + (resolved.sourceSpacing ?? traitCollection.lmkTheme.spacing.xs)
+        let spaceAbove = sourceFrame.minY - hostView.safeAreaInsets.top - margin
+        let spaceBelow = hostView.bounds.height - hostView.safeAreaInsets.bottom - margin - sourceFrame.maxY
+        if spaceAbove >= needed { return .down }
+        if spaceBelow >= needed { return .up }
+        return spaceAbove >= spaceBelow ? .down : .up
     }
 
     private func animateIn() {
@@ -501,46 +602,52 @@ public final class LMKTipView: UIView, LMKThemeApplying {
             let scale: CGFloat = if case .center = placement { Self.centerEntranceScale } else { Self.pointedEntranceScale }
             bubbleView.transform = CGAffineTransform(scaleX: scale, y: scale)
         }
-        UIView.animate(
-            withDuration: shouldAnimate ? LMKAnimation.Duration.moderate : 0,
-            delay: 0,
-            usingSpringWithDamping: LMKAnimation.spring.damping,
-            initialSpringVelocity: 0,
-            options: LMKAnimation.Curve.easeOut.options,
-            animations: {
-                self.dimmingView.alpha = 1
-                self.bubbleView.alpha = 1
-                self.bubbleView.transform = .identity
+        run(duration: LMKAnimation.Duration.moderate, spring: true) { [weak self] in
+            self?.dimmingView.alpha = 1
+            self?.bubbleView.alpha = 1
+            self?.bubbleView.transform = .identity
+        }
+    }
+
+    /// Runs `animations` in a property animator. Immediate without a window or under Reduce Motion.
+    private func run(duration: TimeInterval, spring: Bool, animations: @escaping () -> Void, completion: (() -> Void)? = nil) {
+        let effectiveDuration = LMKAnimation.shouldAnimate ? duration : 0
+        guard effectiveDuration > 0, window != nil else {
+            animations()
+            completion?()
+            return
+        }
+        let animator = spring
+            ? UIViewPropertyAnimator(duration: effectiveDuration, dampingRatio: LMKAnimation.spring.damping, animations: animations)
+            : UIViewPropertyAnimator(duration: effectiveDuration, curve: LMKAnimation.Curve.easeIn.animationCurve, animations: animations)
+        let once = LMKOnceCompletion(after: effectiveDuration) { [weak self] in
+            if self?.animator === animator {
+                self?.animator = nil
             }
-        )
+            completion?()
+        }
+        animator.addCompletion { _ in once.fire() }
+        self.animator = animator
+        animator.startAnimation()
+    }
+
+    /// Settles an entrance or exit still in flight so the next animation starts from a
+    /// resolved state (a dismissal during the entrance completes).
+    private func settleAnimator() {
+        guard let animator else { return }
+        self.animator = nil
+        if animator.state == .active {
+            animator.stopAnimation(false)
+        }
+        if animator.state == .stopped {
+            animator.finishAnimation(at: .current)
+        }
     }
 
     // MARK: - Actions
 
     @objc private func dimmingTapped() {
         dismiss()
-    }
-}
-
-// MARK: - LMKTip
-
-/// Tip presentation.
-public enum LMKTip {
-    /// Shows a tip over `viewController`'s view.
-    @discardableResult
-    public static func show(
-        title: String? = nil,
-        message: String,
-        icon: UIImage? = nil,
-        placement: LMKTipView.Placement = .center,
-        style: LMKTipView.Style = LMKTipView.Style(),
-        in viewController: UIViewController,
-        onDismiss: (() -> Void)? = nil
-    ) -> LMKTipView {
-        let tip = LMKTipView(title: title, message: message, icon: icon, style: style)
-        tip.onDismiss = onDismiss
-        tip.show(placement: placement, in: viewController)
-        return tip
     }
 }
 

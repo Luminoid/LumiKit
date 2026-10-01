@@ -57,7 +57,7 @@ public extension LMKDetailCardView {
         public var keyValueSpacing: CGFloat?
         /// `nil` = `.caption`.
         public var descriptionTextStyle: LMKTextStyle?
-        /// `nil` = `textTertiary`.
+        /// `nil` = `textSecondary`.
         public var descriptionColor: UIColor?
         /// `nil` = `.body`.
         public var textStyle: LMKTextStyle?
@@ -120,6 +120,10 @@ public extension LMKDetailCardView {
         /// Per-role button styles; a missing role uses `filled(role)` (`ghost` for `destructive`).
         public var actionButtons: [LMKButton.Role: LMKButton.Style]
 
+        /// Behavior
+        /// Selection haptic on an action's long press; `nil` = yes.
+        public var haptics: Bool?
+
         public init(
             card: LMKCardView.Style = LMKCardView.Style(),
             headerIconSize: CGFloat? = nil,
@@ -168,7 +172,8 @@ public extension LMKDetailCardView {
             imageBackgroundColor: UIColor? = nil,
             actionsTopSpacing: CGFloat? = nil,
             actionSpacing: CGFloat? = nil,
-            actionButtons: [LMKButton.Role: LMKButton.Style] = [:]
+            actionButtons: [LMKButton.Role: LMKButton.Style] = [:],
+            haptics: Bool? = nil
         ) {
             self.card = card
             self.headerIconSize = headerIconSize
@@ -218,6 +223,7 @@ public extension LMKDetailCardView {
             self.actionsTopSpacing = actionsTopSpacing
             self.actionSpacing = actionSpacing
             self.actionButtons = actionButtons
+            self.haptics = haptics
         }
 
         public static let defaultValue = Self()
@@ -272,7 +278,8 @@ public extension LMKDetailCardView {
                 imageBackgroundColor: other.imageBackgroundColor ?? imageBackgroundColor,
                 actionsTopSpacing: other.actionsTopSpacing ?? actionsTopSpacing,
                 actionSpacing: other.actionSpacing ?? actionSpacing,
-                actionButtons: actionButtons.merging(other.actionButtons) { base, override in base.merging(override) }
+                actionButtons: actionButtons.merging(other.actionButtons) { base, override in base.merging(override) },
+                haptics: other.haptics ?? haptics
             )
         }
 

@@ -3,7 +3,7 @@
 //  LumiKit
 //
 //  Window geometry observation: size, safe area, orientation, and the iOS 26
-//  interactive-resize flag, with a screen-size tier callback on top.
+//  interactive-resize flag (`LMKDevice.observeScreenSize` builds on it).
 //
 
 import UIKit
@@ -51,11 +51,11 @@ public extension LMKScene {
     /// Calls `onChange` whenever `window`'s geometry changes: a rotation, a resized iPad or Mac
     /// window, an iPhone Duo fold, a safe-area change (also once at install).
     ///
-    /// Driven by the window's own layout pass rather than the scene delegate, so it needs no
-    /// hook in the app's `UIWindowSceneDelegate` (which is where iOS 26's
-    /// `windowScene(_:didUpdateEffectiveGeometry:)` would land); on iOS 26 each callback carries
-    /// the scene's `isInteractivelyResizing` so hosts can wait for the final pass. Keep the
-    /// returned observation; `cancel()` (or letting it deinit) stops the callbacks.
+    /// Driven by the window's own layout pass plus the scene's `effectiveGeometry` (a 180°
+    /// rotation and the end of an iOS 26 interactive resize change neither bounds nor safe
+    /// area), so it needs no hook in the app's `UIWindowSceneDelegate`; on iOS 26 each callback
+    /// carries the scene's `isInteractivelyResizing` so hosts can wait for the final pass. Keep
+    /// the returned observation; `cancel()` (or letting it deinit) stops the callbacks.
     static func observeGeometry(of window: UIWindow, onChange: @escaping (Geometry) -> Void) -> LMKSceneGeometryObservation {
         LMKSceneGeometryObservation(window: window, onChange: onChange)
     }
@@ -73,8 +73,8 @@ public final class LMKSceneGeometryObservation {
         sentinel.report()
     }
 
-    deinit {
-        MainActor.assumeIsolated { cancel() }
+    isolated deinit {
+        cancel()
     }
 
     /// The window observed, `nil` once cancelled.
@@ -90,10 +90,12 @@ public final class LMKSceneGeometryObservation {
     }
 }
 
-/// An invisible full-window view whose layout pass tracks the window's geometry.
+/// An invisible full-window view whose layout pass tracks the window's geometry, plus a KVO
+/// observation of the scene's `effectiveGeometry` for the changes that trigger no layout.
 private final class LMKGeometrySentinelView: UIView {
     private let onChange: (LMKScene.Geometry) -> Void
     private(set) var lastGeometry: LMKScene.Geometry?
+    private var sceneObservation: NSKeyValueObservation?
 
     init(onChange: @escaping (LMKScene.Geometry) -> Void) {
         self.onChange = onChange
@@ -108,6 +110,13 @@ private final class LMKGeometrySentinelView: UIView {
     @available(*, unavailable)
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
+    }
+
+    override func didMoveToWindow() {
+        super.didMoveToWindow()
+        sceneObservation = window?.windowScene?.observe(\.effectiveGeometry, options: [.new]) { [weak self] _, _ in
+            MainActor.assumeIsolated { self?.report() }
+        }
     }
 
     override func layoutSubviews() {
@@ -127,19 +136,5 @@ private final class LMKGeometrySentinelView: UIView {
         guard geometry != lastGeometry else { return }
         lastGeometry = geometry
         onChange(geometry)
-    }
-}
-
-public extension LMKDevice {
-    /// Calls `onChange` with the new tier whenever `window`'s `ScreenSize` changes (rotation
-    /// never changes it; a resized window, a fold, or a multitasking change can), and once at
-    /// install with the current tier. Built on `LMKScene.observeGeometry(of:onChange:)`.
-    static func observeScreenSize(of window: UIWindow, onChange: @escaping (ScreenSize) -> Void) -> LMKSceneGeometryObservation {
-        var lastTier: ScreenSize?
-        return LMKScene.observeGeometry(of: window) { geometry in
-            guard geometry.screenSize != lastTier else { return }
-            lastTier = geometry.screenSize
-            onChange(geometry.screenSize)
-        }
     }
 }

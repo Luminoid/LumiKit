@@ -23,11 +23,10 @@ public extension UITableViewCell {
             self.backgroundColor = backgroundColor
         }
         lmk_configureCustomHighlight()
-        if case .toggle = configuration.trailing {
-            selectionStyle = .none
-        } else if !configuration.isEnabled {
-            selectionStyle = .none
-        }
+        // Set both ways: one reuse identifier serves every row kind, so a disclosure row must get
+        // its highlight back in a cell that last showed a toggle.
+        let isToggle = if case .toggle = configuration.trailing { true } else { false }
+        selectionStyle = isToggle || !configuration.isEnabled ? .none : .default
         if let pointer {
             lmk_installRowPointerInteraction(pointer)
         }

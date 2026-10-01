@@ -175,9 +175,11 @@ open class LMKCalendarDayCell: UIControl {
         lmk_layoutSurfaceIfNeeded()
     }
 
-    /// The 44pt hit target the row height may not provide on its own.
+    /// The 44pt hit target the row height may not provide on its own. A disabled day absorbs
+    /// its own bounds, as UIKit's controls do, so a tap on it never reaches what is underneath.
     override open func point(inside point: CGPoint, with _: UIEvent?) -> Bool {
-        guard isEnabled, !isHidden else { return false }
+        guard !isHidden else { return false }
+        guard isEnabled else { return bounds.contains(point) }
         return lmk_hitTestBounds(minimumSide: traitCollection.lmkTheme.layout.minimumTouchTarget).contains(point)
     }
 
@@ -224,8 +226,9 @@ open class LMKCalendarDayCell: UIControl {
             glyphView.image = glyph
             glyphView.tintColor = state.isSelected && selectionStyle == .filledCircle ? numeralColor : (decoration.glyphTint ?? style.glyphTint ?? LMKColor.textSecondary)
             let size = style.glyphSize ?? theme.layout.symbolInline
+            // Just below required: the numeral stack hides the glyph with its own constraint.
             glyphView.snp.remakeConstraints { make in
-                make.width.height.equalTo(size)
+                make.width.height.equalTo(size).priority(999)
             }
             glyphView.isHidden = false
         } else {
@@ -234,8 +237,8 @@ open class LMKCalendarDayCell: UIControl {
         }
 
         // Marks
-        let radius = style.circleRadius ?? 18
-        let ringWidth = style.ringWidth ?? 2
+        let radius = style.circleRadius ?? Self.defaultCircleRadius
+        let ringWidth = style.ringWidth ?? Self.defaultRingWidth
         let roundedRadius = style.roundedRectRadius ?? theme.cornerRadius.medium
         if state.isSelected, !state.numeral.isEmpty {
             switch selectionStyle {
@@ -350,10 +353,14 @@ open class LMKCalendarDayCell: UIControl {
     /// Built-in metrics, shared with the grid's row-height floor.
     static let defaultNumeralCenterOffset: CGFloat = -3
     static let defaultDotSize: CGFloat = 5
+    static let defaultDotSpacing: CGFloat = 2
+    static let defaultMaxDots = 3
+    static let defaultCircleRadius: CGFloat = 18
+    static let defaultRingWidth: CGFloat = 2
 
     /// The height of the band under the numeral that `decoration` fills: dots, badges, or both.
     static func decorationBandHeight(for decoration: LMKCalendarDayDecoration, style: LMKMonthCalendarView.Style, theme: LMKTheme) -> CGFloat {
-        let showsDots = !decoration.dots.isEmpty && (style.maxDots ?? 3) > 0
+        let showsDots = !decoration.dots.isEmpty && (style.maxDots ?? defaultMaxDots) > 0
         let showsBadges = !decoration.badges.isEmpty
         var height: CGFloat = 0
         if showsDots { height += style.dotSize ?? defaultDotSize }
@@ -363,8 +370,8 @@ open class LMKCalendarDayCell: UIControl {
 
     private func applyDots(_ colors: [UIColor], style: LMKMonthCalendarView.Style, theme: LMKTheme, inverted: UIColor?) {
         let size = style.dotSize ?? Self.defaultDotSize
-        let shown = Array(colors.prefix(max(0, style.maxDots ?? 3)))
-        dotsStack.spacing = style.dotSpacing ?? 2
+        let shown = Array(colors.prefix(max(0, style.maxDots ?? Self.defaultMaxDots)))
+        dotsStack.spacing = style.dotSpacing ?? Self.defaultDotSpacing
         while dotViews.count < shown.count {
             let dot = UIView()
             dot.isUserInteractionEnabled = false
@@ -378,7 +385,7 @@ open class LMKCalendarDayCell: UIControl {
             dot.backgroundColor = inverted ?? shown[index]
             dot.lmk_applyCornerStyle(.fixed(size / 2))
             dot.snp.remakeConstraints { make in
-                make.width.height.equalTo(size)
+                make.width.height.equalTo(size).priority(999)
             }
         }
         dotsStack.isHidden = shown.isEmpty

@@ -21,10 +21,10 @@ final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         guard let windowScene = scene as? UIWindowScene else { return }
         // A no-op on iOS; on Mac Catalyst it hides the title bar and floors the window size.
         LMKScene.configureMacWindow(for: windowScene, minimumSize: CGSize(width: 600, height: 700))
-        // Register the brand theme once, before any view loads; a `-lmk-theme` launch argument overrides it below.
-        LMKTheme.apply(.example)
+        // The theme was applied once in the AppDelegate; every scene shares it.
         let window = UIWindow(windowScene: windowScene)
-        let navigation = UINavigationController(rootViewController: ExampleViewController())
+        // LMKNavigationController keeps the edge swipe back working on pages that hide the system bar.
+        let navigation = LMKNavigationController(rootViewController: ExampleViewController())
         window.rootViewController = navigation
         window.makeKeyAndVisible()
         self.window = window
@@ -32,7 +32,8 @@ final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         geometryObservation = LMKDevice.observeScreenSize(of: window) { tier in
             LMKLogger.debug("Screen size tier: \(tier)", category: .ui)
         }
-        // Scripted sweep: `-lmk-page`, `-lmk-audit-all`, `-lmk-rtl`, `-lmk-theme` (see ExampleLaunchOptions).
+        // Window-level launch options (`-lmk-rtl`) and the scripted sweep, which runs in the first
+        // scene only (see ExampleLaunchOptions).
         ExampleSweepRunner.start(ExampleLaunchOptions.current, window: window, navigation: navigation)
     }
 

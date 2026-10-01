@@ -6,6 +6,7 @@
 //  snapping (with track ticks on iOS 26), and a neutral value.
 //
 
+import LumiKitCore
 import SnapKit
 import UIKit
 
@@ -48,6 +49,8 @@ public final class LMKSlider: UIControl, LMKThemeApplying {
         public var showsTicks: Bool?
         /// Haptic on release; `nil` = yes.
         public var haptics: Bool?
+        /// The whole control while disabled (`alpha`; `nil` = `alpha.disabled`).
+        public var disabled: LMKControlStateStyle?
 
         public init(
             minimumTrackColor: UIColor? = nil,
@@ -60,7 +63,8 @@ public final class LMKSlider: UIControl, LMKThemeApplying {
             readoutColor: UIColor? = nil,
             spacing: CGFloat? = nil,
             showsTicks: Bool? = nil,
-            haptics: Bool? = nil
+            haptics: Bool? = nil,
+            disabled: LMKControlStateStyle? = nil
         ) {
             self.minimumTrackColor = minimumTrackColor
             self.maximumTrackColor = maximumTrackColor
@@ -73,6 +77,7 @@ public final class LMKSlider: UIControl, LMKThemeApplying {
             self.spacing = spacing
             self.showsTicks = showsTicks
             self.haptics = haptics
+            self.disabled = disabled
         }
 
         public static let defaultValue = Self()
@@ -90,7 +95,8 @@ public final class LMKSlider: UIControl, LMKThemeApplying {
                 readoutColor: other.readoutColor ?? readoutColor,
                 spacing: other.spacing ?? spacing,
                 showsTicks: other.showsTicks ?? showsTicks,
-                haptics: other.haptics ?? haptics
+                haptics: other.haptics ?? haptics,
+                disabled: LMKControlStateStyle.merge(disabled, other.disabled)
             )
         }
     }
@@ -125,28 +131,29 @@ public final class LMKSlider: UIControl, LMKThemeApplying {
         }
     }
 
+    /// Lower bound; `value` is re-clamped and re-snapped to the new range (silently).
     public var minimumValue: Float {
         get { slider.minimumValue }
         set {
             slider.minimumValue = newValue
+            value = slider.value
             updateTrackConfiguration()
-            updateReadout()
-            updateAccessibilityValue()
         }
     }
 
+    /// Upper bound; `value` is re-clamped and re-snapped to the new range (silently).
     public var maximumValue: Float {
         get { slider.maximumValue }
         set {
             slider.maximumValue = newValue
+            value = slider.value
             updateTrackConfiguration()
-            updateReadout()
-            updateAccessibilityValue()
         }
     }
 
     /// When `> 0`, values snap to `minimumValue + n * step`; `0` (default) leaves the slider continuous.
-    /// On iOS 26 the track shows a tick per step (see `Style.showsTicks`).
+    /// On iOS 26 the track shows a tick per step when the steps divide the range evenly into at
+    /// most 50 stops (see `Style.showsTicks`); otherwise the drag snaps without ticks.
     public var step: Float = 0 {
         didSet {
             guard step != oldValue else { return }
@@ -160,7 +167,7 @@ public final class LMKSlider: UIControl, LMKThemeApplying {
         didSet { updateTrackConfiguration() }
     }
 
-    /// Called when the user drags the slider.
+    /// Called when a drag or a VoiceOver adjustment lands on a new value.
     public var onValueChange: ((Float) -> Void)?
 
     /// Per-instance style; `nil` fields resolve from `theme.slider`, then the built-in look.
@@ -219,7 +226,8 @@ public final class LMKSlider: UIControl, LMKThemeApplying {
     private func setupUI() {
         captionLabel.numberOfLines = 1
         captionLabel.setContentHuggingPriority(.defaultLow, for: .horizontal)
-        captionLabel.setContentCompressionResistancePriority(.required, for: .horizontal)
+        // The readout keeps its width; a long caption truncates instead of fighting it.
+        captionLabel.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
 
         readoutLabel.numberOfLines = 1
         readoutLabel.textAlignment = .right
@@ -249,7 +257,12 @@ public final class LMKSlider: UIControl, LMKThemeApplying {
     }
 
     override public var intrinsicContentSize: CGSize {
-        let rowHeight = captionRow.isHidden ? 0 : captionRow.intrinsicContentSize.height + (resolved.spacing ?? traitCollection.lmkTheme.spacing.xs)
+        var rowHeight: CGFloat = 0
+        if !captionRow.isHidden {
+            // A stack view reports no intrinsic height of its own; measure the taller label.
+            let labels = [captionLabel, readoutLabel].filter { !$0.isHidden }
+            rowHeight = (labels.map(\.intrinsicContentSize.height).max() ?? 0) + (resolved.spacing ?? traitCollection.lmkTheme.spacing.xs)
+        }
         return CGSize(width: UIView.noIntrinsicMetric, height: rowHeight + slider.intrinsicContentSize.height)
     }
 
@@ -262,9 +275,11 @@ public final class LMKSlider: UIControl, LMKThemeApplying {
         }
     }
 
-    /// A caption-less slider is 34pt tall; the control still answers a 44pt touch.
+    /// A caption-less slider is 34pt tall; the control still answers a 44pt touch. A disabled
+    /// one absorbs a touch inside its bounds, like `UISlider`.
     override public func point(inside point: CGPoint, with event: UIEvent?) -> Bool {
-        guard isEnabled, !isHidden else { return bounds.contains(point) }
+        guard !isHidden else { return false }
+        guard isEnabled else { return bounds.contains(point) }
         return lmk_hitTestBounds(minimumSide: traitCollection.lmkTheme.layout.minimumTouchTarget).contains(point)
     }
 
@@ -288,7 +303,7 @@ public final class LMKSlider: UIControl, LMKThemeApplying {
             }
             slider.thumbTintColor = resolved.thumbColor ?? LMKColor.primary
         }
-        alpha = isEnabled ? 1 : theme.alpha.disabled
+        alpha = isEnabled ? 1 : (resolved.disabled?.alpha ?? theme.alpha.disabled)
         updateTrackConfiguration()
         invalidateIntrinsicContentSize()
         didApplyStyle?(self)
@@ -298,23 +313,40 @@ public final class LMKSlider: UIControl, LMKThemeApplying {
     private func updateTrackConfiguration() {
         guard #available(iOS 26, *), traitCollection.userInterfaceIdiom != .mac else { return }
         let range = slider.maximumValue - slider.minimumValue
-        let showsTicks = (resolved.showsTicks ?? true) && step > 0 && range > 0
-        let neutral = range > 0 ? (neutralValue.map { ($0 - slider.minimumValue) / range } ?? 0) : 0
-        let configuration: UISlider.TrackConfiguration? = if showsTicks {
-            UISlider.TrackConfiguration(allowsTickValuesOnly: true, neutralValue: neutral, numberOfTicks: max(2, min(Int((range / step).rounded()) + 1, Self.maximumTicks)))
+        // Ticks pin the drag to the tick positions, so they appear only when they coincide with
+        // the snap grid: an even division of the range, at most `maximumTicks` stops. Otherwise
+        // `snap()` alone quantizes and every step stays reachable.
+        let tickCount = Self.tickCount(range: range, step: step)
+        let showsTicks = (resolved.showsTicks ?? true) && tickCount != nil
+        let neutral = range > 0 ? min(max(neutralValue.map { ($0 - slider.minimumValue) / range } ?? 0, 0), 1) : 0
+        let configuration: UISlider.TrackConfiguration? = if showsTicks, let tickCount {
+            UISlider.TrackConfiguration(allowsTickValuesOnly: true, neutralValue: neutral, numberOfTicks: tickCount)
         } else if neutralValue != nil, range > 0 {
             UISlider.TrackConfiguration(allowsTickValuesOnly: false, neutralValue: neutral, numberOfTicks: 0)
         } else {
             nil
         }
-        // Assigning nil over nil resets the slider's value; only clear a configuration that exists.
+        // A published configuration is never cleared: after `trackConfiguration = nil` the
+        // slider ignores every later value (iOS 26.2 pins it to the minimum), so a plain
+        // configuration with no ticks and the neutral point at the minimum stands in for none.
         guard configuration != nil || slider.trackConfiguration != nil else { return }
         let current = slider.value
-        slider.trackConfiguration = configuration
+        slider.trackConfiguration = configuration ?? UISlider.TrackConfiguration(allowsTickValuesOnly: false, neutralValue: 0, numberOfTicks: 0)
         slider.value = current
     }
 
     private static let maximumTicks = 50
+
+    /// The number of ticks (`stops`) for `step` over `range`, or `nil` when the steps do not
+    /// divide the range evenly or would need more than `maximumTicks`. Compared in `Float`, so an
+    /// extreme ratio never traps in an `Int` conversion.
+    static func tickCount(range: Float, step: Float) -> Int? {
+        guard step > 0, range > 0 else { return nil }
+        let steps = range / step
+        let rounded = steps.rounded()
+        guard abs(steps - rounded) < 0.001, rounded + 1 <= Float(maximumTicks) else { return nil }
+        return Int(rounded) + 1
+    }
 
     // MARK: - Row visibility
 
@@ -349,12 +381,15 @@ public final class LMKSlider: UIControl, LMKThemeApplying {
     // MARK: - Actions
 
     @objc private func handleSliderChanged() {
+        let previous = snappedValue
         let raw = slider.value
         let snapped = snap(raw)
         snappedValue = snapped
         if snapped != raw {
             slider.value = snapped
         }
+        // A drag inside one step bucket moves the thumb but not the value.
+        guard snapped != previous else { return }
         updateReadout()
         updateAccessibilityValue()
         onValueChange?(value)
@@ -376,20 +411,24 @@ public final class LMKSlider: UIControl, LMKThemeApplying {
         if let formatter = valueFormatter {
             accessibilityValue = formatter(value)
         } else {
-            accessibilityValue = String(format: "%g", Double(value))
+            accessibilityValue = LMKFormat.number(Double(value))
         }
     }
 
     override public func accessibilityIncrement() {
-        let increment = step > 0 ? step : (slider.maximumValue - slider.minimumValue) / 10
-        setValue(value + increment, animated: false)
-        onValueChange?(value)
-        sendActions(for: .valueChanged)
+        adjust(by: step > 0 ? step : (slider.maximumValue - slider.minimumValue) / 10)
     }
 
     override public func accessibilityDecrement() {
-        let decrement = step > 0 ? step : (slider.maximumValue - slider.minimumValue) / 10
-        setValue(value - decrement, animated: false)
+        adjust(by: step > 0 ? -step : -(slider.maximumValue - slider.minimumValue) / 10)
+    }
+
+    /// A VoiceOver adjustment: reports the change only when the value moved (not at an end of the range).
+    private func adjust(by delta: Float) {
+        guard isEnabled else { return }
+        let previous = value
+        setValue(value + delta, animated: false)
+        guard value != previous else { return }
         onValueChange?(value)
         sendActions(for: .valueChanged)
     }

@@ -35,7 +35,7 @@ struct LMKCopyableLabelTests {
         var written: [String] = []
         // Never touch `UIPasteboard.general` here: it blocks the main thread in the xctest host.
         label.writeToPasteboard = { written.append($0) }
-        label.onCopied = { copied.append($0) }
+        label.onCopy = { copied.append($0) }
         #expect(!label.copyToPasteboard(), "nothing to copy")
         label.text = "ABC-123"
         #expect(label.copyToPasteboard())
@@ -60,10 +60,30 @@ struct LMKCopyableLabelTests {
         #expect(menu?.children.count == 1)
         #expect((menu?.children.first as? UIAction)?.title == LMKCopyableLabel.Strings().copy)
 
+        let secondaryClick = label.gestureRecognizers?.compactMap { $0 as? UITapGestureRecognizer }.first { $0.buttonMaskRequired == .secondary }
+        #expect(secondaryClick != nil, "a right click on iPad or Mac opens the menu too")
+        label.frame = CGRect(x: 0, y: 0, width: 80, height: 19)
+        #expect(label.point(inside: CGPoint(x: 40, y: -10), with: nil), "44pt band")
+
         label.isCopyEnabled = false
         #expect(label.accessibilityCustomActions == nil)
         #expect(label.editMenuInteraction(interaction, menuFor: UIEditMenuConfiguration(identifier: nil, sourcePoint: .zero), suggestedActions: []) == nil)
         #expect(label.gestureRecognizers?.first { $0 is UILongPressGestureRecognizer }?.isEnabled == false)
+        #expect(secondaryClick?.isEnabled == false)
+        #expect(!label.isUserInteractionEnabled, "a plain label passes touches to its row")
+        #expect(!label.point(inside: CGPoint(x: 40, y: -10), with: nil))
+        label.isCopyEnabled = true
+        #expect(label.isUserInteractionEnabled)
+        label.isHidden = true
+        #expect(!label.point(inside: CGPoint(x: 40, y: 10), with: nil))
+    }
+
+    @Test
+    func `The menu is not presented outside a window`() {
+        let label = LMKCopyableLabel()
+        label.text = "Value"
+        label.presentCopyMenu(at: .zero)
+        #expect(label.window == nil, "no window, no menu, no assertion from UIEditMenuInteraction")
     }
 
     @Test

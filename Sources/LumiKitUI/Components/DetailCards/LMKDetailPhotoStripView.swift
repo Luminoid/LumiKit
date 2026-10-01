@@ -4,10 +4,11 @@
 //
 //  The photo-strip row of a detail card: a horizontal collection of square
 //  tiles with captions, selection checkmarks, badges, async images guarded by
-//  a generation token, and an empty state.
+//  a generation token, and an empty state. A reconfigure reloads the tiles
+//  only when their count or size changed; otherwise the visible tiles are
+//  restyled in place and keep their images.
 //
 
-import LumiKitCore
 import SnapKit
 import UIKit
 
@@ -17,16 +18,26 @@ final class LMKDetailPhotoStripRowView: UIView, LMKDetailRowView {
     let collectionView: UICollectionView
     let emptyStateView = LMKEmptyStateView(style: LMKEmptyStateView.Style(layout: .card))
     private let layout = UICollectionViewFlowLayout()
-    private let strings: LMKDetailCardView.Strings
+    private var strings = LMKDetailCardView.Strings()
     private var model: LMKDetailCard.PhotoStrip?
     private var style = LMKDetailCardView.Style()
     private var theme = LMKTheme()
     private var heightConstraint: Constraint?
+    /// What the tiles were last laid out for; a change here reloads them.
+    private var tileLayout: TileLayout?
     private static let reuseIdentifier = "LMKDetailPhotoTileCell"
 
-    init(rowID: String, strings: LMKDetailCardView.Strings) {
+    /// The tile side behind `Style.photoTileHeight == nil`.
+    static let defaultTileSide: CGFloat = 100
+
+    private struct TileLayout: Equatable {
+        var count: Int
+        var itemSize: CGSize
+        var hasCaptions: Bool
+    }
+
+    init(rowID: String) {
         self.rowID = rowID
-        self.strings = strings
         layout.scrollDirection = .horizontal
         collectionView = UICollectionView(frame: .zero, collectionViewLayout: layout)
         super.init(frame: .zero)
@@ -40,7 +51,7 @@ final class LMKDetailPhotoStripRowView: UIView, LMKDetailRowView {
         addSubview(emptyStateView)
         collectionView.snp.makeConstraints { make in
             make.edges.equalToSuperview()
-            heightConstraint = make.height.equalTo(100).constraint
+            heightConstraint = make.height.equalTo(Self.defaultTileSide).constraint
         }
         emptyStateView.snp.makeConstraints { $0.edges.equalToSuperview() }
         emptyStateView.isHidden = true
@@ -52,19 +63,18 @@ final class LMKDetailPhotoStripRowView: UIView, LMKDetailRowView {
     }
 
     /// The tile side and the row height at the current style.
-    var tileSide: CGFloat { style.photoTileHeight ?? 100 }
+    var tileSide: CGFloat { style.photoTileHeight ?? Self.defaultTileSide }
 
-    var hasCaptions: Bool { model?.caption != nil }
-
-    func update(_ row: LMKDetailCard.Row, style: LMKDetailCardView.Style, theme: LMKTheme) {
+    func update(_ row: LMKDetailCard.Row, context: LMKDetailCardView.RowContext) {
         guard case let .photoStrip(model) = row else { return }
         self.model = model
-        self.style = style
-        self.theme = theme
+        style = context.style
+        theme = context.theme
+        strings = context.strings
         let spacing = style.photoSpacing ?? theme.spacing.small
         layout.minimumLineSpacing = spacing
         layout.minimumInteritemSpacing = spacing
-        let captionHeight = model.caption == nil ? 0 : theme.spacing.xs + ceil(LMKTextMeasurement.lineHeight(of: style.photoCaptionTextStyle ?? .smallMedium, traits: traitCollection))
+        let captionHeight = model.caption == nil ? 0 : theme.spacing.xs + ceil(LMKTextMeasurement.lineHeight(of: style.photoCaptionTextStyle ?? .smallMedium, traits: context.traits))
         layout.itemSize = CGSize(width: tileSide, height: tileSide + captionHeight)
         let tileCount = max(0, model.count)
         let empty = tileCount == 0
@@ -79,24 +89,26 @@ final class LMKDetailPhotoStripRowView: UIView, LMKDetailRowView {
             heightConstraint?.activate()
             heightConstraint?.update(offset: empty ? 0 : tileSide + captionHeight)
         }
-        collectionView.reloadData()
+        let tileLayout = TileLayout(count: tileCount, itemSize: layout.itemSize, hasCaptions: model.caption != nil)
+        if tileLayout != self.tileLayout {
+            self.tileLayout = tileLayout
+            collectionView.reloadData()
+        } else {
+            for indexPath in collectionView.indexPathsForVisibleItems {
+                guard let tile = collectionView.cellForItem(at: indexPath) as? LMKDetailPhotoTileCell else { continue }
+                configureTile(tile, at: indexPath.item)
+            }
+        }
     }
 
     /// Reloads every tile (images are fetched again).
     func reload() {
         collectionView.reloadData()
     }
-}
 
-extension LMKDetailPhotoStripRowView: UICollectionViewDataSource, UICollectionViewDelegate {
-    func collectionView(_: UICollectionView, numberOfItemsInSection _: Int) -> Int {
-        model?.count ?? 0
-    }
-
-    func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
-        let cell = collectionView.dequeueReusableCell(withReuseIdentifier: Self.reuseIdentifier, for: indexPath)
-        guard let tile = cell as? LMKDetailPhotoTileCell, let model else { return cell }
-        let index = indexPath.item
+    /// Applies everything but the image: caption, selection, badge, style, and accessibility.
+    private func configureTile(_ tile: LMKDetailPhotoTileCell, at index: Int) {
+        guard let model else { return }
         tile.configure(
             caption: model.caption?(index),
             isSelected: model.isSelected?(index) ?? false,
@@ -105,11 +117,30 @@ extension LMKDetailPhotoStripRowView: UICollectionViewDataSource, UICollectionVi
             theme: theme,
             tileSide: tileSide
         )
-        tile.accessibilityLabel = String(format: strings.photoAccessibilityLabelFormat, index + 1, model.count) + (model.caption?(index).map { ", \($0)" } ?? "")
+        tile.accessibilityLabel = String(format: strings.photoAccessibilityLabelFormat, index + 1, max(0, model.count)) + (model.caption?(index).map { ", \($0)" } ?? "")
         tile.accessibilityValue = (model.isSelected?(index) ?? false) ? strings.photoSelectedAccessibilityValue : nil
         tile.accessibilityTraits = model.onTap == nil ? .image : [.image, .button]
+    }
+}
+
+extension LMKDetailPhotoStripRowView: UICollectionViewDataSource, UICollectionViewDelegate {
+    func collectionView(_: UICollectionView, numberOfItemsInSection _: Int) -> Int {
+        max(0, model?.count ?? 0)
+    }
+
+    func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
+        let cell = collectionView.dequeueReusableCell(withReuseIdentifier: Self.reuseIdentifier, for: indexPath)
+        guard let tile = cell as? LMKDetailPhotoTileCell, let model else { return cell }
+        let index = indexPath.item
+        configureTile(tile, at: index)
         tile.load { await model.image(index) }
         return cell
+    }
+
+    /// A tile prepared ahead of display (prefetching) takes the latest model before it shows.
+    func collectionView(_: UICollectionView, willDisplay cell: UICollectionViewCell, forItemAt indexPath: IndexPath) {
+        guard let tile = cell as? LMKDetailPhotoTileCell else { return }
+        configureTile(tile, at: indexPath.item)
     }
 
     func collectionView(_: UICollectionView, didSelectItemAt indexPath: IndexPath) {
@@ -141,10 +172,10 @@ final class LMKDetailPhotoTileCell: UICollectionViewCell {
         imageView.addSubview(checkmarkView)
         imageView.snp.makeConstraints { make in
             make.top.leading.trailing.equalToSuperview()
-            imageHeightConstraint = make.height.equalTo(100).constraint
+            imageHeightConstraint = make.height.equalTo(LMKDetailPhotoStripRowView.defaultTileSide).constraint
         }
         captionLabel.snp.makeConstraints { make in
-            make.top.equalTo(imageView.snp.bottom).offset(4)
+            make.top.equalTo(imageView.snp.bottom)
             make.leading.trailing.bottom.equalToSuperview()
         }
         isAccessibilityElement = true
@@ -153,6 +184,10 @@ final class LMKDetailPhotoTileCell: UICollectionViewCell {
     @available(*, unavailable)
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
+    }
+
+    deinit {
+        loadTask?.cancel()
     }
 
     override func prepareForReuse() {

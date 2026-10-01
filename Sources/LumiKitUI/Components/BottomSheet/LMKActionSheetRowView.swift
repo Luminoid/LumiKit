@@ -216,7 +216,7 @@ public final class LMKActionSheetRowView: UIControl, LMKThemeApplying {
             defaults: LMKSurfaceStyle(
                 background: .solid(LMKColor.backgroundSecondary),
                 corners: .fixed(theme.cornerRadius.small),
-                shadow: LMKShadowSource.none,
+                shadow: LMKShadowSource.hidden,
                 contentInsets: .lmk_symmetric(vertical: theme.spacing.small, horizontal: theme.spacing.large)
             )
         )
@@ -232,8 +232,18 @@ public final class LMKActionSheetRowView: UIControl, LMKThemeApplying {
         iconSizeConstraint?.update(offset: resolved.iconSize ?? theme.layout.iconMedium)
         accessorySizeConstraints.forEach { $0.update(offset: theme.layout.iconSmall) }
         contentStack.spacing = resolved.spacing ?? theme.spacing.medium
-        alpha = isEnabled ? 1 : theme.alpha.disabled
+        alpha = isEnabled ? 1 : (resolved.disabled?.alpha ?? theme.alpha.disabled)
         didApplyStyle?(self)
+    }
+
+    // MARK: - Interaction
+
+    /// A disabled row swallows its touches like a system control; an enabled one answers the
+    /// minimum touch target.
+    override public func point(inside point: CGPoint, with event: UIEvent?) -> Bool {
+        guard !isHidden else { return false }
+        guard isEnabled else { return bounds.contains(point) }
+        return lmk_hitTestBounds(minimumSide: traitCollection.lmkTheme.layout.minimumTouchTarget, insets: lmk_hitTestInsets).contains(point)
     }
 
     // MARK: - Accessibility

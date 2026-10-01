@@ -17,7 +17,7 @@ import UIKit
 ///     LMKTab(identifier: "pets", title: "Pets", systemImage: "pawprint.fill") { PetsViewController() },
 ///     LMKTab(identifier: "calendar", title: "Calendar", systemImage: "calendar") { CalendarViewController() },
 /// ])
-/// tabBar.onTabSelected = { identifier in ... }
+/// tabBar.onTabSelect = { identifier in ... }
 /// tabBar.selectTab(identifier: "calendar")
 /// ```
 ///
@@ -28,7 +28,8 @@ import UIKit
 open class LMKTabBarController: UITabBarController, LMKThemeApplying {
     // MARK: - Properties
 
-    /// The tab definitions, in display order.
+    /// The tab definitions, in display order (`reorderTabs(identifiers:)` filters this list;
+    /// `tab(identifier:)` still knows every tab the controller was built with).
     public private(set) var tabDefinitions: [LMKTab]
 
     /// Wraps each root in a navigation controller.
@@ -49,14 +50,17 @@ open class LMKTabBarController: UITabBarController, LMKThemeApplying {
     public private(set) var resolvedStyle = Style()
 
     /// Called once whenever the selected tab changes (a tap, a key command, or `selectTab`).
-    public var onTabSelected: ((String) -> Void)?
+    public var onTabSelect: ((String) -> Void)?
     /// Called when the user taps the already-selected tab (UIKit pops its stack to the root).
-    public var onTabReselected: ((String) -> Void)?
+    public var onTabReselect: ((String) -> Void)?
 
     /// Whether ⌘1…⌘9 select tabs. `nil` (the default) enables them except under the Mac idiom,
     /// where the app's menu bar owns those shortcuts.
     public var tabKeyCommandsEnabled: Bool?
 
+    /// Every definition by identifier, never pruned: a tab filtered out by `reorderTabs` keeps
+    /// its root factory and badge for when it is shown again.
+    private var definitions: [String: LMKTab]
     private var uiTabs: [String: UITab] = [:]
     /// Definition identifiers by `UITab` identity (a `UISearchTab`'s own identifier is UIKit's).
     private var definitionIdentifiers: [ObjectIdentifier: String] = [:]
@@ -80,6 +84,7 @@ open class LMKTabBarController: UITabBarController, LMKThemeApplying {
         navigationControllerFactory: (@MainActor (UIViewController) -> UINavigationController)? = nil
     ) {
         tabDefinitions = tabs
+        definitions = Dictionary(tabs.map { ($0.identifier, $0) }, uniquingKeysWith: { first, _ in first })
         self.style = style
         self.navigationControllerFactory = navigationControllerFactory ?? { LMKNavigationController(rootViewController: $0) }
         super.init(nibName: nil, bundle: nil)
@@ -95,6 +100,11 @@ open class LMKTabBarController: UITabBarController, LMKThemeApplying {
         if let pendingSelection {
             self.pendingSelection = nil
             selectTab(identifier: pendingSelection)
+        }
+        // `UITabBarController` loads its view (and ran `applyTheme` through `viewDidLoad`)
+        // before the tabs existed; the per-tab settings need a pass over the real tabs.
+        if isViewLoaded {
+            applyTheme(traitCollection.lmkTheme)
         }
     }
 
@@ -132,8 +142,13 @@ open class LMKTabBarController: UITabBarController, LMKThemeApplying {
             }
         }
         updateMode()
+        applyContentTheme(theme)
         didApplyStyle?(self)
     }
+
+    /// Override to style what a subclass adds. Called from every `applyTheme(_:)` after the bar
+    /// is styled and before `didApplyStyle`.
+    open func applyContentTheme(_ theme: LMKTheme) {}
 
     private func updateMode() {
         let wantsSidebar = resolvedStyle.prefersSidebarOnIPad ?? false
@@ -150,7 +165,6 @@ open class LMKTabBarController: UITabBarController, LMKThemeApplying {
         let provider: (UITab) -> UIViewController = { tab in
             let navigation = factory(LMKLazyTabPlaceholderViewController())
             navigation.tabBarItem.accessibilityLabel = definition.accessibilityLabel ?? (definition.title.isEmpty ? tab.title : definition.title)
-            navigation.tabBarItem.selectedImage = definition.selectedImage
             return navigation
         }
         let tab: UITab
@@ -180,7 +194,7 @@ open class LMKTabBarController: UITabBarController, LMKThemeApplying {
     @discardableResult
     public func loadRoot(for identifier: String) -> UIViewController? {
         if let root = roots[identifier] { return root }
-        guard let definition = tab(identifier: identifier), let tab = uiTabs[identifier] else { return nil }
+        guard let definition = definitions[identifier], let tab = uiTabs[identifier] else { return nil }
         let root = definition.makeRoot()
         roots[identifier] = root
         if let navigation = tab.viewController as? UINavigationController {
@@ -223,10 +237,11 @@ open class LMKTabBarController: UITabBarController, LMKThemeApplying {
     private func reportSelectionIfChanged(_ identifier: String) {
         guard identifier != lastReportedIdentifier else { return }
         lastReportedIdentifier = identifier
-        onTabSelected?(identifier)
+        onTabSelect?(identifier)
     }
 
     /// Reorders (and filters) the tabs; unknown identifiers are ignored, the selection is kept.
+    /// A tab left out stays known to `tab(identifier:)` and can be shown again by a later call.
     public func reorderTabs(identifiers: [String]) {
         if isInstallingTabs {
             pendingOrder = identifiers
@@ -236,15 +251,20 @@ open class LMKTabBarController: UITabBarController, LMKThemeApplying {
         let ordered = identifiers.compactMap { uiTabs[$0] }
         guard !ordered.isEmpty else { return }
         tabs = ordered
-        tabDefinitions = identifiers.compactMap { id in tabDefinitions.first { $0.identifier == id } }
+        tabDefinitions = identifiers.compactMap { definitions[$0] }
         if let selected, ordered.contains(where: { definitionIdentifier(of: $0) == selected }) {
             selectTab(identifier: selected)
+        } else if let replacement = selectedIdentifier {
+            // The selected tab was filtered out and UIKit moved the selection: build that
+            // tab's root and report the change the way a tap would.
+            loadRoot(for: replacement)
+            reportSelectionIfChanged(replacement)
         }
     }
 
-    /// The tab definition for `identifier`.
+    /// The tab definition for `identifier`, whether or not it is currently shown.
     public func tab(identifier: String) -> LMKTab? {
-        tabDefinitions.first { $0.identifier == identifier }
+        definitions[identifier]
     }
 
     /// The navigation controller wrapping the tab's root, once built.
@@ -262,9 +282,10 @@ open class LMKTabBarController: UITabBarController, LMKThemeApplying {
         roots[identifier] != nil
     }
 
-    /// Sets or clears the tab's badge.
+    /// Sets or clears the tab's badge (kept for a tab that is currently filtered out).
     public func setBadge(_ content: LMKBadgeView.Content?, for identifier: String) {
         uiTabs[identifier]?.badgeValue = LMKTab.badgeValue(for: content)
+        definitions[identifier]?.badge = content
         if let index = tabDefinitions.firstIndex(where: { $0.identifier == identifier }) {
             tabDefinitions[index].badge = content
         }
@@ -291,7 +312,9 @@ open class LMKTabBarController: UITabBarController, LMKThemeApplying {
     }
 
     override open var keyCommands: [UIKeyCommand]? {
-        guard providesTabKeyCommands else { return super.keyCommands }
+        // A presented controller's responder chain reaches its presenter, so the shortcuts
+        // would otherwise switch tabs under a modal.
+        guard providesTabKeyCommands, presentedViewController == nil else { return super.keyCommands }
         let commands = tabs.prefix(9).enumerated().map { index, tab in
             let command = UIKeyCommand(title: tab.title, action: #selector(handleTabKeyCommand(_:)), input: String(index + 1), modifierFlags: .command, propertyList: definitionIdentifier(of: tab))
             command.discoverabilityTitle = tab.title
@@ -328,7 +351,7 @@ extension LMKTabBarController: UITabBarControllerDelegate {
         let identifier = definitionIdentifier(of: selectedTab)
         loadRoot(for: identifier)
         if let previousTab, definitionIdentifier(of: previousTab) == identifier {
-            onTabReselected?(identifier)
+            onTabReselect?(identifier)
         } else {
             reportSelectionIfChanged(identifier)
         }

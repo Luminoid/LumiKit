@@ -62,10 +62,17 @@ public enum LMKScene {
     ///
     /// - Parameters:
     ///   - scene: The scene to close.
-    ///   - onError: Called when the system refuses; the scene stays open.
-    public static func requestClose(_ scene: UIWindowScene, onError: ((Error) -> Void)? = nil) {
-        UIApplication.shared.requestSceneSessionDestruction(scene.session, options: nil) { error in
-            onError?(error)
+    ///   - onError: Called on the main actor when the system refuses; the scene stays open.
+    public static func requestClose(_ scene: UIWindowScene, onError: (@MainActor (Error) -> Void)? = nil) {
+        UIApplication.shared.requestSceneSessionDestruction(scene.session, options: nil, errorHandler: destructionErrorHandler(onError))
+    }
+
+    /// The block handed to UIKit for a refused destruction. Built outside the main actor so the
+    /// block itself is nonisolated (UIKit does not promise a queue) and hops to the main actor.
+    nonisolated static func destructionErrorHandler(_ onError: (@MainActor (Error) -> Void)?) -> ((Error) -> Void)? {
+        guard let onError else { return nil }
+        return { error in
+            Task { @MainActor in onError(error) }
         }
     }
 

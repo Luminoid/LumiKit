@@ -6,7 +6,6 @@
 //
 
 import LumiKitUI
-import SnapKit
 import UIKit
 
 // MARK: - Photo Button & Copyable Label
@@ -22,11 +21,9 @@ final class PhotoButtonCopyableLabelDetailViewController: DetailViewController {
         }
     }()
 
-    override func viewDidLoad() {
-        super.viewDidLoad()
-
+    override func setupStackContent() {
         addSectionHeader("LMKPhotoButton")
-        stack.addArrangedSubview(UILabel.lmk_make(
+        stackView.addArrangedSubview(UILabel.lmk_make(
             .caption,
             text: "A photo well: placeholder symbol until image is set, then the image clipped to the shape. Tap to toggle a sample photo here; in an app the tap opens the picker."
         ))
@@ -44,26 +41,25 @@ final class PhotoButtonCopyableLabelDetailViewController: DetailViewController {
         let disabled = LMKPhotoButton(size: 64, style: LMKPhotoButton.Style(placeholderPointSize: LMKLayout.symbolLarge))
         disabled.isEnabled = false
         let row = UIStackView(lmk_axis: .horizontal, spacing: LMKSpacing.xl, alignment: .center, arrangedSubviews: [hero, rounded, disabled, UIView()])
-        stack.addArrangedSubview(row)
+        stackView.addArrangedSubview(row)
 
         addDivider()
         addSectionHeader("LMKCopyableLabel")
-        stack.addArrangedSubview(UILabel.lmk_make(.caption, text: "Long-press a value to copy it; VoiceOver gets a Copy action. copyTextProvider copies a raw value behind a formatted display."))
-        stack.addArrangedSubview(makeRow("Phone", value: "+1 (555) 010-0100", copyText: "+15550100100"))
-        stack.addArrangedSubview(makeRow("Microchip", value: "985 112 003 456 789", copyText: "985112003456789"))
-        stack.addArrangedSubview(makeRow("Brand", value: "Harbor Pet Foods", copyText: nil))
+        stackView.addArrangedSubview(UILabel.lmk_make(.caption, text: "Long-press a value to copy it; VoiceOver gets a Copy action. copyTextProvider copies a raw value behind a formatted display."))
+        stackView.addArrangedSubview(makeRow("Phone", value: "+1 (555) 010-0100", copyText: "+15550100100"))
+        stackView.addArrangedSubview(makeRow("Microchip", value: "985 112 003 456 789", copyText: "985112003456789"))
+        stackView.addArrangedSubview(makeRow("Brand", value: "Harbor Pet Foods", copyText: nil))
     }
 
     private func makeRow(_ title: String, value: String, copyText: String?) -> UIStackView {
         let label = LMKCopyableLabel()
         label.lmk_apply(.body)
-        label.text = value
+        label.lmk_setText(value)
         label.numberOfLines = 0
-        label.textAlignment = .right
         if let copyText {
             label.copyTextProvider = { copyText }
         }
-        label.onCopied = { [weak self] text in
+        label.onCopy = { [weak self] text in
             guard let self else { return }
             LMKToast.show(.success, "Copied \(text)", in: self)
         }

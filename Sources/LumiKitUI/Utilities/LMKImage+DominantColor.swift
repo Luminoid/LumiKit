@@ -6,25 +6,25 @@ import UIKit
 /// Approach: downsample to a small grid, bin pixels into a 3D RGB histogram
 /// (6×6×6 = 216 buckets), then pick the bucket(s) you want.
 ///
-/// The default `.modal` strategy returns the densest bucket — the single color
+/// The default `.modal` strategy returns the densest bucket, the single color
 /// range the subject's pixels cluster into. It preserves true subject identity
 /// regardless of saturation: a black cat resolves to black, a British Blue to
 /// cool grey, an orange tabby to orange. The `.average` strategy returns the
-/// arithmetic mean of every sampled pixel — useful for the overall "vibe" of
+/// arithmetic mean of every sampled pixel, useful for the overall "vibe" of
 /// gradients or photos with no clear subject, but mixes subject + background
 /// into a muddy result for most subject photos.
 ///
 /// `dominantColors(...)` returns a palette of the top-N densest buckets in
-/// frequency order — use it when you want a color set (e.g. a featured swatch
+/// frequency order; use it when you want a color set (e.g. a featured swatch
 /// row) rather than a single accent.
 ///
 /// For best subject accuracy, pass a subject-lifted image
 /// (`VNGenerateForegroundInstanceMaskRequest` or similar) with
 /// `ignoringTransparent: true`, so only the subject's pixels contribute.
-extension LMKImage {
+public nonisolated extension LMKImage {
     /// Strategy for collapsing pixel samples into a single dominant color.
-    public enum DominantColorStrategy: Sendable {
-        /// Densest histogram bucket — the modal color. Best for subject identity:
+    enum DominantColorStrategy: Sendable, Hashable {
+        /// Densest histogram bucket, the modal color. Best for subject identity:
         /// preserves low-saturation coats (black, white, grey-blue) and ignores
         /// outlier pixels.
         case modal
@@ -32,7 +32,7 @@ extension LMKImage {
         /// of a gradient or flat illustration; tends to muddy subject photos.
         case average
         /// Most saturated histogram bucket, with a population tie-breaker. Picks
-        /// the "accent color" — a small red flower against grey rocks resolves
+        /// the "accent color": a small red flower against grey rocks resolves
         /// to red, not grey. Buckets covering < 0.5% of samples are dropped to
         /// avoid single-pixel noise. Falls through to modal for grayscale
         /// images (every bucket has saturation 0).
@@ -50,7 +50,7 @@ extension LMKImage {
     ///   - strategy: How to collapse samples into a color (default `.modal`).
     /// - Returns: The dominant color, or nil if the image cannot be processed
     ///   (or all samples were skipped when ignoring transparency).
-    public static func dominantColor(
+    static func dominantColor(
         from image: UIImage,
         ignoringTransparent: Bool = false,
         strategy: DominantColorStrategy = .modal
@@ -78,7 +78,7 @@ extension LMKImage {
     ///   - ignoringTransparent: When true, pixels with alpha < ~0.9 are excluded.
     /// - Returns: Up to `count` colors in descending frequency order, or `[]`
     ///   if the image cannot be processed.
-    public static func dominantColors(
+    static func dominantColors(
         from image: UIImage,
         count: Int,
         ignoringTransparent: Bool = false
@@ -102,14 +102,15 @@ extension LMKImage {
         let size = 40
         let bytesPerPixel = 4
         let bytesPerRow = bytesPerPixel * size
-        var pixelData = [UInt8](repeating: 0, count: size * size * bytesPerPixel)
 
         // Pre-multiplied RGBA is the only RGBA format `CGBitmapContextCreate`
         // supports on iOS. Pre-multiplication only affects partially-
         // transparent pixels — fully opaque pixels (alpha = 255) keep their
         // RGB unchanged, and we drop the rest via the alpha threshold below.
+        // The context owns its pixel buffer; it is read back through `data`
+        // after the draw (a Swift array's inout pointer is only valid for the call).
         guard let context = CGContext(
-            data: &pixelData,
+            data: nil,
             width: size,
             height: size,
             bitsPerComponent: 8,
@@ -122,6 +123,9 @@ extension LMKImage {
 
         context.clear(CGRect(x: 0, y: 0, width: size, height: size))
         context.draw(cgImage, in: CGRect(x: 0, y: 0, width: size, height: size))
+        guard let data = context.data else { return nil }
+        let pixelData = UnsafeBufferPointer(start: data.assumingMemoryBound(to: UInt8.self), count: context.bytesPerRow * size)
+        let rowStride = context.bytesPerRow
 
         // When sampling a lifted image, require near-opaque alpha so residual
         // edge pixels (semi-transparent fur blended with the transparent
@@ -136,7 +140,7 @@ extension LMKImage {
 
         for y in centerMargin ..< (size - centerMargin) {
             for x in centerMargin ..< (size - centerMargin) {
-                let i = (y * size + x) * bytesPerPixel
+                let i = y * rowStride + x * bytesPerPixel
                 let alpha = pixelData[i + 3]
                 if ignoringTransparent, alpha < alphaThreshold { continue }
                 samples.append((pixelData[i], pixelData[i + 1], pixelData[i + 2]))

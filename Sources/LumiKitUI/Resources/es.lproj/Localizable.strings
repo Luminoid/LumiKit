@@ -10,7 +10,7 @@
 "actionSheet.back" = "Atrás";
 "actionSheet.submenu.accessibilityHint" = "Abre un submenú";
 "badge.dot.accessibilityLabel" = "Nuevo";
-"banner.dismiss.accessibilityLabel" = "Descartar";
+"banner.dismiss.accessibilityLabel" = "Cerrar";
 "cardPage.leadingButton.accessibilityLabel" = "Atrás";
 "cardPage.trailingButton.accessibilityLabel" = "Acción";
 "checkboxCell.checkbox.accessibilityLabel" = "Marcar como hecho";
@@ -33,9 +33,9 @@
 "datePicker.confirm" = "Aceptar";
 "datePicker.from" = "Desde";
 "datePicker.to" = "Hasta";
-"datePicker.textFieldPlaceholder" = "Añadir notas...";
+"datePicker.textFieldPlaceholder" = "Añadir notas…";
 "datePicker.selectDatesPrompt" = "Selecciona fechas";
-"toast.dismiss.accessibilityLabel" = "Descartar";
+"toast.dismiss.accessibilityLabel" = "Cerrar";
 "toast.undo" = "Deshacer";
 "loadingState.loading.accessibilityLabel" = "Cargando";
 "floatingButton.move.topLeading" = "Mover arriba a la izquierda";
@@ -51,6 +51,7 @@
 "alert.delete" = "Eliminar";
 "alert.deleteConfirmation.title" = "¿Eliminar “%@”?";
 "alert.deleteConfirmation.message" = "Esta acción no se puede deshacer.";
+"alert.countdownConfirmation.confirmTitleFormat" = "%1$@ (%2$lld)";
 "formKeyCommands.save" = "Guardar";
 "formKeyCommands.cancel" = "Cancelar";
 "ratingControl.accessibilityLabel" = "Valoración";
@@ -58,6 +59,8 @@
 "copyableLabel.copy" = "Copiar";
 "photoButton.add.accessibilityLabel" = "Añadir foto";
 "photoButton.change.accessibilityLabel" = "Cambiar foto";
+"textField.clear.accessibilityLabel" = "Borrar";
+"textInput.counter.accessibilityLabel" = "%lld de %lld caracteres";
 "monthCalendar.today" = "Hoy";
 "monthCalendar.previousMonth.accessibilityLabel" = "Mes anterior";
 "monthCalendar.nextMonth.accessibilityLabel" = "Mes siguiente";

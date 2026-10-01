@@ -71,6 +71,39 @@ struct LMKPhotoButtonTests {
     }
 
     @Test
+    func `A small well still answers a 44pt touch; a disabled one absorbs touches inside its bounds`() {
+        let (button, window) = makeButton(size: 32)
+        defer { window.isHidden = true }
+        #expect(button.point(inside: CGPoint(x: 16, y: -5), with: nil))
+        #expect(!button.point(inside: CGPoint(x: 16, y: -7), with: nil))
+        button.isEnabled = false
+        #expect(button.point(inside: CGPoint(x: 16, y: 16), with: nil))
+        #expect(!button.point(inside: CGPoint(x: 16, y: -5), with: nil), "no expanded area while disabled")
+        button.isHidden = true
+        #expect(!button.point(inside: CGPoint(x: 16, y: 16), with: nil))
+    }
+
+    @Test
+    func `A surface shadow leaves the photo clipped to the shape`() {
+        let (button, window) = makeButton(style: LMKPhotoButton.Style(surface: LMKSurfaceStyle(shadow: .level(.level2))))
+        defer { window.isHidden = true }
+        button.image = UIImage.lmk_solidColor(.red, size: CGSize(width: 20, height: 20))
+        button.layoutIfNeeded()
+        #expect(!button.layer.masksToBounds, "the well itself does not clip, or the shadow would go")
+        #expect(button.imageView.layer.masksToBounds)
+        #expect(button.imageView.layer.cornerRadius == 60, "the photo clips itself to the circle")
+        button.style = LMKPhotoButton.Style(shape: .rounded(radius: 12), surface: LMKSurfaceStyle(shadow: .level(.level2)))
+        #expect(button.imageView.layer.cornerRadius == 12)
+    }
+
+    @Test
+    func `Placeholder point size and weight shape the symbol`() {
+        let (button, window) = makeButton(style: LMKPhotoButton.Style(placeholderPointSize: 40, placeholderWeight: .bold))
+        defer { window.isHidden = true }
+        #expect(button.imageView.image == UIImage(systemName: "camera.fill", withConfiguration: UIImage.SymbolConfiguration(pointSize: 40, weight: .bold)))
+    }
+
+    @Test
     func `Tap calls onTap; disabled dims and blocks it`() {
         let (button, window) = makeButton()
         defer { window.isHidden = true }

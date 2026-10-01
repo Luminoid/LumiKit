@@ -206,7 +206,8 @@ public nonisolated enum LMKDateFormat {
     }
 
     /// A range such as "Jun 6 – 8, 2026" (the locale's interval punctuation; a date range, not a
-    /// parenthetical, so the en dash is expected).
+    /// parenthetical, so the en dash is expected). A `.custom` pattern renders both bounds joined by
+    /// an en dash ("06.06.2026 – 08.06.2026"), or one bound when they read the same.
     public static func intervalString(from start: Date, to end: Date, date: DateStyle = .medium, context: Context = .default) -> String {
         let dateStyle = resolved(date)
         let range = min(start, end) ..< max(start, end)
@@ -214,12 +215,12 @@ public nonisolated enum LMKDateFormat {
         case .none:
             return ""
         case let .custom(pattern):
-            let interval = DateIntervalFormatter()
-            interval.locale = context.effectiveLocale
-            interval.calendar = context.effectiveCalendar
-            interval.timeZone = context.timeZone
-            interval.dateTemplate = pattern
-            return interval.string(from: range.lowerBound, to: range.upperBound)
+            // A pattern is not a skeleton, so `DateIntervalFormatter` cannot render it; both bounds
+            // go through the pattern formatter and collapse when they read the same.
+            let formatter = formatter(pattern: pattern, context: context)
+            let lower = formatter.string(from: range.lowerBound)
+            let upper = formatter.string(from: range.upperBound)
+            return lower == upper ? lower : "\(lower) – \(upper)"
         default:
             return range.formatted(intervalStyle(date: dateStyle, context: context))
         }
@@ -249,7 +250,7 @@ public nonisolated enum LMKDateFormat {
     /// in the context's calendar), otherwise the date in `fallback`.
     public static func relativeDayString(_ date: Date, relativeTo reference: Date = Date(), fallback: DateStyle = .medium, context: Context = .default) -> String {
         let calendar = context.effectiveCalendar
-        let delta = calendar.dateComponents([.day], from: calendar.startOfDay(for: reference), to: calendar.startOfDay(for: date)).day ?? 0
+        let delta = calendar.dateComponents([.day], from: noon(of: reference, in: calendar), to: noon(of: date, in: calendar)).day ?? 0
         guard abs(delta) <= 1 else {
             return string(date, date: fallback, time: .none, context: context)
         }
@@ -353,6 +354,13 @@ public nonisolated enum LMKDateFormat {
         guard case .preferred = style else { return style }
         if let pattern = preferredDatePattern, !pattern.isEmpty { return .custom(pattern: pattern) }
         return .medium
+    }
+
+    /// Noon on `date`'s day: the anchor for day deltas. Midnight is the wrong anchor where daylight
+    /// saving starts at 00:00 (Cairo, Santiago, Havana, Beirut): that day begins at 01:00 and is
+    /// 23 hours long, so a midnight-to-midnight difference comes out one day short.
+    private static func noon(of date: Date, in calendar: Calendar) -> Date {
+        calendar.date(bySettingHour: 12, minute: 0, second: 0, of: date) ?? calendar.startOfDay(for: date)
     }
 
     private static func timeString(_ date: Date, time: TimeStyle, context: Context) -> String {

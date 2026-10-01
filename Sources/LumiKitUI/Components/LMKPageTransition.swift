@@ -22,6 +22,11 @@ enum LMKPageTransition {
     /// fades. Without animation, a window, a laid-out container, or with Reduce Motion, the
     /// swap is immediate. `layoutRoot` is laid out inside the animation so a height change
     /// animates with the slide. `completion` runs once the old view is gone.
+    ///
+    /// Both views leave the transition the way they entered it: the incoming view starts
+    /// opaque and untransformed, and the outgoing view gets its alpha, transform, and
+    /// autoresizing translation back once it is removed, so a page kept on a stack can be
+    /// slid back in later.
     static func run(
         in container: UIView,
         from oldView: UIView?,
@@ -32,6 +37,8 @@ enum LMKPageTransition {
         layoutRoot: UIView? = nil,
         completion: (() -> Void)? = nil
     ) {
+        newView.alpha = 1
+        newView.transform = .identity
         guard animated, direction != .none, LMKAnimation.shouldAnimate, let oldView, !container.bounds.isEmpty, container.window != nil else {
             oldView?.removeFromSuperview()
             container.addSubview(newView)
@@ -42,6 +49,9 @@ enum LMKPageTransition {
 
         // Freeze the outgoing view at its current frame so both views can be transformed.
         let oldFrame = oldView.frame
+        let oldAlpha = oldView.alpha
+        let oldTransform = oldView.transform
+        let oldTranslatesMask = oldView.translatesAutoresizingMaskIntoConstraints
         oldView.snp.removeConstraints()
         oldView.translatesAutoresizingMaskIntoConstraints = true
         oldView.frame = oldFrame
@@ -64,6 +74,10 @@ enum LMKPageTransition {
         }
         let once = LMKOnceCompletion(after: duration) {
             oldView.removeFromSuperview()
+            oldView.alpha = oldAlpha
+            oldView.transform = oldTransform
+            oldView.translatesAutoresizingMaskIntoConstraints = oldTranslatesMask
+            newView.transform = .identity
             completion?()
         }
         animator.addCompletion { _ in once.fire() }

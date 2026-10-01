@@ -4,7 +4,6 @@
 //
 
 import Testing
-import UIKit
 @testable import LumiKitUI
 
 // MARK: - LMKHaptics
@@ -23,7 +22,7 @@ struct LMKHapticsTests {
     }
 
     @Test
-    func `Feedback methods don't crash`() {
+    func `Feedback methods are callable in the test host (smoke)`() {
         LMKHaptics.success()
         LMKHaptics.warning()
         LMKHaptics.error()
@@ -34,7 +33,7 @@ struct LMKHapticsTests {
     }
 
     @Test
-    func `Prepare methods don't crash`() {
+    func `Prepare methods are callable in the test host (smoke)`() {
         LMKHaptics.prepareNotification()
         LMKHaptics.prepareSelection()
         LMKHaptics.prepareImpact(.light)

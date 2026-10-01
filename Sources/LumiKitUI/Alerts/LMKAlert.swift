@@ -8,6 +8,7 @@
 //  +CountdownConfirmation.
 //
 
+import LumiKitCore
 import UIKit
 
 /// Presents `UIAlertController`s consistently, with localized defaults.
@@ -109,6 +110,9 @@ public enum LMKAlert {
         /// Format with the item name (`%@`).
         public var deleteConfirmationTitleFormat: String
         public var deleteConfirmationMessage: String
+        /// The countdown confirmation's button while it counts: format with the confirm title
+        /// (`%1$@`) and the seconds left (`%2$lld`).
+        public var countdownConfirmTitleFormat: String
 
         public init(
             ok: String = LMKLocalized("alert.ok"),
@@ -116,7 +120,8 @@ public enum LMKAlert {
             save: String = LMKLocalized("alert.save"),
             delete: String = LMKLocalized("alert.delete"),
             deleteConfirmationTitleFormat: String = LMKLocalized("alert.deleteConfirmation.title"),
-            deleteConfirmationMessage: String = LMKLocalized("alert.deleteConfirmation.message")
+            deleteConfirmationMessage: String = LMKLocalized("alert.deleteConfirmation.message"),
+            countdownConfirmTitleFormat: String = LMKLocalized("alert.countdownConfirmation.confirmTitleFormat")
         ) {
             self.ok = ok
             self.cancel = cancel
@@ -124,6 +129,7 @@ public enum LMKAlert {
             self.delete = delete
             self.deleteConfirmationTitleFormat = deleteConfirmationTitleFormat
             self.deleteConfirmationMessage = deleteConfirmationMessage
+            self.countdownConfirmTitleFormat = countdownConfirmTitleFormat
         }
     }
 
@@ -152,6 +158,9 @@ public enum LMKAlert {
     }
 
     /// A confirm / cancel alert awaited as a `Bool` (`true` when confirmed).
+    ///
+    /// Resolves `false` without presenting when `host` cannot present (it is off screen or
+    /// already presenting), and when the alert goes away without an action.
     public static func confirm(
         from host: UIViewController,
         title: String,
@@ -160,7 +169,12 @@ public enum LMKAlert {
         cancelTitle: String? = nil,
         isDestructive: Bool = false
     ) async -> Bool {
-        await withCheckedContinuation { continuation in
+        guard host.lmk_canPresentAlert else {
+            LMKLogger.warning("LMKAlert: \(type(of: host)) cannot present “\(title)”: off screen or already presenting", category: .ui)
+            return false
+        }
+        return await withCheckedContinuation { continuation in
+            let resolution = LMKOnceContinuation(continuation, fallback: false)
             presentConfirmation(
                 from: host,
                 title: title,
@@ -168,8 +182,8 @@ public enum LMKAlert {
                 confirmTitle: confirmTitle,
                 cancelTitle: cancelTitle,
                 confirmStyle: isDestructive ? .destructive : .default,
-                onConfirm: { continuation.resume(returning: true) },
-                onCancel: { continuation.resume(returning: false) }
+                onConfirm: { resolution.resolve(true) },
+                onCancel: { resolution.resolve(false) }
             )
         }
     }
@@ -217,7 +231,12 @@ public enum LMKAlert {
     /// text verbatim (empty when untouched); `input.validate` keeps Save disabled until the
     /// text passes.
     @discardableResult
-    public static func presentTextInput(_ input: TextInput, from host: UIViewController, onSave: @escaping (String) -> Void) -> UIAlertController {
+    public static func presentTextInput(
+        _ input: TextInput,
+        from host: UIViewController,
+        onSave: @escaping (String) -> Void,
+        onCancel: (() -> Void)? = nil
+    ) -> UIAlertController {
         let alert = UIAlertController(title: input.title, message: input.message, preferredStyle: .alert)
         let save = UIAlertAction(title: input.saveTitle ?? strings.save, style: .default) { [weak alert] _ in
             onSave(alert?.textFields?.first?.text ?? "")
@@ -238,13 +257,13 @@ public enum LMKAlert {
                 }, for: .editingChanged)
             }
         }
-        alert.addAction(UIAlertAction(title: input.cancelTitle ?? strings.cancel, style: .cancel))
+        alert.addAction(UIAlertAction(title: input.cancelTitle ?? strings.cancel, style: .cancel) { _ in onCancel?() })
         alert.addAction(save)
         host.present(alert, animated: true)
         return alert
     }
 
-    /// A prompt with one text field; see `presentTextInput(_:from:onSave:)` for the full configuration.
+    /// A prompt with one text field; see `presentTextInput(_:from:onSave:onCancel:)` for the full configuration.
     @discardableResult
     public static func presentTextInput(
         from host: UIViewController,
@@ -252,14 +271,21 @@ public enum LMKAlert {
         message: String? = nil,
         placeholder: String? = nil,
         initialText: String? = nil,
-        onSave: @escaping (String) -> Void
+        onSave: @escaping (String) -> Void,
+        onCancel: (() -> Void)? = nil
     ) -> UIAlertController {
-        presentTextInput(TextInput(title: title, message: message, placeholder: placeholder, initialText: initialText), from: host, onSave: onSave)
+        presentTextInput(
+            TextInput(title: title, message: message, placeholder: placeholder, initialText: initialText),
+            from: host,
+            onSave: onSave,
+            onCancel: onCancel
+        )
     }
 
     // MARK: - Action sheet
 
     /// A system action sheet with typed actions and a cancel button, anchored for popovers.
+    /// An action's `image` shows when the running UIKit supports images on alert actions.
     @discardableResult
     public static func presentActionSheet(
         from host: UIViewController,
@@ -267,18 +293,20 @@ public enum LMKAlert {
         message: String? = nil,
         actions: [Action],
         cancelTitle: String? = nil,
-        anchor: Anchor = .centered
+        anchor: Anchor = .centered,
+        onCancel: (() -> Void)? = nil
     ) -> UIAlertController {
         let alert = UIAlertController(title: title, message: message, preferredStyle: .actionSheet)
         for action in actions {
             let alertAction = UIAlertAction(title: action.title, style: action.style == .destructive ? .destructive : .default) { _ in action.handler() }
             alertAction.isEnabled = action.isEnabled
-            if let image = action.image {
+            // `image` is not public API on `UIAlertAction`; the setter check keeps the key from ever raising.
+            if let image = action.image, alertAction.responds(to: NSSelectorFromString("setImage:")) {
                 alertAction.setValue(image, forKey: "image")
             }
             alert.addAction(alertAction)
         }
-        alert.addAction(UIAlertAction(title: cancelTitle ?? strings.cancel, style: .cancel))
+        alert.addAction(UIAlertAction(title: cancelTitle ?? strings.cancel, style: .cancel) { _ in onCancel?() })
         switch anchor {
         case let .view(view, rect):
             alert.popoverPresentationController?.sourceView = view
@@ -290,5 +318,13 @@ public enum LMKAlert {
         }
         host.present(alert, animated: true)
         return alert
+    }
+}
+
+extension UIViewController {
+    /// Whether UIKit would honor a `present` from this controller: it is on screen and not
+    /// already presenting. The awaited alerts check it so a refused presentation still resolves.
+    var lmk_canPresentAlert: Bool {
+        viewIfLoaded?.window != nil && presentedViewController == nil
     }
 }

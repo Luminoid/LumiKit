@@ -12,7 +12,8 @@ import UIKit
 ///
 /// The cell starts its shimmer when it enters a window, so hosts need no
 /// `willDisplay` bookkeeping; `UITableView.lmk_startSkeletons()` restarts the
-/// visible rows with a stagger after a reload.
+/// visible rows with a stagger after a reload. A placeholder row takes no
+/// highlight or selection look.
 public final class LMKSkeletonCell: UITableViewCell, LMKThemeApplying {
     // MARK: - Style
 
@@ -66,7 +67,10 @@ public final class LMKSkeletonCell: UITableViewCell, LMKThemeApplying {
     public var didApplyStyle: ((LMKSkeletonCell) -> Void)?
 
     private var heightConstraint: Constraint?
-    private var insetsConstraint: Constraint?
+    private var topInsetConstraint: Constraint?
+    private var leadingInsetConstraint: Constraint?
+    private var trailingInsetConstraint: Constraint?
+    private var bottomInsetConstraint: Constraint?
     private static let defaultHeight: CGFloat = 80
 
     // MARK: - Initialization
@@ -94,8 +98,12 @@ public final class LMKSkeletonCell: UITableViewCell, LMKThemeApplying {
 
         contentView.addSubview(containerView)
         containerView.snp.makeConstraints { make in
-            insetsConstraint = make.edges.equalToSuperview().constraint
-            heightConstraint = make.height.equalTo(Self.defaultHeight).constraint
+            topInsetConstraint = make.top.equalToSuperview().constraint
+            leadingInsetConstraint = make.leading.equalToSuperview().constraint
+            trailingInsetConstraint = make.trailing.equalToSuperview().constraint
+            // Just below required: the table's encapsulated row height competes with these.
+            bottomInsetConstraint = make.bottom.equalToSuperview().priority(999).constraint
+            heightConstraint = make.height.equalTo(Self.defaultHeight).priority(999).constraint
         }
         containerView.addSubview(skeletonView)
         skeletonView.snp.makeConstraints { $0.edges.equalToSuperview() }
@@ -116,20 +124,14 @@ public final class LMKSkeletonCell: UITableViewCell, LMKThemeApplying {
         }
     }
 
+    /// Resets the stagger; a recycled cell the table keeps on screen shimmers on.
     override public func prepareForReuse() {
         super.prepareForReuse()
         staggerIndex = 0
         stopShimmer()
-    }
-
-    override public func setHighlighted(_ highlighted: Bool, animated: Bool) {
-        super.setHighlighted(highlighted, animated: animated)
-        lmk_applyCustomHighlight(highlighted: highlighted, animated: animated)
-    }
-
-    override public func setSelected(_ selected: Bool, animated: Bool) {
-        super.setSelected(selected, animated: animated)
-        lmk_applyCustomHighlight(highlighted: selected, animated: animated)
+        if window != nil {
+            startShimmer()
+        }
     }
 
     // MARK: - Theme
@@ -144,7 +146,10 @@ public final class LMKSkeletonCell: UITableViewCell, LMKThemeApplying {
         )
         let applied = containerView.lmk_apply(surface: resolved.surface, defaults: defaults, clipsContent: false)
         let insets = applied.contentInsets ?? .lmk_symmetric(vertical: theme.spacing.xs, horizontal: theme.spacing.large)
-        insetsConstraint?.update(inset: UIEdgeInsets(top: insets.top, left: insets.leading, bottom: insets.bottom, right: insets.trailing))
+        topInsetConstraint?.update(inset: insets.top)
+        leadingInsetConstraint?.update(inset: insets.leading)
+        trailingInsetConstraint?.update(inset: insets.trailing)
+        bottomInsetConstraint?.update(inset: insets.bottom)
         heightConstraint?.update(offset: resolved.height ?? Self.defaultHeight)
         skeletonView.shapes = resolved.shapes ?? [.rect(height: resolved.height ?? Self.defaultHeight)]
         skeletonView.style = resolved.skeleton ?? LMKSkeletonView.Style()

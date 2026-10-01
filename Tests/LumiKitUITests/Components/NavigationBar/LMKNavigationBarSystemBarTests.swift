@@ -64,8 +64,26 @@ struct LMKNavigationBarSystemBarTests {
         #expect(navigationItem.rightBarButtonItems?.map(\.accessibilityIdentifier) == ["t2", "t1"], "UIKit lists right items trailing-first")
 
         navigationItem.lmk_setItems()
-        #expect(navigationItem.leftBarButtonItems == nil)
+        #expect(navigationItem.leftBarButtonItems?.count == 2, "an omitted side is left alone")
+        #expect(navigationItem.rightBarButtonItems?.count == 2)
+        navigationItem.lmk_setItems(trailing: [LMKNavigationBarItem(identifier: "t3", title: "T3")])
+        #expect(navigationItem.leftBarButtonItems?.map(\.accessibilityIdentifier) == ["l1", "l2"])
+        #expect(navigationItem.rightBarButtonItems?.map(\.accessibilityIdentifier) == ["t3"])
+        navigationItem.lmk_setItems(leading: [], trailing: [])
+        #expect(navigationItem.leftBarButtonItems == nil, "an empty side clears")
         #expect(navigationItem.rightBarButtonItems == nil)
+    }
+
+    @Test
+    func `The two-line title view takes the theme's title text style`() {
+        var theme = LMKTheme()
+        theme.navigationBar = LMKNavigationBar.Style(titleTextStyle: .h1, titleColor: .purple)
+        let view = LMKTwoLineTitleView()
+        view.configure(title: "Plants", subtitle: "12 items")
+        let window = LMKThemeTesting.host(view, theme: theme)
+        defer { window.isHidden = true }
+        #expect(view.titleLabel.font.pointSize == LMKTypography.font(for: .h1, compatibleWith: view.traitCollection).pointSize)
+        #expect(view.titleLabel.textColor == UIColor.purple)
     }
 
     @Test

@@ -12,7 +12,7 @@ public nonisolated extension UIColor {
     ///
     /// Compile-time validated (no Optional, no force-unwrap) and avoids the
     /// string-parsing overhead of the `lmk_hex: String` initializer. Use for
-    /// hardcoded color literals in code — design tokens, theme constants,
+    /// hardcoded color literals in code: design tokens, theme constants,
     /// generated themes:
     ///
     /// ```swift
@@ -22,7 +22,7 @@ public nonisolated extension UIColor {
     ///
     /// `lmk_hex` is the lowest 24 bits (`0x000000`...`0xFFFFFF`). Bits above
     /// the 24-bit window are ignored, so passing `0xFF7C5CFF` is the same as
-    /// `0x7C5CFF` — pass `alpha` separately rather than packing it into the
+    /// `0x7C5CFF`; pass `alpha` separately rather than packing it into the
     /// hex.
     convenience init(lmk_hex: UInt32, alpha: CGFloat = 1.0) {
         self.init(
@@ -33,21 +33,6 @@ public nonisolated extension UIColor {
         )
     }
 
-    /// Initialize a dynamic light/dark color from two 24-bit hex literals.
-    ///
-    /// Trait-aware color that auto-resolves to the appropriate variant. The
-    /// returned `UIColor` uses `UIColor { traitCollection in ... }` under the
-    /// hood, so it tracks user interface style changes automatically.
-    ///
-    /// ```swift
-    /// var primary: UIColor {
-    ///     .lmk_dynamic(lightHex: 0x694ED9, darkHex: 0x553BBF)
-    /// }
-    /// ```
-    ///
-    /// Designed for theme files where every color has both a light and dark
-    /// variant. Generated theme code uses this convenience to shrink each
-    /// color declaration from ~5 lines of arithmetic to one line.
     /// Whether two colors resolve identically in light and in dark mode.
     ///
     /// `UIColor ==` compares dynamic (provider) colors by identity, so two independently built
@@ -68,6 +53,21 @@ public nonisolated extension UIColor {
         }
     }
 
+    /// Initialize a dynamic light/dark color from two 24-bit hex literals.
+    ///
+    /// Trait-aware color that auto-resolves to the appropriate variant. The
+    /// returned `UIColor` uses `UIColor { traitCollection in ... }` under the
+    /// hood, so it tracks user interface style changes automatically.
+    ///
+    /// ```swift
+    /// var primary: UIColor {
+    ///     .lmk_dynamic(lightHex: 0x694ED9, darkHex: 0x553BBF)
+    /// }
+    /// ```
+    ///
+    /// Designed for theme files where every color has both a light and dark
+    /// variant. Generated theme code uses this convenience to shrink each
+    /// color declaration from ~5 lines of arithmetic to one line.
     static func lmk_dynamic(lightHex: UInt32, darkHex: UInt32, alpha: CGFloat = 1.0) -> UIColor {
         UIColor { traitCollection in
             traitCollection.userInterfaceStyle == .dark
@@ -76,7 +76,8 @@ public nonisolated extension UIColor {
         }
     }
 
-    /// Initialize from hex string. Supports "#RRGGBB", "RRGGBB", "#RRGGBBAA", "RRGGBBAA".
+    /// Initialize from hex string. Supports "#RRGGBB", "RRGGBB", "#RRGGBBAA", "RRGGBBAA";
+    /// anything else (a `0x` prefix, a stray character, another length) is `nil`.
     ///
     /// ```swift
     /// let color = UIColor(lmk_hex: "#FF5733")
@@ -88,10 +89,8 @@ public nonisolated extension UIColor {
             hex.removeFirst()
         }
 
-        guard hex.count == 6 || hex.count == 8 else { return nil }
-
-        var rgbValue: UInt64 = 0
-        guard Scanner(string: hex).scanHexInt64(&rgbValue) else { return nil }
+        guard hex.count == 6 || hex.count == 8, hex.utf8.allSatisfy(Self.lmk_isHexDigit) else { return nil }
+        guard let rgbValue = UInt64(hex, radix: 16) else { return nil }
 
         if hex.count == 6 {
             self.init(
@@ -108,6 +107,12 @@ public nonisolated extension UIColor {
                 alpha: CGFloat(rgbValue & 0x0000_00FF) / 255.0
             )
         }
+    }
+
+    private static func lmk_isHexDigit(_ byte: UInt8) -> Bool {
+        (UInt8(ascii: "0") ... UInt8(ascii: "9")).contains(byte)
+            || (UInt8(ascii: "A") ... UInt8(ascii: "F")).contains(byte)
+            || (UInt8(ascii: "a") ... UInt8(ascii: "f")).contains(byte)
     }
 
     /// Hex string representation (uppercase, without #).

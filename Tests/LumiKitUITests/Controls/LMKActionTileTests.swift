@@ -100,6 +100,70 @@ struct LMKActionTileTests {
     }
 
     @Test
+    func `Hit target: 44pt while enabled, the bounds while disabled, nothing while hidden`() {
+        let tile = LMKActionTile()
+        tile.frame = CGRect(x: 0, y: 0, width: 80, height: 30)
+        #expect(tile.point(inside: CGPoint(x: 40, y: -6), with: nil), "a short tile still answers 44pt")
+        #expect(!tile.point(inside: CGPoint(x: 40, y: -8), with: nil))
+        tile.isEnabled = false
+        #expect(tile.point(inside: CGPoint(x: 40, y: 15), with: nil), "a disabled tile swallows the touch like a disabled UIControl")
+        #expect(!tile.point(inside: CGPoint(x: 40, y: -6), with: nil), "without the expanded area")
+        tile.isEnabled = true
+        tile.isHidden = true
+        #expect(!tile.point(inside: CGPoint(x: 40, y: 15), with: nil))
+    }
+
+    private static func brightness(_ color: UIColor?, _ traits: UITraitCollection) -> CGFloat {
+        var value: CGFloat = 0
+        color?.resolvedColor(with: traits).getHue(nil, saturation: nil, brightness: &value, alpha: nil)
+        return value
+    }
+
+    @Test
+    func `Pressed shades the fill, and the state styles apply every field`() {
+        let (tile, window) = makeTile(style: LMKActionTile.Style(surface: LMKSurfaceStyle(background: .solid(UIColor(white: 0.6, alpha: 1)))))
+        defer { window.isHidden = true }
+        tile.isHighlighted = true
+        #expect(abs(Self.brightness(tile.backgroundColor, tile.traitCollection) - 0.6 * 0.85) < 0.01, "a press shows without motion")
+        #expect(tile.alpha == 1)
+        #expect(tile.transform == .identity, "the press animation owns the transform")
+        tile.isHighlighted = false
+        #expect(abs(Self.brightness(tile.backgroundColor, tile.traitCollection) - 0.6) < 0.01)
+
+        var styled = LMKActionTile.Style()
+        styled.highlighted = LMKControlStateStyle(foregroundColor: .black, scale: 0.9, shadow: .level(.level2))
+        styled.disabled = LMKControlStateStyle(foregroundColor: .gray, border: .solid(.red, width: 2), scale: 0.8, shadow: .level(.level1))
+        tile.style = styled
+        tile.isHighlighted = true
+        #expect(tile.iconView.tintColor == UIColor.black)
+        #expect(abs(tile.transform.a - 0.9) < 0.001, "a state scale is applied as set")
+        #expect(tile.layer.shadowOpacity > 0)
+        tile.isHighlighted = false
+        #expect(tile.transform == .identity)
+        #expect(tile.layer.shadowOpacity == 0)
+        tile.isEnabled = false
+        #expect(tile.iconView.tintColor == UIColor.gray)
+        #expect(tile.layer.borderWidth == LMKLayout.pixelAligned(2, for: tile))
+        #expect(abs(tile.transform.a - 0.8) < 0.001)
+        #expect(tile.layer.shadowOpacity > 0)
+        #expect(abs(tile.alpha - LMKAlpha.disabled) < 0.001, "the disabled alpha still applies")
+    }
+
+    @Test
+    func `Content insets and the icon size update in place`() {
+        let (tile, window) = makeTile()
+        defer { window.isHidden = true }
+        tile.configure(title: "T", systemName: "star")
+        tile.style.surface.contentInsets = .lmk_all(12)
+        tile.style.iconSize = 18
+        tile.frame = CGRect(x: 0, y: 0, width: 60, height: 60)
+        tile.layoutIfNeeded()
+        #expect(tile.iconView.frame.width == 18)
+        #expect(tile.contentStack.frame.minY >= 12)
+        #expect(tile.contentStack.frame.minX >= 12)
+    }
+
+    @Test
     func `Style and theme.actionTile restyle the tile`() {
         let (tile, window) = makeTile(style: LMKActionTile.Style(
             surface: LMKSurfaceStyle(background: .solid(.yellow), corners: .fixed(4)),

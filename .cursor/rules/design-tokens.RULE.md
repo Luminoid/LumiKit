@@ -24,6 +24,7 @@ LMKTheme.current.spacing.large                // nonisolated read
 - `LMKColor.*` are dynamic colors resolved through the `lmkTheme` trait: a view holding one re-resolves on theme, dark mode, and Increase Contrast changes
 - `CGColor` sinks go through `lmk_applyShadow` / `lmk_applyBorder`, which re-stamp on trait changes
 - **NEVER** read `LMKTheme.current` inside `Components/` or `Controls/` (SwiftLint `no_theme_store_in_components`); resolve against the `theme` passed to `applyTheme(_:)` so per-window scoping works
+- **NEVER** read the global token proxies `LMKSpacing.*`, `LMKLayout.*` (except `hairline` / `pixelAligned`), `LMKCornerRadius.*`, `LMKAlpha.*` inside components, controls, alerts, Photo, or Lottie sources except as a default argument (SwiftLint `no_global_token_proxies_in_components`): keep the constraint handle and set it in `applyTheme(_:)` from `theme.spacing` / `theme.layout`; a namespace with no theme input carries an inline disable with the reason
 - Preview a theme in one window with `window.traitOverrides.lmkTheme = LMKThemeReference(candidate)`
 
 ## The Style Pattern
@@ -44,7 +45,8 @@ public func applyTheme(_ theme: LMKTheme) { let resolved = theme.<slot>.merging(
 
 - A value is a Style field when a designer decides it and it has no side effect beyond appearance; it stays a property when it is content or runtime state
 - Presets set only their variant and never read tokens
-- Every component exposes its structural subviews and a `didApplyStyle` hook; `applyTheme(_:)` is idempotent and is the only place that assigns appearance
+- Every component exposes its structural subviews and a `didApplyStyle` hook that runs last; `applyTheme(_:)` is idempotent and is the only place that assigns appearance; the open base classes call `applyContentTheme(_:)` just before `didApplyStyle` for subclass content
+- An explicit "off" in an optional style field is `.square` (corners), `LMKBorderStyle.hidden`, or `LMKShadowSource.hidden`, never `.none` (which Swift reads as `nil`, "the theme decides"); a component that plays haptics gates them with `Style.haptics: Bool?`
 - Call `lmk_startApplyingTheme()` last in `init` (views) or in `viewDidLoad` (view controllers)
 
 ## Token Reference
@@ -54,7 +56,7 @@ public func applyTheme(_ theme: LMKTheme) { let resolved = theme.<slot>.merging(
 | Colors | `LMKColor` | `LMKColorTheme` | `primary`, `primaryVariant`, `secondary`, `tertiary`, `success`, `warning`, `error`, `info`, `onAccent`, `textPrimary/Secondary/Tertiary`, `link`, `backgroundPrimary/Secondary/Tertiary`, `divider`, `outline`, `fill`, `fillStrong`, `scrim`, `pressedOverlay`, `selection`; `highContrastBoost` |
 | Typography | `LMKTypography` / `LMKTextStyle` | `LMKTypographyTheme` | `h1`...`h4`, `body`, `bodyMedium`, `bodyBold`, `subbodyMedium`, `caption`, `captionMedium`, `small`, `smallMedium`, extra-small steps, italics, `custom(LMKFontSpec)`; `maximumScale` |
 | Spacing | `LMKSpacing` | `LMKSpacingTheme` | `xxs` 2, `xs` 4, `small` 8, `medium` 12, `large` 16, `xl` 20, `xxl` 24; `cardPadding` / `cellPaddingVertical` tier by canvas |
-| Corner radius | `LMKCornerRadius` / `LMKCornerStyle` | `LMKCornerRadiusTheme` | `xs` 4, `small` 8, `medium` 12, `large` 16, `xl` 20, `xxl` 40; styles `none`, `fixed`, `capsule`, `circle`, `concentric(minimum:)` |
+| Corner radius | `LMKCornerRadius` / `LMKCornerStyle` | `LMKCornerRadiusTheme` | `xs` 4, `small` 8, `medium` 12, `large` 16, `xl` 20, `xxl` 40; styles `square`, `fixed`, `capsule`, `circle`, `concentric(minimum:corners:curve:)` |
 | Alpha | `LMKAlpha` | `LMKAlphaTheme` | `xxs` 0.10, `xs` 0.15, `small` 0.20, `medium` 0.30, `large` 0.50, `xl` 0.70, `xxl` 0.80; `dimming` 0.40, `disabled` 0.38 |
 | Shadow | `LMKShadow` | `LMKShadowTheme` | `LMKShadow.Level` `level1`...`level5`, `style(for:)`, `iconOverlayOpacity`; apply with `lmk_applyShadow(_:)` |
 | Layout | `LMKLayout` | `LMKLayoutTheme` | `minimumTouchTarget` 44, `iconExtraSmall/Small/Medium/Large`, `iconCircle`, `symbolMicro`...`symbolHero`, `rowHeightCompact/rowHeight/rowHeightComfortable/rowHeightEstimated`, `readableContentMaxWidth`, `hairline(for:)` (display physics, not themeable) |

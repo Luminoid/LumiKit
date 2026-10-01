@@ -121,9 +121,11 @@ final class LMKPhotoBrowserZoomAnimator: NSObject, UIViewControllerAnimatedTrans
             browser.stageView.alpha = 1
             browser.setOverlayAlpha(overlayAlpha)
         }
-        animator.addCompletion { _ in
+        animator.addCompletion { [weak browser] _ in
             source.view.alpha = sourceAlpha
-            browser.collectionView.mask = nil
+            browser?.collectionView.mask = nil
+            browser?.presentationAnimator = nil
+            browser?.presentationPhoto = nil
             // The page takes over under the travelling photo, which then clears: a page whose
             // photo is still loading, or has another shape, comes in without a jump.
             UIView.animate(withDuration: LMKAnimation.Duration.fast, delay: 0, options: .curveEaseOut) {
@@ -135,6 +137,10 @@ final class LMKPhotoBrowserZoomAnimator: NSObject, UIViewControllerAnimatedTrans
                 context.completeTransition(!context.transitionWasCancelled)
             }
         }
+        // Held while it runs: touches and key commands land during the flight, and a dismissal
+        // that starts then must not capture the thumbnail at alpha 0.
+        browser.presentationAnimator = animator
+        browser.presentationPhoto = photo
         animator.startAnimation()
         if endsTransitionAtOnce {
             context.completeTransition(true)
@@ -143,7 +149,20 @@ final class LMKPhotoBrowserZoomAnimator: NSObject, UIViewControllerAnimatedTrans
 
     // MARK: Dismissal
 
+    /// Ends a zoom-in still under way so its completion restores the thumbnail and the pages
+    /// before the dismissal reads them; the photo it was flying in goes away at once.
+    static func finishRunningPresentation(of browser: LMKPhotoBrowserViewController) {
+        if let animator = browser.presentationAnimator, animator.state == .active {
+            animator.stopAnimation(false)
+            animator.finishAnimation(at: .end)
+        }
+        browser.presentationAnimator = nil
+        browser.presentationPhoto?.removeFromSuperview()
+        browser.presentationPhoto = nil
+    }
+
     private func animateDismissal(of browser: LMKPhotoBrowserViewController, using context: any UIViewControllerContextTransitioning) {
+        Self.finishRunningPresentation(of: browser)
         let container = context.containerView
         let browserView: UIView = context.view(forKey: .from) ?? browser.view
         if let presenterView = context.view(forKey: .to) {
@@ -195,9 +214,12 @@ final class LMKPhotoBrowserZoomAnimator: NSObject, UIViewControllerAnimatedTrans
 
     // MARK: Geometry
 
-    /// The current photo's thumbnail, when it is on screen.
+    /// The current photo's thumbnail, when it is on screen. The host's closure is only asked
+    /// for an index the data source still has: a browser that is empty (its last photo was
+    /// deleted) fades instead.
     static func source(for browser: LMKPhotoBrowserViewController, in container: UIView) -> Source? {
-        guard let view = browser.zoomSourceView?(browser.currentPhotoIndex), view.window != nil, !view.isHidden else { return nil }
+        let index = browser.currentPhotoIndex
+        guard index >= 0, index < browser.photoCount, let view = browser.zoomSourceView?(index), view.window != nil, !view.isHidden else { return nil }
         let imageView = view as? UIImageView ?? firstImageView(in: view)
         guard let imageView, let image = imageView.image else {
             let frame = view.convert(view.bounds, to: container)

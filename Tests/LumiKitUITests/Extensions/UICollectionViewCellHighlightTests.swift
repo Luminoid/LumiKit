@@ -48,6 +48,31 @@ struct UICollectionViewCellHighlightTests {
         #expect(overlay != nil)
     }
 
+    /// The regression: the completion of an animated un-highlight removed the overlay a
+    /// selection had just reused, so a selected cell lost its highlight after the fade.
+    @Test
+    func `A highlight that follows an animated un-highlight keeps its overlay`() async {
+        let cell = makeCell()
+        let container = UIView()
+        container.backgroundColor = .systemBlue
+        container.layer.cornerRadius = 12
+        cell.contentView.addSubview(container)
+        let window = LMKThemeTesting.host(cell)
+        defer { window.isHidden = true }
+
+        cell.lmk_applyCustomHighlight(highlighted: true, animated: false)
+        let overlay = container.subviews.first { $0.backgroundColor != nil && $0.backgroundColor != .clear }
+        #expect(overlay != nil)
+        cell.lmk_applyCustomHighlight(highlighted: false, animated: true)
+        cell.lmk_applyCustomHighlight(highlighted: true, animated: false)
+        #expect(overlay?.alpha == 1)
+
+        // Past the fade duration, the stale completion has run: the reused overlay must survive it.
+        try? await Task.sleep(for: .seconds(LMKAnimation.Duration.fast + 0.3))
+        #expect(overlay?.superview === container)
+        #expect(overlay?.alpha == 1)
+    }
+
     @Test
     func `lmk_applyCustomHighlight removes overlay on unhighlight`() {
         let cell = makeCell()

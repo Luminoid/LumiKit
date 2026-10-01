@@ -63,6 +63,18 @@ struct LMKSceneTests {
     }
 
     @Test
+    func `The scene destruction error handler is nonisolated and reports on the main actor`() async {
+        #expect(LMKScene.destructionErrorHandler(nil) == nil)
+        var received: [String] = []
+        let handler = LMKScene.destructionErrorHandler { error in received.append(error.localizedDescription) }
+        await Task.detached {
+            handler?(CocoaError(.featureUnsupported))
+        }.value
+        await LMKWait.until { !received.isEmpty }
+        #expect(received.count == 1)
+    }
+
+    @Test
     func `configureMacWindow is a no-op off Catalyst and callable unconditionally`() {
         // Cannot construct a UIWindowScene in the host; the API contract is that the call is safe
         // on every platform, which the compile of the Example app's SceneDelegate exercises.

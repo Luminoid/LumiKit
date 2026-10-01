@@ -6,7 +6,7 @@
 //  body text rendering, and header formatting.
 //
 
-#if DEBUG
+#if LMK_ENABLE_NETWORK_LOGGING
 
     import Foundation
     import Testing
@@ -177,7 +177,7 @@
         @Test
         func `displayDuration formats seconds as milliseconds`() throws {
             let record = try makeRecord(duration: 2.5)
-            #expect(record.displayDuration == "2500ms")
+            #expect(record.displayDuration == "2,500ms")
         }
 
         @Test
@@ -233,6 +233,42 @@
             let text = try #require(record.requestBodyText)
             #expect(text.contains("binary data"))
             #expect(text.contains("4 bytes"))
+        }
+
+        @Test
+        func `A truncated body cut inside a character reads as text, a truncated binary stays binary`() throws {
+            let url = try #require(URL(string: "https://example.com"))
+            let cut = Data("héllo w".utf8) + Data("ö".utf8).prefix(1)
+            let request = LMKNetworkRequestRecord.Request(url: url, method: "POST", headers: [:], body: cut, isBodyTruncated: true)
+            let record = LMKNetworkRequestRecord(id: UUID(), timestamp: Date(), request: request, response: nil, errorDescription: nil, duration: nil)
+            #expect(record.requestBodyText == "héllo w")
+            #expect(record.request.isBodyTruncated)
+
+            let whole = try makeRecord(requestBody: cut)
+            #expect(whole.requestBodyText?.contains("binary data") == true, "the same bytes without the flag are not trimmed")
+
+            let binary = LMKNetworkRequestRecord.Request(url: url, method: "POST", headers: [:], body: Data([0xFF, 0xFE, 0xFD, 0xFC, 0xFB]), isBodyTruncated: true)
+            let binaryRecord = LMKNetworkRequestRecord(id: UUID(), timestamp: Date(), request: binary, response: nil, errorDescription: nil, duration: nil)
+            #expect(binaryRecord.requestBodyText?.contains("5 bytes") == true)
+        }
+
+        @Test
+        func `hasSameOutcome compares status, error, and duration only`() throws {
+            let pending = try makeRecord()
+            #expect(pending.hasSameOutcome(as: pending))
+            let done = try makeRecord(statusCode: 200, responseBody: Data("a".utf8), duration: 1)
+            #expect(!pending.hasSameOutcome(as: done))
+            let sameOutcome = try makeRecord(statusCode: 200, responseBody: Data("different".utf8), duration: 1)
+            #expect(done.hasSameOutcome(as: sameOutcome), "bodies are not compared")
+            let failed = try makeRecord(errorDescription: "boom", duration: 1)
+            #expect(!failed.hasSameOutcome(as: done))
+        }
+
+        @Test
+        func `displayURL shows a redacted query value in the clear`() throws {
+            let url = try #require(URL(string: "https://example.com/a?key=\(LMKNetworkLogger.redactedValueQueryEncoded)&q=1"))
+            let record = try makeRecord(url: url.absoluteString)
+            #expect(record.displayURL == "https://example.com/a?key=\(LMKNetworkLogger.redactedValue)&q=1")
         }
 
         // MARK: - responseBodyText

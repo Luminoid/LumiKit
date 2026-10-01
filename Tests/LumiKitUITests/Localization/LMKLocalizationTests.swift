@@ -35,10 +35,54 @@ struct LMKLocalizationTests {
         }
     }
 
+    /// Every English value with a format specifier keeps the same specifiers, in the same
+    /// order (positional or not), in the other three tables.
     @Test func `format keys keep their specifiers in every locale`() throws {
+        let english = try Self.table(for: "en")
+        let formatKeys = english.filter { !Self.specifiers(in: $0.value).isEmpty }.keys
+        #expect(formatKeys.count >= 4, "the format keys are counted")
         for locale in Self.locales {
             let table = try Self.table(for: locale)
-            #expect(table["pageIndicator.accessibilityValue"]?.components(separatedBy: "%lld").count == 3, "\(locale) format specifiers")
+            for key in formatKeys {
+                #expect(Self.specifiers(in: table[key] ?? "") == Self.specifiers(in: english[key] ?? ""), "\(locale) \(key) format specifiers")
+            }
+        }
+    }
+
+    /// Every key looked up in this target's sources is in the English table, and every key in
+    /// the table is looked up somewhere (no dead keys, no missing keys).
+    @Test func `the keys in Sources match the English table`() throws {
+        let english = try Self.table(for: "en")
+        let pattern = try NSRegularExpression(pattern: #"LMKLocalized\("([^"]+)"\)"#)
+        var looked: Set<String> = []
+        let root = Self.sourcesDirectory
+        let enumerator = try #require(FileManager.default.enumerator(at: root, includingPropertiesForKeys: nil))
+        for case let url as URL in enumerator where url.pathExtension == "swift" {
+            let text = try String(contentsOf: url, encoding: .utf8)
+            for match in pattern.matches(in: text, range: NSRange(text.startIndex..., in: text)) {
+                if let range = Range(match.range(at: 1), in: text) {
+                    looked.insert(String(text[range]))
+                }
+            }
+        }
+        #expect(!looked.isEmpty, "no lookups under \(root.path)")
+        #expect(looked.subtracting(english.keys).isEmpty, "looked up but missing from en: \(looked.subtracting(english.keys).sorted())")
+        #expect(Set(english.keys).subtracting(looked).isEmpty, "in en but never looked up: \(Set(english.keys).subtracting(looked).sorted())")
+    }
+
+    private static let sourcesDirectory: URL = {
+        var url = URL(fileURLWithPath: #filePath)
+        for _ in 0 ..< 4 {
+            url.deleteLastPathComponent()
+        }
+        return url.appendingPathComponent("Sources/LumiKitUI", isDirectory: true)
+    }()
+
+    /// The `%` specifiers in `value`, in order: `%@`, `%lld`, `%1$@`, `%2$lld`, and so on.
+    private static func specifiers(in value: String) -> [String] {
+        guard let pattern = try? NSRegularExpression(pattern: #"%(\d+\$)?(lld|d|@|f|\.\df)"#) else { return [] }
+        return pattern.matches(in: value, range: NSRange(value.startIndex..., in: value)).compactMap {
+            Range($0.range, in: value).map { String(value[$0]) }
         }
     }
 
@@ -65,12 +109,5 @@ struct LMKLocalizationTests {
         #expect(LMKSortMenu.Strings().layoutSectionTitle != "sortMenu.layout.title")
         #expect(LMKDetailCardView.Strings().photoAccessibilityLabelFormat.contains("%lld"))
         #expect(LMKDetailPageViewController.Strings().save != "detailPage.save")
-    }
-
-    @Test func `LMKLocalized formats arguments`() {
-        let text = LMKLocalized("pageIndicator.accessibilityValue", 2, 5)
-        #expect(text.contains("2"))
-        #expect(text.contains("5"))
-        #expect(!text.contains("%"))
     }
 }

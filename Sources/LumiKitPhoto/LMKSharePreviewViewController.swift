@@ -40,7 +40,9 @@ public extension LMKSharePreviewViewController {
         public var closeButtonSize: CGFloat?
         /// Whether the close button is installed; `nil` = true.
         public var showsCloseButton: Bool?
-        /// Whether the Save Image button is installed; `nil` = true.
+        /// Whether the Save Image button is installed; `nil` = shown when the host app's
+        /// Info.plist carries `NSPhotoLibraryAddUsageDescription` (a save without it would
+        /// abort the app), hidden otherwise.
         public var showsSaveButton: Bool?
 
         public init(
@@ -118,12 +120,21 @@ public extension LMKSharePreviewViewController {
         }
     }
 
-    /// Why sharing or saving failed.
-    nonisolated enum Failure: Error {
+    /// Why sharing or saving failed. `errorDescription` is the user-facing message: the
+    /// system's for a share or save error, the process-wide `strings` for denied access.
+    nonisolated enum Failure: LocalizedError {
         case share(any Error)
         case save(any Error)
-        /// Photo library add access was denied or restricted.
+        /// Photo library add access was denied, restricted, or not declared by the host
+        /// (`NSPhotoLibraryAddUsageDescription`).
         case photoLibraryAccessDenied
+
+        public var errorDescription: String? {
+            switch self {
+            case let .share(error), let .save(error): (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+            case .photoLibraryAccessDenied: LMKSharePreviewViewController.strings.photoPermissionDenied
+            }
+        }
     }
 }
 
@@ -146,9 +157,11 @@ public nonisolated extension LMKTheme {
 /// present(preview, animated: true)
 /// ```
 ///
-/// Saving writes to the photo library through `PHPhotoLibrary`'s add-only access, so the host
-/// app's Info.plist must carry `NSPhotoLibraryAddUsageDescription`; without it the save button
-/// should be hidden (`Style.showsSaveButton = false`).
+/// Saving writes to the photo library through `PHPhotoLibrary`'s add-only access, which needs
+/// `NSPhotoLibraryAddUsageDescription` in the host app's Info.plist. Without it the Save Image
+/// button stays hidden by default and `saveToPhotoLibrary()` reports
+/// `Failure.photoLibraryAccessDenied` instead of aborting the app. Every failure is logged;
+/// with no `onFailure` it is shown to the user through `LMKErrorHandler`.
 public final class LMKSharePreviewViewController: UIViewController, LMKThemeApplying {
     // MARK: - Configurable Strings
 
@@ -172,12 +185,18 @@ public final class LMKSharePreviewViewController: UIViewController, LMKThemeAppl
     public var onShare: ((UIActivity.ActivityType?) -> Void)?
     /// Called after the image lands in the photo library.
     public var onSave: (() -> Void)?
-    /// Called when sharing or saving fails. While `nil`, a denied photo library shows a warning alert.
+    /// Called when sharing or saving fails. While `nil`, the failure is shown to the user:
+    /// a warning alert for a denied photo library, an error for the rest.
     public var onFailure: ((Failure) -> Void)?
     /// Called when the sheet is dismissed (close button, swipe, or after a save).
     public var onDismiss: (() -> Void)?
     /// Whether a successful save dismisses the sheet. Default `true`.
     public var dismissesAfterSave = true
+    /// Whether a save is in flight (the Save Image button is disabled and further saves are
+    /// ignored meanwhile).
+    public private(set) var isSaving = false {
+        didSet { saveButton.isEnabled = !isSaving }
+    }
 
     /// Per-instance style, layered over `theme.sharePreview`.
     public var style: Style {
@@ -197,8 +216,22 @@ public final class LMKSharePreviewViewController: UIViewController, LMKThemeAppl
     private var saveTask: Task<Void, Never>?
     private var contentInsets = NSDirectionalEdgeInsets.zero
     private var closeButtonSizeConstraint: Constraint?
+    private var closeButtonTopConstraint: Constraint?
+    private var closeButtonTrailingConstraint: Constraint?
+    private var scrollTopConstraint: Constraint?
     private var buttonsTopConstraint: Constraint?
-    private var imageAspectConstraint: Constraint?
+    private var buttonsHeightConstraint: Constraint?
+    private var buttonsBottomConstraint: Constraint?
+
+    /// Test hooks: the photo library is replaced in tests.
+    /// Whether the host declares `NSPhotoLibraryAddUsageDescription`.
+    var hasPhotoLibraryAddUsageDescription = Bundle.main.object(forInfoDictionaryKey: "NSPhotoLibraryAddUsageDescription") != nil
+    /// The add-only authorization status.
+    var photoLibraryAuthorizationStatus: () -> PHAuthorizationStatus = { PHPhotoLibrary.authorizationStatus(for: .addOnly) }
+    /// Asks for add-only authorization.
+    var requestPhotoLibraryAuthorization: () async -> PHAuthorizationStatus = { await PHPhotoLibrary.requestAuthorization(for: .addOnly) }
+    /// Writes the image to the photo library; `(success, error)`.
+    var writeToPhotoLibrary: (UIImage) async -> (Bool, (any Error)?) = { await LMKSharePreviewViewController.saveImageToPhotoLibrary($0) }
 
     deinit {
         saveTask?.cancel()
@@ -250,20 +283,23 @@ public final class LMKSharePreviewViewController: UIViewController, LMKThemeAppl
     // MARK: - Setup
 
     private func setupUI() {
+        // Spacing constraints start at zero and take their values from the theme in `applyTheme`.
         closeButton.setSymbol("xmark", weight: .semibold)
         closeButton.onTap = { [weak self] in self?.closeTapped() }
         view.addSubview(closeButton)
         closeButton.snp.makeConstraints { make in
-            make.top.equalTo(view.safeAreaLayoutGuide).offset(LMKSpacing.large)
-            make.trailing.equalTo(view.safeAreaLayoutGuide).inset(LMKSpacing.large)
-            closeButtonSizeConstraint = make.size.equalTo(LMKLayout.minimumTouchTarget).constraint
+            closeButtonTopConstraint = make.top.equalTo(view.safeAreaLayoutGuide).offset(0).constraint
+            closeButtonTrailingConstraint = make.trailing.equalTo(view.safeAreaLayoutGuide).inset(0).constraint
+            // 999: the button's own minimum height is required, and `applyTheme` sets both to
+            // the same side; until then the floor wins without a conflict.
+            closeButtonSizeConstraint = make.size.equalTo(0).priority(999).constraint
         }
 
         scrollView.alwaysBounceVertical = true
         scrollView.showsVerticalScrollIndicator = true
         view.addSubview(scrollView)
         scrollView.snp.makeConstraints { make in
-            make.top.equalTo(closeButton.snp.bottom).offset(LMKSpacing.small)
+            scrollTopConstraint = make.top.equalTo(closeButton.snp.bottom).offset(0).constraint
             make.leading.trailing.bottom.equalToSuperview()
         }
 
@@ -289,15 +325,15 @@ public final class LMKSharePreviewViewController: UIViewController, LMKThemeAppl
 
         let aspectRatio = image.size.width > 0 ? image.size.height / image.size.width : 1
         imageView.snp.makeConstraints { make in
-            make.top.equalToSuperview().inset(LMKSpacing.large)
-            make.leading.trailing.equalToSuperview().inset(LMKSpacing.large)
-            imageAspectConstraint = make.height.equalTo(imageView.snp.width).multipliedBy(aspectRatio).constraint
+            make.top.equalToSuperview().inset(0)
+            make.leading.trailing.equalToSuperview().inset(0)
+            make.height.equalTo(imageView.snp.width).multipliedBy(aspectRatio)
         }
         buttonStack.snp.makeConstraints { make in
-            buttonsTopConstraint = make.top.equalTo(imageView.snp.bottom).offset(LMKSpacing.xl).constraint
-            make.leading.trailing.equalToSuperview().inset(LMKSpacing.large)
-            make.height.greaterThanOrEqualTo(LMKLayout.minimumTouchTarget)
-            make.bottom.equalToSuperview().inset(LMKSpacing.xl)
+            buttonsTopConstraint = make.top.equalTo(imageView.snp.bottom).offset(0).constraint
+            make.leading.trailing.equalToSuperview().inset(0)
+            buttonsHeightConstraint = make.height.greaterThanOrEqualTo(0).constraint
+            buttonsBottomConstraint = make.bottom.equalToSuperview().inset(0).constraint
         }
     }
 
@@ -329,9 +365,14 @@ public final class LMKSharePreviewViewController: UIViewController, LMKThemeAppl
                 make.leading.equalToSuperview().inset(insets.leading)
                 make.trailing.equalToSuperview().inset(insets.trailing)
             }
+            buttonsBottomConstraint?.update(inset: insets.bottom)
         }
         buttonsTopConstraint?.update(offset: resolved.buttonsTopSpacing ?? theme.spacing.xl)
+        buttonsHeightConstraint?.update(offset: theme.layout.minimumTouchTarget)
         buttonStack.spacing = resolved.buttonSpacing ?? theme.spacing.medium
+        closeButtonTopConstraint?.update(offset: theme.spacing.large)
+        closeButtonTrailingConstraint?.update(inset: theme.spacing.large)
+        scrollTopConstraint?.update(offset: theme.spacing.small)
 
         let actionBase = LMKButton.Style(
             role: .secondary,
@@ -342,13 +383,13 @@ public final class LMKSharePreviewViewController: UIViewController, LMKThemeAppl
         )
         shareButton.style = actionBase.merging(resolved.shareButton)
         saveButton.style = actionBase.merging(resolved.saveButton)
-        saveButton.isHidden = !(resolved.showsSaveButton ?? true)
+        saveButton.isHidden = !(resolved.showsSaveButton ?? hasPhotoLibraryAddUsageDescription)
 
         let closeSide = resolved.closeButtonSize ?? Self.defaultCloseButtonSize
         closeButton.style = LMKButton.Style(
             role: .neutral,
             variant: .filled,
-            surface: LMKSurfaceStyle(background: .solid(LMKColor.backgroundSecondary), corners: .circle, shadow: LMKShadowSource.none),
+            surface: LMKSurfaceStyle(background: .solid(LMKColor.backgroundSecondary), corners: .circle, shadow: LMKShadowSource.hidden),
             foregroundColor: LMKColor.textSecondary,
             symbolPointSize: theme.layout.symbolRow,
             symbolWeight: .semibold,
@@ -377,55 +418,83 @@ public final class LMKSharePreviewViewController: UIViewController, LMKThemeAppl
             case let .completed(activityType):
                 onShare?(activityType)
             case let .failed(error):
-                onFailure?(.share(error))
+                report(.share(error))
             case .cancelled:
                 break
             }
         }
     }
 
-    /// Saves the image to the photo library, asking for add-only access first when needed.
+    /// Saves the image to the photo library, asking for add-only access first when needed. A
+    /// second call while a save is in flight does nothing (one tap, one copy), and a host
+    /// without `NSPhotoLibraryAddUsageDescription` gets `Failure.photoLibraryAccessDenied`.
     public func saveToPhotoLibrary() {
-        switch PHPhotoLibrary.authorizationStatus(for: .addOnly) {
-        case .authorized, .limited:
-            performSave()
-        case .notDetermined:
-            PHPhotoLibrary.requestAuthorization(for: .addOnly) { [weak self] newStatus in
-                Task { @MainActor in
-                    if newStatus == .authorized || newStatus == .limited {
-                        self?.performSave()
-                    } else {
-                        self?.reportPhotoLibraryDenied()
-                    }
-                }
+        guard !isSaving else { return }
+        guard hasPhotoLibraryAddUsageDescription else {
+            report(.photoLibraryAccessDenied)
+            return
+        }
+        isSaving = true
+        saveTask?.cancel()
+        saveTask = Task { [weak self] in
+            guard let self else { return }
+            var status = photoLibraryAuthorizationStatus()
+            if status == .notDetermined {
+                status = await requestPhotoLibraryAuthorization()
             }
-        case .denied, .restricted:
-            reportPhotoLibraryDenied()
-        @unknown default:
-            reportPhotoLibraryDenied()
+            guard !Task.isCancelled else { return }
+            switch status {
+            case .authorized, .limited:
+                await performSave()
+            case .notDetermined, .denied, .restricted:
+                isSaving = false
+                report(.photoLibraryAccessDenied)
+            @unknown default:
+                isSaving = false
+                report(.photoLibraryAccessDenied)
+            }
         }
     }
 
     // MARK: - Helpers
 
-    private func performSave() {
-        let imageToSave = image
-        saveTask?.cancel()
-        saveTask = Task { [weak self] in
-            let (success, error) = await Self.saveImageToPhotoLibrary(imageToSave)
-            guard let self, !Task.isCancelled else { return }
-            if let error {
-                LMKLogger.error("Failed to save image to photos", error: error, category: .general)
-                onFailure?(.save(error))
-            } else if success {
-                LMKLogger.info("Image saved to photos", category: .general)
-                onSave?()
-                if dismissesAfterSave {
-                    dismiss(animated: true) { [weak self] in
-                        self?.onDismiss?()
-                    }
+    private func performSave() async {
+        let (success, error) = await writeToPhotoLibrary(image)
+        guard !Task.isCancelled else { return }
+        isSaving = false
+        if let error {
+            report(.save(error))
+        } else if success {
+            LMKLogger.info("Image saved to photos", category: .general)
+            onSave?()
+            if dismissesAfterSave {
+                dismiss(animated: true) { [weak self] in
+                    self?.onDismiss?()
                 }
             }
+        }
+    }
+
+    /// The one path every failure takes: logged, then handed to `onFailure`, or shown to the
+    /// user when there is none (a warning for denied access, an error otherwise).
+    private func report(_ failure: Failure) {
+        switch failure {
+        case let .share(error):
+            LMKLogger.error("Failed to share image", error: error, category: .error)
+        case let .save(error):
+            LMKLogger.error("Failed to save image to photos", error: error, category: .error)
+        case .photoLibraryAccessDenied:
+            LMKLogger.warning("Photo library add access is unavailable; the image was not saved", category: .general)
+        }
+        if let onFailure {
+            onFailure(failure)
+            return
+        }
+        switch failure {
+        case .photoLibraryAccessDenied:
+            LMKErrorHandler.present(from: self, message: strings.photoPermissionDenied, severity: .warning)
+        case let .share(error), let .save(error):
+            LMKErrorHandler.present(from: self, message: LMKErrorHandler.message(for: error), severity: .error)
         }
     }
 
@@ -438,14 +507,6 @@ public final class LMKSharePreviewViewController: UIViewController, LMKThemeAppl
             } completionHandler: { success, error in
                 continuation.resume(returning: (success, error))
             }
-        }
-    }
-
-    private func reportPhotoLibraryDenied() {
-        if let onFailure {
-            onFailure(.photoLibraryAccessDenied)
-        } else {
-            LMKErrorHandler.present(from: self, message: strings.photoPermissionDenied, severity: .warning)
         }
     }
 }

@@ -78,12 +78,13 @@ public nonisolated enum LMKTextStyle: Sendable, Hashable {
     ]
 
     /// The text color a label of this style gets when none is given: headings and body
-    /// use `textPrimary`, captions `textSecondary`, small steps `textTertiary`.
+    /// use `textPrimary`, captions and small steps `textSecondary` (tertiary gray fails WCAG AA
+    /// contrast for text).
     public var defaultColor: UIColor {
         switch kind {
         case .heading, .body: LMKColor.textPrimary
-        case .caption: LMKColor.textSecondary
-        case .small: LMKColor.textTertiary
+        // Secondary, not tertiary, for small text: tertiary gray fails WCAG AA contrast for text.
+        case .caption, .small: LMKColor.textSecondary
         }
     }
 

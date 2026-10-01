@@ -25,7 +25,7 @@ extension LMKTipView {
         let sourceInBubble = convert(sourceFrame, to: bubbleView)
         let bubbleBounds = bubbleView.bounds
         let arrowWidth = resolved.arrowWidth ?? Self.defaultArrowWidth
-        let corners = resolvedSurface.corners ?? .none
+        let corners = resolvedSurface.corners ?? .square
         let cornerRadius = min(corners.resolvedRadius(for: bubbleBounds), bubbleBounds.width / 2, bubbleBounds.height / 2)
 
         let minX = bubbleBounds.minX + cornerRadius + arrowWidth / 2

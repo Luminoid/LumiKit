@@ -6,38 +6,32 @@
 //
 
 import LumiKitUI
-import SnapKit
 import UIKit
 
 // MARK: - Text Field
 
 final class TextFieldDetailViewController: DetailViewController {
-    private var liveValidationField: LMKTextField?
-
-    override func viewDidLoad() {
-        super.viewDidLoad()
-        scrollView.lmk_enableKeyboardAdjustment()
-
+    override func setupStackContent() {
         addSectionHeader("Keyboard Avoidance")
-        stack
-            .addArrangedSubview(UILabel.lmk_make(
-                .caption,
-                text: "Calls `scrollView.lmk_enableKeyboardAdjustment()` once in viewDidLoad: insets grow to the keyboard overlap and the focused field scrolls into view."
-            ))
+        stackView.addArrangedSubview(UILabel.lmk_make(
+            .caption,
+            text: "LMKScrollStackViewController installs scrollView.lmk_enableKeyboardAdjustment() for you: insets grow to the keyboard overlap and the focused field scrolls into view. "
+                + "On a scroll view of your own, call it once."
+        ))
 
         addDivider()
         addSectionHeader("Basic")
         let basic = LMKTextField()
         basic.placeholder = "Enter your name"
         basic.helperText = "Your display name"
-        stack.addArrangedSubview(basic)
+        stackView.addArrangedSubview(basic)
 
         addDivider()
         addSectionHeader("With Leading Icon")
         let iconField = LMKTextField()
         iconField.placeholder = "Search..."
         iconField.leadingIcon = UIImage(systemName: "magnifyingglass")
-        stack.addArrangedSubview(iconField)
+        stackView.addArrangedSubview(iconField)
 
         addDivider()
         addSectionHeader("Validation States")
@@ -46,19 +40,19 @@ final class TextFieldDetailViewController: DetailViewController {
         normalField.placeholder = "Normal state"
         normalField.validationState = .normal
         normalField.helperText = "Default appearance"
-        stack.addArrangedSubview(normalField)
+        stackView.addArrangedSubview(normalField)
 
         let errorField = LMKTextField()
         errorField.placeholder = "Error state"
         errorField.text = "invalid@"
         errorField.validationState = .error("Please enter a valid email address")
-        stack.addArrangedSubview(errorField)
+        stackView.addArrangedSubview(errorField)
 
         let successField = LMKTextField()
         successField.placeholder = "Success state"
         successField.text = "user@example.com"
         successField.validationState = .success
-        stack.addArrangedSubview(successField)
+        stackView.addArrangedSubview(successField)
 
         addDivider()
         addSectionHeader("Live Validation")
@@ -66,20 +60,29 @@ final class TextFieldDetailViewController: DetailViewController {
         liveField.placeholder = "Type at least 3 characters"
         liveField.helperText = "Validates on each keystroke"
         liveField.leadingIcon = UIImage(systemName: "person")
-        liveField.textField.addTarget(self, action: #selector(liveValidate(_:)), for: .editingChanged)
-        liveValidationField = liveField
-        stack.addArrangedSubview(liveField)
-    }
-
-    @objc private func liveValidate(_ textField: UITextField) {
-        guard let lmkField = liveValidationField else { return }
-        let text = textField.text ?? ""
-        if text.isEmpty {
-            lmkField.validationState = .normal
-        } else if text.count < 3 {
-            lmkField.validationState = .error("Too short (\(text.count)/3)")
-        } else {
-            lmkField.validationState = .success
+        liveField.onTextChange = { [weak liveField] text in
+            if text.isEmpty {
+                liveField?.validationState = .normal
+            } else if text.count < 3 {
+                liveField?.validationState = .error("Too short (\(text.count)/3)")
+            } else {
+                liveField?.validationState = .success
+            }
         }
+        stackView.addArrangedSubview(liveField)
+
+        addDivider()
+        addSectionHeader("Clear Button and Counter")
+        stackView.addArrangedSubview(UILabel.lmk_make(
+            .caption,
+            text: "showsClearButton adds the kit's clear button while the field has text; maxCharacterCount with showsCharacterCount shows the counter and trims a paste to the limit."
+        ))
+        let counted = LMKTextField()
+        counted.placeholder = "Up to 20 characters"
+        counted.text = "Clear me"
+        counted.showsClearButton = true
+        counted.maxCharacterCount = 20
+        counted.showsCharacterCount = true
+        stackView.addArrangedSubview(counted)
     }
 }

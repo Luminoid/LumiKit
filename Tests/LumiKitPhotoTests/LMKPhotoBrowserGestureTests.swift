@@ -154,11 +154,11 @@ struct LMKPhotoBrowserGestureTests {
     }
 
     @Test
-    func `A double tap zooms around the tapped point and a second one zooms back`() throws {
-        UIView.setAnimationsEnabled(false)
-        defer { UIView.setAnimationsEnabled(true) }
+    func `A double tap zooms around the tapped point and a second one zooms back`() async throws {
         let (cell, scrollView, imageView) = try makePage()
         cell.zoomAtLocationInCell(CGPoint(x: 300, y: 450))
+        // The zoom animates unless Reduce Motion is on; either way it lands at the double-tap scale.
+        await LMKWait.until { scrollView.zoomScale == LMKPhotoBrowserMetrics.doubleTapZoomScale }
         #expect(scrollView.zoomScale == LMKPhotoBrowserMetrics.doubleTapZoomScale)
         // The tapped photo point (300, 150) is still under the finger at (300, 450).
         let tapped = imageView.convert(CGPoint(x: 300, y: 150), to: scrollView)
@@ -168,17 +168,17 @@ struct LMKPhotoBrowserGestureTests {
         #expect(scrollView.contentOffset.x >= -scrollView.contentInset.left)
 
         cell.zoomAtLocationInCell(CGPoint(x: 300, y: 450))
+        await LMKWait.until { scrollView.zoomScale == 1 && scrollView.contentOffset == .zero }
         #expect(scrollView.zoomScale == 1)
         #expect(cell.zoomAnchor == nil)
         #expect(scrollView.contentOffset == .zero)
     }
 
     @Test
-    func `A double tap on the letterbox zooms toward the photo`() throws {
-        UIView.setAnimationsEnabled(false)
-        defer { UIView.setAnimationsEnabled(true) }
+    func `A double tap on the letterbox zooms toward the photo`() async throws {
         let (cell, scrollView, imageView) = try makePage()
         cell.zoomAtLocationInCell(CGPoint(x: 390, y: 40))
+        await LMKWait.until { scrollView.zoomScale == LMKPhotoBrowserMetrics.doubleTapZoomScale }
         #expect(cell.isZoomed)
         // Across the page there is only photo, and the tapped column is still under the finger.
         let visible = CGRect(origin: scrollView.contentOffset, size: scrollView.bounds.size)
@@ -203,13 +203,116 @@ struct LMKPhotoBrowserGestureTests {
         #expect(scrollView.alwaysBounceVertical, "the dismiss drag is back")
     }
 
+    // MARK: - Drag classification
+
+    @Test
+    func `A drag at 1x with at most one finger is the dismiss drag and locks zoom; the end of every drag restores it`() throws {
+        let (cell, scrollView, _) = try makePage()
+        // A trackpad scroll or a one-finger drag: the pan reports no touches here.
+        cell.scrollViewWillBeginDragging(scrollView)
+        #expect(scrollView.maximumZoomScale == LMKPhotoBrowserMetrics.minimumZoomScale, "a pinch cannot start mid-drag")
+        cell.scrollViewDidEndDragging(scrollView, willDecelerate: false)
+        #expect(scrollView.maximumZoomScale == LMKPhotoBrowserMetrics.maximumZoomScale, "the zoom range comes back when the drag ends")
+
+        // A drag that coasts: the range comes back when the coast ends.
+        cell.scrollViewWillBeginDragging(scrollView)
+        cell.scrollViewDidEndDragging(scrollView, willDecelerate: true)
+        #expect(scrollView.maximumZoomScale == LMKPhotoBrowserMetrics.minimumZoomScale)
+        cell.scrollViewDidEndDecelerating(scrollView)
+        #expect(scrollView.maximumZoomScale == LMKPhotoBrowserMetrics.maximumZoomScale)
+
+        // Zoomed, a drag pans and never locks the zoom.
+        scrollView.setZoomScale(2, animated: false)
+        cell.scrollViewWillBeginDragging(scrollView)
+        #expect(scrollView.maximumZoomScale == LMKPhotoBrowserMetrics.maximumZoomScale)
+    }
+
+    @Test
+    func `A drag at 1x that does not dismiss targets the center, whatever moved the page`() throws {
+        let (cell, scrollView, _) = try makePage()
+        cell.scrollViewWillBeginDragging(scrollView)
+        scrollView.contentOffset = CGPoint(x: 0, y: -40)
+        var target = CGPoint(x: 0, y: -40)
+        cell.scrollViewWillEndDragging(scrollView, withVelocity: .zero, targetContentOffset: &target)
+        #expect(target == .zero, "short of the threshold the photo coasts home")
+        cell.scrollViewDidEndDragging(scrollView, willDecelerate: false)
+
+        // Zoomed, the pan's own target stands.
+        scrollView.setZoomScale(2, animated: false)
+        #expect(cell.isZoomed)
+        cell.scrollViewWillBeginDragging(scrollView)
+        var zoomedTarget = CGPoint(x: 120, y: 0)
+        cell.scrollViewWillEndDragging(scrollView, withVelocity: .zero, targetContentOffset: &zoomedTarget)
+        #expect(zoomedTarget == CGPoint(x: 120, y: 0))
+    }
+
+    @Test
+    func `The end of a drag at 1x brings the photo back to the center`() async throws {
+        let (cell, scrollView, _) = try makePage()
+        // The page was moved by something the delegate never classified as a dismiss drag (a
+        // two-finger drag): the end of the drag still snaps it home.
+        scrollView.contentOffset = CGPoint(x: 0, y: -160)
+        cell.scrollViewDidEndDragging(scrollView, willDecelerate: false)
+        await LMKWait.until { scrollView.contentOffset == .zero }
+        #expect(scrollView.contentOffset == .zero)
+
+        scrollView.contentOffset = CGPoint(x: 0, y: -160)
+        cell.scrollViewDidEndScrollingAnimation(scrollView)
+        await LMKWait.until { scrollView.contentOffset == .zero }
+        #expect(scrollView.contentOffset == .zero)
+    }
+
+    @Test
+    func `A committed dismiss stays where the drag left it`() throws {
+        let (cell, scrollView, _) = try makePage()
+        scrollView.contentOffset = CGPoint(x: 0, y: -200)
+        cell.freezeForDismissal()
+        cell.scrollViewDidEndDragging(scrollView, willDecelerate: false)
+        #expect(scrollView.contentOffset == CGPoint(x: 0, y: -200))
+        cell.scrollViewDidEndDecelerating(scrollView)
+        #expect(scrollView.contentOffset == CGPoint(x: 0, y: -200))
+    }
+
+    @Test
+    func `Releasing a pinch past the maximum reports the page as still zoomed`() async throws {
+        let (cell, scrollView, _) = try makePage()
+        let recorder = ZoomStateRecorder()
+        cell.delegate = recorder
+        scrollView.setZoomScale(LMKPhotoBrowserMetrics.maximumZoomScale, animated: false)
+        // The rubber band past the maximum is a transform on the scroll view.
+        scrollView.transform = CGAffineTransform(scaleX: 1.2, y: 1.2)
+        cell.finishPinch()
+        await LMKWait.until { !recorder.zoomStates.isEmpty }
+        #expect(recorder.zoomStates.last == true, "the chrome must not return over a photo at 3x")
+        #expect(scrollView.transform.isIdentity)
+
+        scrollView.setZoomScale(1, animated: false)
+        scrollView.transform = CGAffineTransform(scaleX: 0.8, y: 0.8)
+        cell.finishPinch()
+        await LMKWait.until { recorder.zoomStates.count == 2 }
+        #expect(recorder.zoomStates.last == false)
+    }
+
+    @Test
+    func `Reappearance clears a frozen dismissal and the drag lock`() throws {
+        let (cell, scrollView, _) = try makePage()
+        cell.scrollViewWillBeginDragging(scrollView)
+        scrollView.contentOffset = CGPoint(x: 0, y: -200)
+        cell.freezeForDismissal()
+        cell.prepareForReappearance()
+        #expect(scrollView.contentOffset == .zero)
+        #expect(scrollView.maximumZoomScale == LMKPhotoBrowserMetrics.maximumZoomScale)
+        cell.setNeedsLayout()
+        cell.layoutIfNeeded()
+        #expect(scrollView.contentOffset == .zero, "the page is no longer frozen")
+    }
+
     // MARK: - Live Photo
 
     @Test
-    func `A still page has nothing to play`() throws {
+    func `A still page has nothing to play, and the long press lives on the page`() throws {
         let (cell, scrollView, _) = try makePage()
         #expect(!cell.isShowingLivePhoto)
-        cell.playLivePhoto()
         let liveView = try #require(scrollView.subviews.compactMap { $0 as? PHLivePhotoView }.first)
         #expect(liveView.isHidden)
         #expect(scrollView.gestureRecognizers?.contains { $0 === liveView.playbackGestureRecognizer } == true, "a long press anywhere on the page plays")
@@ -226,10 +329,20 @@ struct LMKPhotoBrowserGestureTests {
         defer { window.isHidden = true }
         browser.view.layoutIfNeeded()
         browser.collectionView.layoutIfNeeded()
-        for _ in 0 ..< 20 where dataSource.livePhotoRequests.isEmpty {
-            try? await Task.sleep(for: .milliseconds(20))
-        }
+        await LMKWait.until { !dataSource.livePhotoRequests.isEmpty }
         #expect(dataSource.livePhotoRequests.contains(0), "the default photoIsLivePhoto is false; the Live Photo is asked for anyway")
+    }
+}
+
+@MainActor
+private final class ZoomStateRecorder: LMKPhotoBrowserCellDelegate {
+    var zoomStates: [Bool] = []
+
+    func photoCellDidRequestDismiss(_: LMKPhotoBrowserCell) {}
+    func photoCell(_: LMKPhotoBrowserCell, didUpdateDismissProgress _: CGFloat) {}
+    func photoCell(_: LMKPhotoBrowserCell, setPagingEnabled _: Bool) {}
+    func photoCell(_: LMKPhotoBrowserCell, didChangeZoomState zoomed: Bool) {
+        zoomStates.append(zoomed)
     }
 }
 

@@ -123,6 +123,11 @@ open class LMKScrollStackViewController: UIViewController, LMKThemeApplying {
     /// Override to populate `stackView`. Called from `viewDidLoad` and from `reloadContent()`.
     open func setupStackContent() {}
 
+    /// Subclass hook, called at the end of every `applyTheme(_:)` just before `didApplyStyle`, so
+    /// a subclass's own theming (the views it added in `setupStackContent()`) never has to follow
+    /// `super.applyTheme` and `didApplyStyle` always runs last. The base implementation does nothing.
+    open func applyContentTheme(_ theme: LMKTheme) {}
+
     // MARK: - Views
 
     public let scrollView = UIScrollView()
@@ -149,9 +154,13 @@ open class LMKScrollStackViewController: UIViewController, LMKThemeApplying {
     /// The style last resolved against the theme.
     public private(set) var resolvedStyle = Style()
 
-    private var installedNavigationBar: LMKNavigationBar?
     private var scrollBottomSafeAreaConstraint: Constraint?
     private var scrollBottomSuperviewConstraint: Constraint?
+    /// The labels `addSectionHeader(_:)` made, the only ones `applyTheme` restyles.
+    private var sectionHeaderLabels: [UILabel] = []
+    /// The default inset the stack was last pinned with (`LMKSpacing.cardPadding` follows the
+    /// window's size tier, so it is re-read after a resize).
+    private var pinnedDefaultInset: CGFloat?
 
     // MARK: - Initialization
 
@@ -174,11 +183,19 @@ open class LMKScrollStackViewController: UIViewController, LMKThemeApplying {
         lmk_startApplyingTheme()
     }
 
+    /// Re-pins the stack when the window moved to another size tier (a rotation never changes
+    /// it; Slide Over, Stage Manager, and a resized Mac window can).
+    override open func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        // `cardPadding` is tiered by the window's canvas, not by the theme; this is the live re-read that follows a tier change.
+        // swiftlint:disable:next no_global_token_proxies_in_components
+        guard let pinnedDefaultInset, pinnedDefaultInset != LMKSpacing.cardPadding else { return }
+        pinStack(resolvedStyle)
+    }
+
     // MARK: - Setup
 
     private func setupScrollStack() {
-        let navigationBar = navigationBar
-        installedNavigationBar = navigationBar
         navigationBar?.install(in: view)
 
         view.addSubview(scrollView)
@@ -229,30 +246,44 @@ open class LMKScrollStackViewController: UIViewController, LMKThemeApplying {
             scrollBottomSafeAreaConstraint?.deactivate()
             scrollBottomSuperviewConstraint?.activate()
         }
-        LMKFormScaffold.pin(
-            stackView,
-            in: contentView,
-            insets: resolved.contentInsets ?? .lmk_all(LMKSpacing.cardPadding),
-            widthMode: resolved.widthMode ?? .tokenInsets
-        )
-        if #available(iOS 26, *), let showsEdgeEffects = resolved.showsScrollEdgeEffects {
+        pinStack(resolved)
+        if #available(iOS 26, *) {
+            let showsEdgeEffects = resolved.showsScrollEdgeEffects ?? true
             scrollView.topEdgeEffect.isHidden = !showsEdgeEffects
             scrollView.bottomEdgeEffect.isHidden = !showsEdgeEffects
         }
-        for case let header as UILabel in stackView.arrangedSubviews where header.accessibilityTraits.contains(.header) {
+        for header in sectionHeaderLabels {
             header.lmk_apply(resolved.sectionHeaderTextStyle ?? .h3, color: resolved.sectionHeaderColor ?? LMKColor.textPrimary, lineMetrics: true)
         }
+        applyContentTheme(theme)
         didApplyStyle?(self)
+    }
+
+    /// Pins the stack per `resolved`; the default inset is the window-tiered card padding.
+    private func pinStack(_ resolved: Style) {
+        // `cardPadding` is tiered by the window's canvas, not by the theme; it has no per-theme twin.
+        // swiftlint:disable:next no_global_token_proxies_in_components
+        let defaultInset = LMKSpacing.cardPadding
+        pinnedDefaultInset = resolved.contentInsets == nil ? defaultInset : nil
+        LMKFormScaffold.pin(
+            stackView,
+            in: contentView,
+            insets: resolved.contentInsets ?? .lmk_all(defaultInset),
+            widthMode: resolved.widthMode ?? .tokenInsets
+        )
     }
 
     // MARK: - Content
 
-    /// Empties the stack and runs `setupStackContent()` again.
+    /// Empties the stack and runs `setupStackContent()` again. Before the view loads it does
+    /// nothing: `viewDidLoad` builds the content once.
     public func reloadContent() {
+        guard isViewLoaded else { return }
         for view in stackView.arrangedSubviews {
             stackView.removeArrangedSubview(view)
             view.removeFromSuperview()
         }
+        sectionHeaderLabels.removeAll()
         setupStackContent()
     }
 
@@ -262,12 +293,14 @@ open class LMKScrollStackViewController: UIViewController, LMKThemeApplying {
         scrollView.scrollRectToVisible(rect, animated: animated && LMKAnimation.shouldAnimate)
     }
 
-    /// Adds a section header (a `.header` accessibility element) to the stack.
+    /// Adds a section header (a `.header` accessibility element) to the stack. It follows the
+    /// style's header text style and color; other labels in the stack are left alone.
     @discardableResult
     public func addSectionHeader(_ title: String) -> UILabel {
         let label = UILabel.lmk_make(resolvedStyle.sectionHeaderTextStyle ?? .h3, text: title, color: resolvedStyle.sectionHeaderColor ?? LMKColor.textPrimary)
         label.accessibilityTraits = .header
         stackView.addArrangedSubview(label)
+        sectionHeaderLabels.append(label)
         return label
     }
 

@@ -14,10 +14,15 @@ import UIKit
 /// Base class for bottom sheet presentation with design-token styling.
 ///
 /// Subclasses override `setupSheetContent()` and pin their content to
-/// `contentLayoutGuide` (below the drag indicator, above the cancel button).
-/// `present(from:)` adds the sheet as a child of the host and slides it in;
-/// `dismiss()` slides it out and removes it. Every way out (cancel button, dimming
-/// tap, drag, Esc / ⌘W, or code) reports through `onDismiss` with its reason.
+/// `contentLayoutGuide` (below the drag indicator, above the cancel button), and style
+/// it in `applyContentTheme(_:)`. `present(from:)` ends editing on the host, adds the
+/// sheet as a child covering the host's view, and slides it in; `dismiss()` slides it
+/// out and removes it, after which the same instance can be presented again. Every way
+/// out (cancel button, dimming tap, drag, Esc / ⌘W, the VoiceOver escape gesture, or
+/// code) reports through `onDismiss` with its reason.
+///
+/// The sheet is a VoiceOver modal: focus stays inside it, and it never rises above the
+/// host's top safe area, so the keyboard lift cannot push a tall sheet off screen.
 ///
 /// ```swift
 /// final class RenameSheet: LMKBottomSheetViewController {
@@ -38,6 +43,7 @@ open class LMKBottomSheetViewController: UIViewController, LMKThemeApplying {
         case cancelButton
         case dimmingTap
         case drag
+        /// Esc, ⌘W, or the VoiceOver escape gesture.
         case keyCommand
         case programmatic
     }
@@ -178,12 +184,13 @@ open class LMKBottomSheetViewController: UIViewController, LMKThemeApplying {
         }
     }
 
-    /// The style last resolved against the theme.
+    /// The style last resolved against the theme (`resolveStyle(for:)`).
     public private(set) var resolvedStyle = Style()
 
     var containerBottomConstraint: Constraint?
     private var maxHeightConstraint: Constraint?
     private var appliedMaxHeightRatio: CGFloat?
+    private var dragIndicatorTopConstraint: Constraint?
     private var dragIndicatorWidthConstraint: Constraint?
     private var dragIndicatorHeightConstraint: Constraint?
     private var cancelHorizontalConstraint: Constraint?
@@ -194,6 +201,7 @@ open class LMKBottomSheetViewController: UIViewController, LMKThemeApplying {
     private var pendingDismissVelocity: CGFloat = 0
     private var hasAnimatedIn = false
     private var isDismissing = false
+    private var dismissCompletions: [() -> Void] = []
     private var keyboardObserver: LMKKeyboardObserver?
     private var keyboardLift: CGFloat = 0
     private var animator: UIViewPropertyAnimator?
@@ -226,6 +234,12 @@ open class LMKBottomSheetViewController: UIViewController, LMKThemeApplying {
 
     // MARK: - Lifecycle
 
+    override open func loadView() {
+        let root = LMKBottomSheetRootView()
+        root.sheet = self
+        view = root
+    }
+
     override open func viewDidLoad() {
         super.viewDidLoad()
         setupBaseUI()
@@ -250,11 +264,19 @@ open class LMKBottomSheetViewController: UIViewController, LMKThemeApplying {
 
     // MARK: - Presentation
 
-    /// Adds the sheet as a child of `host`, covering its view, and slides it in.
+    /// Ends editing on the host, adds the sheet as a child of `host` covering its view, and
+    /// slides it in. A sheet that was dismissed can be presented again.
     public func present(from host: UIViewController) {
+        // The sheet is a child, not a modal, so UIKit does not resign the host's field for it;
+        // a keyboard that is already up would otherwise cover the lower half of the sheet.
+        (host.view.window ?? host.view).endEditing(true)
         host.addChild(self)
         view.frame = host.view.bounds
         view.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        // Back to the off-screen start (a sheet presented again after a dismissal), before the
+        // host's appearance callbacks can slide it in.
+        containerBottomConstraint?.update(offset: initialOffScreenOffset())
+        dimmingView.alpha = 0
         host.view.addSubview(view)
         didMove(toParent: host)
         setupKeyboardAvoidanceIfNeeded()
@@ -271,6 +293,17 @@ open class LMKBottomSheetViewController: UIViewController, LMKThemeApplying {
     /// Called from `viewDidLoad` after the base UI exists.
     open func setupSheetContent() {}
 
+    /// The sheet style for `theme`: `theme.bottomSheet` under the instance `style`. Subclasses
+    /// with a style of their own layer it in between (the action sheet resolves
+    /// `theme.bottomSheet` ← `theme.actionSheet.sheet` ← `configuration.style.sheet` ← `style`).
+    open func resolveStyle(for theme: LMKTheme) -> Style {
+        theme.bottomSheet.merging(style)
+    }
+
+    /// Override to style the content added in `setupSheetContent()`. Called from every
+    /// `applyTheme(_:)` after the chrome is styled and before `didApplyStyle`.
+    open func applyContentTheme(_ theme: LMKTheme) {}
+
     /// Called before the slide-out starts.
     open func willDismiss(reason: DismissReason) {}
 
@@ -280,7 +313,7 @@ open class LMKBottomSheetViewController: UIViewController, LMKThemeApplying {
     // MARK: - Theme
 
     open func applyTheme(_ theme: LMKTheme) {
-        resolvedStyle = theme.bottomSheet.merging(style)
+        resolvedStyle = resolveStyle(for: theme)
         let resolved = resolvedStyle
         dimmingView.backgroundColor = (resolved.dimmingColor ?? LMKColor.scrim).withAlphaComponent(resolved.dimmingAlpha ?? theme.alpha.dimming)
 
@@ -289,7 +322,7 @@ open class LMKBottomSheetViewController: UIViewController, LMKThemeApplying {
             defaults: LMKSurfaceStyle(
                 background: .solid(LMKColor.backgroundPrimary),
                 corners: .fixed(theme.cornerRadius.large, corners: [.layerMinXMinYCorner, .layerMaxXMinYCorner]),
-                shadow: LMKShadowSource.none,
+                shadow: LMKShadowSource.hidden,
                 contentInsets: NSDirectionalEdgeInsets(top: theme.spacing.large, leading: theme.spacing.xl, bottom: theme.spacing.xl, trailing: theme.spacing.xl)
             )
         )
@@ -299,6 +332,7 @@ open class LMKBottomSheetViewController: UIViewController, LMKThemeApplying {
         dragIndicator.isHidden = !showsIndicator
         dragIndicator.lmk_apply(surface: LMKSurfaceStyle(background: .solid(resolved.dragIndicatorColor ?? LMKColor.divider), corners: .capsule))
         let indicatorSize = showsIndicator ? (resolved.dragIndicatorSize ?? Self.defaultDragIndicatorSize) : .zero
+        dragIndicatorTopConstraint?.update(offset: theme.spacing.small)
         dragIndicatorWidthConstraint?.update(offset: indicatorSize.width)
         dragIndicatorHeightConstraint?.update(offset: indicatorSize.height)
 
@@ -312,7 +346,7 @@ open class LMKBottomSheetViewController: UIViewController, LMKThemeApplying {
             minimumHeight: Self.defaultButtonHeight,
             pressAnimation: false
         ).merging(resolved.cancelButton)
-        cancelHorizontalConstraint?.update(inset: UIEdgeInsets(top: 0, left: insets.leading, bottom: 0, right: insets.trailing))
+        cancelHorizontalConstraint?.update(inset: insets)
         cancelBottomConstraint?.update(inset: insets.bottom)
         contentTopConstraint?.update(offset: insets.top)
         contentBottomToCancelConstraint?.update(offset: -insets.top)
@@ -335,6 +369,7 @@ open class LMKBottomSheetViewController: UIViewController, LMKThemeApplying {
                 maxHeightConstraint = make.height.lessThanOrEqualTo(view.snp.height).multipliedBy(ratio).constraint
             }
         }
+        applyContentTheme(theme)
         didApplyStyle?(self)
     }
 
@@ -342,6 +377,7 @@ open class LMKBottomSheetViewController: UIViewController, LMKThemeApplying {
 
     private func setupBaseUI() {
         view.backgroundColor = .clear
+        view.accessibilityViewIsModal = true
 
         dimmingView.alpha = 0
         dimmingView.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(dimmingViewTapped)))
@@ -351,6 +387,9 @@ open class LMKBottomSheetViewController: UIViewController, LMKThemeApplying {
         view.addSubview(containerView)
         containerView.snp.makeConstraints { make in
             make.leading.trailing.equalToSuperview()
+            // The keyboard lift raises the whole container; this bound keeps a tall sheet's
+            // chrome on screen and lets the content (which yields below required) scroll instead.
+            make.top.greaterThanOrEqualTo(view.safeAreaLayoutGuide.snp.top)
             containerBottomConstraint = make.bottom.equalToSuperview().offset(initialOffScreenOffset()).constraint
         }
         let pan = UIPanGestureRecognizer(target: self, action: #selector(handlePan(_:)))
@@ -360,23 +399,25 @@ open class LMKBottomSheetViewController: UIViewController, LMKThemeApplying {
         dragIndicator.isUserInteractionEnabled = false
         containerView.addSubview(dragIndicator)
         dragIndicator.snp.makeConstraints { make in
-            make.top.equalToSuperview().offset(LMKSpacing.small)
+            dragIndicatorTopConstraint = make.top.equalToSuperview().offset(0).constraint
             make.centerX.equalToSuperview()
             dragIndicatorWidthConstraint = make.width.equalTo(Self.defaultDragIndicatorSize.width).constraint
             dragIndicatorHeightConstraint = make.height.equalTo(Self.defaultDragIndicatorSize.height).constraint
         }
 
+        // Content and the cancel button stay clear of the side safe areas (landscape, the
+        // Dynamic Island); the surface itself is full-bleed.
         cancelButton.title = strings.cancel
         cancelButton.onTap = { [weak self] in self?.dismiss(reason: .cancelButton) }
         containerView.addSubview(cancelButton)
         cancelButton.snp.makeConstraints { make in
-            cancelHorizontalConstraint = make.leading.trailing.equalToSuperview().inset(0).constraint
+            cancelHorizontalConstraint = make.directionalHorizontalEdges.equalTo(containerView.safeAreaLayoutGuide).inset(0).constraint
             cancelBottomConstraint = make.bottom.equalTo(containerView.safeAreaLayoutGuide.snp.bottom).inset(0).constraint
         }
 
         containerView.addLayoutGuide(contentLayoutGuide)
         contentLayoutGuide.snp.makeConstraints { make in
-            make.leading.trailing.equalToSuperview()
+            make.leading.trailing.equalTo(containerView.safeAreaLayoutGuide)
             contentTopConstraint = make.top.equalTo(dragIndicator.snp.bottom).offset(0).constraint
             contentBottomToCancelConstraint = make.bottom.equalTo(cancelButton.snp.top).offset(0).constraint
             contentBottomToSafeAreaConstraint = make.bottom.equalTo(containerView.safeAreaLayoutGuide.snp.bottom).inset(0).constraint
@@ -398,14 +439,16 @@ open class LMKBottomSheetViewController: UIViewController, LMKThemeApplying {
         animateIn()
     }
 
-    /// Slides the sheet into view.
-    public func animateIn() {
+    /// Slides the sheet into view, then moves VoiceOver onto it.
+    func animateIn() {
         containerBottomConstraint?.update(offset: restingOffset)
         animateSheet(duration: LMKAnimation.Duration.moderate, curve: .easeOut) {
             self.view.layoutIfNeeded()
             self.dimmingView.alpha = 1
         } completion: { [weak self] in
-            self?.claimFirstResponderIfIdle()
+            guard let self, !isDismissing else { return }
+            claimFirstResponderIfIdle()
+            UIAccessibility.post(notification: .screenChanged, argument: containerView)
         }
     }
 
@@ -413,7 +456,7 @@ open class LMKBottomSheetViewController: UIViewController, LMKThemeApplying {
     /// - Parameters:
     ///   - velocity: A downward drag velocity (pt/s) for a momentum-matched duration.
     ///   - completion: Called once the sheet is off screen.
-    public func animateOut(velocity: CGFloat = 0, completion: @escaping () -> Void) {
+    func animateOut(velocity: CGFloat = 0, completion: @escaping () -> Void) {
         // The sheet is leaving: stop tracking the keyboard so a hide notification arriving
         // mid-animation cannot rewrite the offset being animated.
         tearDownKeyboardAvoidance()
@@ -474,13 +517,13 @@ open class LMKBottomSheetViewController: UIViewController, LMKThemeApplying {
 
     // MARK: - Dismissal
 
-    /// Slides the sheet out and removes it from its parent (`reason` = `.programmatic`).
-    public func dismiss() {
-        dismiss(reason: .programmatic)
-    }
-
-    /// Slides the sheet out and removes it from its parent, reporting `reason`.
-    public func dismiss(reason: DismissReason) {
+    /// Slides the sheet out and removes it from its parent, reporting `reason` through
+    /// `onDismiss`, then calls `completion`. A second call during the slide-out changes
+    /// nothing; its `completion` still runs when the sheet is gone.
+    public func dismiss(reason: DismissReason = .programmatic, completion: (() -> Void)? = nil) {
+        if let completion {
+            dismissCompletions.append(completion)
+        }
         guard !isDismissing else { return }
         isDismissing = true
         if isFirstResponder {
@@ -494,9 +537,28 @@ open class LMKBottomSheetViewController: UIViewController, LMKThemeApplying {
             willMove(toParent: nil)
             view.removeFromSuperview()
             removeFromParent()
+            // Ready for another `present(from:)`.
+            isDismissing = false
+            hasAnimatedIn = false
+            keyboardLift = 0
+            let completions = dismissCompletions
+            dismissCompletions = []
             onDismiss?(reason)
             didDismiss(reason: reason)
+            completions.forEach { $0() }
         }
+    }
+
+    /// UIKit's dismissal, called on a presented sheet that has nothing presented over it, runs the
+    /// sheet's own dismissal (reason `.programmatic`). UIKit would otherwise pass the call up to the
+    /// host's presenter and close the host's modal instead of the sheet. With something presented
+    /// over the sheet, or a sheet shown some other way, it is UIKit's dismissal.
+    override open func dismiss(animated flag: Bool, completion: (() -> Void)? = nil) {
+        guard presentedViewController == nil, parent != nil, view.superview === parent?.view else {
+            super.dismiss(animated: flag, completion: completion)
+            return
+        }
+        dismiss(reason: .programmatic, completion: completion)
     }
 
     // MARK: - Key commands
@@ -557,8 +619,10 @@ open class LMKBottomSheetViewController: UIViewController, LMKThemeApplying {
     /// The keyboard's overlap with this view, not its raw height: floating keyboards and
     /// hosts that stop short of the screen bottom lift only what they are covered by.
     private func keyboardOverlap(for info: LMKKeyboardObserver.KeyboardInfo) -> CGFloat {
-        guard info.isVisible, view.window != nil else { return 0 }
-        let frameInView = view.convert(info.frameEnd, from: nil)
+        guard info.isVisible, let window = view.window else { return 0 }
+        // The keyboard frame is in screen coordinates; a window that does not sit at the
+        // screen origin (Stage Manager, Slide Over) is offset from them.
+        let frameInView = window.screen.coordinateSpace.convert(info.frameEnd, to: view)
         let intersection = view.bounds.intersection(frameInView)
         return intersection.isNull ? 0 : intersection.height
     }
@@ -570,6 +634,14 @@ open class LMKBottomSheetViewController: UIViewController, LMKThemeApplying {
     }
 
     // MARK: - Drag
+
+    /// Whether a drag that ended with `velocity` (pt/s, downward positive) after `offset` points
+    /// dismisses the sheet, against the resolved thresholds.
+    func dismissesOnDragEnd(velocity: CGFloat, offset: CGFloat, containerHeight: CGFloat) -> Bool {
+        let velocityThreshold = resolvedStyle.dismissVelocityThreshold ?? Self.defaultDismissVelocityThreshold
+        let distanceRatio = resolvedStyle.dismissDistanceRatio ?? Self.defaultDismissDistanceRatio
+        return velocity > velocityThreshold || offset > containerHeight * distanceRatio
+    }
 
     @objc private func handlePan(_ gesture: UIPanGestureRecognizer) {
         let translation = gesture.translation(in: view).y
@@ -607,9 +679,7 @@ open class LMKBottomSheetViewController: UIViewController, LMKThemeApplying {
             guard isDraggingSheet else { return }
             isDraggingSheet = false
             let offset = max(translation - dragStartTranslation, 0)
-            let velocityThreshold = resolvedStyle.dismissVelocityThreshold ?? Self.defaultDismissVelocityThreshold
-            let distanceRatio = resolvedStyle.dismissDistanceRatio ?? Self.defaultDismissDistanceRatio
-            if gesture.state == .ended, velocity > velocityThreshold || offset > containerHeight * distanceRatio {
+            if gesture.state == .ended, dismissesOnDragEnd(velocity: velocity, offset: offset, containerHeight: containerHeight) {
                 pendingDismissVelocity = velocity
                 dismiss(reason: .drag)
             } else {
@@ -623,6 +693,18 @@ open class LMKBottomSheetViewController: UIViewController, LMKThemeApplying {
         default:
             break
         }
+    }
+}
+
+/// The sheet's root view: the VoiceOver modal container, whose escape gesture (the two-finger
+/// scrub) dismisses the sheet like Esc does.
+final class LMKBottomSheetRootView: UIView {
+    weak var sheet: LMKBottomSheetViewController?
+
+    override func accessibilityPerformEscape() -> Bool {
+        guard let sheet else { return false }
+        sheet.dismiss(reason: .keyCommand)
+        return true
     }
 }
 

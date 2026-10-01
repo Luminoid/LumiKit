@@ -21,7 +21,12 @@ public nonisolated enum LMKCalendarSelectionMode: Sendable, Hashable, CaseIterab
     case multiple
 }
 
-/// What a calendar has selected. A `range` is normalized so `start <= end`.
+/// What a calendar has selected.
+///
+/// The days are Gregorian civil days (`LMKCalendarDay`). A `range` built with its bounds
+/// reversed is read in chronological order by every query (`selectedRange`, `contains`,
+/// `earliest`, `latest`, `days`), though the case itself keeps the payload it was given, so
+/// `.range(b, a) != .range(a, b)`; the initializers always store the bounds in order.
 public nonisolated enum LMKCalendarSelection: Sendable, Hashable {
     case empty
     /// One day (single mode).
@@ -36,7 +41,7 @@ public nonisolated enum LMKCalendarSelection: Sendable, Hashable {
     // MARK: - Construction
 
     /// A selection from optional bounds: `nil` / `nil` is empty, a start alone is a range start,
-    /// both give the normalized range.
+    /// both give the range, collapsed to the start when the end comes first.
     public init(start: LMKCalendarDay?, end: LMKCalendarDay?) {
         guard let start else {
             self = .empty
@@ -72,7 +77,7 @@ public nonisolated enum LMKCalendarSelection: Sendable, Hashable {
         switch self {
         case .empty, .multiple: nil
         case let .single(day), let .start(day): day ... day
-        case let .range(start, end): start ... end
+        case let .range(start, end): min(start, end) ... max(start, end)
         }
     }
 
@@ -81,7 +86,7 @@ public nonisolated enum LMKCalendarSelection: Sendable, Hashable {
         switch self {
         case .empty: nil
         case let .single(day), let .start(day): day
-        case let .range(start, _): start
+        case let .range(start, end): min(start, end)
         case let .multiple(days): days.min()
         }
     }
@@ -91,7 +96,7 @@ public nonisolated enum LMKCalendarSelection: Sendable, Hashable {
         switch self {
         case .empty: nil
         case let .single(day), let .start(day): day
-        case let .range(_, end): end
+        case let .range(start, end): max(start, end)
         case let .multiple(days): days.max()
         }
     }
@@ -101,7 +106,7 @@ public nonisolated enum LMKCalendarSelection: Sendable, Hashable {
         switch self {
         case .empty: false
         case let .single(selected), let .start(selected): selected == day
-        case let .range(start, end): start <= day && day <= end
+        case let .range(start, end): min(start, end) <= day && day <= max(start, end)
         case let .multiple(days): days.contains(day)
         }
     }
@@ -126,9 +131,10 @@ public nonisolated enum LMKCalendarSelection: Sendable, Hashable {
         case let .single(day), let .start(day):
             return [day]
         case let .range(start, end):
+            let last = max(start, end)
             var result: [LMKCalendarDay] = []
-            var day = start
-            while day <= end, result.count < limit {
+            var day = min(start, end)
+            while day <= last, result.count < limit {
                 result.append(day)
                 let next = day.adding(days: 1, calendar: calendar)
                 guard next > day else { break }
@@ -148,8 +154,9 @@ public nonisolated enum LMKCalendarSelection: Sendable, Hashable {
     /// - `single`: `day` becomes the selection (tapping it again keeps it).
     /// - `range`: the first tap starts the range, a later tap closes it, an earlier tap
     ///   re-anchors, and any tap once a full range exists starts over.
-    /// - `multiple`: `day` toggles in and out of the set.
-    public static func next(after selection: Self, tapping day: LMKCalendarDay, mode: LMKCalendarSelectionMode) -> Self {
+    /// - `multiple`: `day` toggles in and out of the set; a range expands into its days first,
+    ///   enumerated in `calendar` (the calendar the days belong to).
+    public static func next(after selection: Self, tapping day: LMKCalendarDay, mode: LMKCalendarSelectionMode, calendar: Calendar = LMKDate.calendar) -> Self {
         switch mode {
         case .none:
             return selection
@@ -166,7 +173,7 @@ public nonisolated enum LMKCalendarSelection: Sendable, Hashable {
             var days: Set<LMKCalendarDay> = switch selection {
             case .empty: []
             case let .single(selected), let .start(selected): [selected]
-            case let .range(start, end): Set(Self.range(start, end).days())
+            case .range: Set(selection.days(calendar: calendar))
             case let .multiple(set): set
             }
             if days.contains(day) {
@@ -178,8 +185,8 @@ public nonisolated enum LMKCalendarSelection: Sendable, Hashable {
         }
     }
 
-    /// `next(after: self, tapping: day, mode: mode)`.
-    public func tapping(_ day: LMKCalendarDay, mode: LMKCalendarSelectionMode) -> Self {
-        Self.next(after: self, tapping: day, mode: mode)
+    /// `next(after: self, tapping: day, mode: mode, calendar: calendar)`.
+    public func tapping(_ day: LMKCalendarDay, mode: LMKCalendarSelectionMode, calendar: Calendar = LMKDate.calendar) -> Self {
+        Self.next(after: self, tapping: day, mode: mode, calendar: calendar)
     }
 }

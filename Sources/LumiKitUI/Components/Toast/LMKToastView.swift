@@ -32,7 +32,7 @@ public final class LMKToastView: UIView, LMKThemeApplying {
         public var iconSize: CGFloat?
         /// Hide the status icon; `nil` = shown when the status has one.
         public var showsIcon: Bool?
-        /// Style of the action button; `nil` = ghost, tinted with the status color, small.
+        /// Layered on the action button's default look (ghost, tinted with the status color, small).
         public var actionButton: LMKButton.Style?
         /// Style of a persistent toast's dismiss button; `nil` = a `symbolAccessory` glyph in
         /// `textSecondary`, as wide as the glyph and its padding.
@@ -119,7 +119,7 @@ public final class LMKToastView: UIView, LMKThemeApplying {
 
     // MARK: - State
 
-    public private(set) var configuration: LMKToastConfiguration
+    public private(set) var configuration: LMKToast.Configuration
 
     /// Per-instance style; `nil` fields resolve from the configuration's style, `theme.toast`, then the built-in look.
     public var style: Style {
@@ -140,13 +140,19 @@ public final class LMKToastView: UIView, LMKThemeApplying {
     private weak var presenter: LMKToastPresenter?
     private var dismissTimer: Timer?
     private var isDismissing = false
+    /// Whether this presentation has been on screen (in a window).
+    private var hasBeenInWindow = false
+    /// Counts presentations, so an exit still in flight when the view is shown again cannot
+    /// tear down the new presentation.
+    private var presentationGeneration = 0
+    private var animator: UIViewPropertyAnimator?
     private var iconSizeConstraint: Constraint?
     private var contentInsetsConstraint: Constraint?
     private var slideOffset: CGFloat = 0
 
     // MARK: - Initialization
 
-    public init(configuration: LMKToastConfiguration) {
+    public init(configuration: LMKToast.Configuration) {
         self.configuration = configuration
         style = configuration.style
         super.init(frame: .zero)
@@ -156,7 +162,7 @@ public final class LMKToastView: UIView, LMKThemeApplying {
 
     /// A status toast (the `LMKToast.show(_:message:duration:in:)` shape).
     public convenience init(status: LMKStatus, message: String, duration: TimeInterval = LMKToast.defaultDuration) {
-        self.init(configuration: LMKToastConfiguration(status: status, message: message, duration: .seconds(duration)))
+        self.init(configuration: LMKToast.Configuration(status: status, message: message, duration: .seconds(duration)))
     }
 
     @available(*, unavailable)
@@ -272,7 +278,9 @@ public final class LMKToastView: UIView, LMKThemeApplying {
         rowStack?.spacing = theme.spacing.small
         titleLabel.lmk_apply(resolved.titleTextStyle ?? .bodyBold, color: resolved.titleColor ?? LMKColor.textPrimary)
         messageLabel.lmk_apply(resolved.textStyle ?? .body, color: resolved.messageColor ?? LMKColor.textPrimary)
-        actionButton.style = resolved.actionButton ?? LMKButton.Style.ghost().tint(statusColor).size(.small)
+        // Layered on the default look, like the dismiss button below.
+        let actionStyle = LMKButton.Style.ghost().tint(statusColor).size(.small)
+        actionButton.style = resolved.actionButton.map { actionStyle.merging($0) } ?? actionStyle
         // A small glyph in a compact frame; the button still answers a 44pt hit target.
         var dismissStyle = LMKButton.Style.iconOnly(.neutral).tint(LMKColor.textSecondary)
         dismissStyle.symbolPointSize = theme.layout.symbolAccessory
@@ -305,6 +313,10 @@ public final class LMKToastView: UIView, LMKThemeApplying {
         configuration.message = message
         messageLabel.lmk_setText(message)
         accessibilityLabel = [configuration.title, message].compactMap(\.self).joined(separator: ". ")
+        // With an action or a dismiss button the label is the accessible element.
+        if accessibilityElements != nil {
+            messageLabel.accessibilityLabel = accessibilityLabel
+        }
     }
 
     // MARK: - Presentation
@@ -320,19 +332,27 @@ public final class LMKToastView: UIView, LMKThemeApplying {
         _ = LMKToastPresenter.shared.present(self, in: view, completion: completion)
     }
 
-    /// Dismisses the toast.
+    /// Dismisses the toast; `onDismiss` reports `.programmatic` once.
     public func dismiss() {
         dismiss(reason: .programmatic)
     }
 
     func present(in hostView: UIView, presenter: LMKToastPresenter, completion: (() -> Void)?) {
         self.presenter = presenter
+        // A view shown again after a dismissal starts over; an exit still in flight finishes
+        // first and reports, without touching this presentation.
+        presentationGeneration += 1
+        isDismissing = false
+        hasBeenInWindow = false
+        settleAnimator()
         let theme = traitCollection.lmkTheme
         let resolved = theme.toast.merging(configuration.style).merging(style)
         hostView.addSubview(self)
+        // `cardPadding` is tiered by the window's canvas, not by the theme; it has no per-theme twin and is re-read on every present.
+        // swiftlint:disable:next no_global_token_proxies_in_components
         let margin = resolved.horizontalMargin ?? LMKSpacing.cardPadding
         let offset = resolved.verticalOffset ?? theme.spacing.medium
-        snp.makeConstraints { make in
+        snp.remakeConstraints { make in
             make.centerX.equalToSuperview()
             make.leading.greaterThanOrEqualToSuperview().inset(margin)
             make.trailing.lessThanOrEqualToSuperview().inset(margin)
@@ -351,29 +371,31 @@ public final class LMKToastView: UIView, LMKThemeApplying {
 
         transform = CGAffineTransform(translationX: 0, y: slideOffset)
         alpha = 0
-        let animates = LMKAnimation.shouldAnimate
-        UIView.animate(
-            withDuration: animates ? LMKAnimation.Duration.moderate : 0, delay: 0,
-            usingSpringWithDamping: LMKAnimation.spring.damping, initialSpringVelocity: 0,
-            options: [.allowUserInteraction, LMKAnimation.Curve.easeOut.options],
+        let spring = LMKAnimation.spring
+        animate(
+            duration: LMKAnimation.Duration.moderate,
+            timing: UISpringTimingParameters(dampingRatio: spring.damping, initialVelocity: CGVector(dx: 0, dy: spring.initialVelocity)),
             animations: { [weak self] in
                 self?.transform = .identity
                 self?.alpha = 1
             },
-            completion: { _ in completion?() }
+            completion: { completion?() }
         )
 
         if case let .seconds(duration) = configuration.duration {
-            dismissTimer = Timer.scheduledTimer(withTimeInterval: duration, repeats: false) { [weak self] _ in
+            // `.common` so the toast still times out while the user is scrolling.
+            let timer = Timer(timeInterval: duration, repeats: false) { [weak self] _ in
                 MainActor.assumeIsolated {
                     self?.dismiss(reason: .timeout)
                 }
             }
+            RunLoop.main.add(timer, forMode: .common)
+            dismissTimer = timer
             if configuration.showsCountdown {
                 runCountdown(duration: duration)
             }
         }
-        if configuration.haptic {
+        if configuration.haptics {
             configuration.status.playHaptic()
         }
         UIAccessibility.post(notification: .announcement, argument: configuration.message)
@@ -392,28 +414,86 @@ public final class LMKToastView: UIView, LMKThemeApplying {
         countdownRing.add(animation, forKey: "countdown")
     }
 
-    func dismiss(reason: LMKToastDismissReason) {
+    /// A toast leaves with its screen: when its host is taken out of the window (a popped or
+    /// dismissed controller, a tab switched away) it dismisses with `.programmatic`, so an undo
+    /// toast commits and a persistent toast never keeps its host controller alive.
+    override public func didMoveToWindow() {
+        super.didMoveToWindow()
+        if window != nil {
+            hasBeenInWindow = true
+        } else if hasBeenInWindow, superview != nil, presenter != nil, !isDismissing {
+            dismiss(reason: .programmatic)
+        }
+    }
+
+    func dismiss(reason: LMKToast.DismissReason) {
         guard !isDismissing else { return }
         isDismissing = true
         dismissTimer?.invalidate()
         dismissTimer = nil
         let onDismiss = configuration.onDismiss
-        let animates = LMKAnimation.shouldAnimate
-        UIView.animate(
-            withDuration: animates ? LMKAnimation.Duration.normal : 0,
-            delay: 0, options: [.allowUserInteraction, LMKAnimation.Curve.easeIn.options],
+        let generation = presentationGeneration
+        // The teardown holds the toast strongly: a replaced toast is retained only by its
+        // superview, and the queue advance and an undo commit must run whatever happens to it.
+        let finish = {
+            if self.presentationGeneration == generation {
+                self.removeFromSuperview()
+                self.presenter?.toastDidDismiss(self)
+            }
+            onDismiss?(reason)
+        }
+        // A resigning scene may be suspended before an animation reports back.
+        guard reason != .sceneResigned else {
+            settleAnimator()
+            finish()
+            return
+        }
+        animate(
+            duration: LMKAnimation.Duration.normal,
+            timing: UICubicTimingParameters(animationCurve: LMKAnimation.Curve.easeIn.animationCurve),
             animations: { [weak self] in
                 guard let self else { return }
                 transform = CGAffineTransform(translationX: 0, y: slideOffset)
                 alpha = 0
             },
-            completion: { [weak self] _ in
-                guard let self else { return }
-                removeFromSuperview()
-                presenter?.toastDidDismiss(self)
-                onDismiss?(reason)
-            }
+            completion: finish
         )
+    }
+
+    /// Runs `animations` in a property animator, immediate without a window or under Reduce
+    /// Motion, with a once-only completion that fires even when Core Animation never reports.
+    private func animate(duration: TimeInterval, timing: UITimingCurveProvider, animations: @escaping () -> Void, completion: @escaping () -> Void) {
+        settleAnimator()
+        let effectiveDuration = LMKAnimation.shouldAnimate ? duration : 0
+        guard effectiveDuration > 0, window != nil else {
+            animations()
+            completion()
+            return
+        }
+        let animator = UIViewPropertyAnimator(duration: effectiveDuration, timingParameters: timing)
+        animator.isUserInteractionEnabled = true
+        animator.addAnimations(animations)
+        let once = LMKOnceCompletion(after: effectiveDuration) { [weak self] in
+            if self?.animator === animator {
+                self?.animator = nil
+            }
+            completion()
+        }
+        animator.addCompletion { _ in once.fire() }
+        self.animator = animator
+        animator.startAnimation()
+    }
+
+    /// Finishes the animation in flight at its current position (its completion runs now).
+    private func settleAnimator() {
+        guard let animator else { return }
+        self.animator = nil
+        if animator.state == .active {
+            animator.stopAnimation(false)
+        }
+        if animator.state == .stopped {
+            animator.finishAnimation(at: .current)
+        }
     }
 
     // MARK: - Actions
@@ -423,7 +503,8 @@ public final class LMKToastView: UIView, LMKThemeApplying {
         dismiss(reason: .action)
     }
 
-    @objc private func didTapToast() {
+    /// Runs the tap-to-dismiss as a user tap would (ignored when `tapToDismiss` is off).
+    @objc func didTapToast() {
         guard configuration.tapToDismiss else { return }
         dismiss(reason: .tap)
     }

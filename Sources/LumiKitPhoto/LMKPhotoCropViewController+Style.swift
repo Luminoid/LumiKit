@@ -28,7 +28,8 @@ public extension LMKPhotoCropViewController {
         public var handleSize: CGFloat?
         /// Handle color; `nil` = chrome tint.
         public var handleColor: UIColor?
-        /// Square hit area around a handle; `nil` = handle size plus `spacing.medium`.
+        /// Square hit area around a handle; `nil` = the larger of `minimumTouchTarget` and the
+        /// handle size plus `spacing.medium`.
         public var handleHitSize: CGFloat?
         /// Whether the rule-of-thirds grid draws; `nil` = true.
         public var showsGrid: Bool?
@@ -52,7 +53,9 @@ public extension LMKPhotoCropViewController {
         public var minimumCropSize: CGFloat?
         /// Pinch zoom ceiling on the image; `nil` = 3.
         public var maximumZoomScale: CGFloat?
-        /// iOS 26: asks the scene to lock its interface orientation while cropping; `nil` = true.
+        /// iOS 26 only: asks the scene to lock its interface orientation while cropping; `nil` =
+        /// true. Inert before iOS 26 (no per-controller lock exists there; the editor re-fits the
+        /// crop frame to the photo on rotation instead).
         public var locksOrientation: Bool?
         /// Impact and selection haptics; `nil` = enabled.
         public var haptics: Bool?
@@ -137,25 +140,55 @@ public extension LMKPhotoCropViewController {
 
     /// User-visible strings of the crop editor, defaulting to the package's localized values.
     nonisolated struct Strings: Sendable, Equatable {
+        /// The controller's `title` (shown when the editor is pushed).
         public var title: String
         public var free: String
         public var cancel: String
         public var done: String
         /// Accessibility label of the aspect ratio control.
         public var aspectRatioAccessibilityLabel: String
+        /// Accessibility label of the crop frame.
+        public var cropFrameAccessibilityLabel: String
+        /// Accessibility hint of the crop frame (how to resize and move it).
+        public var cropFrameAccessibilityHint: String
+        /// Accessibility value of the crop frame, with one `%lld` slot: its width as a
+        /// percentage of the photo's.
+        public var cropFrameAccessibilityValueFormat: String
+        /// VoiceOver action that moves the crop frame up.
+        public var moveUp: String
+        /// VoiceOver action that moves the crop frame down.
+        public var moveDown: String
+        /// VoiceOver action that moves the crop frame left.
+        public var moveLeft: String
+        /// VoiceOver action that moves the crop frame right.
+        public var moveRight: String
 
         public init(
             title: String = LMKLocalized("photoCrop.title"),
             free: String = LMKLocalized("photoCrop.free"),
             cancel: String = LMKLocalized("photoCrop.cancel"),
             done: String = LMKLocalized("photoCrop.done"),
-            aspectRatioAccessibilityLabel: String = LMKLocalized("photoCrop.aspectRatio.accessibilityLabel")
+            aspectRatioAccessibilityLabel: String = LMKLocalized("photoCrop.aspectRatio.accessibilityLabel"),
+            cropFrameAccessibilityLabel: String = LMKLocalized("photoCrop.cropFrame.accessibilityLabel"),
+            cropFrameAccessibilityHint: String = LMKLocalized("photoCrop.cropFrame.accessibilityHint"),
+            cropFrameAccessibilityValueFormat: String = LMKLocalized("photoCrop.cropFrame.accessibilityValue"),
+            moveUp: String = LMKLocalized("photoCrop.moveUp"),
+            moveDown: String = LMKLocalized("photoCrop.moveDown"),
+            moveLeft: String = LMKLocalized("photoCrop.moveLeft"),
+            moveRight: String = LMKLocalized("photoCrop.moveRight")
         ) {
             self.title = title
             self.free = free
             self.cancel = cancel
             self.done = done
             self.aspectRatioAccessibilityLabel = aspectRatioAccessibilityLabel
+            self.cropFrameAccessibilityLabel = cropFrameAccessibilityLabel
+            self.cropFrameAccessibilityHint = cropFrameAccessibilityHint
+            self.cropFrameAccessibilityValueFormat = cropFrameAccessibilityValueFormat
+            self.moveUp = moveUp
+            self.moveDown = moveDown
+            self.moveLeft = moveLeft
+            self.moveRight = moveRight
         }
     }
 
@@ -196,7 +229,7 @@ extension LMKPhotoCropViewController.Style {
     var playsHaptics: Bool { haptics ?? true }
 
     func handleHitSide(theme: LMKTheme) -> CGFloat {
-        max(handleSide, handleHitSize ?? handleSide + theme.spacing.medium)
+        max(handleSide, handleHitSize ?? max(theme.layout.minimumTouchTarget, handleSide + theme.spacing.medium))
     }
 
     func minimumCropSide(theme: LMKTheme) -> CGFloat {
@@ -223,7 +256,7 @@ extension LMKPhotoCropViewController.Style {
             surface: LMKSurfaceStyle(
                 background: .solid(stageColor.withAlphaComponent(theme.alpha.large)),
                 corners: .circle,
-                shadow: LMKShadowSource.none
+                shadow: LMKShadowSource.hidden
             ),
             tintColor: stageColor,
             foregroundColor: chrome,

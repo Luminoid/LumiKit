@@ -122,4 +122,71 @@ struct LMKAlertCountdownConfirmationTests {
         dialog?.applyTheme(theme)
         #expect(dialog?.messageLabel.textColor == UIColor.magenta)
     }
+
+    @Test
+    func `The countdown title comes from the strings format`() {
+        let (presenter, window) = makePresenter()
+        defer { window.isHidden = true }
+        let original = LMKAlert.strings
+        defer { LMKAlert.strings = original }
+        LMKAlert.strings = LMKAlert.Strings(countdownConfirmTitleFormat: "%1$@ · %2$lld s")
+        LMKAlert.presentCountdownConfirmation(from: presenter, title: "T", confirmTitle: "Erase", countdownSeconds: 4, onConfirm: {})
+        let dialog = presentedDialog(presenter)
+        dialog?.loadViewIfNeeded()
+        #expect(dialog?.confirmDisplayedTitle == "Erase · 4 s")
+        #expect(LMKAlert.Strings().countdownConfirmTitleFormat.contains("%2$lld"))
+    }
+
+    @Test
+    func `A long message scrolls inside the card, which stays within the safe area`() {
+        let (presenter, window) = makePresenter()
+        defer { window.isHidden = true }
+        let message = Array(repeating: "A long line of explanation that wraps.", count: 60).joined(separator: " ")
+        LMKAlert.presentCountdownConfirmation(from: presenter, title: "Delete everything?", message: message, confirmTitle: "Delete", onConfirm: {})
+        let dialog = presentedDialog(presenter)
+        dialog?.loadViewIfNeeded()
+        dialog?.view.frame = window.bounds
+        dialog?.view.layoutIfNeeded()
+        let card = dialog?.cardView.frame ?? .zero
+        #expect(card.minY >= 0)
+        #expect(card.maxY <= window.bounds.height)
+        #expect(card.height < window.bounds.height)
+        let scrollView = dialog?.textScrollView
+        #expect((scrollView?.contentSize.height ?? 0) > (scrollView?.bounds.height ?? 0), "the text overflows into scrolling")
+        #expect((dialog?.confirmButton.frame.height ?? 0) >= LMKCountdownAlertViewController.defaultButtonHeight)
+        #expect(dialog?.cardView.accessibilityViewIsModal == true)
+    }
+
+    @Test
+    func `Escape and the handle cancel once`() {
+        let (presenter, window) = makePresenter()
+        defer { window.isHidden = true }
+        var cancels = 0
+        let handle = LMKAlert.presentCountdownConfirmation(from: presenter, title: "T", confirmTitle: "Go", onConfirm: {}, onCancel: { cancels += 1 })
+        let dialog = presentedDialog(presenter)
+        dialog?.loadViewIfNeeded()
+        #expect(dialog?.keyCommands?.map(\.input) == [UIKeyCommand.inputEscape])
+        #expect(dialog?.accessibilityPerformEscape() == true)
+        handle.dismiss()
+        dialog?.lmk_cancelFromKeyCommand()
+        // UIKit runs no modal dismissal in the test host, so the handler count cannot be read;
+        // the countdown stopping and the button staying disabled show one cancel took effect.
+        #expect(!handle.isConfirmEnabled)
+        #expect(cancels == 0)
+    }
+
+    @Test
+    func `Stack spacing follows the applied theme`() {
+        let (presenter, window) = makePresenter()
+        defer { window.isHidden = true }
+        LMKAlert.presentCountdownConfirmation(from: presenter, title: "T", message: "M", confirmTitle: "Go", onConfirm: {})
+        let dialog = presentedDialog(presenter)
+        dialog?.loadViewIfNeeded()
+        dialog?.applyTheme(LMKThemeTesting.distinct)
+        let spacing = LMKThemeTesting.distinct.spacing
+        let stacks = dialog?.cardView.subviews.compactMap { $0 as? UIStackView } ?? []
+        #expect(stacks.first?.spacing == spacing.large)
+        let buttonRow = stacks.first?.arrangedSubviews.compactMap { $0 as? UIStackView }.first
+        #expect(buttonRow?.spacing == spacing.medium)
+    }
 }

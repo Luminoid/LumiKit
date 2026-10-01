@@ -6,59 +6,63 @@
 //
 
 import LumiKitUI
-import SnapKit
 import UIKit
 
 // MARK: - Alerts & Errors
 
 final class AlertsDetailViewController: DetailViewController {
-    override func viewDidLoad() {
-        super.viewDidLoad()
+    /// Closes the five-second countdown through its handle if nobody answers it.
+    private var countdownTimeout: Task<Void, Never>?
 
+    isolated deinit {
+        countdownTimeout?.cancel()
+    }
+
+    override func setupStackContent() {
         addSectionHeader("LMKAlert")
-        stack.addArrangedSubview(UILabel.lmk_make(.caption, text: "Standardized alert and confirmation dialogs with configurable strings."))
+        stackView.addArrangedSubview(UILabel.lmk_make(.caption, text: "Standardized alert and confirmation dialogs with configurable strings."))
 
         let confirmButton = LMKButton(title: "Show Confirmation", style: .filled(.primary), target: self, action: #selector(showConfirmation))
-        stack.addArrangedSubview(confirmButton)
+        stackView.addArrangedSubview(confirmButton)
 
         let alertButton = LMKButton(title: "Show Alert", style: .filled(.secondary), target: self, action: #selector(showAlert))
-        stack.addArrangedSubview(alertButton)
+        stackView.addArrangedSubview(alertButton)
 
         let textInputButton = LMKButton(title: "Show Text Input", style: .outlined(.primary), target: self, action: #selector(showTextInput))
-        stack.addArrangedSubview(textInputButton)
+        stackView.addArrangedSubview(textInputButton)
 
         let secureInputButton = LMKButton(title: "Show Secure Text Input", style: .outlined(.secondary), target: self, action: #selector(showSecureTextInput))
-        stack.addArrangedSubview(secureInputButton)
+        stackView.addArrangedSubview(secureInputButton)
 
         addDivider()
         addSectionHeader("Delete confirmation and typed action sheet")
-        stack.addArrangedSubview(UILabel.lmk_make(
+        stackView.addArrangedSubview(UILabel.lmk_make(
             .caption,
             text: "presentDeleteConfirmation formats the localized title with the item name; "
                 + "presentActionSheet takes typed actions with images, styles, and an iPad popover anchor."
         ))
         let deleteButton = LMKButton(title: "Delete Monstera", style: .outlined(.destructive), target: self, action: #selector(showDeleteConfirmation))
-        stack.addArrangedSubview(deleteButton)
-        let typedSheetButton = LMKButton(title: "Show System Action Sheet", style: .outlined(.primary), target: self, action: #selector(showTypedActionSheet))
-        stack.addArrangedSubview(typedSheetButton)
+        stackView.addArrangedSubview(deleteButton)
+        let typedSheetButton = LMKButton(title: "Show System Action Sheet", style: .outlined(.primary), target: self, action: #selector(showTypedActionSheet(_:)))
+        stackView.addArrangedSubview(typedSheetButton)
 
         addDivider()
         addSectionHeader("Countdown confirmation")
-        stack.addArrangedSubview(UILabel.lmk_make(
+        stackView.addArrangedSubview(UILabel.lmk_make(
             .caption,
             text: "Destructive confirmation with a timed countdown: the confirm button is disabled for a few seconds "
-                + "to prevent accidental taps. The returned handle can dismiss it."
+                + "to prevent accidental taps. The returned handle can dismiss it: the five-second one closes itself after 15 seconds."
         ))
 
         let countdown3Button = LMKButton(title: "Delete All (3s countdown)", style: .filled(.destructive), target: self, action: #selector(showCountdown3))
-        stack.addArrangedSubview(countdown3Button)
+        stackView.addArrangedSubview(countdown3Button)
 
         let countdown5Button = LMKButton(title: "Reset Account (5s countdown)", style: .outlined(.destructive), target: self, action: #selector(showCountdown5))
-        stack.addArrangedSubview(countdown5Button)
+        stackView.addArrangedSubview(countdown5Button)
 
         addDivider()
         addSectionHeader("LMKErrorHandler")
-        stack.addArrangedSubview(UILabel.lmk_make(
+        stackView.addArrangedSubview(UILabel.lmk_make(
             .caption,
             text: "Severity-based error presentation through LMKErrorHandler.policy: info shows a toast, warning an alert, "
                 + "error a toast (or an alert with retry), critical always an alert. Recovery suggestions append to the message."
@@ -68,19 +72,19 @@ final class AlertsDetailViewController: DetailViewController {
             guard let self else { return }
             LMKErrorHandler.present(from: self, message: "Informational message.", severity: .info)
         }
-        stack.addArrangedSubview(infoButton)
+        stackView.addArrangedSubview(infoButton)
 
         let warningButton = makeErrorButton(title: "Warning (alert)", role: .warning) { [weak self] in
             guard let self else { return }
             LMKErrorHandler.present(from: self, message: "Something needs attention.", severity: .warning)
         }
-        stack.addArrangedSubview(warningButton)
+        stackView.addArrangedSubview(warningButton)
 
         let errorToastButton = makeErrorButton(title: "Error (toast, no retry)", role: .destructive) { [weak self] in
             guard let self else { return }
             LMKErrorHandler.present(from: self, message: "Transient error, no retry available.", severity: .error)
         }
-        stack.addArrangedSubview(errorToastButton)
+        stackView.addArrangedSubview(errorToastButton)
 
         let errorRetryButton = makeErrorButton(title: "Error (alert + retry)", role: .destructive) { [weak self] in
             guard let self else { return }
@@ -94,7 +98,7 @@ final class AlertsDetailViewController: DetailViewController {
                 }
             )
         }
-        stack.addArrangedSubview(errorRetryButton)
+        stackView.addArrangedSubview(errorRetryButton)
 
         let criticalButton = makeErrorButton(title: "Critical (alert + retry)", role: .destructive) { [weak self] in
             guard let self else { return }
@@ -108,7 +112,7 @@ final class AlertsDetailViewController: DetailViewController {
                 }
             )
         }
-        stack.addArrangedSubview(criticalButton)
+        stackView.addArrangedSubview(criticalButton)
     }
 
     @objc private func showConfirmation() {
@@ -174,7 +178,8 @@ final class AlertsDetailViewController: DetailViewController {
         }
     }
 
-    @objc private func showTypedActionSheet() {
+    /// Takes the tapped button so the sheet anchors to it as a popover on iPad and Mac.
+    @objc private func showTypedActionSheet(_ sender: UIView) {
         LMKAlert.presentActionSheet(
             from: self,
             title: "Photo",
@@ -187,7 +192,8 @@ final class AlertsDetailViewController: DetailViewController {
                     guard let self else { return }
                     LMKToast.show(.error, "Delete", in: self)
                 },
-            ]
+            ],
+            anchor: .view(sender)
         )
     }
 
@@ -206,7 +212,7 @@ final class AlertsDetailViewController: DetailViewController {
     }
 
     @objc private func showCountdown5() {
-        LMKAlert.presentCountdownConfirmation(
+        let handle = LMKAlert.presentCountdownConfirmation(
             from: self,
             title: "Reset Account?",
             message: "This will erase your account and all associated data.",
@@ -221,15 +227,16 @@ final class AlertsDetailViewController: DetailViewController {
                 LMKToast.show(.info, "Cancelled", in: self)
             }
         )
+        // The handle can close the dialog as a cancel would (onCancel runs once); a second call does nothing.
+        countdownTimeout?.cancel()
+        countdownTimeout = Task {
+            try? await Task.sleep(for: .seconds(15))
+            guard !Task.isCancelled else { return }
+            handle.dismiss()
+        }
     }
 
     private func makeErrorButton(title: String, role: LMKButton.Role, action: @escaping () -> Void) -> LMKButton {
-        let button = LMKButton(title: title, style: .outlined(role), target: self, action: #selector(handleErrorButton))
-        button.onTap = action
-        return button
-    }
-
-    @objc private func handleErrorButton() {
-        // Handled by onTap
+        LMKButton(title: title, style: .outlined(role), onTap: action)
     }
 }

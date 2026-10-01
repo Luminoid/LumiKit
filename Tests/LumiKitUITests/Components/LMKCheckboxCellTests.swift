@@ -7,60 +7,6 @@ import Testing
 import UIKit
 @testable import LumiKitUI
 
-// MARK: - LMKCheckbox
-
-@MainActor
-struct LMKCheckboxTests {
-    @Test
-    func `Default state, glyph, and colors`() {
-        let checkbox = LMKCheckbox()
-        #expect(!checkbox.isChecked)
-        #expect(checkbox.glyphView.tintColor === LMKColor.primary)
-        #expect(checkbox.intrinsicContentSize == CGSize(width: LMKLayout.iconMedium, height: LMKLayout.iconMedium))
-        checkbox.isChecked = true
-        #expect(checkbox.glyphView.tintColor === LMKColor.success)
-        #expect(checkbox.glyphView.image != nil)
-    }
-
-    @Test
-    func `setChecked is silent and the tap fires onToggle`() {
-        let checkbox = LMKCheckbox()
-        var values: [Bool] = []
-        checkbox.onToggle = { values.append($0) }
-        checkbox.setChecked(true, animated: false)
-        #expect(checkbox.isChecked)
-        #expect(values.isEmpty)
-        checkbox.sendActions(for: .touchUpInside)
-        #expect(values.isEmpty || values == [false])
-    }
-
-    @Test
-    func `Hit target, disabled state, and accessibility`() {
-        let checkbox = LMKCheckbox()
-        checkbox.frame = CGRect(x: 0, y: 0, width: 24, height: 24)
-        #expect(checkbox.point(inside: CGPoint(x: 12, y: -9), with: nil))
-        #expect(checkbox.accessibilityTraits.contains(.button))
-        #expect(checkbox.accessibilityValue == "Unchecked")
-        checkbox.isChecked = true
-        #expect(checkbox.accessibilityValue == "Checked")
-        #expect(checkbox.accessibilityTraits.contains(.selected))
-        checkbox.strings = LMKCheckbox.Strings(onAccessibilityValue: "Sí", offAccessibilityValue: "No")
-        #expect(checkbox.accessibilityValue == "Sí")
-        checkbox.isEnabled = false
-        #expect(abs(checkbox.alpha - LMKTheme.current.alpha.disabled) < 0.001)
-        #expect(!checkbox.point(inside: CGPoint(x: 12, y: 12), with: nil))
-    }
-
-    @Test
-    func `Style overrides symbols and colors`() {
-        let checkbox = LMKCheckbox(style: LMKCheckbox.Style(onSymbol: "star.fill", offSymbol: "star", onColor: .red, offColor: .blue, glyphSize: 30))
-        #expect(checkbox.glyphView.tintColor == UIColor.blue)
-        #expect(checkbox.intrinsicContentSize.width == 30)
-        checkbox.isChecked = true
-        #expect(checkbox.glyphView.tintColor == UIColor.red)
-    }
-}
-
 // MARK: - LMKCheckboxCell
 
 @MainActor
@@ -90,13 +36,38 @@ struct LMKCheckboxCellTests {
     }
 
     @Test
-    func `Checkbox toggle fires onToggle`() {
+    func `A checkbox tap flips the row, then reports the value; setDone is silent`() {
         let cell = makeCell()
         cell.configure(title: "Item", isDone: false)
-        var toggled = false
-        cell.onToggle = { toggled = true }
-        cell.checkbox.onToggle?(true)
-        #expect(toggled)
+        var values: [Bool] = []
+        cell.onValueChange = { values.append($0) }
+        cell.checkbox.onValueChange?(true)
+        #expect(values == [true])
+        #expect(cell.isDone, "the row follows the checkbox without a second configure")
+        let strike = cell.titleLabel.attributedText?.attribute(.strikethroughStyle, at: 0, effectiveRange: nil) as? Int
+        #expect(strike == NSUnderlineStyle.single.rawValue)
+        #expect(cell.accessibilityValue == LMKCheckboxCell.Strings().doneAccessibilityValue)
+        #expect(cell.accessibilityTraits.contains(.selected))
+
+        cell.setDone(false, animated: false)
+        #expect(!cell.isDone)
+        #expect(!cell.checkbox.isChecked)
+        #expect(cell.titleLabel.attributedText?.attribute(.strikethroughStyle, at: 0, effectiveRange: nil) == nil)
+        #expect(values == [true], "the row-tap path already knows the value")
+
+        #expect(cell.isAccessibilityElement)
+        #expect(cell.accessibilityActivate(), "VoiceOver's double tap toggles the row")
+        #expect(cell.isDone)
+        #expect(cell.checkbox.isChecked)
+        #expect(values == [true, true])
+
+        cell.checkbox.isEnabled = false
+        #expect(cell.accessibilityTraits.contains(.notEnabled))
+        #expect(!cell.accessibilityActivate(), "a disabled row does not toggle")
+        #expect(cell.isDone)
+        #expect(values == [true, true])
+        cell.checkbox.isEnabled = true
+        #expect(!cell.accessibilityTraits.contains(.notEnabled))
     }
 
     @Test
@@ -128,14 +99,20 @@ struct LMKCheckboxCellTests {
     func `prepareForReuse clears everything`() {
         let cell = makeCell()
         cell.configure(title: "Item", subtitle: "Sub", isDone: true)
-        cell.onToggle = {}
+        cell.onValueChange = { _ in }
+        cell.checkbox.isEnabled = false
+        cell.isUserInteractionEnabled = false
+        cell.alpha = 0.5
         cell.prepareForReuse()
-        #expect(cell.onToggle == nil)
+        #expect(cell.onValueChange == nil)
         #expect(cell.titleLabel.text == nil)
         #expect(cell.titleLabel.attributedText == nil)
         #expect(cell.subtitleLabel.isHidden)
         #expect(!cell.checkbox.isChecked)
         #expect(!cell.accessibilityTraits.contains(.selected))
+        #expect(cell.checkbox.isEnabled, "what a host set on a disabled row does not ride along")
+        #expect(cell.isUserInteractionEnabled)
+        #expect(cell.alpha == 1)
     }
 
     @Test

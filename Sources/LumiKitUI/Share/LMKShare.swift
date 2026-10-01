@@ -32,7 +32,8 @@ public enum LMKShare {
     /// Something to share.
     public enum Item {
         case image(UIImage)
-        /// A file URL; `deletesAfterShare` removes it once the sheet is dismissed (temporary exports).
+        /// A file URL; `deletesAfterShare` removes it once the sheet is dismissed, also on
+        /// cancel (temporary exports). Off by default: a shared document is never deleted unasked.
         case file(URL, deletesAfterShare: Bool = false)
         case text(String)
         case url(URL)
@@ -119,13 +120,14 @@ public enum LMKShare {
         present([.image(image)], from: host, anchor: anchor(sourceView: sourceView, sourceBarButtonItem: sourceBarButtonItem), completion: completion)
     }
 
-    /// Shares a file. The file is deleted after the sheet is dismissed unless `deletesAfterShare` is `false`.
+    /// Shares a file. The file is kept; pass `deletesAfterShare: true` for a temporary export,
+    /// which is removed once the sheet is dismissed (also on cancel).
     public static func file(
         at url: URL,
         from host: UIViewController,
         sourceView: UIView? = nil,
         sourceBarButtonItem: UIBarButtonItem? = nil,
-        deletesAfterShare: Bool = true,
+        deletesAfterShare: Bool = false,
         completion: ((LMKShareResult) -> Void)? = nil
     ) {
         present(

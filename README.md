@@ -15,19 +15,19 @@ A UIKit design system and component kit for iOS 18+, iPadOS, and Mac Catalyst, w
 
 | Product | Depends on | What it holds |
 |---|---|---|
-| `LumiKitCore` | Foundation | `LMKLogger`, `LMKDate` and `LMKDateFormat`, `LMKFormat`, `LMKFile`, `LMKConcurrency`, `LMKURLValidator`, calendar day and selection types, string and collection extensions |
+| `LumiKitCore` | Foundation | `LMKLogger`, `LMKDate` and `LMKDateFormat`, `LMKFormat`, `LMKFile`, `LMKConcurrency`, `LMKURLValidator`, Gregorian calendar day and selection types, string and collection extensions |
 | `LumiKitUI` | Core, SnapKit | Tokens and the theme, styles, components, controls, lists, navigation, calendar, detail cards, alerts, toasts, share sheet, haptics, animation, utilities, UIKit extensions |
 | `LumiKitPhoto` | Core, UI | Photo browser, photo grid, crop editor, pick-and-crop coordinator, share preview, `LMKPhotoMetadata` |
 | `LumiKitDebug` | Core, UI | `LMKNetworkLogger` (URLProtocol capture with redaction) and the request inspector; DEBUG builds only |
 | `LumiKitLottie` | UI, Lottie | `LMKLottieRefreshControl` with its bundled ring animation |
 
-Link `LumiKitPhoto` only where you show photos, and `LumiKitDebug` only in debug builds.
+Link `LumiKitPhoto` only where you show photos, and `LumiKitDebug` only in debug builds. `LumiKitUI` links `LumiKitCore` but does not re-export it: import `LumiKitCore` in files that name its types.
 
 ## Screenshots
 
-| Design System and Controls | Components | Feedback and Overlays | Media and Extensions |
+| Catalog | Detail cards | Month calendar | Action sheet |
 |---|---|---|---|
-| <img src="docs/images/lumikit_1.png" alt="Design System and Controls" width="200"> | <img src="docs/images/lumikit_2.png" alt="Components" width="200"> | <img src="docs/images/lumikit_3.png" alt="Feedback and Overlays" width="200"> | <img src="docs/images/lumikit_4.png" alt="Media and Extensions" width="200"> |
+| <img src="docs/images/lumikit_1.png" alt="The Example app's catalog" width="200"> | <img src="docs/images/lumikit_2.png" alt="Detail cards" width="200"> | <img src="docs/images/lumikit_3.png" alt="Month calendar" width="200"> | <img src="docs/images/lumikit_4.png" alt="Action sheet" width="200"> |
 
 ## Requirements
 
@@ -99,15 +99,16 @@ make setup-hooks       # pre-commit lint + format
 make check             # SwiftLint --strict, SwiftFormat --lint
 make build             # iOS Simulator          make build-catalyst   # Mac Catalyst
 make test              # iOS Simulator          make test-filter FILTER=LumiKitUITests/LMKButtonTests
-make example           # regenerate + build     make docs             # DocC archives
+make example           # regenerate + build     make example-catalyst # the Example for the Mac idiom
+make docs              # DocC archives
 make migrate CONSUMER=../MyApp ARGS=--dry-run
 ```
 
-UIKit targets need the simulator; `make build-host` builds `LumiKitCore` and `LumiKitDebug` natively on macOS. CI runs the same steps with warnings as errors.
+UIKit targets need the simulator; `make build-host` builds `LumiKitCore` and `LumiKitDebug` natively on macOS. CI runs the same steps with warnings as errors, testing under Xcode 26 and Xcode 27.
 
 ## Naming
 
-Public types carry the `LMK` prefix; extension members on UIKit and Foundation types carry `lmk_`. Namespaces are subject nouns (`LMKAnimation`, `LMKImage`, `LMKAlert`), view controllers end in `ViewController`, callbacks are `on<Event>` closures, presenters use `present(from:)` and `show(in:)`, every component has a nested `Style` and `Strings`. The full rule set is in [CONTRIBUTING.md](CONTRIBUTING.md).
+Public types carry the `LMK` prefix; extension members on UIKit and Foundation types carry `lmk_`. Namespaces are subject nouns (`LMKAnimation`, `LMKImage`, `LMKAlert`), view controllers end in `ViewController`, callbacks are present-tense `on<Event>` closures (`onValueChange` for a value), presenters use `present(from:)` and `show(in:)`, every component has a nested `Style` and `Strings`. The full rule set is in [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Built with LumiKit
 

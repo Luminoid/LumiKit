@@ -11,8 +11,8 @@ import UIKit
 /// Renders markdown to `NSAttributedString` with configurable base font and color.
 ///
 /// Supports two modes:
-/// - **Inline** (default): Bold, italic, code — suitable for labels and single-line text.
-/// - **Full**: Headings, lists, bold, italic, fenced code blocks, and GFM tables — suitable for
+/// - **Inline** (default): Bold, italic, code, suitable for labels and single-line text.
+/// - **Full**: Headings, lists, bold, italic, fenced code blocks, and GFM tables, suitable for
 ///   long-form content such as AI chat responses. Prose uses inline parsing so every `\n` is a
 ///   visible line break; code and tables render in a monospaced font.
 ///
@@ -31,14 +31,16 @@ import UIKit
 ///     color: LMKColor.textPrimary
 /// )
 /// ```
-public enum LMKMarkdownRenderer {
+public nonisolated enum LMKMarkdownRenderer {
     /// Render inline markdown (bold, italic, code) as an attributed string.
-    /// Falls back to plain text if markdown parsing fails.
+    /// Falls back to plain text if markdown parsing fails. Callable from any isolation, so
+    /// a long response can render off the main actor.
     public static func render(
         _ markdown: String,
         font: UIFont = LMKTypography.body,
         color: UIColor = LMKColor.textPrimary
     ) -> NSAttributedString {
+        let markdown = normalizedLineBreaks(markdown)
         guard let attributedString = try? NSAttributedString(
             markdown: markdown,
             options: AttributedString.MarkdownParsingOptions(
@@ -69,7 +71,7 @@ public enum LMKMarkdownRenderer {
         color: UIColor = LMKColor.textPrimary
     ) -> NSAttributedString {
         let result = NSMutableAttributedString()
-        let lines = markdown.components(separatedBy: "\n")
+        let lines = normalizedLineBreaks(markdown).components(separatedBy: "\n")
         var index = 0
         var prose: [String] = []
 
@@ -111,36 +113,63 @@ public enum LMKMarkdownRenderer {
     }
 
     /// Inline pipeline for a prose-only span: headings, list-marker normalization, bold/italic, with
-    /// every `\n` preserved. This is the historical `renderFull` body, now one block kind among several.
+    /// every `\n` preserved. Each heading line renders on its own in its scaled bold font and each
+    /// run of other lines as one parse, so the parser joining a code span across a line break
+    /// (which drops a line) cannot shift a heading's style onto its neighbor.
     private static func renderInlineBlock(
         _ markdown: String,
         font: UIFont,
         color: UIColor
     ) -> NSAttributedString {
-        let (processed, headingRanges) = preprocessForInline(markdown)
+        var blocks: [NSAttributedString] = []
+        var prose: [String] = []
 
-        guard let attributedString = try? NSAttributedString(
-            markdown: processed,
-            options: AttributedString.MarkdownParsingOptions(
-                interpretedSyntax: .inlineOnlyPreservingWhitespace
-            )
-        ) else {
-            return NSAttributedString(string: markdown, attributes: [
-                .font: font,
-                .foregroundColor: color,
-            ])
+        func flushProse() {
+            guard !prose.isEmpty else { return }
+            blocks.append(render(prose.joined(separator: "\n"), font: font, color: color))
+            prose.removeAll()
         }
 
-        let mutable = NSMutableAttributedString(attributedString: applyBaseFont(to: attributedString, font: font, color: color))
-        applyHeadingStyles(to: mutable, headingRanges: headingRanges, baseFont: font)
-        return mutable
+        for line in markdown.components(separatedBy: "\n") {
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+
+            // Headings (# through ######) render alone, in bold at the level's scale.
+            if let level = detectHeadingLevel(trimmed) {
+                flushProse()
+                let content = String(trimmed.dropFirst(level + 1))
+                blocks.append(render(content, font: headingFont(level: level, baseFont: font), color: color))
+                continue
+            }
+
+            // Normalize unordered list markers (•, *, +, -) and their trailing whitespace to a
+            // single "- " so every bullet renders with the same marker and gap regardless of the
+            // source style. Without collapsing the gap, "*   item" and "- item" would render with
+            // different bullet-to-text spacing.
+            if let content = unorderedListContent(trimmed) {
+                let indent = line.prefix(while: { $0 == " " || $0 == "\t" })
+                prose.append(indent + "- " + content)
+                continue
+            }
+
+            prose.append(line)
+        }
+        flushProse()
+
+        let result = NSMutableAttributedString()
+        for (index, block) in blocks.enumerated() {
+            if index > 0 {
+                result.append(NSAttributedString(string: "\n", attributes: [.font: font, .foregroundColor: color]))
+            }
+            result.append(block)
+        }
+        return result
     }
 
     // MARK: - Inline Text View
 
     /// Create a pre-configured `UITextView` for inline markdown display.
     ///
-    /// The returned view is read-only, non-scrolling, and transparent — designed
+    /// The returned view is read-only, non-scrolling, and transparent, designed
     /// to be embedded in a stack view or used inline within a layout.
     /// Links are styled with ``LMKColor/primary``.
     ///
@@ -149,6 +178,7 @@ public enum LMKMarkdownRenderer {
     ///   - font: Base font for the text. Defaults to ``LMKTypography/body``.
     ///   - color: Base text color. Defaults to ``LMKColor/textPrimary``.
     /// - Returns: A configured `UITextView` with rendered markdown content.
+    @MainActor
     public static func makeInlineTextView(
         markdown: String,
         font: UIFont = LMKTypography.body,
@@ -190,10 +220,10 @@ public enum LMKMarkdownRenderer {
     ) -> NSAttributedString {
         let mono = UIFont.monospacedSystemFont(ofSize: font.pointSize, weight: .regular)
         let paragraph = NSMutableParagraphStyle()
-        paragraph.firstLineHeadIndent = 4
-        paragraph.headIndent = 4
-        paragraph.paragraphSpacingBefore = 2
-        paragraph.paragraphSpacing = 2
+        paragraph.firstLineHeadIndent = LMKSpacing.xs
+        paragraph.headIndent = LMKSpacing.xs
+        paragraph.paragraphSpacingBefore = LMKSpacing.xxs
+        paragraph.paragraphSpacing = LMKSpacing.xxs
         return NSAttributedString(string: code, attributes: [
             .font: mono,
             .foregroundColor: color,
@@ -293,7 +323,7 @@ public enum LMKMarkdownRenderer {
                 rulePara.lineBreakMode = .byClipping
                 result.append(NSAttributedString(string: String(repeating: "─", count: dashCount), attributes: [
                     .font: mono,
-                    .foregroundColor: color.withAlphaComponent(0.4),
+                    .foregroundColor: color.withAlphaComponent(LMKAlpha.medium),
                     .paragraphStyle: rulePara,
                 ]))
                 result.append(NSAttributedString(string: "\n"))
@@ -307,10 +337,11 @@ public enum LMKMarkdownRenderer {
 
     // MARK: - Private
 
-    /// Heading info for post-parse styling.
-    private struct HeadingInfo {
-        let lineIndex: Int
-        let level: Int
+    /// `\r\n` and bare `\r` as `\n`, so every line test below sees one delimiter.
+    private static func normalizedLineBreaks(_ markdown: String) -> String {
+        // Scalar search: as characters, "\r\n" is one grapheme and would hide the "\r".
+        guard markdown.unicodeScalars.contains("\r") else { return markdown }
+        return markdown.replacingOccurrences(of: "\r\n", with: "\n").replacingOccurrences(of: "\r", with: "\n")
     }
 
     /// Heading scale factors relative to base font size.
@@ -323,41 +354,13 @@ public enum LMKMarkdownRenderer {
         6: 0.85,
     ]
 
-    /// Pre-processes markdown for inline parsing:
-    /// - Strips `# ` prefixes from headings (records their line indices and levels)
-    /// - Normalizes unordered bullets (`•`, `*`, `+`, `-`) + trailing whitespace to `- `
-    /// - Leaves all `\n` intact so `.inlineOnlyPreservingWhitespace` preserves them
-    private static func preprocessForInline(_ markdown: String) -> (String, [HeadingInfo]) {
-        let lines = markdown.components(separatedBy: "\n")
-        var result: [String] = []
-        var headings: [HeadingInfo] = []
-
-        for line in lines {
-            let trimmed = line.trimmingCharacters(in: .whitespaces)
-
-            // Detect and strip heading prefixes (# through ######)
-            if let headingLevel = detectHeadingLevel(trimmed) {
-                let prefix = String(repeating: "#", count: headingLevel) + " "
-                let content = String(trimmed.dropFirst(prefix.count))
-                headings.append(HeadingInfo(lineIndex: result.count, level: headingLevel))
-                result.append(content)
-                continue
-            }
-
-            // Normalize unordered list markers (•, *, +, -) and their trailing whitespace to a
-            // single "- " so every bullet renders with the same marker and gap regardless of the
-            // source style. Without collapsing the gap, "*   item" and "- item" would render with
-            // different bullet-to-text spacing.
-            if let content = unorderedListContent(trimmed) {
-                let indent = line.prefix(while: { $0 == " " || $0 == "\t" })
-                result.append(indent + "- " + content)
-                continue
-            }
-
-            result.append(line)
+    /// The bold font for a heading of `level`, scaled from `baseFont`.
+    private static func headingFont(level: Int, baseFont: UIFont) -> UIFont {
+        let size = baseFont.pointSize * (headingScales[level] ?? 1)
+        guard let descriptor = baseFont.fontDescriptor.withSymbolicTraits(.traitBold) else {
+            return baseFont.withSize(size)
         }
-
-        return (result.joined(separator: "\n"), headings)
+        return UIFont(descriptor: descriptor, size: size)
     }
 
     /// If `trimmed` is an unordered list item, returns the content after the marker and its
@@ -384,42 +387,6 @@ public enum LMKMarkdownRenderer {
             }
         }
         return nil
-    }
-
-    /// Applies heading font styles to specific lines in the attributed string.
-    /// Finds each heading line by scanning for `\n` boundaries and applies bold + scaled font.
-    private static func applyHeadingStyles(
-        to mutable: NSMutableAttributedString,
-        headingRanges: [HeadingInfo],
-        baseFont: UIFont
-    ) {
-        guard !headingRanges.isEmpty else { return }
-        let string = mutable.string
-
-        // Build a map of line index → NSRange
-        var lineStart = string.startIndex
-        var lineRanges: [NSRange] = []
-        for line in string.split(separator: "\n", omittingEmptySubsequences: false) {
-            let start = lineStart
-            let end = string.index(start, offsetBy: line.count)
-            let nsRange = NSRange(start ..< end, in: string)
-            lineRanges.append(nsRange)
-            // Advance past the \n
-            lineStart = end < string.endIndex ? string.index(after: end) : string.endIndex
-        }
-
-        for heading in headingRanges {
-            guard heading.lineIndex < lineRanges.count else { continue }
-            let range = lineRanges[heading.lineIndex]
-            guard range.length > 0 else { continue }
-
-            let scale = headingScales[heading.level] ?? 1.0
-            let headingSize = baseFont.pointSize * scale
-            let traits: UIFontDescriptor.SymbolicTraits = .traitBold
-            if let descriptor = baseFont.fontDescriptor.withSymbolicTraits(traits) {
-                mutable.addAttribute(.font, value: UIFont(descriptor: descriptor, size: headingSize), range: range)
-            }
-        }
     }
 
     /// Re-applies base font and color while preserving bold/italic traits from markdown parsing.

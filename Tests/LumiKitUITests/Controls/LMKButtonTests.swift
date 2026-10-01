@@ -25,6 +25,13 @@ struct LMKButtonTests {
     }
 
     @Test
+    func `A button keeps its styled look under the Mac idiom`() {
+        // `.mac` would draw a Mac push button and drop the configuration's background.
+        #expect(LMKButton(title: "Save", style: .filled()).preferredBehavioralStyle == .pad)
+        #expect(LMKButton(systemImage: "xmark").preferredBehavioralStyle == .pad)
+    }
+
+    @Test
     func `onTap is called on didTap and can capture the button`() {
         let button = LMKButton()
         var received: LMKButton?
@@ -64,11 +71,12 @@ struct LMKButtonTests {
     }
 
     @Test
-    func `A neutral button with its own tint shades that tint`() {
+    func `A neutral button with its own tint shades that tint and uses the on-fill foreground`() {
         let button = LMKButton(title: "Neutral", style: LMKButton.Style(role: .neutral, variant: .filled, tintColor: .red))
+        let traits = button.traitCollection
+        #expect(Self.hex(button.configuration?.baseForegroundColor, traits) == Self.hex(LMKColor.onAccent, traits), "a custom fill takes the on-fill text, not textPrimary")
         button.isHighlighted = true
         button.updateConfiguration()
-        let traits = button.traitCollection
         #expect(abs(Self.brightness(button.configuration?.background.backgroundColor, traits) - 0.9) < 0.01)
     }
 
@@ -149,6 +157,41 @@ struct LMKButtonTests {
     }
 
     @Test
+    func `setSymbol leaves size and weight to the style unless they are passed`() {
+        let button = LMKButton(style: .iconOnly())
+        button.setSymbol("heart")
+        #expect(button.image == UIImage(systemName: "heart"), "nothing baked into the image")
+        button.style.symbolPointSize = 28
+        button.style.symbolWeight = .bold
+        button.updateConfiguration()
+        let preferred = button.configuration?.preferredSymbolConfigurationForImage
+        #expect(preferred == UIImage.SymbolConfiguration(pointSize: 28, weight: .bold), "the style moves the glyph after the fact")
+
+        button.setSymbol("heart", pointSize: 12)
+        #expect(button.image == UIImage(systemName: "heart", withConfiguration: UIImage.SymbolConfiguration(pointSize: 12)))
+        button.setSymbol("heart", weight: .thin)
+        #expect(button.image == UIImage(systemName: "heart", withConfiguration: UIImage.SymbolConfiguration(weight: .thin)))
+    }
+
+    @Test
+    func `Image placement, image padding, and the loading indicator color reach the configuration`() {
+        let button = LMKButton(title: "Next", image: UIImage(systemName: "arrow.right"), style: LMKButton.Style(imagePlacement: .trailing, imagePadding: 11, loadingIndicatorColor: .magenta))
+        #expect(button.configuration?.imagePlacement == .trailing)
+        #expect(button.configuration?.imagePadding == 11)
+        #expect(button.configuration?.activityIndicatorColorTransformer?(.black) == UIColor.magenta)
+        let merged = LMKButton.Style(imagePlacement: .top).merging(LMKButton.Style(imagePadding: 3))
+        #expect(merged.imagePlacement == .top)
+        #expect(merged.imagePadding == 3)
+    }
+
+    @Test
+    func `Glass renders as tinted where Liquid Glass does not exist`() {
+        #expect(LMKButton.renderedVariant(.glass, supportsGlass: false) == .tinted)
+        #expect(LMKButton.renderedVariant(.glass, supportsGlass: true) == .glass)
+        #expect(LMKButton.renderedVariant(.outlined, supportsGlass: false) == .outlined)
+    }
+
+    @Test
     func `Sizes change insets and text style`() {
         let small = LMKButton(title: "S", style: .filled().size(.small))
         small.updateConfiguration()
@@ -178,6 +221,43 @@ struct LMKButtonTests {
         #expect(button.configuration?.background.shadowProperties.opacity ?? 0 > 0)
     }
 
+    @Test
+    func `A surface background is the resting fill; the states still shade or replace it`() {
+        let style = LMKButton.Style(
+            variant: .outlined,
+            surface: LMKSurfaceStyle(background: .solid(.red), border: .solid(.green, width: 2)),
+            highlighted: LMKControlStateStyle(background: .solid(.blue)),
+            selected: LMKControlStateStyle(border: .solid(.yellow, width: 2))
+        )
+        let button = LMKButton(title: "Surface", style: style)
+        #expect(button.configuration?.background.backgroundColor == UIColor.red)
+        #expect(button.configuration?.background.strokeColor == UIColor.green)
+
+        button.isHighlighted = true
+        button.updateConfiguration()
+        #expect(button.configuration?.background.backgroundColor == UIColor.blue, "the pressed override wins over the surface")
+
+        button.isHighlighted = false
+        button.isSelected = true
+        button.updateConfiguration()
+        #expect(button.configuration?.background.strokeColor == UIColor.yellow, "the selected border wins over the surface border")
+        let selected = button.configuration?.background.backgroundColor
+        #expect(selected != UIColor.red, "a selected solid surface is shaded like a filled button")
+        #expect(abs(Self.brightness(selected, button.traitCollection) - 0.85) < 0.01)
+    }
+
+    @Test
+    func `A translucent border keeps its own alpha and fades with the disabled state`() {
+        var style = LMKButton.Style.ghost()
+        style.surface.border = .solid(UIColor.blue.withAlphaComponent(0.5), width: 1)
+        let button = LMKButton(title: "Faint", style: style)
+        #expect(button.configuration?.background.strokeColor?.cgColor.alpha == 0.5)
+        button.isEnabled = false
+        button.updateConfiguration()
+        let expected = 0.5 * LMKTheme.current.alpha.disabled
+        #expect(abs((button.configuration?.background.strokeColor?.cgColor.alpha ?? 0) - expected) < 0.001)
+    }
+
     // MARK: - States
 
     @Test
@@ -188,6 +268,34 @@ struct LMKButtonTests {
         let transformer = button.configuration?.background.backgroundColorTransformer
         #expect(transformer?(.red).cgColor.alpha == LMKTheme.current.alpha.disabled)
         #expect(button.configuration?.baseForegroundColor?.cgColor.alpha == LMKTheme.current.alpha.disabled)
+
+        let glass = LMKButton(title: "Off", style: .glass())
+        glass.isEnabled = false
+        glass.updateConfiguration()
+        #expect(glass.configuration?.baseForegroundColor?.cgColor.alpha == LMKTheme.current.alpha.disabled, "a disabled glass button fades its label too")
+    }
+
+    @Test
+    func `The press scale comes from the highlighted style, else the theme`() {
+        let button = LMKButton(title: "Press", style: .filled())
+        button.perform(NSSelectorFromString("handleTouchDown"))
+        guard LMKAnimation.shouldAnimate else {
+            #expect(button.transform == .identity, "Reduce Motion: no press scale")
+            return
+        }
+        #expect(abs(button.transform.a - LMKTheme.current.animation.pressScale) < 0.001)
+        button.perform(NSSelectorFromString("handleTouchUp"))
+        #expect(button.transform == .identity)
+
+        button.style.highlighted = LMKControlStateStyle(scale: 0.5)
+        button.perform(NSSelectorFromString("handleTouchDown"))
+        #expect(abs(button.transform.a - 0.5) < 0.001, "Style.highlighted.scale is honored")
+        button.perform(NSSelectorFromString("handleTouchUp"))
+
+        button.style.highlighted = nil
+        button.style.pressAnimation = false
+        button.perform(NSSelectorFromString("handleTouchDown"))
+        #expect(button.transform == .identity)
     }
 
     @Test
@@ -218,14 +326,26 @@ struct LMKButtonTests {
         var values: [Bool] = []
         button.onValueChange = { values.append($0) }
         #expect(button.accessibilityValue == "Off")
+        #expect(button.accessibilityTraits.contains(.toggleButton))
         button.didTap()
         #expect(button.isSelected)
         #expect(button.configuration?.title == "Liked")
+        #expect(button.configuration?.image == UIImage(systemName: "heart.fill"))
         #expect(button.accessibilityValue == "On")
         button.didTap()
         #expect(!button.isSelected)
         #expect(button.configuration?.title == "Like")
         #expect(values == [true, false])
+    }
+
+    @Test
+    func `A plain button keeps a host-set accessibility value across content updates`() {
+        let button = LMKButton(title: "Volume")
+        button.accessibilityValue = "50%"
+        button.title = "Loudness"
+        button.style = .ghost()
+        #expect(button.accessibilityValue == "50%")
+        #expect(!button.accessibilityTraits.contains(.toggleButton))
     }
 
     @Test
@@ -241,15 +361,65 @@ struct LMKButtonTests {
     // MARK: - Loading
 
     @Test
-    func `Loading state shows an activity indicator and restores the title`() {
+    func `Loading state shows an activity indicator and restores the current title`() {
         let button = LMKButton(title: "Save", style: .filled())
         button.isLoading = true
         #expect(button.configuration?.showsActivityIndicator == true)
         #expect(button.configuration?.title == " ")
-        #expect(button.isUserInteractionEnabled == false)
+        #expect(button.accessibilityLabel == "Save", "VoiceOver keeps the title while the placeholder shows")
+        #expect(button.accessibilityTraits.contains(.notEnabled))
+        var taps = 0
+        button.onTap = { taps += 1 }
+        button.didTap()
+        #expect(taps == 0, "a tap while loading is absorbed")
+        LMKThemeTesting.fit(button, width: 120)
+        #expect(button.point(inside: CGPoint(x: 10, y: 10), with: nil), "a loading button absorbs the touch like a disabled one")
+        #expect(!button.point(inside: CGPoint(x: -10, y: 10), with: nil), "without the expanded hit area")
+        button.title = "Saved"
         button.isLoading = false
-        #expect(button.configuration?.title == "Save")
-        #expect(button.isUserInteractionEnabled == true)
+        #expect(button.configuration?.title == "Saved", "a title set while loading is not overwritten by the old one")
+        #expect(button.configuration?.showsActivityIndicator == false)
+        #expect(!button.accessibilityTraits.contains(.notEnabled))
+        button.didTap()
+        #expect(taps == 1)
+
+        let toggle = LMKButton(title: "Follow", style: .tinted())
+        toggle.isToggle = true
+        toggle.selectedTitle = "Following"
+        toggle.isLoading = true
+        toggle.isSelected = true
+        toggle.isLoading = false
+        #expect(toggle.configuration?.title == "Following")
+    }
+
+    @Test
+    func `A loading icon-only button keeps no title, so it does not widen`() {
+        let button = LMKButton(systemImage: "plus")
+        LMKThemeTesting.fit(button, width: 100)
+        let resting = button.intrinsicContentSize
+        button.isLoading = true
+        #expect(button.configuration?.title == nil)
+        #expect(button.configuration?.showsActivityIndicator == true)
+        #expect(button.intrinsicContentSize.width < resting.width + LMKTheme.current.spacing.iconToText, "no image padding plus a space is added")
+    }
+
+    @Test
+    func `shrinkingTitleToFit survives configuration rebuilds`() {
+        let button = LMKButton(title: "A rather long title for a narrow button", style: .filled())
+        button.shrinkingTitleToFit(minimumScaleFactor: 0.6)
+        button.isHighlighted = true
+        button.updateConfiguration()
+        button.style = .outlined()
+        #expect(button.configuration?.titleLineBreakMode == .byTruncatingTail)
+        #expect(button.titleLabel?.adjustsFontSizeToFitWidth == true)
+        #expect(abs((button.titleLabel?.minimumScaleFactor ?? 0) - 0.6) < 0.001)
+        #expect(button.titleLabel?.numberOfLines == 1)
+        let window = LMKThemeTesting.host(button)
+        defer { window.isHidden = true }
+        button.frame = CGRect(x: 0, y: 0, width: 80, height: 44)
+        button.layoutIfNeeded()
+        #expect(button.titleLabel?.adjustsFontSizeToFitWidth == true, "layout does not reset the label")
+        #expect(button.titleLabel?.numberOfLines == 1)
     }
 
     // MARK: - Hit target
@@ -263,7 +433,11 @@ struct LMKButtonTests {
         #expect(!button.point(inside: CGPoint(x: 15, y: -14), with: nil))
         button.minimumHitTarget = 20
         #expect(!button.point(inside: CGPoint(x: 15, y: -10), with: nil))
+        button.minimumHitTarget = nil
         button.isEnabled = false
+        #expect(button.point(inside: CGPoint(x: 15, y: 10), with: nil), "a disabled button absorbs a touch inside its bounds")
+        #expect(!button.point(inside: CGPoint(x: 15, y: -10), with: nil), "without the expanded area")
+        button.isHidden = true
         #expect(!button.point(inside: CGPoint(x: 15, y: 10), with: nil))
     }
 
@@ -306,6 +480,21 @@ struct LMKButtonTests {
         button.didApplyStyle = { _ in count += 1 }
         button.style = .ghost()
         #expect(count == 1)
+    }
+
+    @Test
+    func `applyContentTheme runs before didApplyStyle so a subclass never has to follow super`() {
+        final class ThemedButton: LMKButton {
+            var order: [String] = []
+            override func applyContentTheme(_ theme: LMKTheme) {
+                order.append("content")
+            }
+        }
+        let button = ThemedButton(title: "Sub")
+        button.didApplyStyle = { ($0 as? ThemedButton)?.order.append("hook") }
+        button.order = []
+        button.style = .tinted()
+        #expect(button.order == ["content", "hook"])
     }
 
     @Test

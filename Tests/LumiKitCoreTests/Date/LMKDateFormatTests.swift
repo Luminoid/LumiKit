@@ -21,9 +21,9 @@ private func plain(_ string: String?) -> String? {
     string?.replacingOccurrences(of: "\u{202F}", with: " ").replacingOccurrences(of: "\u{00A0}", with: " ")
 }
 
-private func makeDate(_ year: Int, _ month: Int, _ day: Int, _ hour: Int = 0, _ minute: Int = 0) -> Date {
+private func makeDate(_ year: Int, _ month: Int, _ day: Int, _ hour: Int = 0, _ minute: Int = 0, in timeZone: TimeZone = utc) -> Date {
     var calendar = Calendar(identifier: .gregorian)
-    calendar.timeZone = utc
+    calendar.timeZone = timeZone
     return calendar.date(from: DateComponents(year: year, month: month, day: day, hour: hour, minute: minute)) ?? Date()
 }
 
@@ -112,13 +112,23 @@ struct LMKDateFormatTests {
         #expect(interval.contains("–"))
         #expect(LMKDateFormat.intervalString(from: end, to: start, context: context) == interval, "reversed bounds are normalized")
         #expect(LMKDateFormat.intervalString(from: start, to: end, date: .none, context: context).isEmpty)
-        #expect(!LMKDateFormat.intervalString(from: start, to: end, date: .custom(pattern: "yMMMd"), context: context).isEmpty)
 
         #expect(LMKDateFormat.rangeLabel(start: nil, end: end, context: context) == nil)
         #expect(LMKDateFormat.rangeLabel(start: start, end: nil, context: context) == "Jun 6, 2026")
         #expect(LMKDateFormat.rangeLabel(start: start, end: makeDate(2026, 6, 6, 18), context: context) == "Jun 6, 2026", "an end on the same day is a single date")
         #expect(LMKDateFormat.rangeLabel(start: start, end: end, context: context) == interval)
         #expect(LMKDateFormat.rangeLabel(start: start, end: end, date: .long, context: context)?.contains("June 6") == true)
+    }
+
+    @Test
+    func `Custom patterns render intervals with both bounds and collapse a single day`() {
+        let start = makeDate(2026, 6, 6)
+        let end = makeDate(2026, 6, 8)
+        let pattern = LMKDateFormat.DateStyle.custom(pattern: "dd.MM.yyyy")
+        #expect(LMKDateFormat.intervalString(from: start, to: end, date: pattern, context: context) == "06.06.2026 – 08.06.2026")
+        #expect(LMKDateFormat.intervalString(from: end, to: start, date: pattern, context: context) == "06.06.2026 – 08.06.2026", "reversed bounds are normalized")
+        #expect(LMKDateFormat.intervalString(from: start, to: makeDate(2026, 6, 6, 18), date: pattern, context: context) == "06.06.2026")
+        #expect(LMKDateFormat.rangeLabel(start: start, end: end, date: .custom(pattern: "yyyy-MM-dd"), context: context) == "2026-06-06 – 2026-06-08")
     }
 
     @Test
@@ -142,6 +152,35 @@ struct LMKDateFormatTests {
         #expect(LMKDateFormat.relativeDayString(makeDate(2026, 4, 26, 23), relativeTo: today, context: context) == "Yesterday")
         #expect(LMKDateFormat.relativeDayString(makeDate(2026, 4, 29), relativeTo: today, context: context) == "Apr 29, 2026")
         #expect(LMKDateFormat.relativeDayString(makeDate(2026, 4, 20), relativeTo: today, fallback: .weekdayMonthDay, context: context) == "Mon, Apr 20")
+    }
+
+    /// In these zones daylight saving starts at midnight, so the transition day begins at 01:00
+    /// and lasts 23 hours; a midnight-anchored day count comes out one short across it.
+    @Test(arguments: [
+        ("Africa/Cairo", 2026, 4, 24),
+        ("America/Santiago", 2026, 9, 6),
+        ("America/Havana", 2026, 3, 8),
+        ("Asia/Beirut", 2026, 3, 29),
+        ("America/Los_Angeles", 2026, 3, 8),
+    ])
+    func `Relative day strings hold across a daylight-saving change at midnight`(zone: String, year: Int, month: Int, day: Int) throws {
+        let timeZone = try #require(TimeZone(identifier: zone))
+        let context = LMKDateFormat.Context(locale: Locale(identifier: "en_US"), calendar: Calendar(identifier: .gregorian), timeZone: timeZone)
+        let transitionDay = makeDate(year, month, day, 15, in: timeZone)
+        let calendar = context.calendar
+        let dayBefore = try #require(calendar.date(byAdding: .day, value: -1, to: transitionDay))
+        let dayAfter = try #require(calendar.date(byAdding: .day, value: 1, to: transitionDay))
+
+        for hour in [1, 12, 23] {
+            let onTransitionDay = makeDate(year, month, day, hour, in: timeZone)
+            #expect(LMKDateFormat.relativeDayString(dayAfter, relativeTo: onTransitionDay, context: context) == "Tomorrow", "\(zone) \(hour)h → next day")
+            #expect(LMKDateFormat.relativeDayString(dayBefore, relativeTo: onTransitionDay, context: context) == "Yesterday", "\(zone) \(hour)h → previous day")
+            #expect(LMKDateFormat.relativeDayString(onTransitionDay, relativeTo: dayBefore, context: context) == "Tomorrow", "\(zone) previous day → \(hour)h")
+            #expect(LMKDateFormat.relativeDayString(onTransitionDay, relativeTo: dayAfter, context: context) == "Yesterday", "\(zone) next day → \(hour)h")
+            #expect(LMKDateFormat.relativeDayString(transitionDay, relativeTo: onTransitionDay, context: context) == "Today", "\(zone) \(hour)h → same day")
+        }
+        let twoDaysAfter = try #require(calendar.date(byAdding: .day, value: 2, to: transitionDay))
+        #expect(LMKDateFormat.relativeDayString(twoDaysAfter, relativeTo: transitionDay, context: context) != "Tomorrow", "\(zone) two days out falls back")
     }
 
     @Test
@@ -204,6 +243,15 @@ struct LMKDateFormatSharedStateTests {
         #expect(date.lmk_string(context: context) == "04/27/2026")
         LMKDateFormat.preferredDatePattern = ""
         #expect(LMKDateFormat.string(date, context: context) == "Apr 27, 2026", "an empty pattern means the default")
+    }
+
+    @Test
+    func `The preferred pattern renders range labels with both bounds`() {
+        defer { LMKDateFormat.preferredDatePattern = nil }
+        LMKDateFormat.preferredDatePattern = "dd.MM.yyyy"
+        let start = makeDate(2026, 6, 6)
+        #expect(LMKDateFormat.rangeLabel(start: start, end: makeDate(2026, 6, 8), date: .preferred, context: context) == "06.06.2026 – 08.06.2026")
+        #expect(LMKDateFormat.rangeLabel(start: start, end: makeDate(2026, 6, 6, 18), date: .preferred, context: context) == "06.06.2026")
     }
 
     @Test

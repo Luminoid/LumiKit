@@ -61,7 +61,7 @@ final class ExampleViewController: UIViewController, UITableViewDataSource, UITa
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        // The theme is applied once by the scene delegate, before the sweep's overrides.
+        // The theme is applied once by the app delegate, before any scene connects.
         title = "LumiKit"
         view.backgroundColor = LMKColor.backgroundPrimary
         navigationItem.searchController = searchController
@@ -125,7 +125,10 @@ final class ExampleViewController: UIViewController, UITableViewDataSource, UITa
                 trailing: info.isLink ? .disclosure : .none,
                 style: LMKListRowConfiguration.Style(detailTextStyle: .body, detailColor: info.isLink ? LMKColor.primary : LMKColor.textSecondary)
             ), backgroundColor: LMKColor.backgroundSecondary)
-            cell.selectionStyle = info.isLink ? .default : .none
+            // lmk_applyListRow makes every enabled row selectable; the plain About rows do nothing on tap.
+            if !info.isLink {
+                cell.selectionStyle = .none
+            }
             return cell
         }
 
@@ -134,7 +137,6 @@ final class ExampleViewController: UIViewController, UITableViewDataSource, UITa
             LMKListRowConfiguration(title: item.title, subtitle: item.subtitle, leading: .symbol(item.iconName)),
             backgroundColor: LMKColor.backgroundSecondary
         )
-        cell.selectionStyle = .default
         return cell
     }
 

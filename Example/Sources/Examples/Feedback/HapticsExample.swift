@@ -6,17 +6,14 @@
 //
 
 import LumiKitUI
-import SnapKit
 import UIKit
 
 // MARK: - Haptics
 
 final class HapticsDetailViewController: DetailViewController {
-    override func viewDidLoad() {
-        super.viewDidLoad()
-
+    override func setupStackContent() {
         addSectionHeader("Notification Feedback")
-        stack.addArrangedSubview(UILabel.lmk_make(
+        stackView.addArrangedSubview(UILabel.lmk_make(
             .caption,
             text: "Triggered for task outcomes: success, warning, or error. The Taptic Engine is prepared when this screen appears for lower latency."
         ))
@@ -33,17 +30,17 @@ final class HapticsDetailViewController: DetailViewController {
         let errorNotif = LMKButton(title: "Error", style: .outlined(.destructive), target: self, action: #selector(hapticError))
         notifRow.addArrangedSubview(errorNotif)
 
-        stack.addArrangedSubview(notifRow)
+        stackView.addArrangedSubview(notifRow)
 
         addDivider()
         addSectionHeader("Selection Feedback")
-        stack.addArrangedSubview(UILabel.lmk_make(.caption, text: "Subtle tick for picker changes and control selection."))
+        stackView.addArrangedSubview(UILabel.lmk_make(.caption, text: "Subtle tick for picker changes and control selection."))
         let selectionButton = LMKButton(title: "Trigger Selection", style: .outlined(.primary), target: self, action: #selector(hapticSelection))
-        stack.addArrangedSubview(selectionButton)
+        stackView.addArrangedSubview(selectionButton)
 
         addDivider()
         addSectionHeader("Impact Feedback")
-        stack.addArrangedSubview(UILabel.lmk_make(.caption, text: "Physical impact feel: light, medium, heavy, soft (cushioned), or rigid (sharp)."))
+        stackView.addArrangedSubview(UILabel.lmk_make(.caption, text: "Physical impact feel: light, medium, heavy, soft (cushioned), or rigid (sharp)."))
 
         let impactRow1 = UIStackView(lmk_axis: .horizontal, spacing: LMKSpacing.small)
         impactRow1.distribution = .fillEqually
@@ -57,7 +54,7 @@ final class HapticsDetailViewController: DetailViewController {
         let heavyImpact = LMKButton(title: "Heavy", style: .outlined(.secondary), target: self, action: #selector(hapticHeavy))
         impactRow1.addArrangedSubview(heavyImpact)
 
-        stack.addArrangedSubview(impactRow1)
+        stackView.addArrangedSubview(impactRow1)
 
         let impactRow2 = UIStackView(lmk_axis: .horizontal, spacing: LMKSpacing.small)
         impactRow2.distribution = .fillEqually
@@ -68,7 +65,7 @@ final class HapticsDetailViewController: DetailViewController {
         let rigidImpact = LMKButton(title: "Rigid", style: .outlined(.secondary), target: self, action: #selector(hapticRigid))
         impactRow2.addArrangedSubview(rigidImpact)
 
-        stack.addArrangedSubview(impactRow2)
+        stackView.addArrangedSubview(impactRow2)
     }
 
     @objc private func hapticSuccess() {
@@ -88,35 +85,31 @@ final class HapticsDetailViewController: DetailViewController {
     }
 
     @objc private func hapticLight() {
-        LMKHaptics.prepareImpact(.light)
         LMKHaptics.light()
     }
 
     @objc private func hapticMedium() {
-        LMKHaptics.prepareImpact(.medium)
         LMKHaptics.medium()
     }
 
     @objc private func hapticHeavy() {
-        LMKHaptics.prepareImpact(.heavy)
         LMKHaptics.heavy()
     }
 
     @objc private func hapticSoft() {
-        LMKHaptics.prepareImpact(.soft)
         LMKHaptics.soft()
     }
 
     @objc private func hapticRigid() {
-        LMKHaptics.prepareImpact(.rigid)
         LMKHaptics.rigid()
     }
 
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
-        // Prepare the notification generator when this screen appears
-        // so the first tap has minimal latency (~1–2s window)
+        // Prepare when a haptic is anticipated (this screen appearing), not right before it plays:
+        // the generators stay warm for a second or two, so the first tap has minimal latency.
         LMKHaptics.prepareNotification()
         LMKHaptics.prepareSelection()
+        LMKHaptics.prepareImpact(.medium)
     }
 }

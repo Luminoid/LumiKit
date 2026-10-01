@@ -5,6 +5,7 @@
 //  Minimal example app demonstrating LumiKit design system, components, and controls.
 //
 
+import LumiKitDebug
 import UIKit
 
 @main
@@ -19,6 +20,16 @@ final class AppDelegate: UIResponder, UIApplicationDelegate {
             let report = "AUDIT-EXCEPTION|\(exception.name.rawValue)|\(exception.reason ?? "")\n" + exception.callStackSymbols.prefix(24).joined(separator: "\n")
             FileHandle.standardError.write(Data((report + "\n").utf8))
         }
+        // The brand theme is registered once here, before any scene connects, so a second window
+        // (iPad, Mac) never resets a theme picked in Theme Switcher. `-lmk-theme` and `-lmk-rtl`
+        // override it for a scripted run (see ExampleLaunchOptions).
+        ExampleSweepRunner.applyLaunchAppearance(ExampleLaunchOptions.current)
+        #if DEBUG
+            // LMKNetworkLogger is configured once at launch; the Network History page only sends
+            // traffic through it.
+            LMKNetworkLogger.configure(LMKNetworkLogger.Configuration(maxRecords: 50))
+            LMKNetworkLogger.enable()
+        #endif
         return true
     }
 

@@ -159,18 +159,23 @@ open class LMKDetailPageViewController: LMKScrollStackViewController {
         if let bar = navigationBar {
             bar.setRightItems(items.reversed())
         } else {
-            navigationItem.lmk_setItems(trailing: items.reversed())
+            // Only the trailing side is the page's; a host's leading items (a Close button on a
+            // modal) stay where they are.
+            navigationItem.rightBarButtonItems = items.isEmpty ? nil : items.map { $0.makeBarButtonItem(tintColor: nil) }
         }
     }
 
     // MARK: - Editing
 
-    /// Swaps the bar items for Cancel / Save (⌘↩ saves, Esc cancels) until `endEditing()`.
+    /// Swaps the bar items for Cancel / Save (⌘↩ saves, Esc cancels) until `endEditing()`. On
+    /// iPad and Mac the page takes first responder while no field inside has it, so the key
+    /// commands work before the user focuses a field.
     public func beginEditing(onSave: @escaping () -> Void, onCancel: @escaping () -> Void) {
         self.onSave = onSave
         onCancelEditing = onCancel
         isEditingDetail = true
         updateBarItems()
+        claimFirstResponderIfIdle()
     }
 
     /// Restores the Edit / Share items.
@@ -180,6 +185,21 @@ open class LMKDetailPageViewController: LMKScrollStackViewController {
         onSave = nil
         onCancelEditing = nil
         updateBarItems()
+        if isFirstResponder {
+            resignFirstResponder()
+        }
+    }
+
+    /// Takes first responder on iPad and Mac (where hardware key commands matter), unless a
+    /// field inside the page is editing.
+    private func claimFirstResponderIfIdle() {
+        guard traitCollection.userInterfaceIdiom != .phone, viewIfLoaded?.window != nil, !Self.containsFirstResponder(view) else { return }
+        becomeFirstResponder()
+    }
+
+    private static func containsFirstResponder(_ view: UIView) -> Bool {
+        if view.isFirstResponder { return true }
+        return view.subviews.contains { containsFirstResponder($0) }
     }
 
     override open var keyCommands: [UIKeyCommand]? {

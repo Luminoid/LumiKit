@@ -6,6 +6,7 @@
 //  with an optional inline count and an accent color that tints the tile.
 //
 
+import LumiKitCore
 import SnapKit
 import UIKit
 
@@ -152,6 +153,14 @@ public final class LMKActionTile: UIControl, LMKThemeApplying {
     public let contentStack = UIStackView()
 
     private var resolved = Style()
+    private var iconSizeConstraint: Constraint?
+    private var contentLeadingConstraint: Constraint?
+    private var contentTopConstraint: Constraint?
+    /// The scale a state style set, so the press animation keeps the transform otherwise.
+    private var appliedStateScale: CGFloat?
+
+    /// Brightness factor for `lmk_stateShade(by:)` of the pressed fill (15% darker).
+    private static let highlightedFillDelta: CGFloat = 0.85
 
     // MARK: - Initialization
 
@@ -176,6 +185,9 @@ public final class LMKActionTile: UIControl, LMKThemeApplying {
 
     private func setupUI() {
         iconView.contentMode = .scaleAspectFit
+        iconView.snp.makeConstraints { make in
+            iconSizeConstraint = make.width.height.equalTo(0).constraint
+        }
         titleLabel.textAlignment = .center
         contentStack.axis = .vertical
         contentStack.alignment = .center
@@ -185,7 +197,8 @@ public final class LMKActionTile: UIControl, LMKThemeApplying {
         addSubview(contentStack)
         contentStack.snp.makeConstraints { make in
             make.center.equalToSuperview()
-            make.leading.top.greaterThanOrEqualToSuperview()
+            contentLeadingConstraint = make.leading.greaterThanOrEqualToSuperview().offset(0).constraint
+            contentTopConstraint = make.top.greaterThanOrEqualToSuperview().offset(0).constraint
         }
         addTarget(self, action: #selector(handleTap), for: .touchUpInside)
         addTarget(self, action: #selector(handleTouchDown), for: .touchDown)
@@ -216,6 +229,14 @@ public final class LMKActionTile: UIControl, LMKThemeApplying {
         }
     }
 
+    /// Hidden: no touch. Disabled: the bounds absorb the touch (UIKit's behavior for a disabled
+    /// control). Enabled: the minimum touch target.
+    override public func point(inside point: CGPoint, with event: UIEvent?) -> Bool {
+        guard !isHidden else { return false }
+        guard isEnabled else { return bounds.contains(point) }
+        return lmk_hitTestBounds(minimumSide: traitCollection.lmkTheme.layout.minimumTouchTarget, insets: lmk_hitTestInsets).contains(point)
+    }
+
     /// Sets the title, glyph, and count in one call.
     public func configure(title: String, icon: UIImage?, count: Int? = nil) {
         self.title = title
@@ -241,29 +262,36 @@ public final class LMKActionTile: UIControl, LMKThemeApplying {
             glyphTint = accent.lmk_glyphTint(onLightAccentDarkenBy: resolved.lightAccentGlyphBrightness ?? 0.7)
         }
         var stateAlpha: CGFloat = 1
+        var stateScale: CGFloat?
         if isHighlighted {
-            if let background = resolved.highlighted?.background { surface.background = background }
-            if let border = resolved.highlighted?.border { surface.border = border }
-            if let color = resolved.highlighted?.foregroundColor { glyphTint = color }
-            stateAlpha = min(stateAlpha, resolved.highlighted?.alpha ?? 1)
+            let highlighted = resolved.highlighted ?? LMKControlStateStyle()
+            if highlighted.background == nil, highlighted.alpha == nil {
+                // Pressed: a shade of the fill shown, so the press reads without motion too.
+                if case let .solid(color) = surface.background ?? defaults.background {
+                    surface.background = .solid((color ?? LMKColor.backgroundSecondary).lmk_stateShade(by: Self.highlightedFillDelta))
+                }
+            }
+            apply(highlighted, to: &surface, &glyphTint, &stateAlpha, &stateScale)
         }
         if !isEnabled {
-            if let background = resolved.disabled?.background { surface.background = background }
-            if let color = resolved.disabled?.foregroundColor { glyphTint = color }
-            stateAlpha = min(stateAlpha, resolved.disabled?.alpha ?? theme.alpha.disabled)
+            var disabled = resolved.disabled ?? LMKControlStateStyle()
+            if disabled.alpha == nil { disabled.alpha = theme.alpha.disabled }
+            apply(disabled, to: &surface, &glyphTint, &stateAlpha, &stateScale)
         }
         let applied = lmk_apply(surface: surface, defaults: defaults)
         alpha = stateAlpha
-        let insets = applied.contentInsets ?? NSDirectionalEdgeInsets(top: theme.spacing.xs, leading: theme.spacing.xs, bottom: theme.spacing.xs, trailing: theme.spacing.xs)
-        contentStack.snp.updateConstraints { make in
-            make.leading.greaterThanOrEqualToSuperview().offset(insets.leading)
-            make.top.greaterThanOrEqualToSuperview().offset(insets.top)
+        // A state scale owns the transform; without one the press animation does.
+        if let stateScale {
+            transform = CGAffineTransform(scaleX: stateScale, y: stateScale)
+        } else if appliedStateScale != nil {
+            transform = .identity
         }
+        appliedStateScale = stateScale
+        let insets = applied.contentInsets ?? .lmk_all(theme.spacing.xs)
+        contentLeadingConstraint?.update(offset: insets.leading)
+        contentTopConstraint?.update(offset: insets.top)
         contentStack.spacing = resolved.spacing ?? theme.spacing.xs
-        let iconSize = resolved.iconSize ?? theme.layout.iconLarge
-        iconView.snp.remakeConstraints { make in
-            make.width.height.equalTo(iconSize)
-        }
+        iconSizeConstraint?.update(offset: resolved.iconSize ?? theme.layout.iconLarge)
         iconView.tintColor = glyphTint
         titleLabel.lmk_apply(resolved.titleTextStyle ?? .caption, color: resolved.titleColor ?? LMKColor.textSecondary)
         titleLabel.numberOfLines = resolved.titleLines ?? 2
@@ -271,12 +299,22 @@ public final class LMKActionTile: UIControl, LMKThemeApplying {
         didApplyStyle?(self)
     }
 
+    private func apply(_ state: LMKControlStateStyle, to surface: inout LMKSurfaceStyle, _ foreground: inout UIColor, _ alpha: inout CGFloat, _ scale: inout CGFloat?) {
+        if let value = state.background { surface.background = value }
+        if let value = state.border { surface.border = value }
+        if let value = state.shadow { surface.shadow = value }
+        if let value = state.foregroundColor { foreground = value }
+        if let value = state.alpha { alpha = min(alpha, value) }
+        if let value = state.scale { scale = value }
+    }
+
     private func updateContent() {
         iconView.image = icon
         let separator = resolved.countSeparator ?? " · "
         if let count, count > 0, let title {
-            titleLabel.lmk_setText("\(title)\(separator)\(count)")
-            accessibilityLabel = "\(title), \(count)"
+            let formattedCount = LMKFormat.number(count)
+            titleLabel.lmk_setText("\(title)\(separator)\(formattedCount)")
+            accessibilityLabel = "\(title), \(formattedCount)"
         } else {
             titleLabel.lmk_setText(title)
             accessibilityLabel = title
@@ -298,12 +336,12 @@ public final class LMKActionTile: UIControl, LMKThemeApplying {
     }
 
     @objc private func handleTouchDown() {
-        guard resolved.pressAnimation ?? true else { return }
+        guard resolved.pressAnimation ?? true, appliedStateScale == nil else { return }
         LMKAnimation.animateButtonPressDown(self)
     }
 
     @objc private func handleTouchUp() {
-        guard resolved.pressAnimation ?? true else { return }
+        guard resolved.pressAnimation ?? true, appliedStateScale == nil else { return }
         LMKAnimation.animateButtonPressUp(self)
     }
 }

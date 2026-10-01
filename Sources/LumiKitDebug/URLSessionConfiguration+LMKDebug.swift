@@ -3,19 +3,22 @@
 //  LumiKit
 //
 //  Helper to inject LMKNetworkLogger into custom URLSession configurations.
-//  DEBUG builds only — zero footprint in release.
+//  Debug builds only (`LMK_ENABLE_NETWORK_LOGGING`) — zero footprint in release.
 //
 
-#if DEBUG && LMK_ENABLE_NETWORK_LOGGING
+#if LMK_ENABLE_NETWORK_LOGGING
 
     import Foundation
 
     public extension URLSessionConfiguration {
         /// Add LMKNetworkLogger to protocolClasses for request interception.
-        /// Call this on any custom URLSessionConfiguration to enable network history capture.
+        /// Call this on any custom URLSessionConfiguration to enable network history capture;
+        /// requests are captured only while `LMKNetworkLogger.isEnabled`.
         ///
-        /// The URLProtocol uses URLSessionDataDelegate with a serial OperationQueue and
-        /// ephemeral configuration to avoid Swift 6 strict concurrency issues.
+        /// A logged request runs on the logger's own session with this configuration's
+        /// `httpAdditionalHeaders` applied; its cookie storage, cache, credential storage, and
+        /// timeouts are not, and authentication challenges are answered by the system's default
+        /// handling rather than this session's delegate (see `LMKNetworkLogger`).
         @discardableResult
         func lmk_enableNetworkLogging() -> URLSessionConfiguration {
             guard !(protocolClasses ?? []).contains(where: { $0 == LMKNetworkRequestLoggerProtocol.self }) else {

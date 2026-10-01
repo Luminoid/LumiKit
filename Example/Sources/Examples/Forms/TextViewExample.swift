@@ -6,35 +6,34 @@
 //
 
 import LumiKitUI
-import SnapKit
 import UIKit
 
 // MARK: - Text View
 
 final class TextViewDetailViewController: DetailViewController {
-    override func viewDidLoad() {
-        super.viewDidLoad()
-        scrollView.lmk_enableKeyboardAdjustment()
-
-        addSectionHeader("Keyboard Avoidance")
-        stack
-            .addArrangedSubview(UILabel.lmk_make(.caption, text: "The scroll view keeps the focused field above the keyboard via `lmk_enableKeyboardAdjustment()`."))
+    override func setupStackContent() {
+        addSectionHeader("Grows With Its Text")
+        stackView.addArrangedSubview(UILabel.lmk_make(
+            .caption,
+            text: "An LMKTextView starts at minimumHeight and grows line by line as you type; past maximumHeight it stops growing and scrolls. "
+                + "Inside an LMKScrollStackViewController the page keeps the focused view above the keyboard."
+        ))
 
         addDivider()
         addSectionHeader("Basic")
         let basic = LMKTextView()
         basic.placeholder = "Enter your notes here..."
-        basic.snp.makeConstraints { $0.height.equalTo(120) }
-        stack.addArrangedSubview(basic)
+        basic.minimumHeight = 120
+        stackView.addArrangedSubview(basic)
 
         addDivider()
-        addSectionHeader("With Character Limit")
+        addSectionHeader("With Character Limit and Maximum Height")
         let limited = LMKTextView()
-        limited.placeholder = "Limited to 100 characters"
+        limited.placeholder = "Limited to 100 characters; scrolls past 200pt"
         limited.maxCharacterCount = 100
         limited.showsCharacterCount = true
-        limited.snp.makeConstraints { $0.height.equalTo(120) }
-        stack.addArrangedSubview(limited)
+        limited.maximumHeight = 200
+        stackView.addArrangedSubview(limited)
 
         addDivider()
         addSectionHeader("Pre-filled with Counter")
@@ -42,7 +41,6 @@ final class TextViewDetailViewController: DetailViewController {
         prefilled.text = "This text view already has content. The character counter updates as you type."
         prefilled.maxCharacterCount = 200
         prefilled.showsCharacterCount = true
-        prefilled.snp.makeConstraints { $0.height.equalTo(120) }
-        stack.addArrangedSubview(prefilled)
+        stackView.addArrangedSubview(prefilled)
     }
 }

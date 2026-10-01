@@ -1,5 +1,5 @@
 /* LumiKitPhoto — English */
-"photoBrowser.empty" = "No photos";
+"photoBrowser.empty" = "No Photos";
 "photoBrowser.counter" = "%lld of %lld";
 "photoBrowser.tapToToggle.accessibilityHint" = "Double-tap to zoom, tap to show or hide controls";
 "photoBrowser.livePhoto.accessibilityLabel" = "Live Photo";
@@ -20,7 +20,17 @@
 "photoCrop.cancel" = "Cancel";
 "photoCrop.done" = "Done";
 "photoCrop.aspectRatio.accessibilityLabel" = "Aspect ratio";
+"photoCrop.cropFrame.accessibilityLabel" = "Crop frame";
+"photoCrop.cropFrame.accessibilityHint" = "Swipe up or down to resize; use the actions to move";
+"photoCrop.cropFrame.accessibilityValue" = "%lld%%";
+"photoCrop.moveUp" = "Move Up";
+"photoCrop.moveDown" = "Move Down";
+"photoCrop.moveLeft" = "Move Left";
+"photoCrop.moveRight" = "Move Right";
 "sharePreview.share" = "Share";
 "sharePreview.saveImage" = "Save Image";
 "sharePreview.photoPermissionDenied" = "Photo library access is required to save images. Please enable it in Settings.";
 "sharePreview.close.accessibilityLabel" = "Close";
+"photoPickCrop.loadFailed" = "The photo could not be opened.";
+"photoPickCrop.saveFailed" = "The photo could not be saved.";
+"photoPickCrop.hostUnavailable" = "The crop editor could not be shown.";

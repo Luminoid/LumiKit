@@ -80,7 +80,7 @@ struct LMKTextStyleFontTests {
         #expect(LMKTextStyle.h1.defaultColor === LMKColor.textPrimary)
         #expect(LMKTextStyle.body.defaultColor === LMKColor.textPrimary)
         #expect(LMKTextStyle.caption.defaultColor === LMKColor.textSecondary)
-        #expect(LMKTextStyle.small.defaultColor === LMKColor.textTertiary)
+        #expect(LMKTextStyle.small.defaultColor === LMKColor.textSecondary)
     }
 }
 
@@ -121,10 +121,50 @@ struct UILabelTextStyleTests {
         #expect(label.attributedText?.attribute(.paragraphStyle, at: 0, effectiveRange: nil) != nil)
     }
 
+    /// The regression: the attributed render carried a fresh paragraph style, which reset the
+    /// label to natural alignment and word wrapping on every re-apply.
+    @Test
+    func `Line metrics keep the label's alignment and line break mode`() throws {
+        let label = UILabel.lmk_make(.h2, text: "Hello", numberOfLines: 1)
+        label.textAlignment = .center
+        label.lineBreakMode = .byTruncatingMiddle
+        label.lmk_setText("World")
+        #expect(label.textAlignment == .center)
+        #expect(label.lineBreakMode == .byTruncatingMiddle)
+        label.lmk_apply(.h3, lineMetrics: true)
+        #expect(label.textAlignment == .center)
+        #expect(label.lineBreakMode == .byTruncatingMiddle)
+        let paragraph = try #require(label.attributedText?.attribute(.paragraphStyle, at: 0, effectiveRange: nil) as? NSParagraphStyle)
+        #expect(paragraph.alignment == .center)
+        #expect(paragraph.lineBreakMode == .byTruncatingMiddle)
+
+        let fresh = UILabel.lmk_make(.body, text: "Tail", numberOfLines: 1)
+        #expect(fresh.lineBreakMode == .byTruncatingTail, "a single-line label keeps tail truncation on first render")
+    }
+
+    /// A paragraph's `.natural` follows the text's direction, so English in a right-to-left layout
+    /// stayed left-aligned while plain labels flipped.
+    @Test
+    func `A natural styled label aligns to the view's layout direction, as a plain label does`() {
+        let label = UILabel.lmk_make(.body, text: "Hello")
+        #expect(label.textAlignment == .left)
+        label.semanticContentAttribute = .forceRightToLeft
+        label.lmk_setText("Hello again")
+        #expect(label.textAlignment == .right, "English text in a right-to-left layout sits on the right")
+        label.semanticContentAttribute = .forceLeftToRight
+        label.lmk_setText("Back")
+        #expect(label.textAlignment == .left)
+
+        label.textAlignment = .center
+        label.semanticContentAttribute = .forceRightToLeft
+        label.lmk_setText("Centered")
+        #expect(label.textAlignment == .center, "an explicit alignment is the host's and stays")
+    }
+
     @Test
     func `lmk_make uses the style's default color`() {
         #expect(UILabel.lmk_make(.caption, text: "x").textColor == LMKColor.textSecondary)
-        #expect(UILabel.lmk_make(.small, text: "x").textColor == LMKColor.textTertiary)
+        #expect(UILabel.lmk_make(.small, text: "x").textColor == LMKColor.textSecondary)
         #expect(UILabel.lmk_make(.h3, text: "x", color: .red).textColor == UIColor.red)
     }
 

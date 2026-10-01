@@ -3,10 +3,10 @@
 //  LumiKit
 //
 //  Captures HTTP request/response details for debugging.
-//  DEBUG builds only — zero footprint in release.
+//  Debug builds only (`LMK_ENABLE_NETWORK_LOGGING`) — zero footprint in release.
 //
 
-#if DEBUG
+#if LMK_ENABLE_NETWORK_LOGGING
 
     import Foundation
 
@@ -23,13 +23,34 @@
             public let url: URL
             public let method: String
             public let headers: [String: String]
+            /// The body as captured, cut at `maxBodyCaptureSize`; `nil` when there was none or capture is off.
             public let body: Data?
+            /// Whether `body` is the start of a longer body.
+            public let isBodyTruncated: Bool
+
+            init(url: URL, method: String, headers: [String: String], body: Data?, isBodyTruncated: Bool = false) {
+                self.url = url
+                self.method = method
+                self.headers = headers
+                self.body = body
+                self.isBodyTruncated = isBodyTruncated
+            }
         }
 
         public struct Response: Sendable, Equatable {
             public let statusCode: Int
             public let headers: [String: String]
+            /// The body as captured, cut at `maxBodyCaptureSize`; `nil` when there was none or capture is off.
             public let body: Data?
+            /// Whether `body` is the start of a longer body.
+            public let isBodyTruncated: Bool
+
+            init(statusCode: Int, headers: [String: String], body: Data?, isBodyTruncated: Bool = false) {
+                self.statusCode = statusCode
+                self.headers = headers
+                self.body = body
+                self.isBodyTruncated = isBodyTruncated
+            }
         }
 
         // MARK: - Computed Properties
@@ -45,8 +66,9 @@
             errorDescription != nil || (statusCode != nil && !isSuccess)
         }
 
+        /// The request URL, with redacted query values shown as `LMKNetworkLogger.redactedValue`.
         public var displayURL: String {
-            request.url.absoluteString
+            request.url.absoluteString.replacingOccurrences(of: LMKNetworkLogger.redactedValueQueryEncoded, with: LMKNetworkLogger.redactedValue)
         }
 
         public var displayMethod: String {
@@ -63,29 +85,36 @@
             }
         }
 
+        /// The duration in whole milliseconds, in the user's locale ("250ms", "2,500ms"); "-" while pending.
         public var displayDuration: String {
             guard let duration else { return "-" }
-            return String(format: "%.0fms", duration * 1000)
+            let milliseconds = Duration.milliseconds(Int64((duration * 1000).rounded()))
+            return milliseconds.formatted(.units(allowed: [.milliseconds], width: .narrow))
         }
 
         public var requestBodyText: String? {
             guard let data = request.body else { return nil }
-            return formatBodyData(data, contentType: headerValue(for: "Content-Type", in: request.headers))
+            return formatBodyData(data, contentType: headerValue(for: "Content-Type", in: request.headers), isTruncated: request.isBodyTruncated)
         }
 
         public var responseBodyText: String? {
-            guard let data = response?.body else { return nil }
-            guard let headers = response?.headers else { return formatBodyData(data, contentType: nil) }
-            return formatBodyData(data, contentType: headerValue(for: "Content-Type", in: headers))
+            guard let response, let data = response.body else { return nil }
+            return formatBodyData(data, contentType: headerValue(for: "Content-Type", in: response.headers), isTruncated: response.isBodyTruncated)
         }
 
         // MARK: - Helpers
+
+        /// Whether both records describe the same outcome (a record only changes when its response
+        /// or error lands), without comparing bodies.
+        func hasSameOutcome(as other: Self) -> Bool {
+            statusCode == other.statusCode && errorDescription == other.errorDescription && duration == other.duration
+        }
 
         private func headerValue(for key: String, in headers: [String: String]) -> String? {
             headers.first(where: { $0.key.caseInsensitiveCompare(key) == .orderedSame })?.value
         }
 
-        private func formatBodyData(_ data: Data, contentType: String?) -> String {
+        private func formatBodyData(_ data: Data, contentType: String?, isTruncated: Bool) -> String {
             // Try to pretty-print JSON
             if let contentType, contentType.contains("json"),
                let json = try? JSONSerialization.jsonObject(with: data),
@@ -94,13 +123,17 @@
                 return prettyString
             }
 
-            // Fall back to UTF-8 string
-            if let text = String(data: data, encoding: .utf8) {
-                return text
+            // Fall back to UTF-8 text. A truncated body may end inside a multi-byte character, so
+            // up to three trailing bytes are dropped before the data counts as binary.
+            let trailingBytesToTry = isTruncated ? min(3, data.count) : 0
+            for dropped in 0 ... trailingBytesToTry {
+                if let text = String(data: data.dropLast(dropped), encoding: .utf8) {
+                    return text
+                }
             }
 
             // Binary data
-            return "<binary data, \(data.count) bytes>"
+            return String(format: LMKLocalized("networkRecord.binaryBody"), Int64(data.count))
         }
 
         public func formattedRequestHeaders() -> String {

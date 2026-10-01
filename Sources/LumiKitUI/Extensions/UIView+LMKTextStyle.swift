@@ -1,5 +1,5 @@
 //
-//  UILabel+LMKTextStyle.swift
+//  UIView+LMKTextStyle.swift
 //  LumiKit
 //
 //  `lmk_apply(_:)` for labels, text fields, and text views: resolves an
@@ -17,6 +17,9 @@ private final class LMKTextStyleState {
     var style: LMKTextStyle
     var color: UIColor?
     var lineMetrics: Bool
+    /// The edge a `.natural` label was last resolved to (attributed text resolves `.natural` by
+    /// the content's direction, not the view's, so the label carries an explicit edge instead).
+    var naturalAlignmentEdge: NSTextAlignment?
     var registration: (any UITraitChangeRegistration)?
 
     init(style: LMKTextStyle, color: UIColor?, lineMetrics: Bool) {
@@ -41,7 +44,7 @@ private extension UIView {
             return
         }
         let state = LMKTextStyleState(style: style, color: color, lineMetrics: lineMetrics)
-        state.registration = registerForTraitChanges([UITraitPreferredContentSizeCategory.self, LMKThemeTrait.self]) { (view: Self, _) in
+        state.registration = registerForTraitChanges([UITraitPreferredContentSizeCategory.self, UITraitLayoutDirection.self, LMKThemeTrait.self]) { (view: Self, _) in
             reapply(view)
         }
         lmk_textStyleState = state
@@ -99,7 +102,25 @@ public extension UILabel {
         }
         if state.lineMetrics, let text, !text.isEmpty {
             let attributes = theme.typography.attributes(for: state.style, font: resolvedFont, color: textColor ?? LMKColor.textPrimary)
+            // An attributed string with a paragraph style resets both to the paragraph's
+            // (natural alignment, word wrapping); the label's own settings win.
+            var alignment = textAlignment
+            if let edge = state.naturalAlignmentEdge, alignment == edge {
+                alignment = .natural
+            }
+            let lineBreak = lineBreakMode
             attributedText = NSAttributedString(string: text, attributes: attributes)
+            // A paragraph's `.natural` follows the text's own direction (English stays left in a
+            // right-to-left layout); a plain label's follows the view's. Keep the plain behavior.
+            if alignment == .natural {
+                let edge: NSTextAlignment = effectiveUserInterfaceLayoutDirection == .rightToLeft ? .right : .left
+                textAlignment = edge
+                state.naturalAlignmentEdge = edge
+            } else {
+                textAlignment = alignment
+                state.naturalAlignmentEdge = nil
+            }
+            lineBreakMode = lineBreak
         }
         invalidateIntrinsicContentSize()
     }

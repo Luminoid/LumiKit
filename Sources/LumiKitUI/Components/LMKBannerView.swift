@@ -152,7 +152,7 @@ public final class LMKBannerView: UIView, LMKThemeApplying {
     /// Handler called when the action button is tapped.
     public var onAction: (() -> Void)?
 
-    /// Handler called after the banner is dismissed (by the user or `dismiss()`).
+    /// Handler called once after the banner is dismissed (by the user or `dismiss()`).
     public var onDismiss: (() -> Void)?
 
     /// Whether the banner shows a dismiss (X) button. Defaults to `true`.
@@ -173,8 +173,14 @@ public final class LMKBannerView: UIView, LMKThemeApplying {
     private var iconSizeConstraint: Constraint?
     private var contentInsetsConstraint: Constraint?
     private var minimumHeightConstraint: Constraint?
+    /// The floating placement made by `show(in:)`, updated from `applyTheme` while floating.
+    private var floatingTopConstraint: Constraint?
+    private var floatingMarginConstraints: [Constraint] = []
+    private var floatingMaxWidthConstraint: Constraint?
+    private var floatingFillWidthConstraint: Constraint?
     private let row = UIStackView()
     private var resolved = Style()
+    private var isDismissing = false
     /// The scroll view whose top inset holds the banner's height while it floats.
     private weak var insetScrollView: UIScrollView?
     private var appliedTopInset: CGFloat = 0
@@ -227,7 +233,7 @@ public final class LMKBannerView: UIView, LMKThemeApplying {
         row.addArrangedSubview(dismissButton)
         addSubview(row)
         row.snp.makeConstraints { make in
-            contentInsetsConstraint = make.edges.equalToSuperview().constraint
+            contentInsetsConstraint = make.directionalEdges.equalToSuperview().constraint
             // On the row, not the banner: a constraint on the banner itself would take it out of
             // frame-based layouts.
             minimumHeightConstraint = make.height.greaterThanOrEqualTo(0).constraint
@@ -253,7 +259,7 @@ public final class LMKBannerView: UIView, LMKThemeApplying {
             background: .solid(statusColor.lmk_composited(over: LMKColor.backgroundPrimary, alpha: theme.alpha.xs)),
             corners: .fixed(theme.cornerRadius.medium),
             border: .solid(statusColor.withAlphaComponent(theme.alpha.medium)),
-            shadow: isFloating ? .level(.level2) : LMKShadowSource.none,
+            shadow: isFloating ? .level(.level2) : LMKShadowSource.hidden,
             contentInsets: NSDirectionalEdgeInsets(
                 top: theme.spacing.small,
                 leading: theme.spacing.medium,
@@ -264,7 +270,7 @@ public final class LMKBannerView: UIView, LMKThemeApplying {
         )
         let applied = lmk_apply(surface: resolved.surface, defaults: defaults, clipsContent: false)
         let insets = applied.contentInsets ?? .lmk_all(theme.spacing.medium)
-        contentInsetsConstraint?.update(inset: UIEdgeInsets(top: insets.top, left: insets.leading, bottom: insets.bottom, right: insets.trailing))
+        contentInsetsConstraint?.update(inset: insets)
         minimumHeightConstraint?.update(offset: max(0, theme.layout.minimumTouchTarget - insets.top - insets.bottom))
         row.spacing = theme.spacing.small
         iconView.tintColor = resolved.iconTint ?? statusColor
@@ -278,7 +284,22 @@ public final class LMKBannerView: UIView, LMKThemeApplying {
         dismissStyle.symbolWeight = .semibold
         dismissButton.style = dismissStyle
         dismissButton.setSymbol("xmark")
+        if isFloating {
+            updateFloatingPlacement(theme: theme)
+        }
         didApplyStyle?(self)
+    }
+
+    /// The margins, gap, and width cap of a floating banner, from the style and the theme.
+    private func updateFloatingPlacement(theme: LMKTheme) {
+        // `cardPadding` follows the window's canvas tier; it has no per-theme twin and is re-read on every pass.
+        // swiftlint:disable:next no_global_token_proxies_in_components
+        let margin = resolved.horizontalMargin ?? LMKSpacing.cardPadding
+        floatingTopConstraint?.update(offset: resolved.verticalMargin ?? theme.spacing.small)
+        floatingMarginConstraints.forEach { $0.update(inset: margin) }
+        floatingMaxWidthConstraint?.update(offset: resolved.maxWidth ?? theme.layout.readableContentMaxWidth)
+        floatingFillWidthConstraint?.update(offset: -margin * 2)
+        superview?.setNeedsLayout()
     }
 
     private func updateAccessibilityElements() {
@@ -299,7 +320,8 @@ public final class LMKBannerView: UIView, LMKThemeApplying {
         show(in: view)
     }
 
-    /// Shows the banner at the top of `hostView`, replacing any banner there.
+    /// Shows the banner at the top of `hostView`, replacing any banner there. A banner that
+    /// was dismissed earlier shows again whole.
     ///
     /// - Parameters:
     ///   - hostView: The view the banner is added to.
@@ -313,32 +335,38 @@ public final class LMKBannerView: UIView, LMKThemeApplying {
         for case let banner as Self in hostView.subviews where banner !== self {
             banner.dismiss()
         }
+        // A dismissal still fading out is abandoned: its completion finds the flag cleared.
+        isDismissing = false
         isFloating = true
         hostView.addSubview(self)
-        let theme = traitCollection.lmkTheme
-        applyTheme(theme)
-        let margin = resolved.horizontalMargin ?? LMKSpacing.cardPadding
-        let topSpacing = resolved.verticalMargin ?? theme.spacing.small
         let anchor = anchor ?? hostView.subviews.first { $0 is LMKNavigationBar }
         snp.remakeConstraints { make in
             if let anchor {
-                make.top.equalTo(anchor.snp.bottom).offset(topSpacing)
+                floatingTopConstraint = make.top.equalTo(anchor.snp.bottom).offset(0).constraint
             } else {
-                make.top.equalTo(hostView.safeAreaLayoutGuide.snp.top).offset(topSpacing)
+                floatingTopConstraint = make.top.equalTo(hostView.safeAreaLayoutGuide.snp.top).offset(0).constraint
             }
             make.centerX.equalToSuperview()
-            make.leading.greaterThanOrEqualTo(hostView.safeAreaLayoutGuide).offset(margin)
-            make.trailing.lessThanOrEqualTo(hostView.safeAreaLayoutGuide).offset(-margin)
-            make.width.lessThanOrEqualTo(resolved.maxWidth ?? theme.layout.readableContentMaxWidth)
+            floatingMarginConstraints = [
+                make.leading.greaterThanOrEqualTo(hostView.safeAreaLayoutGuide).inset(0).constraint,
+                make.trailing.lessThanOrEqualTo(hostView.safeAreaLayoutGuide).inset(0).constraint,
+            ]
+            // Starts at the current cap, never zero: a zero cap conflicts with the content insets
+            // until `applyTheme` below sets it.
+            floatingMaxWidthConstraint = make.width.lessThanOrEqualTo(resolved.maxWidth ?? traitCollection.lmkTheme.layout.readableContentMaxWidth).constraint
             // Fill unless capped: just below required, so the cap and the margins win.
-            make.width.equalTo(hostView.safeAreaLayoutGuide).offset(-margin * 2).priority(999)
+            floatingFillWidthConstraint = make.width.equalTo(hostView.safeAreaLayoutGuide).offset(0).priority(999).constraint
         }
+        let theme = traitCollection.lmkTheme
+        applyTheme(theme)
         if insetsScrollView {
             insetScrollView = scrollView ?? Self.firstScrollView(in: hostView)
         }
         hostView.layoutIfNeeded()
         updateScrollInset(animated: false)
 
+        alpha = 1
+        transform = .identity
         if LMKAnimation.shouldAnimate {
             alpha = 0
             transform = CGAffineTransform(translationX: 0, y: -theme.spacing.xl)
@@ -350,8 +378,11 @@ public final class LMKBannerView: UIView, LMKThemeApplying {
         UIAccessibility.post(notification: .layoutChanged, argument: messageLabel)
     }
 
-    /// Dismisses the banner with animation.
+    /// Dismisses the banner with animation and fires `onDismiss` once. Does nothing while a
+    /// dismissal is under way or when the banner is not in a hierarchy.
     public func dismiss() {
+        guard superview != nil, !isDismissing else { return }
+        isDismissing = true
         let animates = LMKAnimation.shouldAnimate && window != nil
         let restore = { [weak self] in
             guard let self else { return }
@@ -360,10 +391,21 @@ public final class LMKBannerView: UIView, LMKThemeApplying {
             releaseScrollInset()
         }
         let finish = { [weak self] in
-            guard let self else { return }
+            guard let self, isDismissing else { return }
+            isDismissing = false
             removeFromSuperview()
+            if isFloating {
+                snp.removeConstraints()
+                floatingTopConstraint = nil
+                floatingMarginConstraints = []
+                floatingMaxWidthConstraint = nil
+                floatingFillWidthConstraint = nil
+            }
+            // Whole again, inline: alpha and transform back, the floating shadow gone.
+            alpha = 1
             transform = .identity
             isFloating = false
+            applyTheme(traitCollection.lmkTheme)
             onDismiss?()
         }
         guard animates else {

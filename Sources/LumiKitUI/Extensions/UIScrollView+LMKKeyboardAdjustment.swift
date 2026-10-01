@@ -1,5 +1,5 @@
 //
-//  LMKKeyboardAdjustment.swift
+//  UIScrollView+LMKKeyboardAdjustment.swift
 //  LumiKit
 //
 //  One-call keyboard avoidance for scroll views, installed via associated object.
@@ -25,6 +25,19 @@ public extension UIScrollView {
         let adjuster = LMKKeyboardScrollAdjuster(scrollView: self)
         objc_setAssociatedObject(self, &lmk_keyboardAdjusterKey, adjuster, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
     }
+
+    /// Removes the keyboard avoidance installed by `lmk_enableKeyboardAdjustment()`, restoring
+    /// the insets it grew. A no-op when none is installed.
+    func lmk_disableKeyboardAdjustment() {
+        guard let adjuster = objc_getAssociatedObject(self, &lmk_keyboardAdjusterKey) as? LMKKeyboardScrollAdjuster else { return }
+        adjuster.restoreInsets(duration: 0)
+        objc_setAssociatedObject(self, &lmk_keyboardAdjusterKey, nil, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
+    }
+
+    /// Whether keyboard avoidance is installed. Test hook.
+    internal var lmk_hasKeyboardAdjustment: Bool {
+        objc_getAssociatedObject(self, &lmk_keyboardAdjusterKey) != nil
+    }
 }
 
 /// Adjusts a scroll view's bottom content inset when the software keyboard appears,
@@ -34,6 +47,9 @@ private final class LMKKeyboardScrollAdjuster {
     private weak var scrollView: UIScrollView?
     private var originalBottomInset: CGFloat = 0
     private var originalIndicatorBottomInset: CGFloat = 0
+    /// What UIKit already adds below the content (safe area, a tab bar), sampled before the
+    /// insets grow; the keyboard overlap covers it, so it is not added twice.
+    private var systemBottomInset: CGFloat = 0
     private var isAdjusting = false
 
     init(scrollView: UIScrollView) {
@@ -105,7 +121,7 @@ private final class LMKKeyboardScrollAdjuster {
     private func applyKeyboardFrame(from note: Notification, animated: Bool = true) {
         guard let scrollView,
               scrollView.window != nil,
-              Self.firstResponder(in: scrollView) != nil,
+              scrollView.lmk_findFirstResponder() != nil,
               let endFrame = (note.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? NSValue)?.cgRectValue
         else { return }
 
@@ -120,13 +136,15 @@ private final class LMKKeyboardScrollAdjuster {
             if !isAdjusting {
                 originalBottomInset = scrollView.contentInset.bottom
                 originalIndicatorBottomInset = scrollView.verticalScrollIndicatorInsets.bottom
+                systemBottomInset = max(0, scrollView.adjustedContentInset.bottom - scrollView.contentInset.bottom)
                 isAdjusting = true
             }
 
+            let growth = max(0, overlap.height - systemBottomInset)
             var insets = scrollView.contentInset
-            insets.bottom = originalBottomInset + overlap.height
+            insets.bottom = originalBottomInset + growth
             var indicator = scrollView.verticalScrollIndicatorInsets
-            indicator.bottom = originalIndicatorBottomInset + overlap.height
+            indicator.bottom = originalIndicatorBottomInset + growth
 
             UIView.animate(withDuration: duration) {
                 scrollView.contentInset = insets
@@ -151,7 +169,7 @@ private final class LMKKeyboardScrollAdjuster {
     private func scheduleScrollToFocused() {
         DispatchQueue.main.async { [weak self] in
             guard let self, let scrollView,
-                  let focused = Self.firstResponder(in: scrollView) else { return }
+                  let focused = scrollView.lmk_findFirstResponder() else { return }
             scroll(to: focused)
         }
     }
@@ -163,11 +181,13 @@ private final class LMKKeyboardScrollAdjuster {
     /// Deliberately NOT `scrollRectToVisible`: that method tests visibility
     /// against the raw bounds and ignores `contentInset`, so a field sitting
     /// on-screen but under the keyboard counts as "already visible" and never
-    /// moves — the exact case this adjuster exists for.
+    /// moves: the exact case this adjuster exists for.
     private func scroll(to target: UIView) {
-        guard let scrollView, scrollView.bounds.height > 0 else { return }
+        // A scrolling text view is its own first responder; its bounds are the whole visible
+        // band, so there is nothing to bring into view (and every pass would move the offset).
+        guard let scrollView, target !== scrollView, scrollView.bounds.height > 0 else { return }
         let padded = target.convert(target.bounds, to: scrollView)
-            .insetBy(dx: 0, dy: -LMKSpacing.medium)
+            .insetBy(dx: 0, dy: -scrollView.traitCollection.lmkTheme.spacing.medium)
 
         // Adjusted insets so the band excludes both the keyboard overlap grown
         // above and whatever the safe area contributes.
@@ -201,7 +221,7 @@ private final class LMKKeyboardScrollAdjuster {
         restoreInsets(duration: duration)
     }
 
-    private func restoreInsets(duration: Double) {
+    func restoreInsets(duration: Double) {
         guard let scrollView, isAdjusting else { return }
         isAdjusting = false
 
@@ -214,15 +234,5 @@ private final class LMKKeyboardScrollAdjuster {
             scrollView.contentInset = insets
             scrollView.verticalScrollIndicatorInsets = indicator
         }
-    }
-
-    private static func firstResponder(in view: UIView) -> UIView? {
-        if view.isFirstResponder { return view }
-        for subview in view.subviews {
-            if let found = firstResponder(in: subview) {
-                return found
-            }
-        }
-        return nil
     }
 }

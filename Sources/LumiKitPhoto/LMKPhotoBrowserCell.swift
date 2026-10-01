@@ -8,8 +8,9 @@
 //  Gestures on a page:
 //  - Pinch zooms around the fingers, with a rubber band under 1x and past the maximum.
 //  - Double tap zooms to the tapped point of the photo, or back to 1x.
-//  - A one-finger vertical drag at 1x moves the photo with the finger and dismisses past the
-//    threshold or on a flick; a sideways drag at 1x always pages.
+//  - A vertical drag at 1x (one finger, or a trackpad scroll) moves the photo with the finger
+//    and dismisses past the threshold or on a flick; a sideways drag at 1x always pages. Any
+//    other drag at 1x (two fingers) coasts back to the center.
 //  - Zoomed, a drag pans the photo; a drag past its left or right edge pages the browser.
 //  - A long press anywhere on the page plays a Live Photo.
 //
@@ -49,7 +50,6 @@ final class LMKPhotoBrowserCell: UICollectionViewCell {
         let view = PHLivePhotoView()
         view.contentMode = .scaleAspectFit
         view.isHidden = true
-        view.isAccessibilityElement = true
         view.delegate = self
         return view
     }()
@@ -59,8 +59,9 @@ final class LMKPhotoBrowserCell: UICollectionViewCell {
     private let liveBadgeView = UIView()
     private let liveBadgeIcon = UIImageView()
     private let liveBadgeLabel = UILabel()
+    private let liveBadgeStack = UIStackView()
     private var liveBadgeTopConstraint: Constraint?
-    private var liveBadgeHeightConstraint: Constraint?
+    private var liveBadgeLeadingConstraint: Constraint?
     private var liveBadgeInsets = NSDirectionalEdgeInsets.zero
     /// The badge clears during playback and with the browser's chrome; it shows at the product.
     private var liveBadgePlaybackAlpha: CGFloat = 1
@@ -80,9 +81,6 @@ final class LMKPhotoBrowserCell: UICollectionViewCell {
     private var loadGeneration: UInt64 = 0
     private var imageLoadTask: Task<Void, Never>?
     private var livePhotoLoadTask: Task<Void, Never>?
-
-    /// The currently installed still image, if any (nil while an async load is in flight).
-    var installedImage: UIImage? { imageView.image }
 
     /// The dynamic range the still renders with.
     var preferredImageDynamicRange: UIImage.DynamicRange {
@@ -106,8 +104,8 @@ final class LMKPhotoBrowserCell: UICollectionViewCell {
     private var isPinching = false
     /// True once a dismiss has been committed; stops snap-back when deceleration ends.
     private var isDismissing = false
-    /// True only during a single-finger drag at 1x, gating every vertical-dismiss path so
-    /// two-finger gestures never trigger it.
+    /// True during a drag at 1x with at most one finger down (a trackpad scroll reports none),
+    /// gating every vertical-dismiss path so a two-finger drag never triggers it.
     private var isDismissDragActive = false
 
     // MARK: - Initialization
@@ -123,6 +121,11 @@ final class LMKPhotoBrowserCell: UICollectionViewCell {
     }
 
     private func setupUI() {
+        // The page is the VoiceOver element for its photo; the browser labels it with the
+        // counter and date, and the Live Photo view stays inside it.
+        isAccessibilityElement = true
+        accessibilityTraits = .image
+
         scrollView.delegate = self
         scrollView.minimumZoomScale = LMKPhotoBrowserMetrics.minimumZoomScale
         scrollView.maximumZoomScale = maximumZoomScale
@@ -173,23 +176,23 @@ final class LMKPhotoBrowserCell: UICollectionViewCell {
     private func setupLiveBadge() {
         liveBadgeView.isHidden = true
         liveBadgeIcon.contentMode = .scaleAspectFit
-        let stack = UIStackView(arrangedSubviews: [liveBadgeIcon, liveBadgeLabel])
-        stack.axis = .horizontal
-        stack.spacing = LMKSpacing.xs
-        stack.alignment = .center
-        stack.isUserInteractionEnabled = false
-        liveBadgeView.addSubview(stack)
-        stack.snp.makeConstraints { make in
+        liveBadgeStack.lmk_addArrangedSubviews([liveBadgeIcon, liveBadgeLabel])
+        liveBadgeStack.axis = .horizontal
+        liveBadgeStack.alignment = .center
+        liveBadgeStack.isUserInteractionEnabled = false
+        liveBadgeView.addSubview(liveBadgeStack)
+        liveBadgeStack.snp.makeConstraints { make in
             make.directionalEdges.equalToSuperview().inset(liveBadgeInsets)
         }
 
         // On the content view (above the scroll view) so it stays anchored under the browser's
-        // action button regardless of zoom.
+        // action button regardless of zoom. The height is a floor: the label scales with
+        // Dynamic Type and grows the capsule.
         contentView.addSubview(liveBadgeView)
         liveBadgeView.snp.makeConstraints { make in
             liveBadgeTopConstraint = make.top.equalTo(safeAreaLayoutGuide.snp.top).offset(0).constraint
-            make.leading.equalTo(safeAreaLayoutGuide).offset(LMKSpacing.large)
-            liveBadgeHeightConstraint = make.height.equalTo(LMKPhotoBrowserMetrics.liveBadgeHeight).constraint
+            liveBadgeLeadingConstraint = make.leading.equalTo(safeAreaLayoutGuide).offset(0).constraint
+            make.height.greaterThanOrEqualTo(LMKPhotoBrowserMetrics.liveBadgeHeight)
         }
 
         #if targetEnvironment(macCatalyst)
@@ -230,33 +233,41 @@ final class LMKPhotoBrowserCell: UICollectionViewCell {
         let badge = liveBadgeView.lmk_apply(
             surface: style.liveBadge,
             defaults: LMKSurfaceStyle(
-                background: .solid(UIColor.black.withAlphaComponent(theme.alpha.xl)),
+                background: .solid(LMKPhotoPalette.badgeBacking.withAlphaComponent(theme.alpha.xl)),
                 corners: .capsule,
                 contentInsets: .lmk_symmetric(vertical: theme.spacing.xs, horizontal: theme.spacing.small)
             )
         )
         let insets = badge.contentInsets ?? .zero
-        if insets != liveBadgeInsets, let stack = liveBadgeView.subviews.first(where: { $0 is UIStackView }) {
+        if insets != liveBadgeInsets {
             liveBadgeInsets = insets
-            stack.snp.remakeConstraints { make in
+            liveBadgeStack.snp.remakeConstraints { make in
                 make.directionalEdges.equalToSuperview().inset(insets)
             }
         }
+        liveBadgeStack.spacing = theme.spacing.xs
         liveBadgeIcon.image = UIImage(systemName: "livephoto", withConfiguration: UIImage.SymbolConfiguration(pointSize: theme.layout.symbolBadge, weight: .semibold))
         liveBadgeIcon.tintColor = chrome
         liveBadgeLabel.lmk_apply(style.liveBadgeTextStyle ?? .extraSmallSemibold, color: chrome)
         liveBadgeTopConstraint?.update(offset: theme.spacing.large + style.buttonSize(theme: theme) + theme.spacing.small)
-        liveBadgeHeightConstraint?.update(offset: LMKPhotoBrowserMetrics.liveBadgeHeight)
+        liveBadgeLeadingConstraint?.update(offset: theme.spacing.large)
     }
 
     func apply(strings: LMKPhotoBrowserViewController.Strings) {
         liveBadgeLabel.lmk_setText(strings.liveBadge)
-        livePhotoView.accessibilityLabel = strings.livePhotoAccessibilityLabel
+    }
+
+    /// Makes the page the VoiceOver element for its photo: `label` is the browser's counter and
+    /// date (plus the Live Photo name when the page has one), `hint` its tap hint.
+    func apply(accessibilityLabel label: String?, hint: String?) {
+        accessibilityLabel = label
+        accessibilityHint = hint
     }
 
     // MARK: - Configuration
 
     /// Installs a decoded image synchronously, superseding any in-flight async load.
+    /// Test hook: the browser installs through the async overload.
     func configure(with image: UIImage, screenSize: CGSize, isLive: Bool = false) {
         invalidateLoads()
         imageView.image = image
@@ -342,14 +353,10 @@ final class LMKPhotoBrowserCell: UICollectionViewCell {
     /// Whether the page shows a playable Live Photo.
     var isShowingLivePhoto: Bool { !livePhotoView.isHidden && livePhotoView.livePhoto != nil }
 
-    /// Plays the Live Photo (what the long press does), for hosts and key commands.
-    func playLivePhoto() {
-        guard isShowingLivePhoto else { return }
-        livePhotoView.startPlayback(with: .full)
-    }
-
-    /// Upgrades a page already showing the still to a playable Live Photo. The Live Photo view
-    /// shares the image view's constraints; its playback long press is on the page.
+    /// Upgrades a page to a playable Live Photo, over the still when one is installed. The Live
+    /// Photo view shares the image view's frame; its playback long press is on the page. A Live
+    /// Photo that lands before the still sizes the page itself, so it is never laid out at the
+    /// placeholder size.
     func configureLivePhoto(_ livePhoto: PHLivePhoto) {
         livePhotoView.livePhoto = livePhoto
         livePhotoView.isHidden = false
@@ -357,6 +364,11 @@ final class LMKPhotoBrowserCell: UICollectionViewCell {
         liveBadgeView.isHidden = false
         liveBadgePlaybackAlpha = 1
         updateLiveBadgeAlpha()
+        if imageView.image == nil, livePhoto.size.width > 0, livePhoto.size.height > 0 {
+            let bounds = scrollView.bounds.size
+            let page = (bounds.width > 0 && bounds.height > 0) ? bounds : contentView.bounds.size
+            fittedSize = Self.fittedSize(imageSize: livePhoto.size, in: page)
+        }
         // The zoomed view just changed; drop any transform on the previous one.
         resetZoom()
     }
@@ -397,14 +409,24 @@ final class LMKPhotoBrowserCell: UICollectionViewCell {
     /// Double tap: zoom to the style's double-tap scale, keeping the tapped point of the photo
     /// under the finger, or back to 1x.
     func zoomAtLocationInCell(_ locationInCell: CGPoint) {
+        let animated = LMKAnimation.shouldAnimate
         if isZoomed {
             zoomAnchor = nil
-            scrollView.setZoomScale(LMKPhotoBrowserMetrics.minimumZoomScale, animated: true)
+            scrollView.setZoomScale(LMKPhotoBrowserMetrics.minimumZoomScale, animated: animated)
         } else {
             let location = scrollView.convert(locationInCell, from: contentView)
             zoomAnchor = makeZoomAnchor(atPagePoint: CGPoint(x: location.x - scrollView.contentOffset.x, y: location.y - scrollView.contentOffset.y))
-            scrollView.setZoomScale(doubleTapZoomScale, animated: true)
+            scrollView.setZoomScale(doubleTapZoomScale, animated: animated)
         }
+    }
+
+    /// Clears what a dismissal or a drag left on the page, for a browser that is presented
+    /// again with its pages in place: the frozen offset, the drag lock on zoom, and any zoom.
+    func prepareForReappearance() {
+        isDismissing = false
+        isDismissDragActive = false
+        scrollView.maximumZoomScale = maximumZoomScale
+        resetZoom()
     }
 
     // MARK: - Layout
@@ -569,27 +591,35 @@ final class LMKPhotoBrowserCell: UICollectionViewCell {
                 scrollView.transform = .identity
             }
         case .ended, .cancelled:
-            isPinching = false
-            zoomAnchor = nil
-            guard !scrollView.transform.isIdentity else { return }
-            if LMKAnimation.shouldAnimate {
-                UIView.animate(
-                    withDuration: LMKAnimation.Duration.normal,
-                    delay: 0,
-                    usingSpringWithDamping: LMKAnimation.spring.damping,
-                    initialSpringVelocity: 0,
-                    options: [.allowUserInteraction, .beginFromCurrentState]
-                ) {
-                    self.scrollView.transform = .identity
-                } completion: { _ in
-                    self.delegate?.photoCell(self, didChangeZoomState: false)
-                }
-            } else {
-                scrollView.transform = .identity
-                delegate?.photoCell(self, didChangeZoomState: false)
-            }
+            finishPinch()
         default:
             break
+        }
+    }
+
+    /// The end of a pinch: the rubber band snaps back, and the page reports whether it is
+    /// still zoomed (a pinch released past the maximum leaves it at 3x, and the chrome must
+    /// not return over that).
+    func finishPinch() {
+        isPinching = false
+        zoomAnchor = nil
+        guard !scrollView.transform.isIdentity else { return }
+        if LMKAnimation.shouldAnimate {
+            UIView.animate(
+                withDuration: LMKAnimation.Duration.normal,
+                delay: 0,
+                usingSpringWithDamping: LMKAnimation.spring.damping,
+                initialSpringVelocity: 0,
+                options: [.allowUserInteraction, .beginFromCurrentState]
+            ) {
+                self.scrollView.transform = .identity
+            } completion: { [weak self] _ in
+                guard let self else { return }
+                delegate?.photoCell(self, didChangeZoomState: isZoomed)
+            }
+        } else {
+            scrollView.transform = .identity
+            delegate?.photoCell(self, didChangeZoomState: isZoomed)
         }
     }
 
@@ -642,12 +672,11 @@ extension LMKPhotoBrowserCell: UIScrollViewDelegate {
     }
 
     func scrollViewWillBeginDragging(_ scrollView: UIScrollView) {
-        // Only a single-finger drag at 1x may drive the dismiss.
-        isDismissDragActive = scrollView.panGestureRecognizer.numberOfTouches == 1 && scrollView.zoomScale == 1
-        if isDismissDragActive {
-            // Lock zoom so a pinch cannot start mid-drag.
-            scrollView.maximumZoomScale = LMKPhotoBrowserMetrics.minimumZoomScale
-        }
+        // A drag at 1x with at most one finger (a trackpad scroll has none) drives the dismiss
+        // and locks zoom so a pinch cannot start mid-drag. Every other drag begins with the
+        // full zoom range, whatever the last drag left behind.
+        isDismissDragActive = scrollView.panGestureRecognizer.numberOfTouches <= 1 && !isZoomed
+        scrollView.maximumZoomScale = isDismissDragActive ? LMKPhotoBrowserMetrics.minimumZoomScale : maximumZoomScale
     }
 
     func scrollViewDidScroll(_ scrollView: UIScrollView) {
@@ -658,26 +687,31 @@ extension LMKPhotoBrowserCell: UIScrollViewDelegate {
     }
 
     func scrollViewWillEndDragging(_ scrollView: UIScrollView, withVelocity velocity: CGPoint, targetContentOffset: UnsafeMutablePointer<CGPoint>) {
-        // A drag let go short of a dismissal coasts back to the center; the stage follows the
-        // photo home through `scrollViewDidScroll`.
-        guard isDismissDragActive, !shouldDismiss(scrollView) else { return }
+        // At 1x a drag let go short of a dismissal coasts back to the center, a two-finger drag
+        // included; the stage follows the photo home through `scrollViewDidScroll`.
+        guard !isZoomed, !isDismissing else { return }
+        if isDismissDragActive, shouldDismiss(scrollView) { return }
         targetContentOffset.pointee = .zero
     }
 
     func scrollViewDidEndDragging(_ scrollView: UIScrollView, willDecelerate decelerate: Bool) {
-        guard isDismissDragActive else { return }
-        commitVerticalDrag(scrollView: scrollView, willDecelerate: decelerate)
+        if isDismissDragActive {
+            commitVerticalDrag(scrollView: scrollView)
+        }
         if !decelerate {
-            isDismissDragActive = false
-            scrollView.maximumZoomScale = maximumZoomScale
+            finishDrag(scrollView: scrollView)
         }
     }
 
     func scrollViewDidEndDecelerating(_ scrollView: UIScrollView) {
-        guard isDismissDragActive else { return }
-        commitVerticalDrag(scrollView: scrollView, willDecelerate: false)
-        isDismissDragActive = false
-        scrollView.maximumZoomScale = maximumZoomScale
+        if isDismissDragActive {
+            commitVerticalDrag(scrollView: scrollView)
+        }
+        finishDrag(scrollView: scrollView)
+    }
+
+    func scrollViewDidEndScrollingAnimation(_ scrollView: UIScrollView) {
+        finishDrag(scrollView: scrollView)
     }
 
     /// Whether the drag, let go now, dismisses: past the distance threshold, or a flick.
@@ -687,18 +721,22 @@ extension LMKPhotoBrowserCell: UIScrollViewDelegate {
         return LMKPhotoBrowserViewController.shouldDismiss(offset: scrollView.contentOffset.y, velocity: velocity, threshold: threshold)
     }
 
-    /// On release: dismiss past the threshold or on a flick. Otherwise the photo goes back to
-    /// the center, and the stage comes back with it: while the photo is still coasting the
-    /// progress keeps following it, so the stage never jumps.
-    private func commitVerticalDrag(scrollView: UIScrollView, willDecelerate: Bool) {
-        guard !isDismissing else { return }
-        if shouldDismiss(scrollView) {
-            isDismissing = true
-            delegate?.photoCellDidRequestDismiss(self)
-        } else if !willDecelerate {
-            delegate?.photoCell(self, didUpdateDismissProgress: 0)
-            snapToCenterIfNeeded(animated: true)
-        }
+    /// On release: dismiss past the threshold or on a flick.
+    private func commitVerticalDrag(scrollView: UIScrollView) {
+        guard !isDismissing, shouldDismiss(scrollView) else { return }
+        isDismissing = true
+        delegate?.photoCellDidRequestDismiss(self)
+    }
+
+    /// The end of every drag: the zoom range comes back, and a page still at 1x goes back to
+    /// the center with the stage (while the photo was coasting the progress kept following it,
+    /// so the stage never jumps). A committed dismiss stays where it is.
+    private func finishDrag(scrollView: UIScrollView) {
+        isDismissDragActive = false
+        scrollView.maximumZoomScale = maximumZoomScale
+        guard !isZoomed, !isDismissing else { return }
+        delegate?.photoCell(self, didUpdateDismissProgress: 0)
+        snapToCenterIfNeeded(animated: true)
     }
 
     func scrollViewDidZoom(_ scrollView: UIScrollView) {

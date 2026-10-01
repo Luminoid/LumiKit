@@ -7,6 +7,7 @@ import LumiKitUI
 import PhotosUI
 import Testing
 import UIKit
+import UniformTypeIdentifiers
 @testable import LumiKitPhoto
 
 // MARK: - LMKPhotoPickCropCoordinator
@@ -49,7 +50,7 @@ struct LMKPhotoPickCropCoordinatorTests {
 
         let image = makeImage()
         coordinator.handleCropped(image)
-        await settleMainActor()
+        await LMKWait.until { reportedIdentifier != nil }
 
         #expect(savedImage === image)
         #expect(reportedIdentifier == "stored-id")
@@ -69,7 +70,7 @@ struct LMKPhotoPickCropCoordinatorTests {
         )
 
         coordinator.handleCropped(makeImage())
-        await settleMainActor()
+        await LMKWait.until { failure != nil }
 
         #expect(reportedIdentifier == nil)
         if case .saveFailed = failure {} else {
@@ -93,7 +94,7 @@ struct LMKPhotoPickCropCoordinatorTests {
         )
 
         coordinator.handleCropCancelled()
-        await settleMainActor()
+        await LMKWait.until(timeout: .milliseconds(200)) { saveCalled }
 
         #expect(!saveCalled)
         #expect(cancelled)
@@ -124,7 +125,7 @@ struct LMKPhotoPickCropCoordinatorTests {
         )
 
         coordinator.handlePicked(data: data)
-        await settleMainActor(iterations: 200)
+        await LMKWait.until { identifier != nil }
 
         #expect(pickedSize == CGSize(width: 10, height: 10))
         #expect(pickedMetadata?.pixelSize == CGSize(width: 10, height: 10))
@@ -148,7 +149,7 @@ struct LMKPhotoPickCropCoordinatorTests {
         )
 
         coordinator.handlePicked(data: data)
-        await settleMainActor(iterations: 200)
+        await LMKWait.until { pickedSize != nil }
 
         #expect(pickedSize?.width == 100)
         #expect(pickedSize?.height == 50)
@@ -167,7 +168,7 @@ struct LMKPhotoPickCropCoordinatorTests {
         )
 
         coordinator.handlePicked(data: Data("not an image".utf8))
-        await settleMainActor(iterations: 200)
+        await LMKWait.until { failure != nil }
 
         if case .decodeFailed = failure {} else {
             Issue.record("expected decodeFailed, got \(String(describing: failure))")
@@ -230,8 +231,99 @@ struct LMKPhotoPickCropCoordinatorTests {
         coordinator.handleCropped(makeImage())
         coordinator.cancel()
         gate.open()
-        await settleMainActor()
+        await LMKWait.until(timeout: .milliseconds(300)) { saved }
 
         #expect(!saved)
+    }
+
+    // MARK: - Crop presentation
+
+    private func makeWindowedHost() -> (UIViewController, UIWindow) {
+        let host = UIViewController()
+        let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 375, height: 812))
+        window.rootViewController = host
+        window.makeKeyAndVisible()
+        return (host, window)
+    }
+
+    @Test
+    func `The crop editor is presented from the host once the photo is decoded`() async throws {
+        let (host, window) = makeWindowedHost()
+        defer { window.isHidden = true }
+        let data = try makeJPEGData()
+        var failed = false
+        let coordinator = LMKPhotoPickCropCoordinator(host: host, save: { _, _ in "saved" }, onSaved: { _ in }, onFailure: { _ in failed = true })
+
+        coordinator.handlePicked(data: data)
+        await LMKWait.until { host.presentedViewController != nil }
+
+        #expect(host.presentedViewController is LMKPhotoCropViewController)
+        #expect(!failed)
+    }
+
+    @Test
+    func `A host that cannot present reports hostUnavailable through onFailure`() async throws {
+        let host = UIViewController()
+        let data = try makeJPEGData()
+        var failure: LMKPhotoPickCropCoordinator.Failure?
+        let coordinator = LMKPhotoPickCropCoordinator(host: host, save: { _, _ in "saved" }, onSaved: { _ in }, onFailure: { failure = $0 })
+
+        coordinator.handlePicked(data: data)
+        await LMKWait.until { failure != nil }
+
+        if case .hostUnavailable = failure {} else {
+            Issue.record("expected hostUnavailable, got \(String(describing: failure))")
+        }
+        #expect(failure?.errorDescription == LMKPhotoPickCropCoordinator.strings.hostUnavailableMessage)
+    }
+
+    @Test
+    func `cancel drops a decoded photo waiting for the picker's dismissal`() async throws {
+        let (host, window) = makeWindowedHost()
+        defer { window.isHidden = true }
+        let data = try makeJPEGData()
+        var picked = false
+        let coordinator = LMKPhotoPickCropCoordinator(host: host, save: { _, _ in "saved" }, onSaved: { _ in }, onPicked: { _, _ in picked = true })
+
+        coordinator.handlePicked(data: data)
+        coordinator.cancel()
+        await LMKWait.until(timeout: .milliseconds(500)) { picked || host.presentedViewController != nil }
+
+        #expect(!picked)
+        #expect(host.presentedViewController == nil)
+    }
+
+    @Test
+    func `An item provider that fails to load reports loadFailed with the error`() async {
+        let host = UIViewController()
+        var failure: LMKPhotoPickCropCoordinator.Failure?
+        let coordinator = LMKPhotoPickCropCoordinator(host: host, save: { _, _ in nil }, onSaved: { _ in }, onFailure: { failure = $0 })
+        let provider = NSItemProvider()
+        provider.registerDataRepresentation(forTypeIdentifier: UTType.jpeg.identifier, visibility: .all) { completion in
+            completion(nil, CocoaError(.fileReadCorruptFile))
+            return nil
+        }
+
+        coordinator.handleLoad(from: provider)
+        await LMKWait.until { failure != nil }
+
+        if case let .loadFailed(error) = failure {
+            #expect(!error.localizedDescription.isEmpty)
+        } else {
+            Issue.record("expected loadFailed, got \(String(describing: failure))")
+        }
+        #expect(failure?.errorDescription == LMKPhotoPickCropCoordinator.strings.loadFailedMessage)
+    }
+
+    @Test
+    func `Strings default to localized text and every failure has a message`() {
+        let strings = LMKPhotoPickCropCoordinator.Strings()
+        #expect(strings.loadFailedMessage != "photoPickCrop.loadFailed")
+        #expect(strings.saveFailedMessage != "photoPickCrop.saveFailed")
+        #expect(strings.hostUnavailableMessage != "photoPickCrop.hostUnavailable")
+        let failures: [LMKPhotoPickCropCoordinator.Failure] = [.unsupportedItem, .loadFailed(CocoaError(.fileNoSuchFile)), .decodeFailed, .saveFailed, .hostUnavailable]
+        for failure in failures {
+            #expect(failure.errorDescription?.isEmpty == false)
+        }
     }
 }

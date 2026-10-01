@@ -13,12 +13,17 @@ import UIKit
 // MARK: - Navigation
 
 extension LMKPhotoBrowserViewController {
+    /// Pages to `index`. Each page is one collection view width (the view plus the inter-page
+    /// gap); a right-to-left flow layout lays the pages out mirrored, page 0 at the far right.
+    /// The offset is computed, not read from the layout, so it is right while the layout is
+    /// still being re-measured after a size change. The move animates only while motion is
+    /// allowed.
     func scrollToPhoto(at index: Int, animated: Bool) {
         let count = photoCount
-        guard count > 0, collectionView.bounds.width > 0, index >= 0, index < count else { return }
-        // Each page = collectionView.bounds.width (= view.width + the inter-page gap).
         let pageWidth = collectionView.bounds.width
-        collectionView.setContentOffset(CGPoint(x: CGFloat(index) * pageWidth, y: 0), animated: animated)
+        guard count > 0, pageWidth > 0, index >= 0, index < count else { return }
+        let position = isRightToLeft ? count - 1 - index : index
+        collectionView.setContentOffset(CGPoint(x: CGFloat(position) * pageWidth, y: 0), animated: animated && LMKAnimation.shouldAnimate)
         updateCurrentIndex(index)
     }
 
@@ -28,6 +33,12 @@ extension LMKPhotoBrowserViewController {
     func alignToCurrentPageIfIdle() {
         guard !collectionView.isTracking, !collectionView.isDragging, !collectionView.isDecelerating else { return }
         scrollToPhoto(at: currentIndex, animated: false)
+    }
+
+    /// The page under the middle of the viewport, in either layout direction.
+    var pageIndexAtViewportCenter: Int? {
+        let center = CGPoint(x: collectionView.contentOffset.x + collectionView.bounds.width / 2, y: collectionView.bounds.height / 2)
+        return collectionView.indexPathForItem(at: center)?.item
     }
 
     /// The page showing the current photo, when it is loaded.
@@ -47,27 +58,48 @@ extension LMKPhotoBrowserViewController {
             LMKHaptics.selection()
         }
         updatePhotoAccessibility()
+        if index != previousIndex, isViewLoaded, view.window != nil {
+            UIAccessibility.post(notification: .pageScrolled, argument: counterText)
+        }
+    }
+
+    /// The counter ("3 of 12"), for any number of photos.
+    var counterText: String? {
+        let count = photoCount
+        guard count > 0 else { return nil }
+        return String(format: strings.counterFormat, currentIndex + 1, count)
     }
 
     func updateCounterLabel() {
-        let count = photoCount
         // A single photo needs no position ("1 of 1" is noise).
-        guard count > 1 else {
-            counterLabel.text = nil
-            return
-        }
-        counterLabel.text = String(format: strings.counterFormat, currentIndex + 1, count)
+        counterLabel.text = photoCount > 1 ? counterText : nil
     }
 
+    /// Labels the pages for VoiceOver: the counter and the date (or subtitle) of the current
+    /// photo, the Live Photo name on a Live Photo page, and the tap hint.
     func updatePhotoAccessibility() {
+        for case let cell as LMKPhotoBrowserCell in collectionView.visibleCells {
+            guard let indexPath = collectionView.indexPath(for: cell) else { continue }
+            applyAccessibility(to: cell, photoIndex: indexPath.item)
+        }
+    }
+
+    func applyAccessibility(to cell: LMKPhotoBrowserCell, photoIndex: Int) {
         let count = photoCount
-        guard count > 0 else {
-            collectionView.accessibilityLabel = nil
-            collectionView.accessibilityHint = nil
+        guard photoIndex >= 0, photoIndex < count else {
+            cell.apply(accessibilityLabel: nil, hint: nil)
             return
         }
-        collectionView.accessibilityLabel = String(format: strings.counterFormat, currentIndex + 1, count)
-        collectionView.accessibilityHint = strings.tapToToggleHint
+        var parts = [String(format: strings.counterFormat, photoIndex + 1, count)]
+        if let date = dataSource?.photoDate(at: photoIndex) {
+            parts.append(LMKDateFormat.string(date))
+        } else if let subtitle = dataSource?.photoSubtitle(at: photoIndex), !subtitle.isEmpty {
+            parts.append(subtitle)
+        }
+        if dataSource?.photoIsLivePhoto(at: photoIndex) == true || cell.isShowingLivePhoto {
+            parts.append(strings.livePhotoAccessibilityLabel)
+        }
+        cell.apply(accessibilityLabel: parts.joined(separator: ", "), hint: strings.tapToToggleHint)
     }
 
     func updateDateLabel() {
@@ -123,6 +155,7 @@ extension LMKPhotoBrowserViewController: UICollectionViewDataSource {
         cell.loadLivePhoto { [weak self] in
             await self?.dataSource?.photoLivePhoto(at: photoIndex)
         }
+        applyAccessibility(to: cell, photoIndex: photoIndex)
         return cell
     }
 }
@@ -140,8 +173,7 @@ extension LMKPhotoBrowserViewController: UICollectionViewDelegate {
 
     private func handleScrollEnd(_ scrollView: UIScrollView) {
         let count = photoCount
-        guard scrollView === collectionView, collectionView.bounds.width > 0, count > 0 else { return }
-        let pageIndex = Int((collectionView.contentOffset.x / collectionView.bounds.width).rounded())
+        guard scrollView === collectionView, collectionView.bounds.width > 0, count > 0, let pageIndex = pageIndexAtViewportCenter else { return }
         updateCurrentIndex(max(0, min(pageIndex, count - 1)))
         resetZoomOnNonCurrentCells()
         restoreOverlayAfterPaging()

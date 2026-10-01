@@ -27,8 +27,12 @@ public nonisolated struct LMKColorTheme: Sendable {
 
     /// Brand accent: filled buttons, selected segments, links by default.
     public var primary: UIColor
-    /// A shade of `primary` for pressed and selected states.
-    public var primaryVariant: UIColor
+    /// A shade of `primary` for pressed and selected states; follows `primary` until set.
+    public var primaryVariant: UIColor {
+        get { primaryVariantOverride ?? Self.variant(of: primary) }
+        set { primaryVariantOverride = newValue }
+    }
+
     public var secondary: UIColor
     public var tertiary: UIColor
     public var success: UIColor
@@ -43,8 +47,11 @@ public nonisolated struct LMKColorTheme: Sendable {
     public var textPrimary: UIColor
     public var textSecondary: UIColor
     public var textTertiary: UIColor
-    /// Tappable text; defaults to `primary`.
-    public var link: UIColor
+    /// Tappable text; follows `primary` until set.
+    public var link: UIColor {
+        get { linkOverride ?? primary }
+        set { linkOverride = newValue }
+    }
 
     // MARK: Surfaces
 
@@ -55,8 +62,12 @@ public nonisolated struct LMKColorTheme: Sendable {
     // MARK: Lines and fills
 
     public var divider: UIColor
-    /// Borders around images, cards, and outlined controls; defaults to a translucent `divider`.
-    public var outline: UIColor
+    /// Borders around images, cards, and outlined controls; a translucent `divider` until set.
+    public var outline: UIColor {
+        get { outlineOverride ?? divider.withAlphaComponent(Self.outlineAlpha) }
+        set { outlineOverride = newValue }
+    }
+
     /// Inactive fills: slider tracks, switch off-track.
     public var fill: UIColor
     /// Stronger inactive fill: inactive page dots, neutral chips.
@@ -68,11 +79,25 @@ public nonisolated struct LMKColorTheme: Sendable {
     public var scrim: UIColor
     /// Highlight wash over pressed rows and cards.
     public var pressedOverlay: UIColor
-    /// Background of selected rows and segments; defaults to a translucent `primary`.
-    public var selection: UIColor
+    /// Background of selected rows and segments; a translucent `primary` until set.
+    public var selection: UIColor {
+        get { selectionOverride ?? primary.withAlphaComponent(Self.selectionAlpha) }
+        set { selectionOverride = newValue }
+    }
 
-    /// Brightness delta applied to accent roles under Increase Contrast (`0` disables the policy).
+    /// Brightness delta (`0...1`) applied to accent roles under Increase Contrast (`0` disables the policy).
     public var highContrastBoost: CGFloat
+
+    // Roles derived from `primary` and `divider` re-derive when those change; a value given
+    // at init or assigned later is kept instead.
+    private var primaryVariantOverride: UIColor?
+    private var linkOverride: UIColor?
+    private var outlineOverride: UIColor?
+    private var selectionOverride: UIColor?
+
+    private static let variantBrightness: CGFloat = 0.85
+    private static let outlineAlpha: CGFloat = 0.5
+    private static let selectionAlpha: CGFloat = 0.15
 
     public init(
         primary: UIColor = .systemGreen,
@@ -101,9 +126,7 @@ public nonisolated struct LMKColorTheme: Sendable {
         highContrastBoost: CGFloat = 0.12
     ) {
         self.primary = primary
-        self.primaryVariant = primaryVariant ?? UIColor { traits in
-            primary.resolvedColor(with: traits).lmk_adjustedBrightness(by: 0.85)
-        }
+        primaryVariantOverride = primaryVariant
         self.secondary = secondary
         self.tertiary = tertiary
         self.success = success
@@ -114,12 +137,12 @@ public nonisolated struct LMKColorTheme: Sendable {
         self.textPrimary = textPrimary
         self.textSecondary = textSecondary
         self.textTertiary = textTertiary
-        self.link = link ?? primary
+        linkOverride = link
         self.backgroundPrimary = backgroundPrimary
         self.backgroundSecondary = backgroundSecondary
         self.backgroundTertiary = backgroundTertiary
         self.divider = divider
-        self.outline = outline ?? divider.withAlphaComponent(0.5)
+        outlineOverride = outline
         self.fill = fill
         self.fillStrong = fillStrong
         self.scrim = scrim
@@ -127,8 +150,15 @@ public nonisolated struct LMKColorTheme: Sendable {
             light: UIColor.black.withAlphaComponent(0.1),
             dark: UIColor.white.withAlphaComponent(0.2)
         )
-        self.selection = selection ?? primary.withAlphaComponent(0.15)
-        self.highContrastBoost = max(0, highContrastBoost)
+        selectionOverride = selection
+        self.highContrastBoost = min(max(0, highContrastBoost), 1)
+    }
+
+    /// The pressed and selected shade of an accent.
+    private static func variant(of color: UIColor) -> UIColor {
+        UIColor { traits in
+            color.resolvedColor(with: traits).lmk_adjustedBrightness(by: variantBrightness)
+        }
     }
 }
 

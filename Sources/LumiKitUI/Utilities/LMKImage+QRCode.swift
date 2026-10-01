@@ -15,9 +15,9 @@ import UIKit
 ///     imageView.image = qrImage
 /// }
 /// ```
-@MainActor public extension LMKImage {
+public nonisolated extension LMKImage {
     /// QR code error correction level.
-    enum QRCorrectionLevel: String, Sendable {
+    enum QRCorrectionLevel: String, Sendable, Hashable {
         /// ~7% recovery.
         case low = "L"
         /// ~15% recovery.
@@ -27,14 +27,14 @@ import UIKit
         /// ~30% recovery.
         case high = "H"
     }
+}
 
-    private static let ciContext = CIContext()
-
+@MainActor public extension LMKImage {
     /// Generate a QR code image from a string.
     /// - Parameters:
     ///   - string: The content to encode.
     ///   - size: Target point size (rendered at screen scale for sharpness). Defaults to 200.
-    ///   - scale: Rendering scale factor. Pass `nil` to use the main screen scale.
+    ///   - scale: Rendering scale factor. Pass `nil` to use the key window's display scale.
     ///   - correctionLevel: Error correction level. Defaults to `.medium`.
     /// - Returns: A `UIImage` of the QR code, or `nil` if generation fails.
     static func qrCode(

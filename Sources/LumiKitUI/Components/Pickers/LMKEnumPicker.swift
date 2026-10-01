@@ -31,7 +31,8 @@ public nonisolated extension LMKEnumSelectable {
 /// ```
 ///
 /// A `T?` selection is single-select (a tap commits and dismisses); a `Set<T>` is
-/// multi-select (taps toggle, Done commits, Cancel discards).
+/// multi-select (taps toggle, Done commits, Cancel discards). `onCancel` runs when the
+/// sheet goes away without committing (Cancel, dimming tap, drag, key command).
 public enum LMKEnumPicker {
     // MARK: - Style
 
@@ -117,7 +118,8 @@ public enum LMKEnumPicker {
         showsSearch: Bool = false,
         style: Style = Style(),
         strings: Strings = Self.strings,
-        onSelect: @escaping (T) -> Void
+        onSelect: @escaping (T) -> Void,
+        onCancel: (() -> Void)? = nil
     ) -> LMKEnumPickerViewController {
         let sheet = LMKEnumPickerViewController(
             title: title,
@@ -127,12 +129,14 @@ public enum LMKEnumPicker {
             showsSearch: showsSearch,
             doneTitle: nil,
             style: style,
-            strings: strings
-        ) { indices in
-            if let index = indices.first, let option = options[lmk_safe: index] {
-                onSelect(option)
-            }
-        }
+            strings: strings,
+            onCommit: { indices in
+                if let index = indices.first, let option = options[lmk_safe: index] {
+                    onSelect(option)
+                }
+            },
+            onCancel: onCancel
+        )
         sheet.present(from: host)
         return sheet
     }
@@ -150,7 +154,8 @@ public enum LMKEnumPicker {
         doneTitle: String? = nil,
         style: Style = Style(),
         strings: Strings = Self.strings,
-        onSelect: @escaping (Set<T>) -> Void
+        onSelect: @escaping (Set<T>) -> Void,
+        onCancel: (() -> Void)? = nil
     ) -> LMKEnumPickerViewController {
         let sheet = LMKEnumPickerViewController(
             title: title,
@@ -160,10 +165,12 @@ public enum LMKEnumPicker {
             showsSearch: showsSearch,
             doneTitle: doneTitle,
             style: style,
-            strings: strings
-        ) { indices in
-            onSelect(Set(indices.compactMap { options[lmk_safe: $0] }))
-        }
+            strings: strings,
+            onCommit: { indices in
+                onSelect(Set(indices.compactMap { options[lmk_safe: $0] }))
+            },
+            onCancel: onCancel
+        )
         sheet.present(from: host)
         return sheet
     }

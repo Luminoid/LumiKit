@@ -5,7 +5,6 @@
 //  Detail Cards: LMKDetailPageViewController: cards from a model, rows updated in place.
 //
 
-import LumiKitCore
 import LumiKitUI
 import UIKit
 

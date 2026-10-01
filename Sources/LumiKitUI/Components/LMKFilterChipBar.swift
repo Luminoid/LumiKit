@@ -42,9 +42,10 @@ public final class LMKFilterChipBar: UIView, LMKThemeApplying {
     // MARK: - Style
 
     public nonisolated struct Style: Sendable, Equatable, LMKThemeExtension {
-        /// Style of every chip; `nil` = outlined. A filled style draws the chips that are not
-        /// selected in the soft tint, so the selected one, in the full tint, stands out; set
-        /// `selectedVariant` or `selected` on the style to decide both looks yourself.
+        /// Style of every chip, layered over an outlined chip (so a partial style, a tint alone,
+        /// keeps the outlined look). A filled style draws the chips that are not selected in the
+        /// soft tint, so the selected one, in the full tint, stands out; set `selectedVariant` or
+        /// `selected` on the style to decide both looks yourself.
         public var chip: LMKChipView.Style?
         /// Gap between chips; `nil` = `small`.
         public var spacing: CGFloat?
@@ -126,6 +127,9 @@ public final class LMKFilterChipBar: UIView, LMKThemeApplying {
     private var hasAllChip = false
     private var resolved = Style()
     private var insetsConstraint: Constraint?
+    private var stackHeightConstraint: Constraint?
+    /// Set by `configure`: a right-to-left bar opens on its first chips once it has a width.
+    private var needsLeadingEdgeOffset = false
 
     // MARK: - Init
 
@@ -153,9 +157,21 @@ public final class LMKFilterChipBar: UIView, LMKThemeApplying {
         chipStack.axis = .horizontal
         scrollView.snp.makeConstraints { $0.edges.equalToSuperview() }
         chipStack.snp.makeConstraints { make in
-            insetsConstraint = make.edges.equalToSuperview().inset(0).constraint
-            make.height.equalToSuperview()
+            insetsConstraint = make.directionalEdges.equalToSuperview().inset(0).constraint
+            // The frame height less the vertical insets, so the row never scrolls vertically.
+            stackHeightConstraint = make.height.equalToSuperview().offset(0).constraint
         }
+    }
+
+    /// A scroll view starts at its physical left, where a right-to-left row keeps its last
+    /// chips: the first layout with a width scrolls to the leading edge instead.
+    override public func layoutSubviews() {
+        super.layoutSubviews()
+        guard needsLeadingEdgeOffset, bounds.width > 0 else { return }
+        needsLeadingEdgeOffset = false
+        guard effectiveUserInterfaceLayoutDirection == .rightToLeft else { return }
+        scrollView.layoutIfNeeded()
+        scrollView.contentOffset.x = max(0, scrollView.contentSize.width - scrollView.bounds.width)
     }
 
     // MARK: - Theme
@@ -164,7 +180,8 @@ public final class LMKFilterChipBar: UIView, LMKThemeApplying {
         resolved = theme.filterChipBar.merging(style)
         chipStack.spacing = resolved.spacing ?? theme.spacing.small
         let insets = resolved.contentInsets ?? .lmk_symmetric(vertical: 0, horizontal: theme.spacing.large)
-        insetsConstraint?.update(inset: UIEdgeInsets(top: insets.top, left: insets.leading, bottom: insets.bottom, right: insets.trailing))
+        insetsConstraint?.update(inset: insets)
+        stackHeightConstraint?.update(offset: -(insets.top + insets.bottom))
         for chip in chips {
             chip.style = chipStyle
         }
@@ -181,15 +198,16 @@ public final class LMKFilterChipBar: UIView, LMKThemeApplying {
         Self.chipStyle(for: resolved.chip)
     }
 
-    /// In a row where every chip carries the full tint, the selected one is a shade apart and
-    /// hard to pick out. A filled bar keeps the full tint for the selection.
+    /// The bar's chip style over the outlined default, so a partial style keeps that look. In a
+    /// row where every chip carries the full tint, the selected one is a shade apart and hard to
+    /// pick out: a filled bar keeps the full tint for the selection.
     static func chipStyle(for style: LMKChipView.Style?) -> LMKChipView.Style {
-        guard var style else { return .outlined }
-        if style.variant == .filled, style.selectedVariant == nil, style.selected?.background == nil {
-            style.variant = .tinted
-            style.selectedVariant = .filled
+        var merged = LMKChipView.Style.outlined.merging(style ?? LMKChipView.Style())
+        if merged.variant == .filled, merged.selectedVariant == nil, merged.selected?.background == nil {
+            merged.variant = .tinted
+            merged.selectedVariant = .filled
         }
-        return style
+        return merged
     }
 
     // MARK: - Configuration
@@ -215,6 +233,8 @@ public final class LMKFilterChipBar: UIView, LMKThemeApplying {
             chips.append(chip)
         }
         updateChipStates()
+        needsLeadingEdgeOffset = true
+        setNeedsLayout()
     }
 
     /// Rebuilds the chips from titles and positionally matched icons.

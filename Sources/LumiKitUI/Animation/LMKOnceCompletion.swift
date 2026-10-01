@@ -22,6 +22,10 @@ final class LMKOnceCompletion {
         }
     }
 
+    deinit {
+        fallback?.cancel()
+    }
+
     /// Runs the completion if it has not run yet.
     func fire() {
         guard let completion else { return }

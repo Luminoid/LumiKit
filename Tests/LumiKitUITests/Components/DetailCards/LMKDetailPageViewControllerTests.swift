@@ -107,6 +107,25 @@ struct LMKDetailPageViewControllerTests {
     }
 
     @Test
+    func `Bar item updates leave the host's leading items alone`() {
+        let page = makePage()
+        let close = UIBarButtonItem(systemItem: .close)
+        page.navigationItem.leftBarButtonItem = close
+        page.onEdit = {}
+        page.onShare = {}
+        #expect(page.navigationItem.leftBarButtonItem === close)
+        page.beginEditing(onSave: {}, onCancel: {})
+        #expect(page.navigationItem.leftBarButtonItem === close)
+        page.strings = LMKDetailPageViewController.Strings(save: "Done")
+        page.endEditing()
+        #expect(page.navigationItem.leftBarButtonItem === close)
+        page.onEdit = nil
+        page.onShare = nil
+        #expect(page.navigationItem.rightBarButtonItems == nil)
+        #expect(page.navigationItem.leftBarButtonItem === close)
+    }
+
+    @Test
     func `With an LMKNavigationBar the items go on the bar, trailing first`() {
         let page = makePage(BarPage())
         page.onEdit = {}

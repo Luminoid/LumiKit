@@ -6,6 +6,7 @@
 //  current star again to clear, adjustable for VoiceOver.
 //
 
+import SnapKit
 import UIKit
 
 /// Star rating.
@@ -13,10 +14,10 @@ import UIKit
 /// ```swift
 /// let rating = LMKRatingControl(maximum: 5)
 /// rating.value = place.rating
-/// rating.onChange = { place.rating = $0 }
+/// rating.onValueChange = { place.rating = $0 }
 /// ```
 ///
-/// `value` is silent; `onChange` fires only for user changes (tap, drag, or a VoiceOver
+/// `value` is silent; `onValueChange` fires only for user changes (tap, drag, or a VoiceOver
 /// adjustment). The whole row is a 44pt hit band however small the glyphs are.
 public final class LMKRatingControl: UIControl, LMKThemeApplying {
     // MARK: - Style
@@ -122,7 +123,8 @@ public final class LMKRatingControl: UIControl, LMKThemeApplying {
             guard maximum != oldValue else { return }
             rebuildGlyphs()
             value = min(value, maximum)
-            render()
+            // The new glyphs need their symbol configuration and the row its new width.
+            applyTheme(traitCollection.lmkTheme)
         }
     }
 
@@ -144,7 +146,7 @@ public final class LMKRatingControl: UIControl, LMKThemeApplying {
     }
 
     /// Called after a user change (tap, drag, or VoiceOver adjustment) with the new value.
-    public var onChange: ((Int) -> Void)?
+    public var onValueChange: ((Int) -> Void)?
 
     /// Per-instance style; `nil` fields resolve from `theme.ratingControl`, then the built-in look.
     public var style: Style {
@@ -164,6 +166,7 @@ public final class LMKRatingControl: UIControl, LMKThemeApplying {
 
     private var resolved = Style()
     private var trackingStartValue = 0
+    private var trackingStartIndex = 0
     private var trackingMoved = false
 
     // MARK: - Initialization
@@ -196,6 +199,9 @@ public final class LMKRatingControl: UIControl, LMKThemeApplying {
         stackView.distribution = .fillEqually
         stackView.isUserInteractionEnabled = false
         addSubview(stackView)
+        // Pinned, not framed in `layoutSubviews`: a stack sized by its frame solves its spacing
+        // against its own zero-width frame before the first layout and logs a conflict.
+        stackView.snp.makeConstraints { $0.edges.equalToSuperview() }
         rebuildGlyphs()
         setContentHuggingPriority(.required, for: .horizontal)
         setContentHuggingPriority(.required, for: .vertical)
@@ -214,11 +220,6 @@ public final class LMKRatingControl: UIControl, LMKThemeApplying {
         glyphViews.forEach(stackView.addArrangedSubview)
     }
 
-    override public func layoutSubviews() {
-        super.layoutSubviews()
-        stackView.frame = bounds
-    }
-
     override public var intrinsicContentSize: CGSize {
         let glyph = glyphSize
         let spacing = resolved.spacing ?? traitCollection.lmkTheme.spacing.xs
@@ -227,8 +228,10 @@ public final class LMKRatingControl: UIControl, LMKThemeApplying {
 
     private var glyphSize: CGFloat { resolved.glyphSize ?? traitCollection.lmkTheme.layout.iconSmall }
 
+    /// A disabled row absorbs a touch inside its bounds, like every UIKit control; an enabled one answers the minimum touch target.
     override public func point(inside point: CGPoint, with event: UIEvent?) -> Bool {
-        guard isEnabled, !isHidden else { return false }
+        guard !isHidden else { return false }
+        guard isEnabled else { return bounds.contains(point) }
         return lmk_hitTestBounds(minimumSide: traitCollection.lmkTheme.layout.minimumTouchTarget, insets: lmk_hitTestInsets).contains(point)
     }
 
@@ -285,14 +288,17 @@ public final class LMKRatingControl: UIControl, LMKThemeApplying {
     override public func beginTracking(_ touch: UITouch, with event: UIEvent?) -> Bool {
         guard isInteractive else { return false }
         trackingStartValue = value
+        trackingStartIndex = glyphIndex(atX: touch.location(in: self).x)
         trackingMoved = false
         return true
     }
 
     override public func continueTracking(_ touch: UITouch, with event: UIEvent?) -> Bool {
-        let location = touch.location(in: self)
-        if abs(location.x - touch.previousLocation(in: self).x) > 0 { trackingMoved = true }
-        value = glyphIndex(atX: location.x)
+        // A retap clears only while the finger stays on the glyph it landed on: sub-point
+        // jitter within one glyph is not a drag.
+        let index = glyphIndex(atX: touch.location(in: self).x)
+        if index != trackingStartIndex { trackingMoved = true }
+        value = index
         return true
     }
 
@@ -321,21 +327,27 @@ public final class LMKRatingControl: UIControl, LMKThemeApplying {
         for (position, entry) in ordered.enumerated() where x <= entry.frame.maxX + half {
             return isRTL ? maximum - position : entry.index
         }
-        return isRTL ? 0 : maximum
+        // Past the right edge: the rightmost glyph, which is the first one in RTL.
+        return isRTL ? 1 : maximum
     }
 
     private func commit(_ newValue: Int) {
         value = newValue
         guard value != trackingStartValue else { return }
         if resolved.haptics ?? true { LMKHaptics.light() }
-        onChange?(value)
+        onValueChange?(value)
         sendActions(for: .valueChanged)
     }
 
     // MARK: - Accessibility
 
+    /// A host-assigned label wins; otherwise `strings.accessibilityLabel`.
+    override public var accessibilityLabel: String? {
+        get { super.accessibilityLabel ?? strings.accessibilityLabel }
+        set { super.accessibilityLabel = newValue }
+    }
+
     private func updateAccessibility() {
-        accessibilityLabel = strings.accessibilityLabel
         accessibilityValue = String(format: strings.accessibilityValueFormat, Int64(value), Int64(maximum))
         var traits: UIAccessibilityTraits = isInteractive ? .adjustable : .staticText
         if !isEnabled { traits.insert(.notEnabled) }

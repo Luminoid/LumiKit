@@ -12,38 +12,35 @@ import UIKit
 // MARK: - Shadow
 
 final class ShadowDetailViewController: DetailViewController {
-    override func viewDidLoad() {
-        super.viewDidLoad()
+    private static let toggleLevel = LMKShadow.Level.level3
 
-        addSectionHeader("LMKShadow Presets")
-        let presets: [(String, LMKShadowStyle)] = [
-            ("cellCard()", LMKShadow.style(for: .level2)),
-            ("card()", LMKShadow.style(for: .level3)),
-            ("button()", LMKShadow.style(for: .level2)),
-            ("small()", LMKShadow.style(for: .level1)),
-        ]
-
-        for (name, shadow) in presets {
+    override func setupStackContent() {
+        addSectionHeader("LMKShadow.Level")
+        stackView.addArrangedSubview(UILabel.lmk_make(
+            .caption,
+            text: "lmk_applyShadow(_ level:) resolves the level through the theme, so a theme with its own shadow scale restyles every card; level1 is the tightest lift, level5 the widest."
+        ))
+        for level in LMKShadow.Level.allCases where level != .none {
             let container = UIView()
             container.backgroundColor = LMKColor.backgroundPrimary
-            container.layer.cornerRadius = LMKCornerRadius.medium
-            container.lmk_applyShadow(shadow)
+            container.lmk_applyCornerRadius(LMKCornerRadius.medium, masking: false)
+            container.lmk_applyShadow(level)
 
-            let label = UILabel.lmk_make(.body, text: name)
+            let label = UILabel.lmk_make(.body, text: "\(level)")
             label.textAlignment = .center
             container.addSubview(label)
             label.snp.makeConstraints { $0.edges.equalToSuperview().inset(LMKSpacing.large) }
             container.snp.makeConstraints { $0.height.greaterThanOrEqualTo(60) }
-            stack.addArrangedSubview(container)
+            stackView.addArrangedSubview(container)
         }
 
         addDivider()
         addSectionHeader("Remove Shadow")
-        stack.addArrangedSubview(UILabel.lmk_make(.caption, text: "lmk_removeShadow() clears the shadow layer."))
+        stackView.addArrangedSubview(UILabel.lmk_make(.caption, text: "lmk_removeShadow() clears the shadow layer."))
         let toggleView = UIView()
         toggleView.backgroundColor = LMKColor.backgroundPrimary
-        toggleView.layer.cornerRadius = LMKCornerRadius.medium
-        toggleView.lmk_applyShadow(LMKShadow.style(for: .level3))
+        toggleView.lmk_applyCornerRadius(LMKCornerRadius.medium, masking: false)
+        toggleView.lmk_applyShadow(Self.toggleLevel)
         toggleView.snp.makeConstraints { $0.height.greaterThanOrEqualTo(60) }
 
         let toggleLabel = UILabel.lmk_make(.body, text: "Tap to toggle shadow")
@@ -54,10 +51,11 @@ final class ShadowDetailViewController: DetailViewController {
         let tap = UITapGestureRecognizer()
         tap.addTarget(self, action: #selector(toggleShadow(_:)))
         toggleView.addGestureRecognizer(tap)
-        toggleView.isUserInteractionEnabled = true
-        toggleView.tag = 100
-        toggleView.accessibilityLabel = "shadow on"
-        stack.addArrangedSubview(toggleView)
+        // The tap target is the card, so VoiceOver gets one button in place of a static label.
+        toggleView.isAccessibilityElement = true
+        toggleView.accessibilityTraits = .button
+        toggleView.accessibilityLabel = toggleLabel.text
+        stackView.addArrangedSubview(toggleView)
     }
 
     @objc private func toggleShadow(_ gesture: UITapGestureRecognizer) {
@@ -65,7 +63,7 @@ final class ShadowDetailViewController: DetailViewController {
         if view.layer.shadowOpacity > 0 {
             view.lmk_removeShadow()
         } else {
-            view.lmk_applyShadow(LMKShadow.style(for: .level3))
+            view.lmk_applyShadow(Self.toggleLevel)
         }
     }
 }

@@ -42,10 +42,10 @@ final class HighlightDetailViewController: DetailViewController,
         return table
     }()
 
-    /// Horizontal scroll of three rounded cards demonstrating the new
-    /// `LMKHighlightable` protocol conformance on `UICollectionViewCell`.
+    /// Horizontal scroll of three rounded cards demonstrating the
+    /// `LMKHighlightable` conformance on `UICollectionViewCell`.
     /// Cells override `isHighlighted` / `isSelected` `didSet` rather than the
-    /// `setHighlighted` / `setSelected` methods used by table cells —
+    /// `setHighlighted` / `setSelected` methods used by table cells:
     /// `UICollectionViewCell` doesn't expose the method variants.
     private lazy var gridCollection: UICollectionView = {
         let layout = UICollectionViewCompositionalLayout { _, _ in
@@ -72,32 +72,30 @@ final class HighlightDetailViewController: DetailViewController,
         return collection
     }()
 
-    override func viewDidLoad() {
-        super.viewDidLoad()
-
+    override func setupStackContent() {
         addSectionHeader("lmk_applyCustomHighlight (UITableViewCell)")
-        stack.addArrangedSubview(UILabel.lmk_make(.caption, text: "Call from setHighlighted and setSelected in a custom cell subclass. "
+        stackView.addArrangedSubview(UILabel.lmk_make(.caption, text: "Call from setHighlighted and setSelected in a custom cell subclass. "
                 + "The overlay lands on rounded background views inside contentView; "
                 + "otherwise it tints contentView itself. Tap and hold the row below."))
-        stack.addArrangedSubview(cardTable)
+        stackView.addArrangedSubview(cardTable)
 
         addDivider()
 
         addSectionHeader("lmk_configureCustomHighlight (UITableViewCell only)")
-        stack.addArrangedSubview(UILabel.lmk_make(.caption, text: "Configures a tinted selectedBackgroundView on a plain UITableViewCell. "
+        stackView.addArrangedSubview(UILabel.lmk_make(.caption, text: "Configures a tinted selectedBackgroundView on a plain UITableViewCell. "
                 + "No subclass required. Tap the row below. UICollectionViewCell has no "
                 + "selectedBackgroundView, so use the protocol-based path instead (next section)."))
-        stack.addArrangedSubview(plainTable)
+        stackView.addArrangedSubview(plainTable)
 
         addDivider()
 
         addSectionHeader("lmk_applyCustomHighlight (UICollectionViewCell)")
-        stack.addArrangedSubview(UILabel.lmk_make(
+        stackView.addArrangedSubview(UILabel.lmk_make(
             .caption,
             text: "Conforms to LMKHighlightable just like UITableViewCell. Override isHighlighted and isSelected didSet in the cell subclass and call lmk_applyCustomHighlight. Tap and hold any card."
         ))
         gridCollection.snp.makeConstraints { $0.height.equalTo(Self.gridRowHeight) }
-        stack.addArrangedSubview(gridCollection)
+        stackView.addArrangedSubview(gridCollection)
     }
 
     // MARK: - UITableViewDataSource
@@ -116,7 +114,7 @@ final class HighlightDetailViewController: DetailViewController,
         cell.lmk_configureCustomHighlight()
         var content = cell.defaultContentConfiguration()
         content.text = "Tap: selectedBackgroundView lights up"
-        content.textProperties.font = UILabel.lmk_make(.body, text: "").font
+        content.lmk_applyTextStyle(primary: .body)
         cell.contentConfiguration = content
         return cell
     }
@@ -154,7 +152,7 @@ private final class HighlightCardCell: UITableViewCell {
     private let card: UIView = {
         let view = UIView()
         view.backgroundColor = LMKColor.backgroundSecondary
-        view.layer.cornerRadius = LMKCornerRadius.medium
+        view.lmk_applyCornerRadius(LMKCornerRadius.medium)
         return view
     }()
 
@@ -183,7 +181,7 @@ private final class HighlightCardCell: UITableViewCell {
     }
 
     func configure(title: String) {
-        titleLabel.text = title
+        titleLabel.lmk_setText(title)
     }
 
     override func setHighlighted(_ highlighted: Bool, animated: Bool) {
@@ -201,7 +199,7 @@ private final class HighlightGridCell: UICollectionViewCell {
     private let card: UIView = {
         let view = UIView()
         view.backgroundColor = LMKColor.backgroundSecondary
-        view.layer.cornerRadius = LMKCornerRadius.medium
+        view.lmk_applyCornerRadius(LMKCornerRadius.medium)
         return view
     }()
 
@@ -230,7 +228,7 @@ private final class HighlightGridCell: UICollectionViewCell {
     }
 
     func configure(title: String) {
-        titleLabel.text = title
+        titleLabel.lmk_setText(title)
     }
 
     /// UICollectionViewCell exposes `isHighlighted` / `isSelected` as

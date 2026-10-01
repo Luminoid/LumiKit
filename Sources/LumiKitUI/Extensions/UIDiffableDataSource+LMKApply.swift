@@ -9,8 +9,8 @@ import UIKit
 
 public extension UITableViewDiffableDataSource {
     /// Applies `snapshot`, diffing (and optionally animating) only while `view` is in a
-    /// window. A detached list still receives data changes — a page its container swapped
-    /// out, another tab's root — and `apply(_:animatingDifferences:)` there runs a batch
+    /// window. A detached list still receives data changes (a page its container swapped
+    /// out, another tab's root), and `apply(_:animatingDifferences:)` there runs a batch
     /// update that forces layout outside the view hierarchy; UIKit logs
     /// `UITableViewAlertForLayoutOutsideViewHierarchy` once per process and then stays
     /// silent while the wasted passes continue. Off screen, the snapshot lands through

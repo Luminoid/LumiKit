@@ -87,6 +87,8 @@ struct LMKActionSheetRowViewTests {
         #expect(row.accessibilityTraits.contains(.notEnabled))
         row.didTap()
         #expect(taps == 0)
+        row.style.disabled = LMKControlStateStyle(alpha: 0.25)
+        #expect(abs(row.alpha - 0.25) < 0.001, "the disabled state style sets the alpha")
 
         row.configure(LMKActionSheet.Action(title: "On") {})
         row.didTap()
@@ -95,16 +97,38 @@ struct LMKActionSheetRowViewTests {
         #expect(row.containerView.backgroundColor != LMKColor.backgroundSecondary)
         row.isHighlighted = false
         #expect(row.containerView.backgroundColor === LMKColor.backgroundSecondary)
+        row.style.highlightColor = .orange
+        row.isHighlighted = true
+        #expect(row.containerView.backgroundColor == UIColor.orange)
+    }
+
+    @Test
+    func `A row answers the minimum touch target while enabled and swallows touches while disabled`() {
+        let row = LMKActionSheetRowView(style: LMKActionSheet.RowStyle(minimumHeight: 30))
+        row.configure(LMKActionSheet.Action(title: "Short") {})
+        row.frame = CGRect(x: 0, y: 0, width: 200, height: 30)
+        let outside = CGPoint(x: 100, y: -5)
+        #expect(row.point(inside: outside, with: nil), "7pt above a 30pt row is inside the 44pt target")
+        row.isEnabled = false
+        #expect(!row.point(inside: outside, with: nil))
+        #expect(row.point(inside: CGPoint(x: 100, y: 15), with: nil), "a disabled row still takes the touch")
+        row.isHidden = true
+        #expect(!row.point(inside: CGPoint(x: 100, y: 15), with: nil))
     }
 
     @Test
     func `Row style and theme.actionSheet.row apply`() {
-        let row = LMKActionSheetRowView(style: LMKActionSheet.RowStyle(minimumHeight: 60, titleColor: .purple, iconTint: .orange))
-        row.configure(LMKActionSheet.Action(title: "A", icon: UIImage(systemName: "star")) {})
+        let row = LMKActionSheetRowView(style: LMKActionSheet.RowStyle(minimumHeight: 60, titleColor: .purple, iconTint: .orange, checkmarkColor: .cyan, destructiveColor: .brown))
+        row.configure(LMKActionSheet.Action(title: "A", icon: UIImage(systemName: "star"), isSelected: true) {})
         #expect(row.titleLabel.textColor == UIColor.purple)
         #expect(row.iconView.tintColor == UIColor.orange)
+        #expect(row.checkmarkView.tintColor == UIColor.cyan)
         LMKThemeTesting.fit(row, width: 300)
         #expect(row.bounds.height >= 60)
+        row.configure(LMKActionSheet.Action(title: "Delete", style: .destructive) {})
+        #expect(row.titleLabel.textColor == UIColor.brown)
+        #expect(row.iconView.tintColor == UIColor.brown)
+        #expect(LMKActionSheet.RowStyle(disabled: LMKControlStateStyle(alpha: 0.2)).merging(LMKActionSheet.RowStyle()).disabled?.alpha == 0.2)
 
         var theme = LMKTheme()
         theme.actionSheet = LMKActionSheet.Style(row: LMKActionSheet.RowStyle(subtitleColor: .magenta))
@@ -163,7 +187,8 @@ struct LMKActionSheetTests {
     func `Navigation pushes a sub-page, shows the back button, and pops`() async {
         let (host, window) = makeHost()
         defer { window.isHidden = true }
-        let sub = LMKActionSheet.Page(title: "Sub", actions: [.init(title: "One") {}, .init(title: "Two") {}])
+        var events: [String] = []
+        let sub = LMKActionSheet.Page(title: "Sub", actions: [.init(title: "One") { events.append("one") }, .init(title: "Two") {}])
         let sheet = LMKActionSheet.present(from: host, title: "Root", actions: [.init(title: "Open", page: sub)])
         sheet.view.layoutIfNeeded()
         sheet.actionTapped(at: 0)
@@ -172,11 +197,28 @@ struct LMKActionSheetTests {
         #expect(sheet.currentPage.title == "Sub")
         #expect(sheet.currentRows.count == 2)
         #expect(host.children.count == 1, "navigation does not dismiss")
+        // The second tap of a double tap lands while the page is still sliding: nothing fires.
+        sheet.actionTapped(at: 0)
+        sheet.confirmTapped()
+        #expect(host.children.count == 1, "taps during the slide are ignored")
         await LMKWait.until { sheet.contentContainerView.subviews.count == 1 }
+        #expect(events.isEmpty)
         sheet.goBack()
         #expect(!sheet.canGoBack)
         #expect(sheet.currentPage.title == "Root")
         #expect(sheet.currentRows.count == 1)
+    }
+
+    @Test
+    func `The back button keeps clear of the side safe area`() {
+        let (host, window) = makeHost()
+        defer { window.isHidden = true }
+        host.additionalSafeAreaInsets = UIEdgeInsets(top: 0, left: 62, bottom: 0, right: 62)
+        let sheet = LMKActionSheet.present(from: host, title: "Root", actions: [.init(title: "Open", page: LMKActionSheet.Page(title: "Sub"))])
+        sheet.view.layoutIfNeeded()
+        sheet.actionTapped(at: 0)
+        sheet.view.layoutIfNeeded()
+        #expect(abs(sheet.backButton.frame.minX - (62 + LMKSpacing.small)) < 0.5, "\(sheet.backButton.frame)")
     }
 
     @Test
@@ -225,23 +267,76 @@ struct LMKActionSheetTests {
         }
     }
 
+    private func labels(in view: UIView) -> [UILabel] {
+        var found: [UILabel] = []
+        if let label = view as? UILabel { found.append(label) }
+        for subview in view.subviews {
+            found.append(contentsOf: labels(in: subview))
+        }
+        return found
+    }
+
     @Test
-    func `Style flows from the configuration and the theme into the chrome and rows`() {
+    func `Style flows from the configuration and the theme into the chrome, the root page, and the rows`() {
         let (host, window) = makeHost()
         defer { window.isHidden = true }
         let style = LMKActionSheet.Style(
-            sheet: LMKBottomSheetViewController.Style(showsDragIndicator: false),
+            sheet: LMKBottomSheetViewController.Style(surface: LMKSurfaceStyle(contentInsets: .lmk_all(30)), showsDragIndicator: false),
             row: LMKActionSheet.RowStyle(titleColor: .purple),
-            titleColor: .green
+            titleTextStyle: .h1,
+            titleColor: .green,
+            messageTextStyle: .small,
+            messageColor: .orange,
+            confirmButton: LMKButton.Style(minimumHeight: 64),
+            sectionSpacing: 24,
+            rowSpacing: 9,
+            pageTransitionDuration: 0.01
         )
-        let sheet = LMKActionSheet.present(LMKActionSheet.Configuration(title: "T", actions: [.init(title: "A") {}], style: style), from: host)
+        let sheet = LMKActionSheet.present(
+            LMKActionSheet.Configuration(title: "T", message: "M", actions: [.init(title: "A") {}, .init(title: "B") {}], confirmTitle: "Go", onConfirm: {}, style: style),
+            from: host
+        )
+        sheet.view.layoutIfNeeded()
         #expect(sheet.dragIndicator.isHidden)
         #expect(sheet.currentRows[0].titleLabel.textColor == UIColor.purple)
         #expect(sheet.resolvedActionSheetStyle.titleColor == UIColor.green)
+        let title = labels(in: sheet.contentContainerView).first { $0.text == "T" }
+        let message = labels(in: sheet.contentContainerView).first { $0.text == "M" }
+        #expect(title?.textColor == UIColor.green, "the root page is built from the resolved style")
+        #expect(title?.font.pointSize == LMKTypography.font(for: .h1, compatibleWith: sheet.traitCollection).pointSize)
+        #expect(message?.textColor == UIColor.orange)
+        #expect(message?.font.pointSize == LMKTypography.font(for: .small, compatibleWith: sheet.traitCollection).pointSize)
+        #expect(sheet.confirmButton?.style.minimumHeight == 64)
+        let rowA = sheet.currentRows[0].convert(sheet.currentRows[0].bounds, to: sheet.view)
+        let rowB = sheet.currentRows[1].convert(sheet.currentRows[1].bounds, to: sheet.view)
+        #expect(abs(rowB.minY - rowA.maxY - 9) < 0.5, "rowSpacing")
+        #expect(abs(rowA.minX - 30) < 0.5, "the sheet's content inset reaches the rows")
+        if let message {
+            let messageFrame = message.convert(message.bounds, to: sheet.view)
+            #expect(abs(rowA.minY - messageFrame.maxY - 24) < 0.5, "sectionSpacing")
+        }
 
         var theme = LMKTheme()
-        theme.actionSheet = LMKActionSheet.Style(sheet: LMKBottomSheetViewController.Style(dimmingColor: .magenta, dimmingAlpha: 1))
+        theme.actionSheet = LMKActionSheet.Style(sheet: LMKBottomSheetViewController.Style(dimmingColor: .magenta, dimmingAlpha: 1), titleColor: .brown)
         sheet.applyTheme(theme)
         #expect(sheet.dimmingView.backgroundColor == UIColor.magenta.withAlphaComponent(1))
+        #expect(labels(in: sheet.contentContainerView).first { $0.text == "T" }?.textColor == UIColor.green, "the configuration still wins over the theme")
+
+        let themed = LMKActionSheet.present(LMKActionSheet.Configuration(title: "T", actions: [.init(title: "A") {}]), from: host)
+        themed.applyTheme(theme)
+        #expect(labels(in: themed.contentContainerView).first { $0.text == "T" }?.textColor == UIColor.brown, "a theme change re-renders the page")
+    }
+
+    @Test
+    func `The presented sheet's own style layers on top and sticks`() {
+        let (host, window) = makeHost()
+        defer { window.isHidden = true }
+        let sheet = LMKActionSheet.present(LMKActionSheet.Configuration(title: "T", style: LMKActionSheet.Style(sheet: LMKBottomSheetViewController.Style(dimmingAlpha: 0.9))), from: host)
+        var applied = 0
+        sheet.didApplyStyle = { _ in applied += 1 }
+        sheet.style.showsCancelButton = false
+        #expect(sheet.cancelButton.isHidden, "the instance style is not overwritten by the configuration's")
+        #expect(sheet.resolvedStyle.dimmingAlpha == 0.9, "the configuration's sheet style still applies")
+        #expect(applied == 1, "one applyTheme per style change")
     }
 }

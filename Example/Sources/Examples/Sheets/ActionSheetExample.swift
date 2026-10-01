@@ -5,42 +5,43 @@
 //  Action Sheet: Actions with icons, sub-pages, and custom content.
 //
 
+import LumiKitCore
 import LumiKitUI
-import SnapKit
 import UIKit
 
 // MARK: - Action Sheet
 
 final class ActionSheetDetailViewController: DetailViewController {
-    override func viewDidLoad() {
-        super.viewDidLoad()
-
+    override func setupStackContent() {
         addSectionHeader("Basic Action Sheet")
         let basicButton = LMKButton(title: "Show Action Sheet", style: .filled(.primary), target: self, action: #selector(showBasicSheet))
-        stack.addArrangedSubview(basicButton)
+        stackView.addArrangedSubview(basicButton)
 
         addDivider()
         addSectionHeader("With Icons")
         let iconButton = LMKButton(title: "Show Action Sheet with Icons", style: .filled(.secondary), target: self, action: #selector(showIconSheet))
-        stack.addArrangedSubview(iconButton)
+        stackView.addArrangedSubview(iconButton)
 
         addDivider()
         addSectionHeader("With Selection (isSelected)")
-        stack.addArrangedSubview(UILabel.lmk_make(.caption, text: "Actions with isSelected: true show a checkmark; isEnabled: false dims a row. Useful for single-selection options like sort order."))
+        stackView.addArrangedSubview(UILabel.lmk_make(
+            .caption,
+            text: "Actions with isSelected: true show a checkmark; isEnabled: false dims a row. Useful for single-selection options like sort order."
+        ))
         let selectionButton = LMKButton(title: "Show Selection Sheet", style: .filled(.primary), target: self, action: #selector(showSelectionSheet))
-        stack.addArrangedSubview(selectionButton)
+        stackView.addArrangedSubview(selectionButton)
 
         addDivider()
         addSectionHeader("Sub-Page Navigation")
-        stack.addArrangedSubview(UILabel.lmk_make(.caption, text: "Actions can navigate to sub-pages within the same sheet. Tap back or cancel to return or dismiss."))
+        stackView.addArrangedSubview(UILabel.lmk_make(.caption, text: "Actions can navigate to sub-pages within the same sheet. Tap back or cancel to return or dismiss."))
         let subPageButton = LMKButton(title: "Show with Sub-Pages", style: .filled(.primary), target: self, action: #selector(showSubPageSheet))
-        stack.addArrangedSubview(subPageButton)
+        stackView.addArrangedSubview(subPageButton)
 
         addDivider()
         addSectionHeader("Custom Content with Confirm")
-        stack.addArrangedSubview(UILabel.lmk_make(.caption, text: "A Configuration embeds a self-sizing view (a date picker) with a confirm button; handlers run after the sheet has gone."))
+        stackView.addArrangedSubview(UILabel.lmk_make(.caption, text: "A Configuration embeds a self-sizing view (a date picker) with a confirm button; handlers run after the sheet has gone."))
         let contentButton = LMKButton(title: "Show with Date Picker", style: .filled(.secondary), target: self, action: #selector(showContentSheet))
-        stack.addArrangedSubview(contentButton)
+        stackView.addArrangedSubview(contentButton)
     }
 
     private func toast(_ status: LMKStatus, _ message: String) {
@@ -127,13 +128,11 @@ final class ActionSheetDetailViewController: DetailViewController {
         let datePicker = LMKDatePicker.makePicker(LMKDatePicker.Configuration(title: "Date"))
         LMKActionSheet.present(LMKActionSheet.Configuration(
             title: "Select Date",
-            message: "Wheels size themselves; no content height needed.",
+            message: "The picker sizes itself; no content height needed. Under the Mac idiom the wheels become an inline calendar.",
             contentView: datePicker,
             confirmTitle: "Save",
             onConfirm: { [weak self] in
-                let formatter = DateFormatter()
-                formatter.dateStyle = .medium
-                self?.toast(.success, "Date: \(formatter.string(from: datePicker.date))")
+                self?.toast(.success, "Date: \(LMKDateFormat.string(datePicker.date, date: .medium))")
             }
         ), from: self)
     }

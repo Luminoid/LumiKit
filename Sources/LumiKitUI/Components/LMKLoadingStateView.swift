@@ -11,6 +11,10 @@ import UIKit
 
 /// Loading state view.
 ///
+/// Hidden until `startLoading`, and hidden again by `stopLoading`. Its height hugs the
+/// indicator and the message, so it sits in a stack without an explicit height and grows
+/// with a long message at accessibility sizes.
+///
 /// ```swift
 /// let loading = LMKLoadingStateView()
 /// loading.startLoading(message: "Syncing…")
@@ -129,6 +133,7 @@ public final class LMKLoadingStateView: UIView, LMKThemeApplying {
 
     private var indicatorOffsetConstraint: Constraint?
     private var messageSpacingConstraint: Constraint?
+    private var messageInsetConstraint: Constraint?
 
     // MARK: - Initialization
 
@@ -154,12 +159,16 @@ public final class LMKLoadingStateView: UIView, LMKThemeApplying {
     private func setupUI() {
         isAccessibilityElement = true
         accessibilityTraits = .updatesFrequently
+        isHidden = true
 
         activityIndicator.hidesWhenStopped = true
         addSubview(activityIndicator)
         activityIndicator.snp.makeConstraints { make in
             make.centerX.equalToSuperview()
             indicatorOffsetConstraint = make.centerY.equalToSuperview().offset(0).constraint
+            // 999, not required: hosts install this view as a `tableView.backgroundView`, whose
+            // autoresizing pass starts at size zero, where required bounds would conflict.
+            make.top.greaterThanOrEqualToSuperview().priority(999)
         }
 
         messageLabel.textAlignment = .center
@@ -168,10 +177,18 @@ public final class LMKLoadingStateView: UIView, LMKThemeApplying {
         addSubview(messageLabel)
         messageLabel.snp.makeConstraints { make in
             messageSpacingConstraint = make.top.equalTo(activityIndicator.snp.bottom).offset(0).constraint
-            // 999, not required: hosts install this view as a `tableView.backgroundView`, whose
-            // autoresizing pass starts at width 0, where required insets would conflict.
-            make.leading.trailing.equalToSuperview().inset(LMKSpacing.xl).priority(999)
+            messageInsetConstraint = make.leading.trailing.equalToSuperview().inset(0).priority(999).constraint
             make.centerX.equalToSuperview()
+            make.bottom.lessThanOrEqualToSuperview().priority(999)
+        }
+
+        // A soft hug toward the content, on a guide so the view's own autoresizing
+        // translation (the `backgroundView` case) stays untouched.
+        let hugGuide = UILayoutGuide()
+        addLayoutGuide(hugGuide)
+        hugGuide.snp.makeConstraints { make in
+            make.top.bottom.equalToSuperview()
+            make.height.equalTo(0).priority(.low)
         }
     }
 
@@ -186,6 +203,7 @@ public final class LMKLoadingStateView: UIView, LMKThemeApplying {
         messageLabel.lmk_apply(resolved.messageTextStyle ?? .body, color: resolved.messageColor ?? LMKColor.textSecondary)
         indicatorOffsetConstraint?.update(offset: resolved.indicatorOffset ?? -theme.spacing.xl)
         messageSpacingConstraint?.update(offset: resolved.spacing ?? theme.spacing.medium)
+        messageInsetConstraint?.update(inset: theme.spacing.xl)
         didApplyStyle?(self)
     }
 

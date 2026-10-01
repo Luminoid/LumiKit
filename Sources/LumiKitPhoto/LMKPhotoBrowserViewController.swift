@@ -6,7 +6,6 @@
 //  swipe-to-dismiss, styled from `theme.photoBrowser`.
 //
 
-import LumiKitCore
 import LumiKitUI
 import PhotosUI
 import SnapKit
@@ -182,9 +181,29 @@ public final class LMKPhotoBrowserViewController: UIViewController, LMKThemeAppl
     let initialIndex: Int
     var currentIndex = 0
     var hasScrolledToInitialIndex = false
+    /// Whether the delegate and `onDismiss` have heard about the dismissal under way; a
+    /// key command during a swipe's exit animation would otherwise report it twice.
+    var didNotifyDismiss = false
+    /// The presentation's zoom-in while it runs. A dismissal that starts before it ends
+    /// finishes it first, so the thumbnail's alpha and the pages' mask are restored before
+    /// the way out captures them.
+    var presentationAnimator: UIViewPropertyAnimator?
+    /// The photo travelling in during the presentation, removed when a dismissal cuts in.
+    var presentationPhoto: UIView?
     var collectionWidthConstraint: Constraint?
+    /// The page width the offset was last aligned to; a rotation or a window resize changes it.
+    private var alignedPageWidth: CGFloat = 0
     private var dismissButtonSizeConstraint: Constraint?
     private var actionButtonSizeConstraint: Constraint?
+    private var dismissButtonTopConstraint: Constraint?
+    private var dismissButtonTrailingConstraint: Constraint?
+    private var actionButtonTopConstraint: Constraint?
+    private var actionButtonLeadingConstraint: Constraint?
+    private var pageIndicatorBottomConstraint: Constraint?
+    private var counterBottomConstraint: Constraint?
+    private var datePillBottomConstraint: Constraint?
+    private var datePillLeadingConstraint: Constraint?
+    private var emptyStateInsetConstraint: Constraint?
     private var datePillInsets = NSDirectionalEdgeInsets.zero
     #if targetEnvironment(macCatalyst)
         lazy var scrollWheelDelegate = LMKPhotoBrowserScrollWheelDelegate(collectionView: collectionView)
@@ -225,8 +244,16 @@ public final class LMKPhotoBrowserViewController: UIViewController, LMKThemeAppl
 
     override public func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
+        // Whatever a dismissal left behind (a fade, a snap's shrink, a frozen page) clears: the
+        // same instance can be presented again.
+        view.alpha = 1
         stageView.alpha = 1
         collectionView.alpha = 1
+        collectionView.transform = .identity
+        didNotifyDismiss = false
+        for case let cell as LMKPhotoBrowserCell in collectionView.visibleCells {
+            cell.prepareForReappearance()
+        }
         let count = photoCount
         // The initial index applies once; a later appearance (a sheet over the browser went
         // away) keeps the photo the user paged to.
@@ -262,13 +289,43 @@ public final class LMKPhotoBrowserViewController: UIViewController, LMKThemeAppl
             cell.refitInstalledImage(to: pageSize)
         }
 
+        // The offset is aligned once at first, then again whenever the page width changes (a
+        // rotation, a window resize, a theme with another page gap): the old offset would land
+        // between two pages of the new width, and a page zoomed at that moment would keep an
+        // offset outside its new travel. `viewDidAppear` alone re-aligns for a swipe under way.
+        let pageWidth = collectionView.bounds.width
+        guard pageWidth > 0 else { return }
         if !hasScrolledToInitialIndex {
             hasScrolledToInitialIndex = true
+            alignedPageWidth = pageWidth
+            scrollToPhoto(at: currentIndex, animated: false)
+        } else if pageWidth != alignedPageWidth {
+            alignedPageWidth = pageWidth
+            for case let cell as LMKPhotoBrowserCell in collectionView.visibleCells {
+                cell.resetZoom()
+            }
+            // The collection view first consumes its own bounds change, which keeps the page
+            // sizes its delegate gave it; only an invalidation after that re-measures them.
+            collectionView.layoutIfNeeded()
+            invalidatePageLayout()
+            collectionView.layoutIfNeeded()
             scrollToPhoto(at: currentIndex, animated: false)
         }
     }
 
+    /// Re-measures every page on the collection view's next layout pass.
+    func invalidatePageLayout() {
+        collectionView.collectionViewLayout.invalidateLayout()
+        collectionView.setNeedsLayout()
+    }
+
     override public var canBecomeFirstResponder: Bool { true }
+
+    /// The VoiceOver escape gesture closes the browser, like the close button.
+    override public func accessibilityPerformEscape() -> Bool {
+        dismissBrowser()
+        return true
+    }
 
     // MARK: - Setup
 
@@ -295,29 +352,33 @@ public final class LMKPhotoBrowserViewController: UIViewController, LMKThemeAppl
         singleTap.require(toFail: doubleTap)
         collectionView.addGestureRecognizer(singleTap)
 
+        // Spacing constraints start at zero and take their values from the theme handed to
+        // `applyTheme`, so a scoped or later theme applies to them too.
         emptyStateView.isHidden = true
         view.addSubview(emptyStateView)
         emptyStateView.snp.makeConstraints { make in
             make.center.equalToSuperview()
-            make.leading.trailing.equalTo(view.safeAreaLayoutGuide).inset(LMKSpacing.large)
+            emptyStateInsetConstraint = make.leading.trailing.equalTo(view.safeAreaLayoutGuide).inset(0).constraint
         }
 
         dismissButton.setSymbol("xmark")
         dismissButton.onTap = { [weak self] in self?.dismissBrowser() }
         view.addSubview(dismissButton)
         dismissButton.snp.makeConstraints { make in
-            make.top.equalTo(view.safeAreaLayoutGuide).offset(LMKSpacing.large)
-            make.trailing.equalTo(view.safeAreaLayoutGuide).offset(-LMKSpacing.large)
-            dismissButtonSizeConstraint = make.size.equalTo(LMKLayout.minimumTouchTarget).constraint
+            dismissButtonTopConstraint = make.top.equalTo(view.safeAreaLayoutGuide).offset(0).constraint
+            dismissButtonTrailingConstraint = make.trailing.equalTo(view.safeAreaLayoutGuide).offset(0).constraint
+            // 999: the button's own minimum height is required, and `applyTheme` sets both to
+            // the same side; until then the floor wins without a conflict.
+            dismissButtonSizeConstraint = make.size.equalTo(0).priority(999).constraint
         }
 
         actionButton.setSymbol(actionButtonSystemImageName)
         actionButton.onTap = { [weak self] in self?.requestAction() }
         view.addSubview(actionButton)
         actionButton.snp.makeConstraints { make in
-            make.top.equalTo(view.safeAreaLayoutGuide).offset(LMKSpacing.large)
-            make.leading.equalTo(view.safeAreaLayoutGuide).offset(LMKSpacing.large)
-            actionButtonSizeConstraint = make.size.equalTo(LMKLayout.minimumTouchTarget).constraint
+            actionButtonTopConstraint = make.top.equalTo(view.safeAreaLayoutGuide).offset(0).constraint
+            actionButtonLeadingConstraint = make.leading.equalTo(view.safeAreaLayoutGuide).offset(0).constraint
+            actionButtonSizeConstraint = make.size.equalTo(0).priority(999).constraint
         }
 
         pageIndicator.onPageChange = { [weak self] page in
@@ -325,23 +386,23 @@ public final class LMKPhotoBrowserViewController: UIViewController, LMKThemeAppl
         }
         view.addSubview(pageIndicator)
         pageIndicator.snp.makeConstraints { make in
-            make.bottom.equalTo(view.safeAreaLayoutGuide).offset(-LMKSpacing.xl)
+            pageIndicatorBottomConstraint = make.bottom.equalTo(view.safeAreaLayoutGuide).offset(0).constraint
             make.centerX.equalToSuperview()
         }
 
         counterLabel.textAlignment = .center
         view.addSubview(counterLabel)
         counterLabel.snp.makeConstraints { make in
-            make.bottom.equalTo(pageIndicator.snp.top).offset(-LMKSpacing.xs)
+            counterBottomConstraint = make.bottom.equalTo(pageIndicator.snp.top).offset(0).constraint
             make.centerX.equalToSuperview()
         }
 
         datePillView.isAccessibilityElement = false
         view.addSubview(datePillView)
         datePillView.snp.makeConstraints { make in
-            make.bottom.equalTo(counterLabel.snp.top).offset(-LMKSpacing.medium)
+            datePillBottomConstraint = make.bottom.equalTo(counterLabel.snp.top).offset(0).constraint
             make.centerX.equalToSuperview()
-            make.leading.greaterThanOrEqualTo(view.safeAreaLayoutGuide).offset(LMKSpacing.large)
+            datePillLeadingConstraint = make.leading.greaterThanOrEqualTo(view.safeAreaLayoutGuide).offset(0).constraint
         }
         dateLabel.textAlignment = .center
         dateLabel.numberOfLines = 2
@@ -381,6 +442,16 @@ public final class LMKPhotoBrowserViewController: UIViewController, LMKThemeAppl
         let buttonSide = resolved.buttonSize(theme: theme)
         dismissButtonSizeConstraint?.update(offset: buttonSide)
         actionButtonSizeConstraint?.update(offset: buttonSide)
+        let margin = theme.spacing.large
+        dismissButtonTopConstraint?.update(offset: margin)
+        dismissButtonTrailingConstraint?.update(offset: -margin)
+        actionButtonTopConstraint?.update(offset: margin)
+        actionButtonLeadingConstraint?.update(offset: margin)
+        emptyStateInsetConstraint?.update(inset: margin)
+        datePillLeadingConstraint?.update(offset: margin)
+        pageIndicatorBottomConstraint?.update(offset: -theme.spacing.xl)
+        counterBottomConstraint?.update(offset: -theme.spacing.xs)
+        datePillBottomConstraint?.update(offset: -theme.spacing.medium)
 
         pageIndicator.style = LMKPageIndicator.Style(
             activeColor: chrome,
@@ -412,7 +483,7 @@ public final class LMKPhotoBrowserViewController: UIViewController, LMKThemeAppl
         ).merging(resolved.emptyState)
 
         collectionWidthConstraint?.update(offset: resolved.pageGap(theme: theme))
-        collectionView.collectionViewLayout.invalidateLayout()
+        invalidatePageLayout()
         for case let cell as LMKPhotoBrowserCell in collectionView.visibleCells {
             cell.apply(style: resolved, theme: theme, dynamicRange: effectiveDynamicRange)
         }
@@ -439,6 +510,8 @@ public final class LMKPhotoBrowserViewController: UIViewController, LMKThemeAppl
         }
     }
 
+    /// iOS 26 only: earlier systems have no per-controller lock, so the browser rotates there
+    /// and re-aligns its page to the new width.
     @available(iOS 26.0, *)
     override public var prefersInterfaceOrientationLocked: Bool {
         resolvedStyle.locksOrientation ?? false
@@ -466,11 +539,15 @@ public final class LMKPhotoBrowserViewController: UIViewController, LMKThemeAppl
     // MARK: - Public API
 
     /// Reloads the pages from the data source. Call after the data source's content changes.
+    /// The current index is clamped to the new count (zero when nothing is left).
     public func reloadData() {
         collectionView.reloadData()
         render()
         let count = photoCount
-        guard count > 0 else { return }
+        guard count > 0 else {
+            currentIndex = 0
+            return
+        }
         updateCurrentIndex(max(0, min(currentIndex, count - 1)))
     }
 
@@ -524,9 +601,22 @@ public final class LMKPhotoBrowserViewController: UIViewController, LMKThemeAppl
 
     // MARK: - Key Commands
 
+    /// Whether the pages run right to left (the flow layout mirrors them), so the next photo
+    /// sits on the left.
+    var isRightToLeft: Bool {
+        collectionView.effectiveUserInterfaceLayoutDirection == .rightToLeft
+    }
+
     override public var keyCommands: [UIKeyCommand]? {
-        let previous = UIKeyCommand(title: strings.previousPhoto, action: #selector(showPreviousFromKeyCommand), input: UIKeyCommand.inputLeftArrow, modifierFlags: [])
-        let next = UIKeyCommand(title: strings.nextPhoto, action: #selector(showNextFromKeyCommand), input: UIKeyCommand.inputRightArrow, modifierFlags: [])
+        // The arrows follow the pages: in a right-to-left layout the next photo is on the left.
+        let rightToLeft = isRightToLeft
+        let previous = UIKeyCommand(
+            title: strings.previousPhoto,
+            action: #selector(showPreviousFromKeyCommand),
+            input: rightToLeft ? UIKeyCommand.inputRightArrow : UIKeyCommand.inputLeftArrow,
+            modifierFlags: []
+        )
+        let next = UIKeyCommand(title: strings.nextPhoto, action: #selector(showNextFromKeyCommand), input: rightToLeft ? UIKeyCommand.inputLeftArrow : UIKeyCommand.inputRightArrow, modifierFlags: [])
         previous.wantsPriorityOverSystemBehavior = true
         next.wantsPriorityOverSystemBehavior = true
         var commands = [

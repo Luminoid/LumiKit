@@ -19,13 +19,21 @@ struct LMKSortMenuTests {
         .init(id: .list, title: "List", systemImageName: "list.bullet"), .init(id: .grid, title: "Grid", systemImageName: "square.grid.2x2"),
     ]
 
+    /// The menus the deferred element builds for `state`: the production path, with the state frozen.
     private func sections(
         state: LMKSortMenu.State<Sort, Layout>,
         onSelectSort: @escaping @MainActor (Sort, LMKSortMenu.Direction) -> Void = { _, _ in },
         onSelectLayout: (@MainActor (Layout) -> Void)? = nil
     ) -> [UIMenu] {
-        LMKSortMenu.makeSections(sortOptions: sortOptions, layoutOptions: layoutOptions, strings: LMKSortMenu.Strings(), state: state, onSelectSort: onSelectSort, onSelectLayout: onSelectLayout)
-            .compactMap { $0 as? UIMenu }
+        LMKMenu.makeElements(sections: LMKSortMenu.makeMenuSections(
+            sortOptions: sortOptions,
+            layoutOptions: layoutOptions,
+            strings: LMKSortMenu.Strings(),
+            state: { state },
+            onSelectSort: onSelectSort,
+            onSelectLayout: onSelectLayout
+        ))
+        .compactMap { $0 as? UIMenu }
     }
 
     @Test
@@ -83,14 +91,14 @@ struct LMKSortMenuTests {
 
     @Test
     func `No layout options means no layout section, and the sort-only overload builds a menu`() {
-        let menus = LMKSortMenu.makeSections(
+        let menus = LMKMenu.makeElements(sections: LMKSortMenu.makeMenuSections(
             sortOptions: sortOptions,
             layoutOptions: [LMKSortMenu.Option<Never>](),
             strings: LMKSortMenu.Strings(),
-            state: LMKSortMenu.State<Sort, Never>(selectedSort: .name),
+            state: { LMKSortMenu.State<Sort, Never>(selectedSort: .name) },
             onSelectSort: { _, _ in },
             onSelectLayout: nil
-        )
+        ))
         #expect(menus.count == 1)
         let menu = LMKSortMenu.makeMenu(sortOptions: sortOptions, state: { (Sort.name, .ascending) }, onSelectSort: { _, _ in })
         #expect(menu.children.count == 1)

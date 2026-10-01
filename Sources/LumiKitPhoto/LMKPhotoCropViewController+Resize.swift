@@ -26,14 +26,14 @@ extension LMKPhotoCropViewController {
             guard handle.isCorner else { return frame }
             return resizedWithFixedRatio(frame, handle: handle, deltaX: deltaX, deltaY: deltaY, ratio: ratio, bounds: bounds, minimumSize: minimumSize)
         }
+        // The bounds and the minimum limit the delta itself, so the dragged edge stops where
+        // it should and the opposite edge never moves.
         var result = frame
         if handle.isCorner {
-            applyCornerDelta(handle: handle, frame: &result, deltaX: deltaX, deltaY: deltaY, bounds: bounds)
+            applyCornerDelta(handle: handle, frame: &result, deltaX: deltaX, deltaY: deltaY, bounds: bounds, minimumSize: minimumSize)
         } else {
-            applyEdgeDelta(handle: handle, frame: &result, deltaX: deltaX, deltaY: deltaY, bounds: bounds)
+            applyEdgeDelta(handle: handle, frame: &result, deltaX: deltaX, deltaY: deltaY, bounds: bounds, minimumSize: minimumSize)
         }
-        result.size.width = max(result.width, minimumSize)
-        result.size.height = max(result.height, minimumSize)
         return result
     }
 
@@ -48,10 +48,13 @@ extension LMKPhotoCropViewController {
         bounds: CGRect,
         minimumSize: CGFloat
     ) -> CGRect {
+        // The distance from the anchor in the handle's own direction; a corner dragged past
+        // the anchor collapses the frame (to the minimum below) instead of growing it again.
         let anchor = anchorPoint(handle: handle, frame: frame)
         let corner = draggedCorner(handle: handle, frame: frame, deltaX: deltaX, deltaY: deltaY)
-        var width = abs(corner.x - anchor.x)
-        var height = abs(corner.y - anchor.y)
+        let direction = direction(of: handle)
+        var width = max(0, (corner.x - anchor.x) * direction.x)
+        var height = max(0, (corner.y - anchor.y) * direction.y)
         if width / ratio <= height {
             height = width / ratio
         } else {
@@ -105,6 +108,17 @@ extension LMKPhotoCropViewController {
         }
     }
 
+    /// The direction the dragged corner grows the frame in, away from the anchor: -1 toward
+    /// the left or the top, 1 toward the right or the bottom.
+    private nonisolated static func direction(of handle: ResizeHandle) -> CGPoint {
+        switch handle {
+        case .topLeft: CGPoint(x: -1, y: -1)
+        case .topRight: CGPoint(x: 1, y: -1)
+        case .bottomLeft: CGPoint(x: -1, y: 1)
+        case .bottomRight, .top, .bottom, .left, .right: CGPoint(x: 1, y: 1)
+        }
+    }
+
     private nonisolated static func draggedCorner(handle: ResizeHandle, frame: CGRect, deltaX: CGFloat, deltaY: CGFloat) -> CGPoint {
         switch handle {
         case .topLeft: CGPoint(x: frame.minX + deltaX, y: frame.minY + deltaY)
@@ -125,57 +139,62 @@ extension LMKPhotoCropViewController {
 
     // MARK: - Free
 
-    private nonisolated static func applyCornerDelta(handle: ResizeHandle, frame: inout CGRect, deltaX: CGFloat, deltaY: CGFloat, bounds: CGRect) {
-        var limitedX = deltaX
-        var limitedY = deltaY
+    /// The delta a left or top edge may move by: not past the bounds, not past the point where
+    /// the frame would be smaller than the minimum.
+    private nonisolated static func leadingDelta(_ delta: CGFloat, edge: CGFloat, boundsEdge: CGFloat, length: CGFloat, minimumSize: CGFloat) -> CGFloat {
+        min(max(delta, boundsEdge - edge), length - minimumSize)
+    }
+
+    /// The delta a right or bottom edge may move by: not past the bounds, not below the minimum.
+    private nonisolated static func trailingDelta(_ delta: CGFloat, edge: CGFloat, boundsEdge: CGFloat, length: CGFloat, minimumSize: CGFloat) -> CGFloat {
+        max(min(delta, boundsEdge - edge), minimumSize - length)
+    }
+
+    private nonisolated static func applyCornerDelta(handle: ResizeHandle, frame: inout CGRect, deltaX: CGFloat, deltaY: CGFloat, bounds: CGRect, minimumSize: CGFloat) {
         switch handle {
         case .topLeft:
-            if frame.minY + deltaY < bounds.minY { limitedY = bounds.minY - frame.minY }
-            if frame.minX + deltaX < bounds.minX { limitedX = bounds.minX - frame.minX }
-            frame.origin.x += limitedX
-            frame.origin.y += limitedY
-            frame.size.width -= limitedX
-            frame.size.height -= limitedY
+            let dx = leadingDelta(deltaX, edge: frame.minX, boundsEdge: bounds.minX, length: frame.width, minimumSize: minimumSize)
+            let dy = leadingDelta(deltaY, edge: frame.minY, boundsEdge: bounds.minY, length: frame.height, minimumSize: minimumSize)
+            frame.origin.x += dx
+            frame.origin.y += dy
+            frame.size.width -= dx
+            frame.size.height -= dy
         case .topRight:
-            if frame.minY + deltaY < bounds.minY { limitedY = bounds.minY - frame.minY }
-            if frame.maxX + deltaX > bounds.maxX { limitedX = bounds.maxX - frame.maxX }
-            frame.origin.y += limitedY
-            frame.size.width += limitedX
-            frame.size.height -= limitedY
+            let dx = trailingDelta(deltaX, edge: frame.maxX, boundsEdge: bounds.maxX, length: frame.width, minimumSize: minimumSize)
+            let dy = leadingDelta(deltaY, edge: frame.minY, boundsEdge: bounds.minY, length: frame.height, minimumSize: minimumSize)
+            frame.origin.y += dy
+            frame.size.width += dx
+            frame.size.height -= dy
         case .bottomLeft:
-            if frame.maxY + deltaY > bounds.maxY { limitedY = bounds.maxY - frame.maxY }
-            if frame.minX + deltaX < bounds.minX { limitedX = bounds.minX - frame.minX }
-            frame.origin.x += limitedX
-            frame.size.width -= limitedX
-            frame.size.height += limitedY
+            let dx = leadingDelta(deltaX, edge: frame.minX, boundsEdge: bounds.minX, length: frame.width, minimumSize: minimumSize)
+            let dy = trailingDelta(deltaY, edge: frame.maxY, boundsEdge: bounds.maxY, length: frame.height, minimumSize: minimumSize)
+            frame.origin.x += dx
+            frame.size.width -= dx
+            frame.size.height += dy
         case .bottomRight:
-            if frame.maxY + deltaY > bounds.maxY { limitedY = bounds.maxY - frame.maxY }
-            if frame.maxX + deltaX > bounds.maxX { limitedX = bounds.maxX - frame.maxX }
-            frame.size.width += limitedX
-            frame.size.height += limitedY
+            let dx = trailingDelta(deltaX, edge: frame.maxX, boundsEdge: bounds.maxX, length: frame.width, minimumSize: minimumSize)
+            let dy = trailingDelta(deltaY, edge: frame.maxY, boundsEdge: bounds.maxY, length: frame.height, minimumSize: minimumSize)
+            frame.size.width += dx
+            frame.size.height += dy
         case .top, .bottom, .left, .right:
             break
         }
     }
 
-    private nonisolated static func applyEdgeDelta(handle: ResizeHandle, frame: inout CGRect, deltaX: CGFloat, deltaY: CGFloat, bounds: CGRect) {
-        var limitedX = deltaX
-        var limitedY = deltaY
+    private nonisolated static func applyEdgeDelta(handle: ResizeHandle, frame: inout CGRect, deltaX: CGFloat, deltaY: CGFloat, bounds: CGRect, minimumSize: CGFloat) {
         switch handle {
         case .top:
-            if frame.minY + deltaY < bounds.minY { limitedY = bounds.minY - frame.minY }
-            frame.origin.y += limitedY
-            frame.size.height -= limitedY
+            let dy = leadingDelta(deltaY, edge: frame.minY, boundsEdge: bounds.minY, length: frame.height, minimumSize: minimumSize)
+            frame.origin.y += dy
+            frame.size.height -= dy
         case .bottom:
-            if frame.maxY + deltaY > bounds.maxY { limitedY = bounds.maxY - frame.maxY }
-            frame.size.height += limitedY
+            frame.size.height += trailingDelta(deltaY, edge: frame.maxY, boundsEdge: bounds.maxY, length: frame.height, minimumSize: minimumSize)
         case .left:
-            if frame.minX + deltaX < bounds.minX { limitedX = bounds.minX - frame.minX }
-            frame.origin.x += limitedX
-            frame.size.width -= limitedX
+            let dx = leadingDelta(deltaX, edge: frame.minX, boundsEdge: bounds.minX, length: frame.width, minimumSize: minimumSize)
+            frame.origin.x += dx
+            frame.size.width -= dx
         case .right:
-            if frame.maxX + deltaX > bounds.maxX { limitedX = bounds.maxX - frame.maxX }
-            frame.size.width += limitedX
+            frame.size.width += trailingDelta(deltaX, edge: frame.maxX, boundsEdge: bounds.maxX, length: frame.width, minimumSize: minimumSize)
         case .topLeft, .topRight, .bottomLeft, .bottomRight:
             break
         }

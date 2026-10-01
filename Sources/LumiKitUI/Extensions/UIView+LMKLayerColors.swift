@@ -34,20 +34,32 @@ public extension UIView {
     // MARK: - Shadow
 
     /// Applies the theme's shadow for `level` (`.none` clears it), resolved against this
-    /// view's traits and re-stamped on theme, dark mode, and contrast changes.
+    /// view's traits and re-stamped on theme, dark mode, and contrast changes. A visible
+    /// shadow turns `masksToBounds` off, since a clipping layer cannot draw one.
     ///
     /// ```swift
     /// cardView.lmk_applyShadow(.level3)
     /// ```
     func lmk_applyShadow(_ level: LMKShadow.Level) {
+        guard level != .none else {
+            lmk_removeShadow()
+            return
+        }
         lmk_restamper(creating: true)?.shadow = .level(level)
+        layer.masksToBounds = false
         lmk_restampLayerColors()
     }
 
     /// Applies `shadow`, resolving its color against this view's traits and re-stamping
-    /// it on trait changes (a dynamic `color` therefore follows dark mode).
+    /// it on trait changes (a dynamic `color` therefore follows dark mode). A zero opacity
+    /// clears the shadow; a visible one turns `masksToBounds` off.
     func lmk_applyShadow(_ shadow: LMKShadowStyle) {
+        guard shadow.opacity > 0 else {
+            lmk_removeShadow()
+            return
+        }
         lmk_restamper(creating: true)?.shadow = .style(shadow)
+        layer.masksToBounds = false
         lmk_restampLayerColors()
     }
 
@@ -89,7 +101,7 @@ public extension UIView {
 
     // MARK: - Internals
 
-    /// Whether a shadow or border source is registered for re-stamping.
+    /// Whether a shadow or border source is registered for re-stamping. Test hook.
     internal var lmk_isRestampingLayerColors: Bool {
         lmk_restamper(creating: false) != nil
     }
@@ -133,7 +145,6 @@ public extension UIView {
             layer.shadowOffset = style.offset
             layer.shadowRadius = style.radius
             layer.shadowOpacity = style.opacity
-            layer.masksToBounds = false
         }
         if let borderColor = restamper.borderColor {
             layer.borderColor = borderColor.resolvedColor(with: traitCollection).cgColor

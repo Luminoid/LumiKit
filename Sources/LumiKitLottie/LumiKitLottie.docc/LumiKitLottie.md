@@ -16,7 +16,7 @@ let refresh = LMKLottieRefreshControl.install(on: tableView) { [weak self] in
 addKeyCommand(LMKLottieRefreshControl.makeRefreshKeyCommand(action: #selector(reload)))
 ```
 
-Pass `animation: LottieAnimation.named("spinner")` to use your own animation; set `Style.appliesTint = false` to keep its colors.
+Pass `animation: LottieAnimation.named("spinner")` to use your own animation: it plays its own timeline, holding through the pull and looping from a `PHASE2_SPIN_LOOP` marker (or looping whole without one), unless `Style.timeline` says otherwise. Set `Style.appliesTint = false` to keep its colors. A refresh arms only while a finger is down and past the threshold, so a bounce or a programmatic offset never starts one; the ring re-tints on appearance and contrast changes and follows Reduce Motion at runtime.
 
 ## Topics
 

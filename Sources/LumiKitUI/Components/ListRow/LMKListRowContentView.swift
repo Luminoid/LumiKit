@@ -30,6 +30,17 @@ public final class LMKListRowContentView: UIView, UIContentView, LMKThemeApplyin
     /// The configuration as `LMKListRowConfiguration`.
     public private(set) var current: LMKListRowConfiguration
 
+    /// The full-bleed fill behind the content while `Style.highlighted` / `Style.selected` give
+    /// one (hidden otherwise), drawn with `stateBackgroundCorners`.
+    public let stateBackgroundView: UIView = LMKSurfaceView()
+    /// The corners of `stateBackgroundView`; a host that rounds the row sets the same ones.
+    public var stateBackgroundCorners: LMKCornerStyle = .square {
+        didSet {
+            guard stateBackgroundCorners != oldValue else { return }
+            applyTheme(traitCollection.lmkTheme)
+        }
+    }
+
     public let leadingContainer: UIView = LMKSurfaceView()
     public let leadingImageView = UIImageView()
     public let titleLabel = UILabel()
@@ -78,6 +89,13 @@ public final class LMKListRowContentView: UIView, UIContentView, LMKThemeApplyin
     // MARK: - Setup
 
     private func setupUI() {
+        stateBackgroundView.isUserInteractionEnabled = false
+        stateBackgroundView.isHidden = true
+        addSubview(stateBackgroundView)
+        stateBackgroundView.snp.makeConstraints { make in
+            make.edges.equalToSuperview()
+        }
+
         leadingImageView.contentMode = .scaleAspectFill
         leadingImageView.clipsToBounds = true
         leadingContainer.addSubview(leadingImageView)
@@ -126,12 +144,17 @@ public final class LMKListRowContentView: UIView, UIContentView, LMKThemeApplyin
             make.trailing.equalToSuperview()
             make.centerY.equalTo(contentGuide)
             make.top.greaterThanOrEqualTo(contentGuide)
+            // With every trailing view hidden the stack has no width of its own; it collapses so
+            // the text takes the room (the visible views' required hugging wins otherwise).
+            make.width.equalTo(0).priority(.medium)
         }
         textStack.snp.makeConstraints { make in
             make.leading.equalTo(leadingContainer.snp.trailing)
             make.centerY.equalTo(contentGuide)
             make.top.greaterThanOrEqualTo(contentGuide)
-            make.trailing.lessThanOrEqualTo(trailingStack.snp.leading)
+            // Pinned, not `<=`: a wrapping label bounded only from one side keeps the narrow
+            // width an early layout pass gave it.
+            make.trailing.equalTo(trailingStack.snp.leading)
         }
         // A layout guide, not a constraint on self: a constraint on the view would switch off its
         // autoresizing translation and break hosts that position it by frame.
@@ -153,24 +176,60 @@ public final class LMKListRowContentView: UIView, UIContentView, LMKThemeApplyin
     public func applyTheme(_ theme: LMKTheme) {
         let style = theme.listRow.merging(current.style)
         let insets = style.contentInsets ?? NSDirectionalEdgeInsets(top: theme.spacing.small, leading: theme.spacing.large, bottom: theme.spacing.small, trailing: theme.spacing.large)
-        directionalLayoutMargins = insets
         contentTopConstraint?.update(offset: insets.top)
         contentBottomConstraint?.update(offset: -insets.bottom)
         let minimumHeight = style.minimumHeight ?? theme.layout.rowHeightCompact
         minimumHeightConstraint?.update(offset: minimumHeight)
         preferredHeightConstraint?.update(offset: minimumHeight)
 
+        let state = stateStyle(style)
         applyLeading(style: style, theme: theme, insets: insets)
-        applyText(style: style, theme: theme)
-        applyTrailing(style: style, theme: theme, insets: insets)
+        applyText(style: style, theme: theme, foreground: state?.foregroundColor)
+        applyTrailing(style: style, theme: theme, insets: insets, foreground: state?.foregroundColor)
+        applyStateBackground(state?.background, theme: theme)
 
-        alpha = current.isEnabled ? 1 : (style.disabled?.alpha ?? theme.alpha.disabled)
+        var contentAlpha = state?.alpha ?? 1
+        if !current.isEnabled { contentAlpha = min(contentAlpha, style.disabled?.alpha ?? theme.alpha.disabled) }
+        alpha = contentAlpha
         updateAccessibility()
+    }
+
+    /// The per-state style for the configuration's cell state: `selected` under `highlighted`.
+    private func stateStyle(_ style: LMKListRowConfiguration.Style) -> LMKControlStateStyle? {
+        LMKControlStateStyle.merge(current.isSelected ? style.selected : nil, current.isHighlighted ? style.highlighted : nil)
+    }
+
+    /// Shows the state fill at once (a press reads instantly) and fades it out.
+    private func applyStateBackground(_ background: LMKBackgroundStyle?, theme: LMKTheme) {
+        if let background {
+            _ = stateBackgroundView.lmk_apply(surface: LMKSurfaceStyle(background: background, corners: stateBackgroundCorners))
+            stateBackgroundView.layer.removeAllAnimations()
+            stateBackgroundView.isHidden = false
+            stateBackgroundView.alpha = 1
+        } else if !stateBackgroundView.isHidden {
+            let hide = { [stateBackgroundView] in
+                stateBackgroundView.isHidden = true
+                stateBackgroundView.alpha = 1
+            }
+            if LMKAnimation.shouldAnimate, window != nil {
+                UIView.animate(withDuration: theme.animation.fast, animations: { self.stateBackgroundView.alpha = 0 }, completion: { finished in
+                    if finished { hide() }
+                })
+            } else {
+                hide()
+            }
+        }
     }
 
     private func applyLeading(style: LMKListRowConfiguration.Style, theme: LMKTheme, insets: NSDirectionalEdgeInsets) {
         let size = style.leadingSize ?? theme.layout.iconCircle
-        leadingCustomView?.removeFromSuperview()
+        var customView: UIView?
+        if case let .view(view) = current.leading { customView = view }
+        // Remove only what is still ours: a reused row must not pull a host's view out of the
+        // row that took it since.
+        if let old = leadingCustomView, old !== customView, old.superview === leadingContainer {
+            old.removeFromSuperview()
+        }
         leadingCustomView = nil
         leadingImageView.isHidden = false
         var hasLeading = true
@@ -180,7 +239,7 @@ public final class LMKListRowContentView: UIView, UIContentView, LMKThemeApplyin
             hasLeading = false
             cancelAsyncLoad()
             leadingImageView.image = nil
-            leadingContainer.lmk_apply(surface: LMKSurfaceStyle(background: .clear, corners: LMKCornerStyle.none))
+            leadingContainer.lmk_apply(surface: LMKSurfaceStyle(background: .clear, corners: LMKCornerStyle.square))
         case let .symbol(name, tint):
             cancelAsyncLoad()
             showSymbol(name, tint: tint ?? LMKColor.primary, style: style, theme: theme)
@@ -207,10 +266,12 @@ public final class LMKListRowContentView: UIView, UIContentView, LMKThemeApplyin
         case let .view(view):
             cancelAsyncLoad()
             leadingImageView.isHidden = true
-            leadingContainer.lmk_apply(surface: LMKSurfaceStyle(background: .clear, corners: LMKCornerStyle.none))
-            leadingContainer.addSubview(view)
-            view.snp.makeConstraints { make in
-                make.edges.equalToSuperview()
+            leadingContainer.lmk_apply(surface: LMKSurfaceStyle(background: .clear, corners: LMKCornerStyle.square))
+            if view.superview !== leadingContainer {
+                leadingContainer.addSubview(view)
+                view.snp.remakeConstraints { make in
+                    make.edges.equalToSuperview()
+                }
             }
             leadingCustomView = view
         }
@@ -230,7 +291,7 @@ public final class LMKListRowContentView: UIView, UIContentView, LMKThemeApplyin
         leadingImageView.image = UIImage(systemName: name, withConfiguration: configuration)
         leadingImageView.contentMode = .center
         leadingImageView.tintColor = tint
-        leadingImageView.lmk_apply(surface: LMKSurfaceStyle(corners: LMKCornerStyle.none))
+        leadingImageView.lmk_apply(surface: LMKSurfaceStyle(corners: LMKCornerStyle.square))
         leadingContainer.lmk_apply(surface: LMKSurfaceStyle(
             background: .solid(tint.withAlphaComponent(style.leadingCircleAlpha ?? theme.alpha.xxs)),
             corners: .circle
@@ -252,29 +313,34 @@ public final class LMKListRowContentView: UIView, UIContentView, LMKThemeApplyin
         asyncImageID = nil
     }
 
-    private func applyText(style: LMKListRowConfiguration.Style, theme: LMKTheme) {
+    private func applyText(style: LMKListRowConfiguration.Style, theme: LMKTheme, foreground: UIColor?) {
         textStack.spacing = style.textSpacing ?? theme.spacing.xxs
-        titleLabel.lmk_apply(style.titleTextStyle ?? .body, color: style.titleColor ?? LMKColor.textPrimary)
+        titleLabel.lmk_apply(style.titleTextStyle ?? .body, color: foreground ?? style.titleColor ?? LMKColor.textPrimary)
         // Unlimited by default (as `UIListContentConfiguration`): a one-line row truncates at large Dynamic Type sizes.
         titleLabel.numberOfLines = style.titleLines ?? 0
         titleLabel.lmk_setText(current.title)
-        subtitleLabel.lmk_apply(style.subtitleTextStyle ?? .caption, color: style.subtitleColor ?? LMKColor.textSecondary)
+        subtitleLabel.lmk_apply(style.subtitleTextStyle ?? .caption, color: foreground ?? style.subtitleColor ?? LMKColor.textSecondary)
         subtitleLabel.numberOfLines = style.subtitleLines ?? 0
         subtitleLabel.lmk_setText(current.subtitle)
         subtitleLabel.isHidden = current.subtitle?.isEmpty ?? true
-        detailLabel.lmk_apply(style.detailTextStyle ?? .bodyMedium, color: style.detailColor ?? LMKColor.textPrimary)
+        detailLabel.lmk_apply(style.detailTextStyle ?? .bodyMedium, color: foreground ?? style.detailColor ?? LMKColor.textPrimary)
         detailLabel.lmk_setText(current.detail)
         detailLabel.isHidden = current.detail?.isEmpty ?? true
     }
 
-    private func applyTrailing(style: LMKListRowConfiguration.Style, theme: LMKTheme, insets: NSDirectionalEdgeInsets) {
+    private func applyTrailing(style: LMKListRowConfiguration.Style, theme: LMKTheme, insets: NSDirectionalEdgeInsets, foreground: UIColor?) {
         trailingStack.spacing = style.trailingSpacing ?? theme.spacing.small
-        trailingCustomView?.removeFromSuperview()
+        var customView: UIView?
+        if case let .view(view) = current.trailing { customView = view }
+        if let old = trailingCustomView, old !== customView, old.superview === trailingStack {
+            trailingStack.removeArrangedSubview(old)
+            old.removeFromSuperview()
+        }
         trailingCustomView = nil
         toggle?.isHidden = true
         badgeView?.isHidden = true
         accessoryImageView.isHidden = true
-        accessoryImageView.tintColor = style.accessoryTint ?? LMKColor.textTertiary
+        accessoryImageView.tintColor = foreground ?? style.accessoryTint ?? LMKColor.textTertiary
 
         switch current.trailing {
         case .none:
@@ -286,13 +352,13 @@ public final class LMKListRowContentView: UIView, UIContentView, LMKThemeApplyin
         case .checkmark:
             let configuration = UIImage.SymbolConfiguration(pointSize: style.accessoryChevronSize ?? theme.layout.symbolAccessory, weight: .semibold)
             accessoryImageView.image = UIImage(systemName: "checkmark", withConfiguration: configuration)
-            accessoryImageView.tintColor = style.checkmarkTint ?? LMKColor.primary
+            accessoryImageView.tintColor = foreground ?? style.checkmarkTint ?? LMKColor.primary
             accessoryImageView.isHidden = false
-        case let .toggle(isOn, onChange):
+        case let .toggle(isOn, _):
             let toggle = self.toggle ?? makeToggle()
             toggle.isOn = isOn
             toggle.isEnabled = current.isEnabled
-            toggle.onValueChange = onChange
+            toggle.onValueChange = { [weak self] value in self?.handleToggle(value) }
             toggle.isHidden = false
             // The row's title names the switch when VoiceOver reaches it on its own.
             toggle.accessibilityLabel = current.title
@@ -302,10 +368,13 @@ public final class LMKListRowContentView: UIView, UIContentView, LMKThemeApplyin
             badgeView.isHidden = false
         case let .image(image, tint):
             accessoryImageView.image = image
-            accessoryImageView.tintColor = tint ?? style.accessoryTint ?? LMKColor.textTertiary
+            accessoryImageView.tintColor = foreground ?? tint ?? style.accessoryTint ?? LMKColor.textTertiary
             accessoryImageView.isHidden = false
         case let .view(view):
-            trailingStack.addArrangedSubview(view)
+            view.setContentHuggingPriority(.required, for: .horizontal)
+            if view.superview !== trailingStack {
+                trailingStack.addArrangedSubview(view)
+            }
             trailingCustomView = view
         }
 
@@ -313,7 +382,7 @@ public final class LMKListRowContentView: UIView, UIContentView, LMKThemeApplyin
             make.trailing.equalToSuperview().offset(-insets.trailing)
         }
         textStack.snp.updateConstraints { make in
-            make.trailing.lessThanOrEqualTo(trailingStack.snp.leading).offset(trailingStack.arrangedSubviews.allSatisfy(\.isHidden) ? 0 : -(style.trailingSpacing ?? theme.spacing.small))
+            make.trailing.equalTo(trailingStack.snp.leading).offset(trailingStack.arrangedSubviews.allSatisfy(\.isHidden) ? 0 : -(style.trailingSpacing ?? theme.spacing.small))
         }
     }
 
@@ -329,6 +398,31 @@ public final class LMKListRowContentView: UIView, UIContentView, LMKThemeApplyin
         trailingStack.insertArrangedSubview(badge, at: trailingStack.arrangedSubviews.count - 1)
         badgeView = badge
         return badge
+    }
+
+    // MARK: - Toggle
+
+    /// Records the flip in the configuration (and in the hosting cell's stored one, so the next
+    /// configuration pass keeps it), then tells the host.
+    private func handleToggle(_ value: Bool) {
+        guard case let .toggle(_, onValueChange) = current.trailing else { return }
+        let trailing = LMKListRowConfiguration.Trailing.toggle(isOn: value, onValueChange: onValueChange)
+        current.trailing = trailing
+        if let cell = enclosingCell, var stored = cell.contentConfiguration as? LMKListRowConfiguration, case .toggle = stored.trailing {
+            stored.trailing = trailing
+            cell.contentConfiguration = stored
+        }
+        onValueChange(value)
+    }
+
+    /// The table or collection cell this view is the content of, if any.
+    private var enclosingCell: (any LMKListRowHostingCell)? {
+        var view = superview
+        while let candidate = view {
+            if let cell = candidate as? any LMKListRowHostingCell { return cell }
+            view = candidate.superview
+        }
+        return nil
     }
 
     // MARK: - Accessibility
@@ -352,6 +446,14 @@ public final class LMKListRowContentView: UIView, UIContentView, LMKThemeApplyin
         accessibilityTraits = traits
     }
 }
+
+/// The cells whose `contentConfiguration` a toggle row writes its value back into.
+protocol LMKListRowHostingCell: UIView {
+    var contentConfiguration: (any UIContentConfiguration)? { get set }
+}
+
+extension UITableViewCell: LMKListRowHostingCell {}
+extension UICollectionViewCell: LMKListRowHostingCell {}
 
 public nonisolated extension LMKTheme {
     /// App-wide default style for `LMKListRowConfiguration`.

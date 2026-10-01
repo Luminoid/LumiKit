@@ -36,7 +36,7 @@ extension LMKTheme {
 - ``LMKTheme/update(_:)`` copies the current theme, lets you mutate it, and applies the result.
 - ``LMKTheme/reset()`` restores ``LMKTheme/default``.
 - ``LMKTheme/current`` reads the process-wide theme from any isolation.
-- ``LMKTheme/observe(_:)`` and ``LMKTheme/updates`` deliver each applied theme to a closure or an `AsyncStream`.
+- ``LMKTheme/observe(_:)`` and ``LMKTheme/updates`` deliver each applied theme to a closure or an `AsyncStream`. Keep the ``LMKThemeObservation`` that `observe` returns: releasing it ends the observation.
 
 ## How propagation works
 
@@ -52,11 +52,11 @@ The theme has a slot for every component (`theme.button`, `theme.chip`, `theme.n
 LMKTheme.update { theme in
     theme.button.variant = .tinted
     theme.card.surface.shadow = .level(.level2)
-    theme.toast.position = .bottom
+    theme.toast.showsIcon = false
 }
 ```
 
-The cascade is token, then `theme.<component>`, then the instance's `style`.
+The cascade is token, then `theme.<component>`, then the instance's `style`. A component resolves every value against the theme handed to `applyTheme(_:)`, including spacing and sizes (`theme.spacing`, `theme.layout`), so a theme stamped on one window or subtree reaches its constraints too.
 
 ## App-defined values
 

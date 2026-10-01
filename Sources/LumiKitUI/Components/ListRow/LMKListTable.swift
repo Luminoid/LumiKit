@@ -27,6 +27,8 @@ public enum LMKListTable {
         tableView.dataSource = dataSource
         tableView.delegate = delegate
         tableView.rowHeight = UITableView.automaticDimension
+        // A static builder without a theme argument; the estimate is a layout hint read once at creation.
+        // swiftlint:disable:next no_global_token_proxies_in_components
         tableView.estimatedRowHeight = LMKLayout.rowHeightEstimated
         tableView.cellLayoutMarginsFollowReadableWidth = true
         if registersDefaultCell {

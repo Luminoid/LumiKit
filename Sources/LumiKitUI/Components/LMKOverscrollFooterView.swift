@@ -113,7 +113,10 @@ public final class LMKOverscrollFooterView: UIView {
     /// automatically; call it after a layout the observations cannot see.
     public func updatePosition() {
         guard let scrollView, scrollView.contentSize.height > 0 else { return }
-        let footerY = max(scrollView.contentSize.height + scrollView.adjustedContentInset.bottom, scrollView.bounds.height)
+        // Content shorter than the viewport parks the footer at the visible bottom, which sits
+        // `adjustedContentInset.top` (a navigation bar) above the bounds height.
+        let visibleBottom = scrollView.bounds.height - scrollView.adjustedContentInset.top
+        let footerY = max(scrollView.contentSize.height + scrollView.adjustedContentInset.bottom, visibleBottom)
         frame = CGRect(x: 0, y: footerY, width: scrollView.bounds.width, height: footerHeight)
         contentView.frame = bounds
 

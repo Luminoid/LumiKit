@@ -12,11 +12,9 @@ import UIKit
 // MARK: - Page Indicator
 
 final class PageIndicatorDetailViewController: DetailViewController {
-    override func viewDidLoad() {
-        super.viewDidLoad()
-
+    override func setupStackContent() {
         addSectionHeader("Basic (dots only)")
-        stack.addArrangedSubview(UILabel.lmk_make(.caption, text: "Default style: all dots same size, active dot uses primary color."))
+        stackView.addArrangedSubview(UILabel.lmk_make(.caption, text: "Default style: all dots same size, active dot uses primary color."))
 
         let basicLabel = UILabel.lmk_make(.body, text: "Page 1 of 5")
         basicLabel.textAlignment = .center
@@ -25,15 +23,15 @@ final class PageIndicatorDetailViewController: DetailViewController {
         basicIndicator.numberOfPages = 5
         basicIndicator.currentPage = 0
         basicIndicator.onPageChange = { page in
-            basicLabel.text = "Page \(page + 1) of 5"
+            basicLabel.lmk_setText("Page \(page + 1) of 5")
         }
         basicIndicator.snp.makeConstraints { $0.height.equalTo(20) }
-        stack.addArrangedSubview(basicIndicator)
-        stack.addArrangedSubview(basicLabel)
+        stackView.addArrangedSubview(basicIndicator)
+        stackView.addArrangedSubview(basicLabel)
 
         addDivider()
         addSectionHeader("Expanding Pill")
-        stack.addArrangedSubview(UILabel.lmk_make(.caption, text: "expandsActiveDot = true: active dot grows into a pill shape."))
+        stackView.addArrangedSubview(UILabel.lmk_make(.caption, text: "expandsActiveDot = true: active dot grows into a pill shape."))
 
         let pillLabel = UILabel.lmk_make(.body, text: "Page 1 of 5")
         pillLabel.textAlignment = .center
@@ -43,15 +41,15 @@ final class PageIndicatorDetailViewController: DetailViewController {
         pillIndicator.currentPage = 0
         pillIndicator.expandsActiveDot = true
         pillIndicator.onPageChange = { page in
-            pillLabel.text = "Page \(page + 1) of 5"
+            pillLabel.lmk_setText("Page \(page + 1) of 5")
         }
         pillIndicator.snp.makeConstraints { $0.height.equalTo(20) }
-        stack.addArrangedSubview(pillIndicator)
-        stack.addArrangedSubview(pillLabel)
+        stackView.addArrangedSubview(pillIndicator)
+        stackView.addArrangedSubview(pillLabel)
 
         addDivider()
-        addSectionHeader("Many Pages — Windowed (12 pages, max 7 dots)")
-        stack.addArrangedSubview(UILabel.lmk_make(.caption, text: "When pages > maxVisibleDots, a sliding window shows 7 dots. Edge dots are smaller."))
+        addSectionHeader("Windowed: 12 Pages, 7 Dots")
+        stackView.addArrangedSubview(UILabel.lmk_make(.caption, text: "When pages > maxVisibleDots, a sliding window shows 7 dots. Edge dots are smaller."))
 
         let manyLabel = UILabel.lmk_make(.body, text: "Page 1 of 12")
         manyLabel.textAlignment = .center
@@ -61,14 +59,14 @@ final class PageIndicatorDetailViewController: DetailViewController {
         manyIndicator.maxVisibleDots = 7
         manyIndicator.currentPage = 0
         manyIndicator.onPageChange = { page in
-            manyLabel.text = "Page \(page + 1) of 12"
+            manyLabel.lmk_setText("Page \(page + 1) of 12")
         }
         manyIndicator.snp.makeConstraints { $0.height.equalTo(20) }
-        stack.addArrangedSubview(manyIndicator)
-        stack.addArrangedSubview(manyLabel)
+        stackView.addArrangedSubview(manyIndicator)
+        stackView.addArrangedSubview(manyLabel)
 
         addDivider()
-        addSectionHeader("Many Pages — Windowed + Expanding Pill")
+        addSectionHeader("Windowed with an Expanding Pill")
 
         let manyPillLabel = UILabel.lmk_make(.body, text: "Page 1 of 15")
         manyPillLabel.textAlignment = .center
@@ -79,11 +77,11 @@ final class PageIndicatorDetailViewController: DetailViewController {
         manyPillIndicator.expandsActiveDot = true
         manyPillIndicator.currentPage = 0
         manyPillIndicator.onPageChange = { page in
-            manyPillLabel.text = "Page \(page + 1) of 15"
+            manyPillLabel.lmk_setText("Page \(page + 1) of 15")
         }
         manyPillIndicator.snp.makeConstraints { $0.height.equalTo(20) }
-        stack.addArrangedSubview(manyPillIndicator)
-        stack.addArrangedSubview(manyPillLabel)
+        stackView.addArrangedSubview(manyPillIndicator)
+        stackView.addArrangedSubview(manyPillLabel)
 
         addDivider()
         addSectionHeader("Programmatic Navigation")
@@ -92,7 +90,7 @@ final class PageIndicatorDetailViewController: DetailViewController {
         navIndicator.numberOfPages = 4
         navIndicator.currentPage = 0
         navIndicator.snp.makeConstraints { $0.height.equalTo(20) }
-        stack.addArrangedSubview(navIndicator)
+        stackView.addArrangedSubview(navIndicator)
 
         let prevBtn = LMKButton(title: "Previous", style: .ghost(.primary))
         prevBtn.onTap = { [weak navIndicator] in
@@ -110,6 +108,6 @@ final class PageIndicatorDetailViewController: DetailViewController {
         navRow.addArrangedSubview(prevBtn)
         navRow.addArrangedSubview(UIView())
         navRow.addArrangedSubview(nextBtn)
-        stack.addArrangedSubview(navRow)
+        stackView.addArrangedSubview(navRow)
     }
 }

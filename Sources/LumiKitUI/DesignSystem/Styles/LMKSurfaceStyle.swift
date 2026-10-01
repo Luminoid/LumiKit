@@ -64,8 +64,9 @@ public nonisolated struct LMKBorderStyle: Sendable, Equatable {
         Self(color: color, width: width, dash: pattern)
     }
 
-    /// No stroke (an explicit override that removes a default border).
-    public static let none = Self(width: 0)
+    /// No stroke: an explicit override that removes a default border.
+    /// (`nil` in an optional style field keeps the default instead.)
+    public static let hidden = Self(width: 0)
 
     /// Whether the stroke needs its own shape layer (dashed or inset).
     var needsShapeLayer: Bool {
@@ -77,7 +78,9 @@ public nonisolated struct LMKBorderStyle: Sendable, Equatable {
 
 /// Where a surface's shadow comes from.
 public nonisolated enum LMKShadowSource: Sendable, Equatable {
-    case none
+    /// No shadow: an explicit override that removes a default shadow.
+    /// (`nil` in an optional style field keeps the default instead.)
+    case hidden
     /// A theme elevation level.
     case level(LMKShadow.Level)
     /// A fully specified shadow.
@@ -86,7 +89,7 @@ public nonisolated enum LMKShadowSource: Sendable, Equatable {
     /// Whether anything is drawn.
     var isVisible: Bool {
         switch self {
-        case .none: false
+        case .hidden: false
         case let .level(level): level != .none
         case let .custom(style): style.opacity > 0
         }

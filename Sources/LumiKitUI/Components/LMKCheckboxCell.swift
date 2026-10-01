@@ -11,11 +11,15 @@ import UIKit
 
 /// Check-off row.
 ///
-/// The checkbox has a 44pt hit area; hosts should also toggle from
-/// `tableView(_:didSelectRowAt:)` so the whole row is a target:
+/// A tap on the checkbox flips the row (`isDone`, the strikethrough, the VoiceOver value) and
+/// reports the new value through `onValueChange`. The checkbox has a 44pt hit area; hosts should
+/// also toggle from `tableView(_:didSelectRowAt:)` with `setDone(_:animated:)` so the whole
+/// row is a target:
 /// ```swift
 /// cell.configure(title: item.title, subtitle: item.due, isDone: item.isDone)
-/// cell.onToggle = { [weak self] in self?.viewModel.toggle(item) }
+/// cell.onValueChange = { [weak self] isDone in self?.viewModel.setDone(isDone, for: item) }
+/// // didSelectRowAt:
+/// cell.setDone(!cell.isDone, animated: true)
 /// ```
 public final class LMKCheckboxCell: UITableViewCell, LMKThemeApplying {
     // MARK: - Style
@@ -118,8 +122,9 @@ public final class LMKCheckboxCell: UITableViewCell, LMKThemeApplying {
 
     // MARK: - Properties
 
-    /// Fired when the checkbox (or the row) requests a toggle.
-    public var onToggle: (() -> Void)?
+    /// Fired with the new `isDone` after a tap on the checkbox (or a VoiceOver activation of
+    /// the row) flipped it. `setDone(_:animated:)` and `configure` are silent.
+    public var onValueChange: ((Bool) -> Void)?
 
     public let checkbox = LMKCheckbox()
     public let titleLabel = UILabel()
@@ -163,7 +168,9 @@ public final class LMKCheckboxCell: UITableViewCell, LMKThemeApplying {
 
     private func setupUI() {
         selectionStyle = .none
-        checkbox.onToggle = { [weak self] _ in self?.onToggle?() }
+        isAccessibilityElement = true
+        accessibilityTraits = .button
+        checkbox.onValueChange = { [weak self] isChecked in self?.didToggle(to: isChecked) }
         checkbox.setContentHuggingPriority(.required, for: .horizontal)
 
         titleLabel.numberOfLines = 0
@@ -215,6 +222,44 @@ public final class LMKCheckboxCell: UITableViewCell, LMKThemeApplying {
         updateAccessibility()
     }
 
+    /// Sets the done state (the checkbox animates when `animated`) without firing `onValueChange`:
+    /// the row-tap path, where the host already knows the new value.
+    public func setDone(_ isDone: Bool, animated: Bool) {
+        self.isDone = isDone
+        checkbox.setChecked(isDone, animated: animated)
+        applyContent()
+        updateAccessibility()
+    }
+
+    /// The checkbox flipped itself: the row follows, then the host hears the new value.
+    private func didToggle(to isDone: Bool) {
+        self.isDone = isDone
+        applyContent()
+        updateAccessibility()
+        onValueChange?(isDone)
+    }
+
+    /// VoiceOver's double tap on the row toggles it, as a tap on the checkbox does; a row whose
+    /// checkbox is disabled does nothing.
+    override public func accessibilityActivate() -> Bool {
+        guard checkbox.isEnabled else { return false }
+        setDone(!isDone, animated: true)
+        onValueChange?(isDone)
+        return true
+    }
+
+    /// A button, selected when done, and not enabled while the checkbox is disabled (read live, so
+    /// a host that disables `checkbox` needs nothing else).
+    override public var accessibilityTraits: UIAccessibilityTraits {
+        get {
+            var traits = super.accessibilityTraits
+            if isDone { traits.insert(.selected) }
+            if !checkbox.isEnabled { traits.insert(.notEnabled) }
+            return traits
+        }
+        set { super.accessibilityTraits = newValue }
+    }
+
     private func applyContent() {
         let doneColor = resolved.doneColor ?? LMKColor.textTertiary
         titleLabel.lmk_apply(resolved.titleTextStyle ?? .body, color: isDone ? doneColor : (resolved.titleColor ?? LMKColor.textPrimary))
@@ -254,14 +299,13 @@ public final class LMKCheckboxCell: UITableViewCell, LMKThemeApplying {
         checkbox.accessibilityLabel = strings.checkboxAccessibilityLabel
         accessibilityLabel = [title, subtitle].compactMap(\.self).filter { !$0.isEmpty }.joined(separator: ". ")
         accessibilityValue = isDone ? strings.doneAccessibilityValue : strings.notDoneAccessibilityValue
-        accessibilityTraits = isDone ? [.button, .selected] : [.button]
     }
 
     // MARK: - Reuse
 
     override public func prepareForReuse() {
         super.prepareForReuse()
-        onToggle = nil
+        onValueChange = nil
         title = nil
         subtitle = nil
         isDone = false
@@ -273,6 +317,10 @@ public final class LMKCheckboxCell: UITableViewCell, LMKThemeApplying {
         accessibilityLabel = nil
         accessibilityValue = strings.notDoneAccessibilityValue
         accessibilityTraits = [.button]
+        // What a host sets on a disabled row must not ride along to the next one.
+        checkbox.isEnabled = true
+        isUserInteractionEnabled = true
+        alpha = 1
     }
 }
 

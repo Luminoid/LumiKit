@@ -12,13 +12,17 @@ import Testing
 
 struct LMKLoggerTests {
     @Test
-    func `Built-in categories exist`() {
-        _ = LMKLogger.LogCategory.general
-        _ = LMKLogger.LogCategory.data
-        _ = LMKLogger.LogCategory.ui
-        _ = LMKLogger.LogCategory.network
-        _ = LMKLogger.LogCategory.error
-        _ = LMKLogger.LogCategory.localization
+    func `Built-in categories carry distinct Console names`() {
+        let categories = [LMKLogger.LogCategory.general, .data, .ui, .network, .error, .localization]
+        #expect(categories.map(\.name) == ["General", "Data", "UI", "Network", "Error", "Localization"])
+        #expect(Set(categories.map(\.name)).count == categories.count)
+        #expect(LMKLogger.LogCategory.general === LMKLogger.LogCategory.general, "built-in categories are shared instances")
+    }
+
+    @Test
+    func `Privacy and log levels are hashable`() {
+        #expect(Set([LMKLogger.Privacy.public, .private, .public]).count == 2)
+        #expect(Set(LMKLogLevel.allCases).count == 4)
     }
 
     @Test
@@ -123,6 +127,34 @@ struct LMKLoggerConfigurationTests {
     }
 
     @Test
+    func `Filtered messages are never built`() {
+        final class Counter: Sendable {
+            let builds = Mutex(0)
+            func message() -> String {
+                builds.withLock { $0 += 1 }
+                return "built"
+            }
+        }
+        let counter = Counter()
+        withCapture { capture in
+            LMKLogger.minimumLevel = .warning
+            LMKLogger.info(counter.message())
+            LMKLogger.debug(counter.message())
+            LMKLogger.log(.info, counter.message())
+            #expect(counter.builds.withLock { $0 } == 0, "an interpolation below the threshold costs nothing")
+
+            LMKLogger.isEnabled = false
+            LMKLogger.error(counter.message())
+            #expect(counter.builds.withLock { $0 } == 0, "the kill switch skips the message too")
+
+            LMKLogger.isEnabled = true
+            LMKLogger.warning(counter.message())
+            #expect(counter.builds.withLock { $0 } == 1)
+            #expect(capture.all.map(\.message) == ["built"])
+        }
+    }
+
+    @Test
     func `Disabled logger emits nothing`() {
         withCapture { capture in
             LMKLogger.isEnabled = false
@@ -159,9 +191,11 @@ struct LMKLoggerConfigurationTests {
     // MARK: - Log store
 
     @Test
-    func `enableLogStore creates a store`() {
+    func `enableLogStore creates a store and clamps a capacity below one`() {
         LMKLogger.enableLogStore(maxEntries: 10)
-        #expect(LMKLogger.logStore != nil)
+        #expect(LMKLogger.logStore?.maxEntries == 10)
+        LMKLogger.enableLogStore(maxEntries: 0)
+        #expect(LMKLogger.logStore?.maxEntries == 1)
         LMKLogger.disableLogStore()
     }
 

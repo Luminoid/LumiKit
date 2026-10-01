@@ -28,16 +28,17 @@ extension UICollectionViewCell: LMKHighlightable {}
 // MARK: - Shared highlight constants
 
 /// Module-internal so `UITableViewCell+LMKHighlight.swift` can read the same
-/// overlay color when configuring `selectedBackgroundView` — keeps the two
+/// overlay color when configuring `selectedBackgroundView`, which keeps the two
 /// highlight APIs visually identical without a duplicated color literal.
 enum LMKHighlightConstants {
-    static let darkModeOverlayAlpha = LMKAlpha.small
-    static let lightModeOverlayAlpha = LMKAlpha.xxs
-    static let animationDuration = LMKAnimation.Duration.fast
+    // Computed, so a theme applied after first use still reaches them.
+    static var darkModeOverlayAlpha: CGFloat { LMKAlpha.small }
+    static var lightModeOverlayAlpha: CGFloat { LMKAlpha.xxs }
+    static var animationDuration: TimeInterval { LMKAnimation.Duration.fast }
     static let containerDetectionSubviewsThreshold = 2
 
     /// In dark mode the card itself is already dark, so a black overlay
-    /// barely registers — use a light (white) overlay instead to actually
+    /// barely registers, so a light (white) overlay is used instead to actually
     /// lighten the surface. Light mode keeps the black-on-light darkening.
     static var highlightOverlayColor: UIColor {
         UIColor { traitCollection in
@@ -56,7 +57,7 @@ public extension LMKHighlightable {
     /// Apply custom highlight effect to the cell. Call from
     /// `setHighlighted(_:animated:)` / `setSelected(_:animated:)` (table
     /// cells) or from `isHighlighted` / `isSelected` `didSet` (collection
-    /// cells — those properties aren't surfaced as `setX` methods).
+    /// cells, where those properties aren't surfaced as `setX` methods).
     func lmk_applyCustomHighlight(highlighted: Bool, animated: Bool) {
         let darkOverlayColor = LMKHighlightConstants.highlightOverlayColor
         let containerViews = lmk_findContainerViews(in: contentView)
@@ -94,9 +95,11 @@ public extension LMKHighlightable {
             }
         }
 
+        // Runs when the fade-out lands; a newer highlight may have reused the overlay by then
+        // (a selection following a touch-up), so only an overlay still at alpha 0 goes.
         let removeOverlaysIfNeeded = {
             if !highlighted {
-                for cv in containerViews {
+                for cv in containerViews where cv.lmk_highlightOverlay?.alpha == 0 {
                     cv.lmk_removeDarkOverlay()
                 }
             }
@@ -146,7 +149,7 @@ private extension UIView {
 
     /// Creates the overlay with matching corner radius/curve and resolves its
     /// frame synchronously (via `layoutIfNeeded`) so the very first display
-    /// pass renders rounded — preventing the rectangle-then-rounded flicker
+    /// pass renders rounded, preventing the rectangle-then-rounded flicker
     /// that occurs when the overlay is created inside `UIView.animate`.
     func lmk_installDarkOverlay(color: UIColor) {
         guard lmk_highlightOverlay == nil else { return }

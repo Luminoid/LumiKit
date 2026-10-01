@@ -43,6 +43,30 @@ struct UIViewLayerColorsShadowTests {
         #expect(!view.lmk_isRestampingLayerColors)
     }
 
+    /// The regression: an invisible shadow stayed registered, and every trait re-stamp turned
+    /// `masksToBounds` off, so a clipping card spilled its content after a dark-mode change.
+    @Test
+    func `An invisible shadow clears instead of registering, and re-stamps keep clipping`() {
+        let view = UIView(frame: CGRect(x: 0, y: 0, width: 10, height: 10))
+        let window = LMKThemeTesting.host(view, style: .light)
+        defer { window.isHidden = true }
+        view.layer.masksToBounds = true
+
+        view.lmk_applyShadow(.none)
+        #expect(!view.lmk_isRestampingLayerColors)
+        #expect(view.layer.masksToBounds)
+        view.lmk_applyShadow(LMKShadowStyle(color: .black, offset: .zero, radius: 4, opacity: 0))
+        #expect(!view.lmk_isRestampingLayerColors)
+        #expect(view.layer.masksToBounds)
+
+        window.traitOverrides.userInterfaceStyle = .dark
+        view.updateTraitsIfNeeded()
+        #expect(view.layer.masksToBounds, "nothing to re-stamp, so clipping stays")
+
+        view.lmk_applyShadow(.level2)
+        #expect(!view.layer.masksToBounds, "a visible shadow turns clipping off once, when applied")
+    }
+
     @Test
     func `Shadow color follows dark mode without re-applying`() {
         let view = UIView(frame: CGRect(x: 0, y: 0, width: 10, height: 10))

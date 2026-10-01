@@ -32,10 +32,12 @@ extension LMKPhotoBrowserViewController {
             guard gesture.state == .ended else { return }
             let velocity = gesture.velocity(in: collectionView)
             let threshold = LMKPhotoBrowserMetrics.scrollWheelVelocityThreshold
+            // A scroll toward the next page (to the left; to the right in a right-to-left layout).
+            let step = isRightToLeft ? -1 : 1
             if velocity.x < -threshold {
-                showPhoto(at: currentIndex + 1, animated: true)
+                showPhoto(at: currentIndex + step, animated: true)
             } else if velocity.x > threshold {
-                showPhoto(at: currentIndex - 1, animated: true)
+                showPhoto(at: currentIndex - step, animated: true)
             }
         }
     }

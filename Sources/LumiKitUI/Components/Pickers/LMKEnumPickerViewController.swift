@@ -51,9 +51,16 @@ public final class LMKEnumPickerViewController: LMKBottomSheetViewController, UI
     private let pickerStyle: LMKEnumPicker.Style
     private let pickerStrings: LMKEnumPicker.Strings
     private let onCommit: (Set<Int>) -> Void
+    private let onCancel: (() -> Void)?
     private var pendingCommit: Set<Int>?
-    private var isApplyingTheme = false
+    private var rowInsets: UIEdgeInsets = .zero
+    private var horizontalInsetConstraints: [Constraint] = []
+    private var searchTopConstraint: Constraint?
+    private var tableTopConstraint: Constraint?
+    private var tableBottomConstraint: Constraint?
     private var tableHeightConstraint: Constraint?
+    private var appliedTableHeight: CGFloat = 0
+    private var contentSizeObservation: NSKeyValueObservation?
 
     private static let cellIdentifier = "LMKEnumPickerCell"
     private static let estimatedRowHeight: CGFloat = 56
@@ -69,7 +76,8 @@ public final class LMKEnumPickerViewController: LMKBottomSheetViewController, UI
         doneTitle: String?,
         style: LMKEnumPicker.Style,
         strings: LMKEnumPicker.Strings,
-        onCommit: @escaping (Set<Int>) -> Void
+        onCommit: @escaping (Set<Int>) -> Void,
+        onCancel: (() -> Void)? = nil
     ) {
         self.titleText = title
         self.items = items
@@ -81,8 +89,13 @@ public final class LMKEnumPickerViewController: LMKBottomSheetViewController, UI
         self.pickerStyle = style
         self.pickerStrings = strings
         self.onCommit = onCommit
+        self.onCancel = onCancel
         self.searchBar = LMKSearchBar(style: style.searchBar)
-        super.init(style: style.sheet)
+        super.init()
+    }
+
+    isolated deinit {
+        contentSizeObservation?.invalidate()
     }
 
     // MARK: - Sheet content
@@ -96,7 +109,7 @@ public final class LMKEnumPickerViewController: LMKBottomSheetViewController, UI
         containerView.addSubview(titleLabel)
         titleLabel.snp.makeConstraints { make in
             make.top.equalTo(contentLayoutGuide.snp.top)
-            make.leading.trailing.equalToSuperview().inset(LMKSpacing.xl)
+            horizontalInsetConstraints.append(make.leading.trailing.equalTo(contentLayoutGuide).inset(0).constraint)
         }
 
         var tableTopAnchor: ConstraintItem = titleLabel.snp.bottom
@@ -105,8 +118,8 @@ public final class LMKEnumPickerViewController: LMKBottomSheetViewController, UI
             searchBar.onTextChange = { [weak self] text in self?.filter(with: text) }
             containerView.addSubview(searchBar)
             searchBar.snp.makeConstraints { make in
-                make.top.equalTo(titleLabel.snp.bottom).offset(LMKSpacing.medium)
-                make.leading.trailing.equalToSuperview().inset(LMKSpacing.xl)
+                searchTopConstraint = make.top.equalTo(titleLabel.snp.bottom).offset(0).constraint
+                horizontalInsetConstraints.append(make.leading.trailing.equalTo(contentLayoutGuide).inset(0).constraint)
             }
             tableTopAnchor = searchBar.snp.bottom
         }
@@ -116,7 +129,7 @@ public final class LMKEnumPickerViewController: LMKBottomSheetViewController, UI
             doneButton.onTap = { [weak self] in self?.doneTapped() }
             containerView.addSubview(doneButton)
             doneButton.snp.makeConstraints { make in
-                make.leading.trailing.equalToSuperview().inset(LMKSpacing.xl)
+                horizontalInsetConstraints.append(make.leading.trailing.equalTo(contentLayoutGuide).inset(0).constraint)
                 make.bottom.equalTo(contentLayoutGuide.snp.bottom)
             }
         }
@@ -132,35 +145,63 @@ public final class LMKEnumPickerViewController: LMKBottomSheetViewController, UI
         tableView.keyboardDismissMode = .onDrag
         containerView.addSubview(tableView)
         tableView.snp.makeConstraints { make in
-            make.top.equalTo(tableTopAnchor).offset(LMKSpacing.large)
-            make.leading.trailing.equalToSuperview()
+            tableTopConstraint = make.top.equalTo(tableTopAnchor).offset(0).constraint
+            make.leading.trailing.equalTo(contentLayoutGuide)
             if isMultiSelect {
-                make.bottom.equalTo(doneButton.snp.top).offset(-LMKSpacing.large)
+                tableBottomConstraint = make.bottom.equalTo(doneButton.snp.top).offset(0).constraint
             } else {
                 make.bottom.equalTo(contentLayoutGuide.snp.bottom)
             }
             // Preferred height from the content; the sheet's cap wins when taller.
             tableHeightConstraint = make.height.equalTo(Self.estimatedRowHeight * CGFloat(items.count)).priority(.high).constraint
         }
+        // Row heights follow Dynamic Type and the row style, so the preferred height tracks
+        // the table's own content size once the cells have been measured.
+        let refresh: @Sendable (UITableView, Any) -> Void = { [weak self] _, _ in
+            MainActor.assumeIsolated {
+                self?.updateTableHeight()
+            }
+        }
+        contentSizeObservation = tableView.observe(\.contentSize, options: [.new], changeHandler: refresh)
     }
 
     // MARK: - Theme
 
-    override public func applyTheme(_ theme: LMKTheme) {
+    override public func resolveStyle(for theme: LMKTheme) -> Style {
+        theme.bottomSheet.merging(theme.enumPicker.sheet).merging(pickerStyle.sheet).merging(style)
+    }
+
+    override public func applyContentTheme(_ theme: LMKTheme) {
         resolvedPickerStyle = theme.enumPicker.merging(pickerStyle)
-        let sheetStyle = theme.enumPicker.sheet.merging(pickerStyle.sheet)
-        if style != sheetStyle, !isApplyingTheme {
-            isApplyingTheme = true
-            style = sheetStyle
-            isApplyingTheme = false
-        }
-        super.applyTheme(theme)
         titleLabel.lmk_apply(resolvedPickerStyle.titleTextStyle ?? .h3, color: resolvedPickerStyle.titleColor ?? LMKColor.textPrimary)
         doneButton.style = LMKButton.Style(variant: .filled, minimumHeight: Self.defaultButtonHeight).merging(resolvedPickerStyle.doneButton)
         searchBar.style = resolvedPickerStyle.searchBar
+
+        // The sheet's content insets place the title, search field, rows, and Done; the cancel
+        // button already follows them through the base class.
+        let insets = resolvedStyle.surface.contentInsets
+        rowInsets = UIEdgeInsets(top: 0, left: insets?.leading ?? theme.spacing.xl, bottom: 0, right: insets?.trailing ?? theme.spacing.xl)
+        horizontalInsetConstraints.forEach { $0.update(inset: rowInsets) }
+        searchTopConstraint?.update(offset: theme.spacing.medium)
+        tableTopConstraint?.update(offset: theme.spacing.large)
+        tableBottomConstraint?.update(offset: -theme.spacing.large)
         for cell in tableView.visibleCells {
             (cell as? LMKEnumPickerCell)?.rowView.style = resolvedPickerStyle.row
         }
+        tableView.reloadData()
+    }
+
+    // MARK: - Layout
+
+    /// Keeps the table's preferred height at its unfiltered content height, so a picker with a
+    /// few options is exactly as tall as its rows (whatever their Dynamic Type size) and a
+    /// search that narrows the list does not shrink the sheet under the keyboard.
+    private func updateTableHeight() {
+        guard visibleIndices.count == items.count else { return }
+        let height = tableView.contentSize.height
+        guard height > 0, height != appliedTableHeight else { return }
+        appliedTableHeight = height
+        tableHeightConstraint?.update(offset: height)
     }
 
     // MARK: - Search
@@ -207,6 +248,8 @@ public final class LMKEnumPickerViewController: LMKBottomSheetViewController, UI
         if let pendingCommit {
             self.pendingCommit = nil
             onCommit(pendingCommit)
+        } else {
+            onCancel?()
         }
     }
 
@@ -223,11 +266,16 @@ public final class LMKEnumPickerViewController: LMKBottomSheetViewController, UI
             return UITableViewCell()
         }
         cell.rowView.style = resolvedPickerStyle.row
-        cell.configure(item: item, isSelected: selectedIndices.contains(index), rowSpacing: resolvedPickerStyle.rowSpacing ?? traitCollection.lmkTheme.spacing.xs)
+        cell.configure(item: item, isSelected: selectedIndices.contains(index), rowSpacing: resolvedPickerStyle.rowSpacing ?? traitCollection.lmkTheme.spacing.xs, horizontalInsets: rowInsets)
         return cell
     }
 
     // MARK: - UITableViewDelegate
+
+    public func tableView(_ tableView: UITableView, shouldHighlightRowAt indexPath: IndexPath) -> Bool {
+        guard let index = visibleIndices[lmk_safe: indexPath.row], let item = items[lmk_safe: index] else { return false }
+        return item.isEnabled
+    }
 
     public func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         tableView.deselectRow(at: indexPath, animated: true)
@@ -248,7 +296,7 @@ final class LMKEnumPickerCell: UITableViewCell {
         rowView.isUserInteractionEnabled = false
         contentView.addSubview(rowView)
         rowView.snp.makeConstraints { make in
-            insetsConstraint = make.edges.equalToSuperview().inset(UIEdgeInsets(top: 0, left: LMKSpacing.xl, bottom: 0, right: LMKSpacing.xl)).constraint
+            insetsConstraint = make.edges.equalToSuperview().inset(0).constraint
         }
         isAccessibilityElement = true
         accessibilityTraits = .button
@@ -259,10 +307,12 @@ final class LMKEnumPickerCell: UITableViewCell {
         fatalError("init(coder:) has not been implemented")
     }
 
-    func configure(item: LMKEnumPickerViewController.Item, isSelected: Bool, rowSpacing: CGFloat) {
+    /// Binds `item`; `rowSpacing` is split above and below the row (the table draws no
+    /// separators) and `horizontalInsets` are the sheet's content insets.
+    func configure(item: LMKEnumPickerViewController.Item, isSelected: Bool, rowSpacing: CGFloat, horizontalInsets: UIEdgeInsets) {
         let icon = item.iconName.flatMap { UIImage(named: $0) ?? UIImage(systemName: $0) }
         rowView.configure(LMKActionSheetRowView.Content(title: item.title, icon: icon, isSelected: isSelected, isEnabled: item.isEnabled))
-        insetsConstraint?.update(inset: UIEdgeInsets(top: rowSpacing / 2, left: LMKSpacing.xl, bottom: rowSpacing / 2, right: LMKSpacing.xl))
+        insetsConstraint?.update(inset: UIEdgeInsets(top: rowSpacing / 2, left: horizontalInsets.left, bottom: rowSpacing / 2, right: horizontalInsets.right))
         accessibilityLabel = item.title
         var traits: UIAccessibilityTraits = .button
         if isSelected { traits.insert(.selected) }

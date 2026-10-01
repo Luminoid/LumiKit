@@ -82,25 +82,90 @@ struct LMKBannerViewTests {
     }
 
     @Test
-    func `show installs at the top and dismiss removes with onDismiss`() async {
-        UIView.setAnimationsEnabled(false)
+    func `show installs at the top and dismiss removes with onDismiss once`() async {
         let controller = UIViewController()
         let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 390, height: 844))
         window.rootViewController = controller
         window.isHidden = false
-        defer { window.isHidden = true; UIView.setAnimationsEnabled(true) }
+        defer { window.isHidden = true }
         let banner = LMKBannerView(status: .error, message: "Offline")
         var dismissed = 0
         banner.onDismiss = { dismissed += 1 }
+        banner.dismiss()
+        #expect(dismissed == 0, "a banner that was never shown has nothing to dismiss")
+        #expect(banner.alpha == 1)
         banner.show(in: controller)
         #expect(banner.superview === controller.view)
         #expect(banner.isFloating)
         #expect(banner.layer.shadowOpacity > 0, "a floating banner lifts off the content")
         banner.dismiss()
-        try? await Task.sleep(for: .milliseconds(400))
+        banner.dismiss()
+        await LMKWait.until { banner.superview == nil }
         #expect(banner.superview == nil)
         #expect(!banner.isFloating)
-        #expect(dismissed == 1)
+        #expect(dismissed == 1, "a second dismiss during the fade is ignored")
+        #expect(banner.alpha == 1, "handed back whole")
+        #expect(banner.transform == .identity)
+        #expect(banner.layer.shadowOpacity == 0, "the floating shadow goes with the float")
+    }
+
+    @Test
+    func `A dismissed banner shows again, floating or inline`() async {
+        let controller = UIViewController()
+        let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 390, height: 844))
+        window.rootViewController = controller
+        window.isHidden = false
+        defer { window.isHidden = true }
+        let banner = LMKBannerView(status: .warning, message: "Again")
+        var dismissed = 0
+        banner.onDismiss = { dismissed += 1 }
+        banner.show(in: controller)
+        banner.dismiss()
+        await LMKWait.until { banner.superview == nil }
+        banner.show(in: controller)
+        await LMKWait.until { banner.alpha == 1 }
+        #expect(banner.superview === controller.view)
+        #expect(banner.isFloating)
+        #expect(banner.alpha == 1)
+        controller.view.layoutIfNeeded()
+        #expect(banner.frame.width == 390 - LMKSpacing.cardPadding * 2, "the placement is remade from scratch")
+
+        // Shown again while the fade-out is still running: the stale completion must not remove it.
+        banner.dismiss()
+        banner.show(in: controller)
+        try? await Task.sleep(for: .milliseconds(400))
+        #expect(banner.superview === controller.view)
+        #expect(banner.alpha == 1)
+        #expect(dismissed == 1, "the abandoned dismissal never completed")
+
+        banner.dismiss()
+        await LMKWait.until { banner.superview == nil }
+        let stack = UIStackView()
+        stack.addArrangedSubview(banner)
+        #expect(banner.alpha == 1, "inline after a float: visible")
+        #expect(!banner.isFloating)
+        #expect(banner.layer.shadowOpacity == 0)
+    }
+
+    @Test
+    func `Floating margins and the width cap follow the style while shown`() {
+        let host = UIView(frame: CGRect(x: 0, y: 0, width: 390, height: 844))
+        let banner = LMKBannerView(status: .info, message: "Margins")
+        banner.show(in: host, insetsScrollView: false)
+        host.layoutIfNeeded()
+        #expect(banner.frame.minX == LMKSpacing.cardPadding)
+        #expect(banner.frame.minY == LMKSpacing.small)
+        banner.style.horizontalMargin = 30
+        banner.style.verticalMargin = 12
+        banner.style.maxWidth = 200
+        host.layoutIfNeeded()
+        #expect(banner.frame.width == 200)
+        #expect(abs(banner.frame.midX - 195) < 0.5)
+        #expect(banner.frame.minY == 12)
+        banner.style.maxWidth = 1000
+        host.layoutIfNeeded()
+        #expect(banner.frame.minX == 30)
+        #expect(banner.frame.width == 330)
     }
 
     @Test
@@ -176,45 +241,5 @@ struct LMKBannerViewTests {
         let window = LMKThemeTesting.host(themed, theme: theme)
         defer { window.isHidden = true }
         #expect(themed.layer.cornerRadius == 1)
-    }
-}
-
-// MARK: - LMKStatusLabel
-
-@MainActor
-struct LMKStatusLabelTests {
-    @Test
-    func `Starts hidden and shows a colored message`() {
-        let label = LMKStatusLabel()
-        #expect(label.isHidden)
-        label.show("Saved", status: .success)
-        #expect(!label.isHidden)
-        #expect(label.textLabel.text == "Saved")
-        #expect(label.textLabel.textColor === LMKColor.success)
-        #expect(label.iconView.tintColor === LMKColor.success)
-        #expect(!label.iconView.isHidden)
-        #expect(label.accessibilityLabel == "Saved")
-        #expect(label.status == .success)
-    }
-
-    @Test
-    func `Neutral status has no icon and clear hides the view`() {
-        let label = LMKStatusLabel()
-        label.show("3 selected")
-        #expect(label.iconView.isHidden)
-        #expect(label.textLabel.textColor === LMKColor.textSecondary)
-        label.clear()
-        #expect(label.isHidden)
-        #expect(label.message == nil)
-        #expect(label.textLabel.text == nil)
-    }
-
-    @Test
-    func `Style colors override per status`() {
-        let label = LMKStatusLabel(style: LMKStatusLabel.Style(colors: [.error: .purple]))
-        label.show("Bad", status: .error)
-        #expect(label.textLabel.textColor == UIColor.purple)
-        label.show("Ok", status: .success)
-        #expect(label.textLabel.textColor === LMKColor.success)
     }
 }

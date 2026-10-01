@@ -1,20 +1,17 @@
 //
-//  ToggleButtonExample.swift
+//  ButtonToggleExample.swift
 //  LumiKitExample
 //
 //  Toggle Button: LMKButton.isToggle with on and off content.
 //
 
 import LumiKitUI
-import SnapKit
 import UIKit
 
 // MARK: - Toggle Button
 
-final class ToggleButtonDetailViewController: DetailViewController {
-    override func viewDidLoad() {
-        super.viewDidLoad()
-
+final class ButtonToggleDetailViewController: DetailViewController {
+    override func setupStackContent() {
         addSectionHeader("Basic")
         let toggleButton = LMKButton(title: "Notifications Off", image: UIImage(systemName: "bell.slash"), style: .tinted())
         toggleButton.isToggle = true
@@ -25,6 +22,6 @@ final class ToggleButtonDetailViewController: DetailViewController {
             LMKToast.show(.info, isOn ? "Notifications on" : "Notifications off", in: self)
         }
         let toggleRow = UIStackView(lmk_axis: .horizontal, alignment: .center, arrangedSubviews: [toggleButton, UIView()])
-        stack.addArrangedSubview(toggleRow)
+        stackView.addArrangedSubview(toggleRow)
     }
 }

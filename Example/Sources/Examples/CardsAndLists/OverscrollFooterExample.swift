@@ -66,22 +66,21 @@ final class OverscrollFooterDetailViewController: UIViewController, UITableViewD
 private final class OverscrollFooterView: UIView {
     override init(frame: CGRect) {
         super.init(frame: frame)
-        alpha = 0
 
-        let stack = UIStackView(lmk_axis: .vertical, spacing: LMKSpacing.small)
-        stack.alignment = .center
+        let column = UIStackView(lmk_axis: .vertical, spacing: LMKSpacing.small)
+        column.alignment = .center
 
         let config = UIImage.SymbolConfiguration(pointSize: LMKLayout.symbolIllustration, weight: .light)
         let imageView = UIImageView(image: UIImage(systemName: "arrow.down.circle", withConfiguration: config))
         imageView.tintColor = LMKColor.textTertiary
-        stack.addArrangedSubview(imageView)
+        column.addArrangedSubview(imageView)
 
         let label = UILabel.lmk_make(.caption, text: "You've reached the end")
         label.textAlignment = .center
-        stack.addArrangedSubview(label)
+        column.addArrangedSubview(label)
 
-        addSubview(stack)
-        stack.snp.makeConstraints {
+        addSubview(column)
+        column.snp.makeConstraints {
             $0.center.equalToSuperview()
         }
     }

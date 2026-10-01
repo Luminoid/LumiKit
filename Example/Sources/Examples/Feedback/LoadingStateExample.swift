@@ -12,34 +12,38 @@ import UIKit
 // MARK: - Loading State
 
 final class LoadingStateDetailViewController: DetailViewController {
-    override func viewDidLoad() {
-        super.viewDidLoad()
-
+    override func setupStackContent() {
         addSectionHeader("Inline Style")
         let inlineLoading = LMKLoadingStateView()
         inlineLoading.startLoading(message: "Loading data...")
         inlineLoading.snp.makeConstraints { $0.height.equalTo(120) }
-        stack.addArrangedSubview(inlineLoading)
+        stackView.addArrangedSubview(inlineLoading)
 
         addDivider()
         addSectionHeader("Overlay Style")
         let overlayContainer = UIView()
         overlayContainer.backgroundColor = LMKColor.backgroundSecondary
-        overlayContainer.layer.cornerRadius = LMKCornerRadius.medium
-        overlayContainer.clipsToBounds = true
+        overlayContainer.lmk_applyCornerRadius(LMKCornerRadius.medium)
         overlayContainer.snp.makeConstraints { $0.height.equalTo(160) }
 
         let overlayLoading = LMKLoadingStateView(style: .overlay)
         overlayLoading.startLoading(message: "Saving changes...")
         overlayContainer.addSubview(overlayLoading)
         overlayLoading.snp.makeConstraints { $0.edges.equalToSuperview() }
-        stack.addArrangedSubview(overlayContainer)
+        stackView.addArrangedSubview(overlayContainer)
+
+        addDivider()
+        addSectionHeader("Skeleton View")
+        stackView.addArrangedSubview(UILabel.lmk_make(.caption, text: "LMKSkeletonView draws placeholder shapes (lines, circles, rects) under a shimmer; startShimmer() starts the sweep."))
+        let skeleton = LMKSkeletonView(shapes: [.circle(diameter: 40), .line(), .line(width: 160)])
+        skeleton.startShimmer()
+        stackView.addArrangedSubview(skeleton)
 
         addDivider()
         addSectionHeader("Skeleton Cell")
         let skeletonTable = SkeletonTableView()
         skeletonTable.snp.makeConstraints { $0.height.equalTo(280) }
-        stack.addArrangedSubview(skeletonTable)
+        stackView.addArrangedSubview(skeletonTable)
     }
 }
 

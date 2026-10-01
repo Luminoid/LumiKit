@@ -16,13 +16,17 @@ The full spec with rationale is in `CONTRIBUTING.md`; `Tests/LumiKitUITests/Nami
 - **NEVER** use the suffixes `Helper`, `Util`, `Service`, `Manager`, `Type`, or `Config` on a public type; a role noun survives only when the role is the subject (`LMKLogger`, `LMKURLValidator`, `LMKMarkdownRenderer`, `LMKErrorHandler`)
 - **Presenters** split namespace + class: the namespace owns `present` / `show` statics, `Strings`, and value types; the class is `LMK<Thing>View` or `LMK<Thing>ViewController` (`LMKToast` / `LMKToastView`, `LMKActionSheet` / `LMKActionSheetViewController`)
 - **Protocols**: `LMK<Thing>DataSource` / `LMK<Thing>Delegate` only for multi-method content providers; `-able` / `-ing` adjectives for capabilities (`LMKEnumSelectable`, `LMKThemeApplying`, `LMKLogging`); `LMK<Category>Theme` for token categories
-- **Enums**: the visual variant is nested `Variant`; layout / placement modes are nested and named for what they select (`Layout`, `Placement`, `Mode`, `Corners`); the shared status is `LMKStatus`; every public enum is `Sendable` + `Hashable`, `CaseIterable` when the UI enumerates it
+- **Enums**: the visual variant is nested `Variant`; layout / placement modes are nested and named for what they select (`Layout`, `Placement`, `Mode`, `Corners`); the shared status is `LMKStatus`; every public enum without reference-type or closure payloads is `Sendable` + `Hashable` (`CaseIterable` when the UI enumerates it); enums carrying views, images, errors, or closures are neither
+- **Explicit-off values**: `nil` in an optional style field means "the theme decides", so **NEVER** name a case `.none` there (Swift reads it as `nil`); the overrides are `LMKCornerStyle.Radius.square`, `LMKBorderStyle.hidden`, `LMKShadowSource.hidden`
 - **`Style`** is reserved for the per-component token struct; **`Strings`** for the per-component string struct
-- **`open`** only where subclassing is the extension point (base controllers, `LMKNavigationController`, `LMKTabBarController`, `LMKCalendarDayCell`, `LMKButton`); everything else `final`
+- **`open`** only where subclassing is the extension point (base controllers, `LMKNavigationController`, `LMKTabBarController`, `LMKCalendarDayCell`, `LMKButton`); everything else `final`. Every open base calls `open func applyContentTheme(_ theme: LMKTheme)` just before `didApplyStyle`: subclasses style their content there, and `didApplyStyle` always runs last
 
 ## Members
 
-- **Callbacks**: `on<Event>` closures whose payload is the new value, no sender: `onTap`, `onDismiss`, `onValueChange`, `onTextChange`, `onSelectionChange` (`Set<Int>`), `onBack`. **NEVER** `*Handler` names or `didTapHandler`
+- **Callbacks**: present-tense `on<Event>` closures whose payload is the new value, no sender: `onTap`, `onDismiss`, `onDayTap`, `onMonthChange`, `onTextChange`, `onSelectionChange` (`Set<Int>`), `onBack`; a value change is `onValueChange`. **NEVER** `*Handler` names, `didTapHandler`, a bare `onChange`, or past tense (`onTapped`, `onChanged`): the naming test rejects them. A presenter that can be cancelled offers `onCancel`; `dismiss()` is idempotent and fires `onDismiss` once
+- **Controls** honor `isEnabled` the UIKit way in `point(inside:with:)`: hidden answers `false`, disabled answers `bounds.contains(point)` (touches absorbed, never passed through), enabled answers the 44pt area
+- **Destructive defaults are off**: nothing deletes or overwrites user data unless asked (`deletesAfterShare` defaults to `false`); a parameter in pixels is `…PixelSize`, an exact value is never `max…`
+- **`LMKCalendarDay` / `LMKCalendarMonth` are Gregorian civil dates** whatever calendar is supplied: math through `Calendar.lmk_civilCalendar`, deltas anchored at noon, display in the supplied calendar only when its months are Gregorian
 - **Presentation verbs**: `present(from:)` for anything that ends in `host.present(...)`; `show(in:)` for views installed into a hierarchy (toast, tip, banner, floating button); `dismiss()` everywhere; `completion:` for completion closures
 - **State**: UIKit's names when UIKit has the concept (`isOn`, `value`, `isEnabled`, `isSelected`, `selectedSegmentIndex`, `currentPage`); otherwise `is<Adjective>`, `selectedIndex` / `selectedIndices`
 - **`init` vs `configure`**: `init` takes identity that never changes; `configure(...)` is the single re-bind on reusable views; animated changes are `set<Prop>(_:animated:)`
@@ -35,11 +39,13 @@ Exactly one idiom:
 ```swift
 public final class LMKSearchBar: UIView {
     public nonisolated struct Strings: Sendable, Equatable {
-        public var placeholder: String
-        public init(placeholder: String = LMKLocalized("searchBar.placeholder")) { ... }
+        public var cancel: String
+        public var clearAccessibilityLabel: String
+        public init(cancel: String = LMKLocalized("searchBar.cancel"),
+                    clearAccessibilityLabel: String = LMKLocalized("searchBar.clear.accessibilityLabel")) { ... }
     }
-    public static var strings = Strings()   // process-wide default
-    public var strings: Strings             // per instance on host-created types
+    public nonisolated(unsafe) static var strings = Strings()   // process-wide default, written once at launch
+    public var strings: Strings                                 // per instance on host-created types
 }
 ```
 
@@ -49,4 +55,4 @@ public final class LMKSearchBar: UIView {
 ## Extensions and files
 
 - **ALWAYS** prefix public members of extensions on non-LMK types with `lmk_`, in every product including Core (`[lmk_safe:]`, `lmk_nonEmpty`, `lmk_trimmedOrNil`, `lmk_appending(_:)`)
-- **File naming**: one public type per file named after it; extensions `{Type}+LMK{Feature}.swift` (`UIView+LMKCorners.swift`); large types split into `LMKType+Aspect.swift` (`LMKSegmentedControl+Layout.swift`)
+- **File naming**: one primary public type per file, named after it; closely related value types, protocols, and handles may share the file (`LMKToast.swift` holds `LMKToast` and its nested types, `LMKSurfaceStyle.swift` the surface vocabulary); extensions `{Type}+LMK{Feature}.swift` (`UIView+LMKCorners.swift`, named for the API they add, not for a 0.x name); large types split into `LMKType+Aspect.swift` (`LMKSegmentedControl+Layout.swift`). Controls live in `Controls/` (`LMKSearchBar`, `LMKActionTile` included); a test file mirrors its subject's folder

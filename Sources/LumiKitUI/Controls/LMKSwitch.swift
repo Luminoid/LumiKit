@@ -22,7 +22,7 @@ public final class LMKSwitch: UIControl, LMKThemeApplying {
         public var onTint: UIColor?
         /// `nil` = `fill`.
         public var offTint: UIColor?
-        /// `nil` = white.
+        /// `nil` = `onAccent`.
         public var thumbTint: UIColor?
         /// `nil` = 52 × 30.
         public var trackSize: CGSize?
@@ -102,13 +102,11 @@ public final class LMKSwitch: UIControl, LMKThemeApplying {
 
     // MARK: - Public API
 
-    /// Whether the toggle is on. Setting it is silent (no handler, no `.valueChanged`).
-    public var isOn = false {
-        didSet {
-            guard isOn != oldValue else { return }
-            updateAppearance(animated: false)
-            updateAccessibilityValue()
-        }
+    /// Whether the toggle is on. Setting it is silent (no handler, no `.valueChanged`) and
+    /// not animated; `setOn(_:animated:)` slides the thumb.
+    public var isOn: Bool {
+        get { storedIsOn }
+        set { setOn(newValue, animated: false) }
     }
 
     /// Called when the user toggles the switch.
@@ -128,13 +126,15 @@ public final class LMKSwitch: UIControl, LMKThemeApplying {
     public let trackView = UIView()
     public let thumbView = UIView()
 
-    /// Animates to a new state (silent).
+    /// Sets the state (silent), sliding the thumb and cross-fading the track when `animated`.
     public func setOn(_ on: Bool, animated: Bool) {
-        guard on != isOn else { return }
-        isOn = on
+        guard on != storedIsOn else { return }
+        storedIsOn = on
         updateAppearance(animated: animated)
+        updateAccessibilityValue()
     }
 
+    private var storedIsOn = false
     private var resolved = Style()
     private var trackSize: CGSize { resolved.trackSize ?? Self.defaultTrackSize }
     private var thumbInset: CGFloat { resolved.thumbInset ?? Self.defaultThumbInset }
@@ -184,9 +184,10 @@ public final class LMKSwitch: UIControl, LMKThemeApplying {
         setContentCompressionResistancePriority(.required, for: .vertical)
 
         addTarget(self, action: #selector(handleTap), for: .touchUpInside)
+        addInteraction(UIPointerInteraction(delegate: self))
 
         isAccessibilityElement = true
-        accessibilityTraits = [.button]
+        updateAccessibilityTraits()
         updateAccessibilityValue()
     }
 
@@ -198,8 +199,10 @@ public final class LMKSwitch: UIControl, LMKThemeApplying {
         thumbView.lmk_layoutCornersIfNeeded()
     }
 
+    /// A disabled switch absorbs a touch inside its bounds, like `UISwitch`; an enabled one answers the minimum touch target.
     override public func point(inside point: CGPoint, with event: UIEvent?) -> Bool {
-        guard isEnabled, !isHidden else { return false }
+        guard !isHidden else { return false }
+        guard isEnabled else { return bounds.contains(point) }
         return lmk_hitTestBounds(minimumSide: traitCollection.lmkTheme.layout.minimumTouchTarget, insets: lmk_hitTestInsets).contains(point)
     }
 
@@ -207,9 +210,7 @@ public final class LMKSwitch: UIControl, LMKThemeApplying {
         didSet {
             guard isEnabled != oldValue else { return }
             applyTheme(traitCollection.lmkTheme)
-            var traits: UIAccessibilityTraits = [.button]
-            if !isEnabled { traits.insert(.notEnabled) }
-            accessibilityTraits = traits
+            updateAccessibilityTraits()
         }
     }
 
@@ -225,10 +226,10 @@ public final class LMKSwitch: UIControl, LMKThemeApplying {
     public func applyTheme(_ theme: LMKTheme) {
         resolved = theme.switch.merging(style)
         trackView.lmk_applyCornerStyle(.capsule)
-        thumbView.backgroundColor = resolved.thumbTint ?? .white
+        thumbView.backgroundColor = resolved.thumbTint ?? LMKColor.onAccent
         thumbView.lmk_applyCornerStyle(.circle, masking: false)
         switch resolved.thumbShadow ?? .level(.level1) {
-        case .none: thumbView.lmk_removeShadow()
+        case .hidden: thumbView.lmk_removeShadow()
         case let .level(level): thumbView.lmk_applyShadow(level)
         case let .custom(shadow): thumbView.lmk_applyShadow(shadow)
         }
@@ -246,8 +247,7 @@ public final class LMKSwitch: UIControl, LMKThemeApplying {
 
     @objc private func handleTap() {
         guard isEnabled else { return }
-        isOn.toggle()
-        updateAppearance(animated: true)
+        setOn(!isOn, animated: true)
         if resolved.haptics ?? true { LMKHaptics.selection() }
         onValueChange?(isOn)
         sendActions(for: .valueChanged)
@@ -265,10 +265,11 @@ public final class LMKSwitch: UIControl, LMKThemeApplying {
     private func updateAppearance(animated: Bool) {
         let color = trackColor
         if animated, LMKAnimation.shouldAnimate {
+            let animation = traitCollection.lmkTheme.animation
             UIView.animate(
-                withDuration: LMKAnimation.Duration.fast,
+                withDuration: animation.fast,
                 delay: 0,
-                usingSpringWithDamping: LMKAnimation.spring.damping,
+                usingSpringWithDamping: animation.spring.damping,
                 initialSpringVelocity: 0,
                 options: LMKAnimation.Curve.easeInOut.options
             ) { [self] in
@@ -293,6 +294,20 @@ public final class LMKSwitch: UIControl, LMKThemeApplying {
 
     private func updateAccessibilityValue() {
         accessibilityValue = isOn ? strings.onAccessibilityValue : strings.offAccessibilityValue
+    }
+
+    private func updateAccessibilityTraits() {
+        var traits: UIAccessibilityTraits = [.button, .toggleButton]
+        if !isEnabled { traits.insert(.notEnabled) }
+        accessibilityTraits = traits
+    }
+}
+
+// MARK: - UIPointerInteractionDelegate
+
+extension LMKSwitch: UIPointerInteractionDelegate {
+    public func pointerInteraction(_: UIPointerInteraction, styleFor _: UIPointerRegion) -> UIPointerStyle? {
+        LMKPointerStyle.hover(for: self)
     }
 }
 

@@ -8,6 +8,7 @@
 //  Mac Catalyst. Styled from `theme.countdownAlert`.
 //
 
+import LumiKitCore
 import SnapKit
 import UIKit
 
@@ -25,7 +26,7 @@ public final class LMKCountdownHandle {
     /// Seconds left before the confirm button enables (0 once enabled).
     public var remainingSeconds: Int { controller?.remainingSeconds ?? 0 }
 
-    /// Dismisses the dialog as a cancel would.
+    /// Dismisses the dialog as a cancel would (`onCancel` runs once; later calls do nothing).
     public func dismiss() {
         controller?.handleCancel()
     }
@@ -108,7 +109,7 @@ public extension LMKAlert {
     ///   - host: The view controller that presents the dialog.
     ///   - title: The dialog's title.
     ///   - message: An optional line under the title.
-    ///   - confirmTitle: Base title of the confirm button (the countdown is appended while active).
+    ///   - confirmTitle: Base title of the confirm button; while it counts, `strings.countdownConfirmTitleFormat` adds the seconds left.
     ///   - cancelTitle: Title of the cancel button; `nil` = the localized default.
     ///   - countdownSeconds: Seconds before confirm enables. Default 3.
     ///   - confirmRole: The confirm button's role; `.destructive` by default.
@@ -137,6 +138,7 @@ public extension LMKAlert {
             countdownSeconds: countdownSeconds,
             confirmRole: confirmRole,
             style: style,
+            strings: strings,
             onConfirm: onConfirm,
             onCancel: onCancel
         )
@@ -151,6 +153,7 @@ final class LMKCountdownAlertViewController: UIViewController, LMKThemeApplying 
     let countdownSeconds: Int
     private(set) var remainingSeconds: Int
 
+    // Test hooks.
     var confirmDisplayedTitle: String { confirmButton.title ?? "" }
     var isConfirmEnabled: Bool { confirmButton.isEnabled }
     var cancelDisplayedTitle: String { cancelButton.title ?? "" }
@@ -160,10 +163,12 @@ final class LMKCountdownAlertViewController: UIViewController, LMKThemeApplying 
     private let cancelTitle: String
     private let confirmRole: LMKButton.Role
     private let style: LMKAlert.CountdownStyle
+    private let strings: LMKAlert.Strings
     private let onConfirm: () -> Void
     private let onCancel: (() -> Void)?
     private var countdownTask: Task<Void, Never>?
     private var resolved = LMKAlert.CountdownStyle()
+    private var isDismissing = false
     private var cardWidthConstraint: Constraint?
     private var buttonHeightConstraint: Constraint?
     private var contentInsetsConstraint: Constraint?
@@ -174,11 +179,17 @@ final class LMKCountdownAlertViewController: UIViewController, LMKThemeApplying 
     let messageLabel = UILabel()
     let cancelButton = LMKButton(style: LMKButton.Style())
     let confirmButton = LMKButton(style: LMKButton.Style())
+    /// Hosts the title and message, so a long message at a large text size scrolls inside
+    /// the card instead of pushing the buttons off screen.
+    let textScrollView = UIScrollView()
+    private let textStack = UIStackView()
+    private let buttonStack = UIStackView()
     private let containerStack = UIStackView()
 
     static let defaultCardWidth: CGFloat = 340
     static let defaultButtonHeight: CGFloat = 48
     private static let cardHorizontalInset: CGFloat = 32
+    private static let cardVerticalInset: CGFloat = 16
 
     init(
         title: String,
@@ -188,6 +199,7 @@ final class LMKCountdownAlertViewController: UIViewController, LMKThemeApplying 
         countdownSeconds: Int,
         confirmRole: LMKButton.Role,
         style: LMKAlert.CountdownStyle,
+        strings: LMKAlert.Strings,
         onConfirm: @escaping () -> Void,
         onCancel: (() -> Void)?
     ) {
@@ -199,6 +211,7 @@ final class LMKCountdownAlertViewController: UIViewController, LMKThemeApplying 
         remainingSeconds = max(0, countdownSeconds)
         self.confirmRole = confirmRole
         self.style = style
+        self.strings = strings
         self.onConfirm = onConfirm
         self.onCancel = onCancel
         super.init(nibName: nil, bundle: nil)
@@ -226,9 +239,27 @@ final class LMKCountdownAlertViewController: UIViewController, LMKThemeApplying 
         startCountdown()
     }
 
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        UIAccessibility.post(notification: .screenChanged, argument: titleLabel)
+    }
+
     override func viewDidDisappear(_ animated: Bool) {
         super.viewDidDisappear(animated)
         countdownTask?.cancel()
+    }
+
+    override var keyCommands: [UIKeyCommand]? {
+        lmk_formKeyCommands(save: nil)
+    }
+
+    override func lmk_cancelFromKeyCommand() {
+        handleCancel()
+    }
+
+    override func accessibilityPerformEscape() -> Bool {
+        handleCancel()
+        return true
     }
 
     // MARK: - Setup
@@ -238,12 +269,15 @@ final class LMKCountdownAlertViewController: UIViewController, LMKThemeApplying 
         dimmingView.snp.makeConstraints { $0.edges.equalToSuperview() }
 
         view.addSubview(cardView)
+        cardView.accessibilityViewIsModal = true
         cardView.snp.makeConstraints { make in
             make.center.equalToSuperview()
             // Preferred width; on narrow screens the required insets win so the card never overflows.
             cardWidthConstraint = make.width.equalTo(Self.defaultCardWidth).priority(.high).constraint
             make.leading.greaterThanOrEqualToSuperview().inset(Self.cardHorizontalInset)
             make.trailing.lessThanOrEqualToSuperview().inset(Self.cardHorizontalInset)
+            make.top.greaterThanOrEqualTo(view.safeAreaLayoutGuide).inset(Self.cardVerticalInset)
+            make.bottom.lessThanOrEqualTo(view.safeAreaLayoutGuide).inset(Self.cardVerticalInset)
         }
 
         titleLabel.textAlignment = .center
@@ -252,6 +286,9 @@ final class LMKCountdownAlertViewController: UIViewController, LMKThemeApplying 
         titleLabel.text = dialogTitle
         messageLabel.textAlignment = .center
         messageLabel.numberOfLines = 0
+        // The text is never squeezed: when the card is bounded, the scroll view gives way instead.
+        titleLabel.setContentCompressionResistancePriority(.required, for: .vertical)
+        messageLabel.setContentCompressionResistancePriority(.required, for: .vertical)
         if let dialogMessage, !dialogMessage.isEmpty {
             messageLabel.text = dialogMessage
         } else {
@@ -260,25 +297,35 @@ final class LMKCountdownAlertViewController: UIViewController, LMKThemeApplying 
 
         cancelButton.title = cancelTitle
         cancelButton.onTap = { [weak self] in self?.handleCancel() }
-        confirmButton.title = countdownSeconds > 0 ? "\(confirmTitle) (\(countdownSeconds))" : confirmTitle
+        confirmButton.title = countdownTitle(seconds: countdownSeconds)
         confirmButton.isEnabled = countdownSeconds <= 0
         confirmButton.accessibilityLabel = confirmTitle
-        confirmButton.accessibilityValue = countdownSeconds > 0 ? "\(countdownSeconds)" : nil
+        confirmButton.accessibilityValue = countdownSeconds > 0 ? LMKFormat.number(countdownSeconds) : nil
         confirmButton.onTap = { [weak self] in self?.handleConfirm() }
 
-        let textStack = UIStackView(arrangedSubviews: [titleLabel, messageLabel])
         textStack.axis = .vertical
-        textStack.spacing = LMKSpacing.small
-        let buttonStack = UIStackView(arrangedSubviews: [cancelButton, confirmButton])
+        textStack.addArrangedSubview(titleLabel)
+        textStack.addArrangedSubview(messageLabel)
+        textScrollView.alwaysBounceVertical = false
+        textScrollView.addSubview(textStack)
+        textStack.snp.makeConstraints { make in
+            make.edges.equalTo(textScrollView.contentLayoutGuide)
+            make.width.equalTo(textScrollView.frameLayoutGuide)
+        }
+        textScrollView.snp.makeConstraints { make in
+            // The text shows in full whenever the card fits; the required card bounds win otherwise.
+            make.height.equalTo(textScrollView.contentLayoutGuide).priority(.high)
+        }
+
         buttonStack.axis = .horizontal
-        buttonStack.spacing = LMKSpacing.medium
         buttonStack.distribution = .fillEqually
+        buttonStack.addArrangedSubview(cancelButton)
+        buttonStack.addArrangedSubview(confirmButton)
         buttonStack.snp.makeConstraints { make in
-            buttonHeightConstraint = make.height.equalTo(Self.defaultButtonHeight).constraint
+            buttonHeightConstraint = make.height.greaterThanOrEqualTo(Self.defaultButtonHeight).constraint
         }
         containerStack.axis = .vertical
-        containerStack.spacing = LMKSpacing.large
-        containerStack.addArrangedSubview(textStack)
+        containerStack.addArrangedSubview(textScrollView)
         containerStack.addArrangedSubview(buttonStack)
         cardView.addSubview(containerStack)
         containerStack.snp.makeConstraints { make in
@@ -305,6 +352,9 @@ final class LMKCountdownAlertViewController: UIViewController, LMKThemeApplying 
         contentInsetsConstraint?.update(inset: UIEdgeInsets(top: insets.top, left: insets.leading, bottom: insets.bottom, right: insets.trailing))
         cardWidthConstraint?.update(offset: resolved.cardWidth ?? Self.defaultCardWidth)
         buttonHeightConstraint?.update(offset: resolved.buttonHeight ?? Self.defaultButtonHeight)
+        textStack.spacing = theme.spacing.small
+        buttonStack.spacing = theme.spacing.medium
+        containerStack.spacing = theme.spacing.large
         titleLabel.lmk_apply(resolved.titleTextStyle ?? .h3, color: resolved.titleColor ?? LMKColor.textPrimary)
         messageLabel.lmk_apply(resolved.messageTextStyle ?? .body, color: resolved.messageColor ?? LMKColor.textSecondary)
         cancelButton.style = LMKButton.Style(
@@ -317,6 +367,11 @@ final class LMKCountdownAlertViewController: UIViewController, LMKThemeApplying 
 
     // MARK: - Countdown
 
+    private func countdownTitle(seconds: Int) -> String {
+        guard seconds > 0 else { return confirmTitle }
+        return String(format: strings.countdownConfirmTitleFormat, confirmTitle, seconds)
+    }
+
     private func startCountdown() {
         guard countdownSeconds > 0 else { return }
         countdownTask = Task { [weak self] in
@@ -326,8 +381,8 @@ final class LMKCountdownAlertViewController: UIViewController, LMKThemeApplying 
                 guard !Task.isCancelled else { return }
                 remainingSeconds = tick
                 if tick > 0 {
-                    confirmButton.title = "\(confirmTitle) (\(tick))"
-                    confirmButton.accessibilityValue = "\(tick)"
+                    confirmButton.title = countdownTitle(seconds: tick)
+                    confirmButton.accessibilityValue = LMKFormat.number(tick)
                 } else {
                     enableConfirm()
                 }
@@ -344,7 +399,10 @@ final class LMKCountdownAlertViewController: UIViewController, LMKThemeApplying 
 
     // MARK: - Actions
 
+    /// Cancels once: a second call while the dismissal runs is ignored.
     func handleCancel() {
+        guard !isDismissing else { return }
+        isDismissing = true
         countdownTask?.cancel()
         let handler = onCancel
         dismiss(animated: true) {
@@ -353,6 +411,8 @@ final class LMKCountdownAlertViewController: UIViewController, LMKThemeApplying 
     }
 
     private func handleConfirm() {
+        guard !isDismissing else { return }
+        isDismissing = true
         countdownTask?.cancel()
         let handler = onConfirm
         dismiss(animated: true) {

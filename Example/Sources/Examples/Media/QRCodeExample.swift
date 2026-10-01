@@ -5,46 +5,36 @@
 //  QR Code: Generate QR codes from text.
 //
 
-import LumiKitCore
-import LumiKitPhoto
 import LumiKitUI
-import PhotosUI
 import SnapKit
 import UIKit
-import UniformTypeIdentifiers
 
 // MARK: - QR Code
 
 final class QRCodeDetailViewController: DetailViewController {
     private let imageView = UIImageView()
-    private let textField = UITextField()
+    private let textField = LMKTextField()
 
-    override func viewDidLoad() {
-        super.viewDidLoad()
-
+    override func setupStackContent() {
         addSectionHeader("Generator")
         textField.placeholder = "Enter text or URL..."
         textField.text = "https://github.com/Luminoid/LumiKit"
-        textField.borderStyle = .roundedRect
-        textField.font = LMKTypography.body
-        textField.clearButtonMode = .whileEditing
-        textField.addTarget(self, action: #selector(generateQR), for: .editingChanged)
+        textField.showsClearButton = true
+        textField.onTextChange = { [weak self] _ in self?.generateQR() }
         textField.lmk_dismissKeyboardOnReturn()
-        textField.snp.makeConstraints { $0.height.greaterThanOrEqualTo(LMKLayout.minimumTouchTarget) }
-        stack.addArrangedSubview(textField)
+        stackView.addArrangedSubview(textField)
 
         let generateButton = LMKButton(title: "Generate QR Code", style: .filled(.primary), target: self, action: #selector(generateQR))
-        stack.addArrangedSubview(generateButton)
+        stackView.addArrangedSubview(generateButton)
 
         addDivider()
         addSectionHeader("Result")
 
         imageView.contentMode = .scaleAspectFit
         imageView.backgroundColor = LMKColor.backgroundSecondary
-        imageView.layer.cornerRadius = LMKCornerRadius.medium
-        imageView.clipsToBounds = true
+        imageView.lmk_applyCornerRadius(LMKCornerRadius.medium)
         imageView.snp.makeConstraints { $0.height.equalTo(200) }
-        stack.addArrangedSubview(imageView)
+        stackView.addArrangedSubview(imageView)
 
         generateQR()
 
@@ -74,7 +64,7 @@ final class QRCodeDetailViewController: DetailViewController {
             col.addArrangedSubview(label)
             levelRow.addArrangedSubview(col)
         }
-        stack.addArrangedSubview(levelRow)
+        stackView.addArrangedSubview(levelRow)
     }
 
     @objc private func generateQR() {

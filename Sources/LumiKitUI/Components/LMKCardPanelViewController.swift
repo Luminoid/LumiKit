@@ -7,6 +7,7 @@
 //  `theme.cardPanel`.
 //
 
+import LumiKitCore
 import SnapKit
 import UIKit
 
@@ -15,13 +16,18 @@ import UIKit
 /// Hosts an embedded `UINavigationController` (system bar hidden) inside a rounded
 /// card. `presentation` picks between a separate overlay window (independent of the
 /// underlying hierarchy, the default) and a full-screen modal that composes with
-/// other modals. Works with `LMKCardPageViewController` or any view controller.
+/// other modals. Works with `LMKCardPageViewController` or any view controller; a
+/// page reaches its panel through `lmk_cardPanel`.
 ///
 /// ```swift
 /// let panel = LMKCardPanelViewController(rootViewController: SettingsPage())
 /// panel.dismissesOnBackgroundTap = false
 /// panel.present(from: self)
 /// ```
+///
+/// The panel is a VoiceOver modal: the escape gesture, Escape, and ⌘W dismiss it, and
+/// `onDismiss` fires once however it goes away (its own `dismiss()`, a background tap,
+/// or a UIKit dismissal of the modal).
 open class LMKCardPanelViewController: UIViewController, LMKThemeApplying {
     // MARK: - Vocabulary
 
@@ -43,7 +49,7 @@ open class LMKCardPanelViewController: UIViewController, LMKThemeApplying {
         /// Inset from the safe area on narrow hosts; `nil` = 24.
         public var horizontalInset: CGFloat?
         /// Card height as a fraction of the safe area; `nil` = 0.6.
-        public var maxHeightRatio: CGFloat?
+        public var heightRatio: CGFloat?
         /// Dimming behind the card while `dismissesOnBackgroundTap`; `nil` = `scrim`.
         public var dimmingColor: UIColor?
         /// `nil` = `alpha.dimming`.
@@ -57,7 +63,7 @@ open class LMKCardPanelViewController: UIViewController, LMKThemeApplying {
             surface: LMKSurfaceStyle = LMKSurfaceStyle(),
             maxWidth: CGFloat? = nil,
             horizontalInset: CGFloat? = nil,
-            maxHeightRatio: CGFloat? = nil,
+            heightRatio: CGFloat? = nil,
             dimmingColor: UIColor? = nil,
             dimmingAlpha: CGFloat? = nil,
             slideOffset: CGFloat? = nil,
@@ -66,7 +72,7 @@ open class LMKCardPanelViewController: UIViewController, LMKThemeApplying {
             self.surface = surface
             self.maxWidth = maxWidth
             self.horizontalInset = horizontalInset
-            self.maxHeightRatio = maxHeightRatio
+            self.heightRatio = heightRatio
             self.dimmingColor = dimmingColor
             self.dimmingAlpha = dimmingAlpha
             self.slideOffset = slideOffset
@@ -81,7 +87,7 @@ open class LMKCardPanelViewController: UIViewController, LMKThemeApplying {
                 surface: surface.merging(other.surface),
                 maxWidth: other.maxWidth ?? maxWidth,
                 horizontalInset: other.horizontalInset ?? horizontalInset,
-                maxHeightRatio: other.maxHeightRatio ?? maxHeightRatio,
+                heightRatio: other.heightRatio ?? heightRatio,
                 dimmingColor: other.dimmingColor ?? dimmingColor,
                 dimmingAlpha: other.dimmingAlpha ?? dimmingAlpha,
                 slideOffset: other.slideOffset ?? slideOffset,
@@ -110,7 +116,7 @@ open class LMKCardPanelViewController: UIViewController, LMKThemeApplying {
         }
     }
 
-    /// Called after the panel has gone away.
+    /// Called once after the panel has gone away, whichever way it was dismissed.
     public var onDismiss: (() -> Void)?
 
     /// Per-instance style; `nil` fields resolve from `theme.cardPanel`, then the built-in look.
@@ -141,7 +147,7 @@ open class LMKCardPanelViewController: UIViewController, LMKThemeApplying {
 
     static let defaultMaxWidth: CGFloat = 420
     static let defaultHorizontalInset: CGFloat = 24
-    static let defaultMaxHeightRatio: CGFloat = 0.6
+    static let defaultHeightRatio: CGFloat = 0.6
     static let defaultSlideOffset: CGFloat = 20
 
     private var dimmingColor: UIColor {
@@ -159,9 +165,10 @@ open class LMKCardPanelViewController: UIViewController, LMKThemeApplying {
         self.style = style
         embeddedNavigationController = UINavigationController(rootViewController: rootViewController)
         embeddedNavigationController.setNavigationBarHidden(true, animated: false)
-        embeddedNavigationController.interactivePopGestureRecognizer?.isEnabled = false
         super.init(nibName: nil, bundle: nil)
         modalPresentationCapturesStatusBarAppearance = true
+        // A child from the start, so a page can reach its panel (`lmk_cardPanel`) before the view loads.
+        addChild(embeddedNavigationController)
     }
 
     @available(*, unavailable)
@@ -174,11 +181,19 @@ open class LMKCardPanelViewController: UIViewController, LMKThemeApplying {
     override open func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = .clear
+        view.accessibilityViewIsModal = true
         setupCard()
         let tap = UITapGestureRecognizer(target: self, action: #selector(backgroundTapped(_:)))
         tap.cancelsTouchesInView = false
         view.addGestureRecognizer(tap)
         lmk_startApplyingTheme()
+    }
+
+    /// A modal the host dismissed through UIKit still ends in the panel's own state.
+    override open func viewDidDisappear(_ animated: Bool) {
+        super.viewDidDisappear(animated)
+        guard isPresented, !isDismissing, overlayWindow == nil, isBeingDismissed else { return }
+        finishDismissal(completion: nil)
     }
 
     /// The embedded stack decides the status bar (the forced-dark pattern).
@@ -199,10 +214,15 @@ open class LMKCardPanelViewController: UIViewController, LMKThemeApplying {
             horizontalInsetConstraint = make.leading.trailing.equalTo(safeArea).inset(Self.defaultHorizontalInset).priority(.high).constraint
         }
 
-        addChild(embeddedNavigationController)
         cardView.addSubview(embeddedNavigationController.view)
         embeddedNavigationController.view.snp.makeConstraints { $0.edges.equalToSuperview() }
         embeddedNavigationController.didMove(toParent: self)
+        // The recognizers exist once the navigation view is loaded; the card's own slide would
+        // fight an edge pop or, on iOS 26, a content-wide pop.
+        embeddedNavigationController.interactivePopGestureRecognizer?.isEnabled = false
+        if #available(iOS 26, *) {
+            embeddedNavigationController.interactiveContentPopGestureRecognizer?.isEnabled = false
+        }
 
         cardView.alpha = 0
         cardView.transform = CGAffineTransform(translationX: 0, y: -Self.defaultSlideOffset)
@@ -221,7 +241,7 @@ open class LMKCardPanelViewController: UIViewController, LMKThemeApplying {
         embeddedNavigationController.view.lmk_applyCornerStyle(applied.corners ?? .fixed(theme.cornerRadius.large), masking: true)
         maxWidthConstraint?.update(offset: resolved.maxWidth ?? Self.defaultMaxWidth)
         horizontalInsetConstraint?.update(inset: resolved.horizontalInset ?? Self.defaultHorizontalInset)
-        let ratio = resolved.maxHeightRatio ?? Self.defaultMaxHeightRatio
+        let ratio = resolved.heightRatio ?? Self.defaultHeightRatio
         if appliedHeightRatio != ratio {
             appliedHeightRatio = ratio
             heightConstraint?.deactivate()
@@ -231,14 +251,25 @@ open class LMKCardPanelViewController: UIViewController, LMKThemeApplying {
         }
         if isPresented {
             view.backgroundColor = dismissesOnBackgroundTap ? dimmingColor : .clear
+        } else {
+            // At rest, above its resting place: the first slide-in travels the style's offset.
+            cardView.transform = CGAffineTransform(translationX: 0, y: -slideOffset)
         }
         overlayWindow?.windowLevel = UIWindow.Level(rawValue: resolved.windowLevel ?? (UIWindow.Level.normal.rawValue + 1))
+        applyContentTheme(theme)
         didApplyStyle?(self)
     }
+
+    /// Called at the end of every `applyTheme`, before `didApplyStyle`, for subclasses to
+    /// style their own content from `theme` and `resolvedStyle`.
+    open func applyContentTheme(_ theme: LMKTheme) {}
 
     // MARK: - Presentation
 
     /// Shows the panel: in an overlay window above the host's scene, or as a modal over `host`.
+    ///
+    /// Nothing happens while the panel is already presented, without a window scene to
+    /// overlay, or when `host` cannot present (it is presenting something else already).
     public func present(from host: UIViewController) {
         guard !isPresented else { return }
         isPresented = true
@@ -249,6 +280,11 @@ open class LMKCardPanelViewController: UIViewController, LMKThemeApplying {
             modalPresentationStyle = .overFullScreen
             modalTransitionStyle = .crossDissolve
             host.present(self, animated: false)
+            guard presentingViewController != nil else {
+                LMKLogger.warning("LMKCardPanelViewController: the host refused the presentation", category: .ui)
+                isPresented = false
+                return
+            }
             view.layoutIfNeeded()
             animateIn()
         }
@@ -257,6 +293,7 @@ open class LMKCardPanelViewController: UIViewController, LMKThemeApplying {
     private func presentInOverlayWindow(from host: UIViewController) {
         let hostWindow = host.view.window ?? LMKScene.keyWindow
         guard let windowScene = hostWindow?.windowScene else {
+            LMKLogger.warning("LMKCardPanelViewController: no window scene to overlay", category: .ui)
             isPresented = false
             return
         }
@@ -276,13 +313,15 @@ open class LMKCardPanelViewController: UIViewController, LMKThemeApplying {
     // MARK: - Animation
 
     /// Slides the card in with a spring and dims the background (when background taps dismiss).
-    public func animateIn() {
+    func animateIn() {
         run(duration: LMKAnimation.Duration.moderate, spring: true) { [weak self] in
             guard let self else { return }
             cardView.alpha = 1
             cardView.transform = .identity
             view.backgroundColor = dismissesOnBackgroundTap ? dimmingColor : .clear
         }
+        UIAccessibility.post(notification: .screenChanged, argument: cardView)
+        claimFirstResponderIfIdle()
     }
 
     private func animateOut(completion: @escaping () -> Void) {
@@ -329,33 +368,82 @@ open class LMKCardPanelViewController: UIViewController, LMKThemeApplying {
     // MARK: - Dismissal
 
     /// Slides the card out, then tears down the overlay window (restoring the previous key
-    /// window) or dismisses the modal.
+    /// window) or dismisses the modal. A second call while dismissing is ignored.
     public func dismiss(completion: (() -> Void)? = nil) {
         guard isPresented, !isDismissing else { return }
         isDismissing = true
+        if isFirstResponder {
+            resignFirstResponder()
+        }
         animateOut { [weak self] in
             guard let self else { return }
-            let finish = { [weak self] in
-                guard let self else { return }
-                isPresented = false
-                isDismissing = false
-                onDismiss?()
-                completion?()
-            }
             if let overlayWindow {
                 overlayWindow.isHidden = true
                 overlayWindow.rootViewController = nil
                 self.overlayWindow = nil
                 previousKeyWindow?.makeKey()
                 previousKeyWindow = nil
-                finish()
-            } else {
-                if presentingViewController != nil {
-                    dismiss(animated: false)
-                }
-                finish()
+            } else if presentingViewController != nil {
+                dismissModalThroughUIKit()
             }
+            finishDismissal(completion: completion)
         }
+    }
+
+    /// The UIKit dismissal of the modal (`super`, which a closure cannot name).
+    private func dismissModalThroughUIKit() {
+        super.dismiss(animated: false, completion: nil)
+    }
+
+    /// The UIKit dismissal routes to the panel's own: a page calling `dismiss(animated:)` on
+    /// its panel gets the slide-out and `onDismiss`. Something the panel presented itself is
+    /// dismissed as usual.
+    override open func dismiss(animated flag: Bool, completion: (() -> Void)? = nil) {
+        guard presentedViewController == nil, isPresented else {
+            super.dismiss(animated: flag, completion: completion)
+            return
+        }
+        dismiss(completion: completion)
+    }
+
+    private func finishDismissal(completion: (() -> Void)?) {
+        isPresented = false
+        isDismissing = false
+        onDismiss?()
+        completion?()
+    }
+
+    // MARK: - Accessibility and key commands
+
+    override open func accessibilityPerformEscape() -> Bool {
+        guard isPresented, !isDismissing else { return false }
+        dismiss()
+        return true
+    }
+
+    override open var canBecomeFirstResponder: Bool { true }
+
+    override open var keyCommands: [UIKeyCommand]? {
+        [
+            UIKeyCommand(input: UIKeyCommand.inputEscape, modifierFlags: [], action: #selector(dismissFromKeyCommand)),
+            UIKeyCommand(input: "w", modifierFlags: .command, action: #selector(dismissFromKeyCommand)),
+        ]
+    }
+
+    @objc private func dismissFromKeyCommand() {
+        dismiss()
+    }
+
+    /// Takes first responder on iPad and Mac (where hardware key commands matter) so Esc / ⌘W
+    /// reach the panel, unless a field inside is editing.
+    private func claimFirstResponderIfIdle() {
+        guard traitCollection.userInterfaceIdiom != .phone, view.window != nil, !isDismissing, !Self.containsFirstResponder(view) else { return }
+        becomeFirstResponder()
+    }
+
+    private static func containsFirstResponder(_ view: UIView) -> Bool {
+        if view.isFirstResponder { return true }
+        return view.subviews.contains { containsFirstResponder($0) }
     }
 
     // MARK: - Actions
@@ -373,12 +461,26 @@ final class LMKCardPanelOverlayWindow: UIWindow {
     var passthroughEnabled = false
 
     override func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
-        guard passthroughEnabled, let panel = rootViewController as? LMKCardPanelViewController else {
+        // Something the panel presented (an alert, a sheet) covers the window: every touch is its.
+        guard passthroughEnabled, let panel = rootViewController as? LMKCardPanelViewController, panel.presentedViewController == nil else {
             return super.hitTest(point, with: event)
         }
         let panelPoint = convert(point, to: panel.view)
         guard panel.cardView.frame.contains(panelPoint) else { return nil }
         return super.hitTest(point, with: event)
+    }
+}
+
+public extension UIViewController {
+    /// The `LMKCardPanelViewController` this controller is shown in (through its embedded
+    /// navigation controller), or `nil` outside a panel.
+    var lmk_cardPanel: LMKCardPanelViewController? {
+        var candidate: UIViewController? = self
+        while let current = candidate {
+            if let panel = current as? LMKCardPanelViewController { return panel }
+            candidate = current.parent
+        }
+        return nil
     }
 }
 

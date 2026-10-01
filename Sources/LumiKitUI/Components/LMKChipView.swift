@@ -12,7 +12,8 @@ import UIKit
 /// Small tag/chip for categories, filters, or labels.
 ///
 /// Three interaction modes:
-/// - **Display-only**: no handlers set; a static label.
+/// - **Display-only**: no handlers set; a static label that lets touches through to the row
+///   or card under it.
 /// - **Tappable**: set `onTap`.
 /// - **Dismissible**: set `onDismiss` to show an xmark button.
 ///
@@ -25,7 +26,7 @@ import UIKit
 /// let filter = LMKChipView(text: "Category", style: .outlined)
 /// filter.onDismiss = { print("removed") }
 /// let toggle = LMKChipView(text: "Active", style: .tinted)
-/// toggle.onTap = { toggle.isSelected.toggle() }
+/// toggle.onTap = { [weak toggle] in toggle?.isSelected.toggle() }
 /// ```
 public final class LMKChipView: UIControl, LMKThemeApplying {
     // MARK: - Variant
@@ -268,6 +269,8 @@ public final class LMKChipView: UIControl, LMKThemeApplying {
         titleLabel.textAlignment = .center
 
         dismissButton.isHidden = true
+        // A bare glyph in the chip's tint on every idiom, not a Mac push button.
+        dismissButton.preferredBehavioralStyle = .pad
         dismissButton.addTarget(self, action: #selector(didDismiss), for: .touchUpInside)
         dismissButton.snp.makeConstraints { make in
             dismissSizeConstraint = make.width.height.equalTo(0).constraint
@@ -281,7 +284,7 @@ public final class LMKChipView: UIControl, LMKThemeApplying {
         contentStack.addArrangedSubview(dismissButton)
         addSubview(contentStack)
         contentStack.snp.makeConstraints { make in
-            contentInsetsConstraint = make.edges.equalToSuperview().constraint
+            contentInsetsConstraint = make.directionalEdges.equalToSuperview().constraint
         }
         titleLabel.isUserInteractionEnabled = false
         iconView.isUserInteractionEnabled = false
@@ -296,20 +299,40 @@ public final class LMKChipView: UIControl, LMKThemeApplying {
         lmk_layoutSurfaceIfNeeded()
     }
 
+    /// A hidden chip takes no touch; a disabled one absorbs its bounds (UIKit's behavior for a
+    /// disabled control); an interactive chip answers the minimum touch target.
     override public func point(inside point: CGPoint, with event: UIEvent?) -> Bool {
-        guard isInteractive, isEnabled, !isHidden else { return bounds.contains(point) }
+        guard !isHidden else { return false }
+        guard isInteractive, isEnabled else { return bounds.contains(point) }
         return lmk_hitTestBounds(minimumSide: traitCollection.lmkTheme.layout.minimumTouchTarget, insets: lmk_hitTestInsets).contains(point)
     }
 
-    /// The chip claims every touch except the ones on its dismiss button: a touch that lands on
-    /// the content stack and reaches the chip through the responder chain never starts control
-    /// tracking, so `touchUpInside` would not fire.
+    /// An interactive chip claims every touch except the ones on its dismiss button: a touch
+    /// that lands on the content stack and reaches the chip through the responder chain never
+    /// starts control tracking, so `touchUpInside` would not fire. A display-only chip (no
+    /// handler, no host target or recognizer) is not the hit view, so the row or card under it
+    /// gets the tap.
     override public func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
         guard isUserInteractionEnabled, !isHidden, alpha > 0.01, self.point(inside: point, with: event) else { return nil }
+        guard isInteractive || hasHostHandlers else { return nil }
         if !dismissButton.isHidden, let hit = dismissButton.hitTest(convert(point, to: dismissButton), with: event) {
             return hit
         }
         return self
+    }
+
+    /// Whether the host added a target, an action, or a gesture recognizer of its own.
+    private var hasHostHandlers: Bool {
+        if !(gestureRecognizers ?? []).isEmpty { return true }
+        var found = false
+        enumerateEventHandlers { action, targetAction, _, stop in
+            let isOwn = action == nil && (targetAction?.0 as AnyObject?) === self
+            if !isOwn {
+                found = true
+                stop = true
+            }
+        }
+        return found
     }
 
     // MARK: - Configuration
@@ -359,17 +382,22 @@ public final class LMKChipView: UIControl, LMKThemeApplying {
             background: background,
             corners: .capsule,
             border: border,
-            shadow: shadow ?? LMKShadowSource.none,
+            shadow: shadow ?? LMKShadowSource.hidden,
             contentInsets: .lmk_symmetric(vertical: theme.spacing.xs, horizontal: theme.spacing.medium)
         )
         var surface = resolved.surface
-        if isSelected || isHighlighted || !isEnabled {
-            // State overrides win over the instance surface for the fields they set.
-            if resolved.selected?.background != nil || resolved.highlighted?.background != nil || resolved.disabled?.background != nil { surface.background = background }
-            if resolved.selected?.border != nil || resolved.highlighted?.border != nil || resolved.disabled?.border != nil { surface.border = border }
-        }
-        if isHighlighted, resolved.highlighted?.background == nil, resolved.highlighted?.alpha == nil, let own = surface.background {
-            // The derived pressed shade applies to an instance background too.
+        // The overrides of the states in effect win over the instance surface for the fields they set.
+        let stateSetsBackground = (isSelected && resolved.selected?.background != nil)
+            || (isHighlighted && resolved.highlighted?.background != nil)
+            || (!isEnabled && resolved.disabled?.background != nil)
+        let stateSetsBorder = (isSelected && resolved.selected?.border != nil)
+            || (isHighlighted && resolved.highlighted?.border != nil)
+            || (!isEnabled && resolved.disabled?.border != nil)
+        if stateSetsBackground { surface.background = background }
+        if stateSetsBorder { surface.border = border }
+        if isHighlighted, !stateSetsBackground, resolved.highlighted?.alpha == nil, let own = surface.background {
+            // The derived pressed shade applies to an instance background too (once: a fill a
+            // state set already carries it).
             surface.background = Self.highlightedBackground(over: own.resolved(against: background), variant: variant, tint: tint, theme: theme)
         }
         let applied = lmk_apply(surface: surface, defaults: defaults)
@@ -381,18 +409,27 @@ public final class LMKChipView: UIControl, LMKThemeApplying {
         dismissButton.tintColor = foreground
         // The Mac idiom derives no label from the symbol; VoiceOver needs the localized one everywhere.
         dismissButton.accessibilityLabel = strings.dismissAccessibilityLabel
-        let symbolSize = theme.layout.symbolMicro
-        dismissButton.setImage(UIImage(systemName: resolved.dismissSymbol ?? "xmark", withConfiguration: UIImage.SymbolConfiguration(pointSize: symbolSize, weight: .bold)), for: .normal)
+        updateDismissImage(symbol: resolved.dismissSymbol ?? "xmark", pointSize: theme.layout.symbolMicro)
 
         iconSizeConstraint?.update(offset: resolved.iconSize ?? theme.layout.iconExtraSmall)
         dismissSizeConstraint?.update(offset: resolved.dismissButtonSize ?? theme.spacing.xl)
         contentStack.spacing = resolved.iconSpacing ?? theme.spacing.xs
         let insets = applied.contentInsets ?? .lmk_symmetric(vertical: theme.spacing.xs, horizontal: theme.spacing.medium)
-        contentInsetsConstraint?.update(inset: UIEdgeInsets(top: insets.top, left: insets.leading, bottom: insets.bottom, right: insets.trailing))
+        contentInsetsConstraint?.update(inset: insets)
         (dismissButton as? LMKChipDismissButton)?.minimumTarget = theme.layout.minimumTouchTarget
         invalidateIntrinsicContentSize()
         didApplyStyle?(self)
     }
+
+    /// The xmark glyph, rebuilt only when the symbol or its size changes (every state change
+    /// comes through `applyTheme`).
+    private func updateDismissImage(symbol: String, pointSize: CGFloat) {
+        guard dismissImageKey?.symbol != symbol || dismissImageKey?.pointSize != pointSize else { return }
+        dismissImageKey = (symbol, pointSize)
+        dismissButton.setImage(UIImage(systemName: symbol, withConfiguration: UIImage.SymbolConfiguration(pointSize: pointSize, weight: .bold)), for: .normal)
+    }
+
+    private var dismissImageKey: (symbol: String, pointSize: CGFloat)?
 
     private static let outlinedBorderWidth: CGFloat = 1.5
     /// Brightness factors for `lmk_stateShade(by:)` (a multiplier): 25% and 15% darker.
@@ -484,7 +521,8 @@ private final class LMKChipDismissButton: UIButton {
     var minimumTarget: CGFloat = 44
 
     override func point(inside point: CGPoint, with event: UIEvent?) -> Bool {
-        guard isEnabled, !isHidden else { return false }
+        guard !isHidden else { return false }
+        guard isEnabled else { return bounds.contains(point) }
         return lmk_hitTestBounds(minimumSide: minimumTarget).contains(point)
     }
 }

@@ -12,7 +12,7 @@ import LumiKitUI
 import UIKit
 
 extension LMKTheme {
-    /// The catalog's brand theme; applied from `ExampleViewController.viewDidLoad`.
+    /// The catalog's brand theme; applied once from the AppDelegate, before any scene connects.
     static let example = LMKTheme(
         colors: LMKColorTheme(
             primary: UIColor(red: 0.29, green: 0.69, blue: 0.49, alpha: 1.0), // #4CAF7D
@@ -39,11 +39,13 @@ extension LMKTheme {
 enum ExampleThemes {
     static let names = ["example", "ocean", "default"]
 
-    static func theme(named name: String) -> LMKTheme {
+    /// `nil` for a name that is not in `names`, so a typo in `-lmk-theme` is reported, not swallowed.
+    static func theme(named name: String) -> LMKTheme? {
         switch name.lowercased() {
+        case "example": .example
         case "ocean": .ocean
         case "default": .default
-        default: .example
+        default: nil
         }
     }
 }

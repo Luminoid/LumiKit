@@ -10,34 +10,57 @@ import Synchronization
 
 /// The shared calendar and the day math built on it.
 ///
-/// `calendar` follows the system time zone once `initialize()` has been called; every
-/// accessor is safe from any thread.
+/// `calendar` follows the system time zone from its first read; every accessor is safe from
+/// any thread.
 public enum LMKDate {
-    private static let store = Mutex(makeCalendar())
+    /// A calendar snapshot that is replaced whenever the system time zone changes.
+    ///
+    /// The observer registers in `init`, so the calendar tracks the zone for as long as the
+    /// instance lives; selector observers unregister themselves on deallocation.
+    final class FollowingCalendar: NSObject, Sendable {
+        private let store: Mutex<Calendar>
+        private let makeCalendar: @Sendable () -> Calendar
 
-    private static func makeCalendar() -> Calendar {
-        var calendar = Calendar.current
-        calendar.timeZone = TimeZone.current
-        return calendar
+        /// - Parameters:
+        ///   - center: The center that posts `NSSystemTimeZoneDidChange`.
+        ///   - makeCalendar: Builds the snapshot; the default is the current calendar in the current zone.
+        init(center: NotificationCenter = .default, makeCalendar: @escaping @Sendable () -> Calendar = FollowingCalendar.currentCalendar) {
+            self.makeCalendar = makeCalendar
+            store = Mutex(makeCalendar())
+            super.init()
+            center.addObserver(self, selector: #selector(timeZoneDidChange), name: .NSSystemTimeZoneDidChange, object: nil)
+        }
+
+        /// The current snapshot.
+        var calendar: Calendar {
+            store.withLock { $0 }
+        }
+
+        private static func currentCalendar() -> Calendar {
+            var calendar = Calendar.current
+            calendar.timeZone = TimeZone.current
+            return calendar
+        }
+
+        @objc private func timeZoneDidChange() {
+            let refreshed = makeCalendar()
+            store.withLock { $0 = refreshed }
+        }
     }
 
-    /// Registered once, on the first `initialize()`; refreshes the calendar when the time zone changes.
-    private nonisolated(unsafe) static let timeZoneObserver: any NSObjectProtocol = NotificationCenter.default.addObserver(
-        forName: .NSSystemTimeZoneDidChange,
-        object: nil,
-        queue: nil
-    ) { _ in
-        store.withLock { $0 = makeCalendar() }
-    }
+    /// Created on the first read of `calendar` (or on `initialize()`), and following the
+    /// time zone from then on.
+    private static let shared = FollowingCalendar()
 
     /// The shared calendar in the current time zone.
     public static var calendar: Calendar {
-        store.withLock { $0 }
+        shared.calendar
     }
 
-    /// Starts following system time-zone changes. Safe to call more than once; call it at app launch.
+    /// Starts following system time-zone changes now rather than on the first `calendar` read.
+    /// Safe to call more than once; call it at app launch to have the observer in place early.
     public static func initialize() {
-        _ = timeZoneObserver
+        _ = shared
     }
 
     /// Start of today in the shared calendar.

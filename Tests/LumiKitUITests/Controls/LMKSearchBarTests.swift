@@ -19,10 +19,12 @@ struct LMKSearchBarTests {
         searchBar.placeholder = nil
         #expect(searchBar.textField.attributedPlaceholder == nil)
         searchBar.text = "Monstera"
-        #expect(searchBar.text == "Monstera")
+        #expect(searchBar.textField.text == "Monstera")
         #expect(!searchBar.clearButton.isHidden)
         searchBar.text = ""
+        #expect(searchBar.textField.text == "")
         #expect(searchBar.clearButton.isHidden)
+        #expect(searchBar.textField.accessibilityTraits.contains(.searchField))
     }
 
     @Test
@@ -38,6 +40,23 @@ struct LMKSearchBarTests {
         #expect(searchBar.showsCancelButton)
         searchBar.textFieldDidEndEditing(searchBar.textField)
         #expect(!searchBar.showsCancelButton)
+    }
+
+    @Test
+    func `A shown cancel button takes its own width and a hidden one collapses`() {
+        let searchBar = LMKSearchBar()
+        searchBar.cancelButtonMode = .always
+        LMKThemeTesting.fit(searchBar, width: 375)
+        #expect(searchBar.cancelButton.frame.width > 0)
+        #expect(abs(searchBar.cancelButton.frame.width - searchBar.cancelButton.intrinsicContentSize.width) < 0.5)
+        #expect(searchBar.containerView.frame.maxX < 375, "the field makes room for the button")
+
+        searchBar.cancelButtonMode = .never
+        // Outside a window a constraint change does not flag layout on its own.
+        searchBar.setNeedsLayout()
+        LMKThemeTesting.fit(searchBar, width: 375)
+        #expect(searchBar.cancelButton.frame.width == 0)
+        #expect(searchBar.containerView.frame.maxX == 375)
     }
 
     @Test
@@ -91,6 +110,36 @@ struct LMKSearchBarTests {
     }
 
     @Test
+    func `A pending debounce is dropped by Cancel, by Return, and by setting the text`() async {
+        let searchBar = LMKSearchBar()
+        var debounced: [String] = []
+        var searches: [String] = []
+        searchBar.debounceInterval = 0.05
+        searchBar.onDebouncedTextChange = { debounced.append($0) }
+        searchBar.onSearch = { searches.append($0) }
+
+        searchBar.textField.text = "abc"
+        searchBar.clearButton.didTap()
+        #expect(searchBar.isDebouncePending)
+        searchBar.cancelButton.didTap()
+        #expect(!searchBar.isDebouncePending, "Cancel drops the search for text no longer in the field")
+
+        searchBar.clearButton.didTap()
+        #expect(searchBar.isDebouncePending)
+        searchBar.text = "fern"
+        #expect(!searchBar.isDebouncePending, "a programmatic text change is not a keystroke")
+
+        searchBar.clearButton.didTap()
+        #expect(searchBar.isDebouncePending)
+        _ = searchBar.textFieldShouldReturn(searchBar.textField)
+        #expect(!searchBar.isDebouncePending, "Return reports through onSearch, once")
+        #expect(searches == [""])
+
+        try? await Task.sleep(for: .milliseconds(150))
+        #expect(debounced.isEmpty)
+    }
+
+    @Test
     func `Default surface, height floor, and strings`() {
         let searchBar = LMKSearchBar()
         #expect(searchBar.containerView.backgroundColor === LMKColor.backgroundTertiary)
@@ -112,6 +161,19 @@ struct LMKSearchBarTests {
         #expect(searchBar.iconView.tintColor == UIColor.blue)
         LMKThemeTesting.fit(searchBar, width: 300)
         #expect(searchBar.containerView.bounds.height >= 50)
+
+        let sized = LMKSearchBar(style: LMKSearchBar.Style(
+            surface: LMKSurfaceStyle(contentInsets: NSDirectionalEdgeInsets(top: 6, leading: 20, bottom: 6, trailing: 4)),
+            clearButtonTint: .green,
+            clearButtonSize: 30
+        ))
+        sized.text = "x"
+        LMKThemeTesting.fit(sized, width: 300)
+        #expect(sized.clearButton.bounds.width == 30)
+        #expect(sized.clearButton.style.tintColor == UIColor.green)
+        #expect(sized.textField.frame.minY == 6, "vertical insets reach the field")
+        #expect(sized.containerView.bounds.height >= sized.textField.bounds.height + 12)
+        #expect(sized.iconView.frame.minX == 20)
 
         var theme = LMKTheme()
         theme.searchBar = LMKSearchBar.Style(placeholderColor: .purple)

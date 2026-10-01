@@ -12,6 +12,15 @@ struct LMKMenuTests {
     private enum Layout: Hashable { case list, grid }
     private enum Filter: Hashable { case archived, shared, flagged }
 
+    /// A host whose state the menu reads on each open (a reference, so a test can change it after the capture).
+    private final class FilterHost {
+        var filters: Set<Filter>
+
+        init(_ filters: Set<Filter>) {
+            self.filters = filters
+        }
+    }
+
     private static func actions(of section: LMKMenu.Section) throws -> [UIAction] {
         try #require(section.makeMenu().children as? [UIAction])
     }
@@ -64,6 +73,35 @@ struct LMKMenuTests {
 
         let closing = LMKMenu.Section.multiple(options: [.init(id: Filter.archived, title: "Archived")], keepsMenuOpen: false, selected: { [] }, onToggle: { _, _ in })
         #expect(try Self.actions(of: closing).allSatisfy { !$0.attributes.contains(.keepsMenuPresented) })
+    }
+
+    @Test
+    func `A toggle reports from the host's state, so a row that is not rebuilt still alternates`() throws {
+        var filters: Set<Filter> = []
+        var reported: [Bool] = []
+        let section = LMKMenu.Section.multiple(
+            options: [.init(id: Filter.archived, title: "Archived")],
+            selected: { filters },
+            onToggle: { filter, isOn in
+                reported.append(isOn)
+                if isOn { filters.insert(filter) } else { filters.remove(filter) }
+            }
+        )
+        // A nested copy UIKit does not repaint: the same row is tapped three times.
+        let row = try #require(Self.actions(of: section).first)
+        row.performWithSender(nil, target: nil)
+        row.state = .off
+        row.performWithSender(nil, target: nil)
+        row.performWithSender(nil, target: nil)
+        #expect(reported == [true, false, true])
+        #expect(filters == [.archived])
+
+        // The host's state wins over a stale row: a row showing "on" for a filter the host dropped turns it on.
+        filters = []
+        row.state = .on
+        row.performWithSender(nil, target: nil)
+        #expect(reported.last == true)
+        #expect(row.state == .on)
     }
 
     @Test
@@ -158,15 +196,15 @@ struct LMKMenuTests {
 
     @Test
     func `An open menu is rebuilt from the host's state`() throws {
-        var filters: Set<Filter> = [.shared]
-        let root = LMKMenu.Root(title: "Options", sections: [Self.filterSection { filters }])
+        let host = FilterHost([.shared])
+        let root = LMKMenu.Root(title: "Options", sections: [Self.filterSection { host.filters }])
         let menu = root.makeMenu()
         #expect(menu.identifier == root.identifier)
         #expect(menu.title == "Options")
 
         // What UIKit shows: the root with the rows it resolved when the menu opened.
         let visible = menu.replacingChildren(LMKMenu.makeElements(sections: root.sections))
-        filters = [.archived]
+        host.filters = [.archived]
         let refreshed = try #require(root.refreshed(visible))
         #expect(refreshed.identifier == root.identifier)
         let rows = try #require((refreshed.children.first as? UIMenu)?.children as? [UIAction])
@@ -175,13 +213,13 @@ struct LMKMenuTests {
 
     @Test
     func `An open submenu is rebuilt in place`() throws {
-        var filters: Set<Filter> = []
-        let inner = Self.filterSection { filters }
+        let host = FilterHost([])
+        let inner = Self.filterSection { host.filters }
         let submenu = LMKMenu.Section.submenu(title: "More", sections: [inner])
         let root = LMKMenu.Root(title: "", sections: [submenu])
 
         let visibleSubmenu = submenu.makeMenu()
-        filters = [.shared]
+        host.filters = [.shared]
         let refreshed = try #require(root.refreshed(visibleSubmenu))
         #expect(refreshed.identifier == visibleSubmenu.identifier)
         let rows = try #require((refreshed.children.first as? UIMenu)?.children as? [UIAction])

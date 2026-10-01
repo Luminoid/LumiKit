@@ -8,7 +8,6 @@
 //  The pinch and drag-to-select gestures live in +Gestures.
 //
 
-import LumiKitCore
 import LumiKitUI
 import PhotosUI
 import SnapKit
@@ -57,15 +56,25 @@ public extension LMKPhotoGridViewController {
 public protocol LMKPhotoGridDataSource: AnyObject {
     /// Total number of photos.
     var numberOfPhotos: Int { get }
-    /// Image for the photo at the given data source index.
+    /// The full-size image for the photo at the given data source index, for the full-screen
+    /// browser the grid opens.
     ///
-    /// Called on the main actor whenever a cell needs its image. Implementations that decode
+    /// Called on the main actor when a browser page is configured. Implementations that decode
     /// or fetch should hop off the main actor themselves (e.g. `Task.detached` plus
     /// `UIImage.preparingForDisplay()`) and return a ready-to-display image; a source that
-    /// already holds a decoded image just returns it immediately. The cell shows a neutral
-    /// placeholder until the call returns, and a result that lands after the cell was reused
-    /// for a different index is discarded.
+    /// already holds a decoded image just returns it immediately. The page shows the stage
+    /// until the call returns, and a result that lands after the page was reused for a
+    /// different index is discarded.
     func photoGridImage(at index: Int) async -> UIImage?
+    /// A thumbnail for the cell at the given data source index, decoded for about
+    /// `pixelSize` (the cell's side at the display scale), so the grid never holds a
+    /// full-size decode per visible cell.
+    ///
+    /// Called on the main actor whenever a cell needs its image; the same rules as
+    /// `photoGridImage(at:)` apply. The default downsamples `photoGridImage(at:)`'s result
+    /// off the main actor (`byPreparingThumbnail(ofSize:)`); a source with its own
+    /// thumbnails (a cache, `PHImageManager`) returns them here directly.
+    func photoGridThumbnail(at index: Int, pixelSize: CGSize) async -> UIImage?
     /// Date for the photo at the given data source index. Used for sorting.
     func photoGridDate(at index: Int) -> Date?
     /// Whether the item at the given index is a Live Photo (drives the LIVE badge). Default `false`.
@@ -81,6 +90,11 @@ public protocol LMKPhotoGridDataSource: AnyObject {
 }
 
 public extension LMKPhotoGridDataSource {
+    func photoGridThumbnail(at index: Int, pixelSize: CGSize) async -> UIImage? {
+        guard let image = await photoGridImage(at: index) else { return nil }
+        return await LMKPhotoGridViewController.thumbnail(of: image, pixelSize: pixelSize)
+    }
+
     func photoGridIsLivePhoto(at _: Int) -> Bool {
         false
     }
@@ -141,12 +155,17 @@ public final class LMKPhotoGridViewController: UIViewController, LMKThemeApplyin
         }
     }
 
-    /// Strings forwarded to the photo browser when presented.
-    public var browserStrings = LMKPhotoBrowserViewController.Strings()
+    /// Strings forwarded to the photo browser when presented; defaults to the browser's
+    /// process-wide strings, so an app-level override reaches the grid's browser too.
+    public var browserStrings = LMKPhotoBrowserViewController.strings
     /// Style forwarded to the photo browser when presented; `nil` leaves `theme.photoBrowser`.
     public var browserStyle: LMKPhotoBrowserViewController.Style?
     /// Forwarded to the photo browser's `showsActionButton` when presented.
     public var browserShowsActionButton = true
+    /// The photo browser the grid has presented, while it is up: the controller to present an
+    /// action sheet or a toast from in `photoGrid(_:didRequestActionForPhotoAt:)`. The grid's
+    /// `reloadData()` reloads it as well.
+    public private(set) weak var browser: LMKPhotoBrowserViewController?
 
     /// Per-instance style, layered over `theme.photoGrid`.
     public var style: Style {
@@ -188,6 +207,13 @@ public final class LMKPhotoGridViewController: UIViewController, LMKThemeApplyin
     private var lastLayoutWidth: CGFloat = 0
     private var toolbarInsets = NSDirectionalEdgeInsets.zero
     private var toolbarBottomConstraint: Constraint?
+    private var emptyStateInsetConstraint: Constraint?
+    /// The browser's data source and delegate, mapping its display indices to the data
+    /// source's, kept off the grid's public surface.
+    lazy var browserBridge = LMKPhotoGridBrowserBridge(grid: self)
+
+    /// Whether rows run right to left (the flow layout starts each row at the right).
+    var isRightToLeft: Bool { collectionView.effectiveUserInterfaceLayoutDirection == .rightToLeft }
     /// Room at the end of the grid for the floating toolbar, so the last row scrolls clear of it.
     private var toolbarContentInset: CGFloat = 0
 
@@ -289,11 +315,12 @@ public final class LMKPhotoGridViewController: UIViewController, LMKThemeApplyin
             make.edges.equalToSuperview()
         }
 
+        // The inset takes its value from the theme in `applyTheme`.
         emptyStateView.isHidden = true
         view.addSubview(emptyStateView)
         emptyStateView.snp.makeConstraints { make in
             make.center.equalToSuperview()
-            make.leading.trailing.equalTo(view.safeAreaLayoutGuide).inset(LMKSpacing.large)
+            emptyStateInsetConstraint = make.leading.trailing.equalTo(view.safeAreaLayoutGuide).inset(0).constraint
         }
 
         sortButton.setSymbol(sortOrder.systemImageName)
@@ -309,7 +336,7 @@ public final class LMKPhotoGridViewController: UIViewController, LMKThemeApplyin
         view.addSubview(toolbarView)
         toolbarView.snp.makeConstraints { make in
             make.centerX.equalToSuperview()
-            toolbarBottomConstraint = make.bottom.equalTo(view.safeAreaLayoutGuide).offset(-LMKSpacing.medium).constraint
+            toolbarBottomConstraint = make.bottom.equalTo(view.safeAreaLayoutGuide).offset(0).constraint
         }
         collectionView.addGestureRecognizer(pinchGesture)
         collectionView.addGestureRecognizer(selectionPanGesture)
@@ -365,6 +392,7 @@ public final class LMKPhotoGridViewController: UIViewController, LMKThemeApplyin
         }
         toolbarStack.spacing = resolved.toolbarSpacing ?? theme.spacing.medium
         toolbarBottomConstraint?.update(offset: -(resolved.toolbarBottomMargin ?? theme.spacing.medium))
+        emptyStateInsetConstraint?.update(inset: theme.spacing.large)
         let buttonStyle = LMKButton.Style(
             role: .neutral,
             variant: .ghost,
@@ -463,13 +491,15 @@ public final class LMKPhotoGridViewController: UIViewController, LMKThemeApplyin
         }
     }
 
-    /// Reloads the grid from the data source; selections outside the new range are dropped.
+    /// Reloads the grid from the data source, and the browser it has presented; selections
+    /// outside the new range are dropped.
     public func reloadData() {
         rebuildSortedIndices()
         let count = photoCount
         selectedIndices = selectedIndices.filter { $0 < count }
         collectionView.reloadData()
         updateEmptyState()
+        browser?.reloadData()
     }
 
     /// Replaces the selection silently (no `onSelectionChange`), by data source indices.
@@ -521,8 +551,13 @@ public final class LMKPhotoGridViewController: UIViewController, LMKThemeApplyin
         }
     }
 
+    /// The cell's VoiceOver label: its position, and the Live Photo name on a Live Photo cell.
     private func applyAccessibility(to cell: LMKPhotoGridCell, displayIndex: Int) {
-        cell.accessibilityLabel = String(format: strings.photoAccessibilityLabelFormat, displayIndex + 1, sortedIndices.count)
+        var label = String(format: strings.photoAccessibilityLabelFormat, displayIndex + 1, sortedIndices.count)
+        if let dsIndex = dataSourceIndex(forDisplayIndex: displayIndex), dataSource?.photoGridIsLivePhoto(at: dsIndex) == true {
+            label += ", " + strings.livePhotoAccessibilityLabel
+        }
+        cell.accessibilityLabel = label
     }
 
     // MARK: - Helpers
@@ -577,10 +612,19 @@ public final class LMKPhotoGridViewController: UIViewController, LMKThemeApplyin
         return CGSize(width: max(1, side), height: max(1, side))
     }
 
+    /// The pixel size cells ask their thumbnails for: the cell side at the display scale. A
+    /// grid measured before its first layout asks for the smallest cell the pinch allows, so a
+    /// cell that loads early still gets something drawable.
+    var thumbnailPixelSize: CGSize {
+        let side = max(itemSize(for: collectionView).width, resolvedStyle.minimumCell)
+        let scale = LMKScene.displayScale(of: viewIfLoaded) ?? LMKScene.fallbackDisplayScale
+        return LMKImage.pixelSize(CGSize(width: side, height: side), scale: scale)
+    }
+
     private func presentPhotoBrowser(startingAt displayIndex: Int) {
         let browser = LMKPhotoBrowserViewController(initialIndex: displayIndex, style: browserStyle ?? LMKPhotoBrowserViewController.Style())
-        browser.dataSource = self
-        browser.delegate = self
+        browser.dataSource = browserBridge
+        browser.delegate = browserBridge
         browser.strings = browserStrings
         browser.showsActionButton = browserShowsActionButton
         browser.zoomSourceView = { [weak self] index in
@@ -592,7 +636,23 @@ public final class LMKPhotoGridViewController: UIViewController, LMKThemeApplyin
             }
             return collectionView.cellForItem(at: indexPath)
         }
+        self.browser = browser
         present(browser, animated: true)
+    }
+
+    /// `image` decoded down to cover `pixelSize` off the main actor, the default thumbnail for a
+    /// data source that only vends full-size images. Covering (not fitting) keeps an aspect-fill
+    /// cell sharp: a 4:3 photo in a square cell keeps the cell's pixels along its shorter side.
+    @concurrent
+    nonisolated static func thumbnail(of image: UIImage, pixelSize: CGSize) async -> UIImage? {
+        guard pixelSize.width > 0, pixelSize.height > 0, image.size.width > 0, image.size.height > 0 else { return image }
+        // The scale of the image is the scale of its pixels, so the target is in its points.
+        let scale = max(1, image.scale)
+        let target = CGSize(width: pixelSize.width / scale, height: pixelSize.height / scale)
+        let ratio = max(target.width / image.size.width, target.height / image.size.height)
+        guard ratio < 1 else { return image }
+        let covering = CGSize(width: (image.size.width * ratio).rounded(.up), height: (image.size.height * ratio).rounded(.up))
+        return await image.byPreparingThumbnail(ofSize: covering) ?? image
     }
 
     private func toggleSelection(dataSourceIndex: Int, cell: LMKPhotoGridCell?) {
@@ -640,11 +700,12 @@ extension LMKPhotoGridViewController: UICollectionViewDataSource {
         guard let dsIndex = dataSourceIndex(forDisplayIndex: indexPath.item) else { return cell }
 
         let isLive = dataSource?.photoGridIsLivePhoto(at: dsIndex) ?? false
-        // Placeholder first, then the async load; the cell's generation token discards results
-        // that land after reuse.
+        // Placeholder first, then the async load of a thumbnail sized for the cell; the cell's
+        // generation token discards results that land after reuse.
         cell.configure(with: nil, contentMode: photoContentMode.uiContentMode, isLive: isLive)
+        let pixelSize = thumbnailPixelSize
         cell.loadImage { [weak self] in
-            await self?.dataSource?.photoGridImage(at: dsIndex)
+            await self?.dataSource?.photoGridThumbnail(at: dsIndex, pixelSize: pixelSize)
         }
         cell.setShowsSelected(selectedIndices.contains(dsIndex))
         applyAccessibility(to: cell, displayIndex: indexPath.item)
@@ -706,47 +767,52 @@ extension LMKPhotoGridViewController: UICollectionViewDelegateFlowLayout {
     }
 }
 
-// MARK: - LMKPhotoBrowserDataSource
+// MARK: - Browser bridge
 
-extension LMKPhotoGridViewController: LMKPhotoBrowserDataSource {
-    public var numberOfPhotos: Int {
-        sortedIndices.count
+/// The grid's browser data source and delegate: the browser pages in display order, and every
+/// index crosses here to the data source's. Internal, so the grid's own public members all
+/// speak data source indices.
+final class LMKPhotoGridBrowserBridge: LMKPhotoBrowserDataSource, LMKPhotoBrowserDelegate {
+    private weak var grid: LMKPhotoGridViewController?
+
+    init(grid: LMKPhotoGridViewController) {
+        self.grid = grid
     }
 
-    public func photo(at index: Int) async -> UIImage? {
-        guard let dsIndex = dataSourceIndex(forDisplayIndex: index) else { return nil }
-        return await dataSource?.photoGridImage(at: dsIndex)
+    var numberOfPhotos: Int {
+        grid?.sortedIndices.count ?? 0
     }
 
-    public func photoDate(at index: Int) -> Date? {
-        guard let dsIndex = dataSourceIndex(forDisplayIndex: index) else { return nil }
-        return dataSource?.photoGridDate(at: dsIndex)
+    func photo(at index: Int) async -> UIImage? {
+        guard let grid, let dsIndex = grid.dataSourceIndex(forDisplayIndex: index) else { return nil }
+        return await grid.dataSource?.photoGridImage(at: dsIndex)
     }
 
-    public func photoSubtitle(at index: Int) -> String? {
+    func photoDate(at index: Int) -> Date? {
+        guard let grid, let dsIndex = grid.dataSourceIndex(forDisplayIndex: index) else { return nil }
+        return grid.dataSource?.photoGridDate(at: dsIndex)
+    }
+
+    func photoSubtitle(at _: Int) -> String? {
         nil
     }
 
-    public func photoIsLivePhoto(at index: Int) -> Bool {
-        guard let dsIndex = dataSourceIndex(forDisplayIndex: index) else { return false }
-        return dataSource?.photoGridIsLivePhoto(at: dsIndex) ?? false
+    func photoIsLivePhoto(at index: Int) -> Bool {
+        guard let grid, let dsIndex = grid.dataSourceIndex(forDisplayIndex: index) else { return false }
+        return grid.dataSource?.photoGridIsLivePhoto(at: dsIndex) ?? false
     }
 
-    public func photoLivePhoto(at index: Int) async -> PHLivePhoto? {
-        guard let dsIndex = dataSourceIndex(forDisplayIndex: index) else { return nil }
-        return await dataSource?.photoGridLivePhoto(at: dsIndex)
-    }
-}
-
-// MARK: - LMKPhotoBrowserDelegate
-
-extension LMKPhotoGridViewController: LMKPhotoBrowserDelegate {
-    public func photoBrowser(_ browser: LMKPhotoBrowserViewController, didRequestActionAt index: Int) {
-        guard let dsIndex = dataSourceIndex(forDisplayIndex: index) else { return }
-        delegate?.photoGrid(self, didRequestActionForPhotoAt: dsIndex)
+    func photoLivePhoto(at index: Int) async -> PHLivePhoto? {
+        guard let grid, let dsIndex = grid.dataSourceIndex(forDisplayIndex: index) else { return nil }
+        return await grid.dataSource?.photoGridLivePhoto(at: dsIndex)
     }
 
-    public func photoBrowserDidDismiss(_ browser: LMKPhotoBrowserViewController) {
+    func photoBrowser(_: LMKPhotoBrowserViewController, didRequestActionAt index: Int) {
+        guard let grid, let dsIndex = grid.dataSourceIndex(forDisplayIndex: index) else { return }
+        grid.delegate?.photoGrid(grid, didRequestActionForPhotoAt: dsIndex)
+    }
+
+    func photoBrowserDidDismiss(_: LMKPhotoBrowserViewController) {
         // The browser dismisses itself.
     }
 }

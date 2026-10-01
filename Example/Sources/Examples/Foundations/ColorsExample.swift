@@ -12,9 +12,7 @@ import UIKit
 // MARK: - Colors
 
 final class ColorsDetailViewController: DetailViewController {
-    override func viewDidLoad() {
-        super.viewDidLoad()
-
+    override func setupStackContent() {
         addColorRow("Primary", [
             ("Primary", LMKColor.primary),
             ("Secondary", LMKColor.secondary),
@@ -51,9 +49,9 @@ final class ColorsDetailViewController: DetailViewController {
         for (name, color) in colors {
             let swatch = UIView()
             swatch.backgroundColor = color
-            swatch.layer.cornerRadius = LMKCornerRadius.small
-            swatch.layer.borderWidth = 0.5
-            swatch.layer.borderColor = LMKColor.divider.cgColor
+            // A hairline border that follows the appearance and the theme (a frozen `cgColor` would not).
+            swatch.lmk_applyCornerRadius(LMKCornerRadius.small)
+            swatch.lmk_applyBorder(color: LMKColor.divider)
 
             let label = UILabel.lmk_make(.small, text: name)
             label.textAlignment = .center
@@ -64,6 +62,6 @@ final class ColorsDetailViewController: DetailViewController {
             swatch.snp.makeConstraints { $0.height.equalTo(52) }
             row.addArrangedSubview(col)
         }
-        stack.addArrangedSubview(row)
+        stackView.addArrangedSubview(row)
     }
 }

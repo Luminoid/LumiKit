@@ -1,5 +1,5 @@
 //
-//  LMKKeyboardAdjustmentTests.swift
+//  UIScrollViewKeyboardAdjustmentTests.swift
 //  LumiKit
 //
 
@@ -10,18 +10,16 @@ import UIKit
 // MARK: - UIScrollView.lmk_enableKeyboardAdjustment
 
 @MainActor
-struct LMKKeyboardAdjustmentTests {
+struct UIScrollViewKeyboardAdjustmentTests {
     @Test
-    func `enable does not crash`() {
+    func `enable installs once and disable removes it`() {
         let scrollView = UIScrollView()
-        scrollView.lmk_enableKeyboardAdjustment()
-    }
-
-    @Test
-    func `enable twice is safe`() {
-        let scrollView = UIScrollView()
+        scrollView.lmk_disableKeyboardAdjustment()
         scrollView.lmk_enableKeyboardAdjustment()
         scrollView.lmk_enableKeyboardAdjustment()
+        #expect(scrollView.lmk_hasKeyboardAdjustment)
+        scrollView.lmk_disableKeyboardAdjustment()
+        #expect(!scrollView.lmk_hasKeyboardAdjustment)
     }
 
     @Test
@@ -184,5 +182,75 @@ struct LMKKeyboardAdjustmentTests {
         )
 
         #expect(scrollView.contentInset.bottom == 300)
+    }
+
+    /// The regression: the keyboard overlap was added on top of the safe-area inset UIKit
+    /// already applies, leaving blank travel above the keyboard.
+    @Test
+    func `The grown inset excludes what UIKit already adds below the content`() {
+        let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 375, height: 812))
+        let host = UIViewController()
+        host.additionalSafeAreaInsets.bottom = 34
+        window.rootViewController = host
+        let scrollView = UIScrollView(frame: window.bounds)
+        scrollView.contentInsetAdjustmentBehavior = .always
+        let field = UITextField(frame: CGRect(x: 0, y: 100, width: 375, height: 44))
+        scrollView.addSubview(field)
+        scrollView.contentSize = CGSize(width: 375, height: 2000)
+        host.view.addSubview(scrollView)
+        window.makeKeyAndVisible()
+        window.layoutIfNeeded()
+        defer { window.isHidden = true }
+        #expect(scrollView.adjustedContentInset.bottom == 34)
+        scrollView.lmk_enableKeyboardAdjustment()
+        field.becomeFirstResponder()
+
+        NotificationCenter.default.post(
+            name: UIResponder.keyboardDidChangeFrameNotification,
+            object: nil,
+            userInfo: [
+                UIResponder.keyboardFrameEndUserInfoKey: NSValue(cgRect: CGRect(x: 0, y: 512, width: 375, height: 300)),
+                UIResponder.keyboardAnimationDurationUserInfoKey: 0.0,
+            ]
+        )
+
+        #expect(scrollView.contentInset.bottom == 266, "300 of overlap less the 34 UIKit already adds")
+        #expect(scrollView.adjustedContentInset.bottom == 300, "the band above the keyboard is exactly the overlap")
+
+        NotificationCenter.default.post(
+            name: UIResponder.keyboardWillHideNotification,
+            object: nil,
+            userInfo: [UIResponder.keyboardAnimationDurationUserInfoKey: 0.0]
+        )
+        #expect(scrollView.contentInset.bottom == 0)
+    }
+
+    /// The regression: a scrolling text view is its own first responder, and treating it as
+    /// the field to reveal moved the offset by the padding on every focus and edit.
+    @Test
+    func `A text view that is the scroll view itself is never scrolled toward its own bounds`() {
+        let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 375, height: 812))
+        let textView = RecordingTextView(frame: CGRect(x: 0, y: 0, width: 375, height: 300))
+        textView.text = Array(repeating: "line", count: 400).joined(separator: "\n")
+        window.addSubview(textView)
+        window.makeKeyAndVisible()
+        window.layoutIfNeeded()
+        defer { window.isHidden = true }
+        textView.lmk_enableKeyboardAdjustment()
+        textView.contentOffset = CGPoint(x: 0, y: 100)
+
+        NotificationCenter.default.post(name: UITextView.textDidBeginEditingNotification, object: textView)
+
+        #expect(textView.requestedOffsets.isEmpty)
+        #expect(textView.contentOffset.y == 100)
+    }
+
+    private final class RecordingTextView: UITextView {
+        var requestedOffsets: [CGPoint] = []
+
+        override func setContentOffset(_ contentOffset: CGPoint, animated: Bool) {
+            requestedOffsets.append(contentOffset)
+            super.setContentOffset(contentOffset, animated: false)
+        }
     }
 }

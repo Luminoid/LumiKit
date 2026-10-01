@@ -18,7 +18,7 @@ struct LMKKeyboardObserverTests {
     }
 
     @Test
-    func `startObserving and stopObserving don't crash`() {
+    func `startObserving and stopObserving are callable back to back (smoke)`() {
         let observer = LMKKeyboardObserver()
         observer.startObserving()
         observer.stopObserving()

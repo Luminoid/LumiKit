@@ -90,7 +90,34 @@ struct LMKEmptyStateViewActionTests {
         let inline = LMKEmptyStateView(style: .inline)
         inline.configure(LMKEmptyStateView.Content(message: "x", primaryAction: .init(title: "Clear") {}, secondaryAction: .init(title: "More") {}))
         #expect(inline.actionButton?.title == "Clear")
-        #expect(inline.secondaryActionButton == nil)
+        #expect(inline.actionButton?.style.size == .small)
+        #expect(inline.secondaryActionButton?.isHidden == true)
+        #expect(inline.accessibilityElements?.count == 2, "the hidden secondary is not exposed")
+
+        inline.style.layout = .card
+        #expect(inline.secondaryActionButton?.isHidden == false, "a layout change shows it again")
+        #expect(inline.actionButton?.style.size == nil)
+    }
+
+    @Test
+    func `The action buttons survive a theme or style pass with the state the host set`() throws {
+        let view = LMKEmptyStateView()
+        view.configure(LMKEmptyStateView.Content(message: "x", primaryAction: .init(title: "Add") {}, secondaryAction: .init(title: "Import") {}))
+        let button = try #require(view.actionButton)
+        let secondary = try #require(view.secondaryActionButton)
+        button.isLoading = true
+        secondary.isEnabled = false
+        view.style.spacing = 20
+        view.applyTheme(LMKThemeTesting.distinct)
+        #expect(view.actionButton === button, "the same instance, so VoiceOver focus and state hold")
+        #expect(view.secondaryActionButton === secondary)
+        #expect(button.isLoading)
+        #expect(!secondary.isEnabled)
+        #expect(button.style.variant == .filled)
+
+        view.configure(LMKEmptyStateView.Content(message: "y", primaryAction: .init(title: "Retry") {}), animated: false)
+        #expect(view.actionButton !== button, "configure rebuilds the actions")
+        #expect(view.secondaryActionButton == nil)
     }
 
     @Test
@@ -203,6 +230,41 @@ struct LMKEmptyStateViewSizingTests {
         let bottomGap = view.bounds.height - container.frame.maxY
         #expect(abs(topGap - bottomGap) < 1)
         #expect(topGap > 0)
+    }
+
+    @Test
+    func `Content insets hold when the message wraps`() {
+        let view = LMKEmptyStateView(style: .card)
+        view.frame = CGRect(x: 0, y: 0, width: 220, height: 400)
+        let message = String(repeating: "A long message that wraps onto several lines. ", count: 3)
+        view.configure(LMKEmptyStateView.Content(message: message, icon: .system("tray")), animated: false)
+        view.setNeedsLayout()
+        view.layoutIfNeeded()
+        let inset = LMKSpacing.large
+        let labelFrame = view.messageLabel.convert(view.messageLabel.bounds, to: view)
+        #expect(labelFrame.height > view.messageLabel.font.lineHeight * 2, "the message wraps")
+        #expect(labelFrame.minX >= inset - 0.5, "the wrapped label keeps the card's leading inset")
+        #expect(labelFrame.maxX <= 220 - inset + 0.5, "and the trailing one")
+
+        view.style.surface.contentInsets = NSDirectionalEdgeInsets(top: 4, leading: 30, bottom: 4, trailing: 10)
+        view.setNeedsLayout()
+        view.layoutIfNeeded()
+        let asymmetric = view.messageLabel.convert(view.messageLabel.bounds, to: view)
+        #expect(asymmetric.minX >= 30 - 0.5)
+        #expect(asymmetric.maxX <= 220 - 10 + 0.5)
+    }
+
+    @Test
+    func `wrappedForTableBackground fills a container in the background color`() {
+        let view = LMKEmptyStateView(style: .card)
+        view.configure(LMKEmptyStateView.Content(message: "Nothing"), animated: false)
+        let container = view.wrappedForTableBackground(backgroundColor: .red)
+        container.frame = CGRect(x: 0, y: 0, width: 300, height: 500)
+        container.layoutIfNeeded()
+        #expect(view.superview === container)
+        #expect(container.backgroundColor == UIColor.red)
+        #expect(view.frame == container.bounds)
+        #expect(LMKEmptyStateView().wrappedForTableBackground().backgroundColor === LMKColor.backgroundPrimary)
     }
 
     @Test

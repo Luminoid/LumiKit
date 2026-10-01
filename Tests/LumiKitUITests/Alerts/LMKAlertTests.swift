@@ -130,4 +130,57 @@ struct LMKAlertTests {
         #expect(sheet.actions.last?.style == .cancel)
         #expect(sheet.popoverPresentationController?.sourceView === anchorView)
     }
+
+    @Test
+    func `Text input and action sheet cancel actions carry an onCancel`() {
+        let (presenter, window) = makePresenter()
+        defer { window.isHidden = true }
+        var cancels = 0
+        let alert = LMKAlert.presentTextInput(LMKAlert.TextInput(title: "T"), from: presenter, onSave: { _ in }, onCancel: { cancels += 1 })
+        #expect(alert.actions.first?.style == .cancel)
+
+        let other = UIViewController()
+        window.rootViewController = other
+        let sheet = LMKAlert.presentActionSheet(from: other, actions: [.init(title: "A") {}], onCancel: { cancels += 1 })
+        #expect(sheet.actions.last?.style == .cancel)
+        #expect(cancels == 0)
+    }
+
+    // MARK: - Awaited confirmation
+
+    @Test
+    func `confirm resolves false when the host is already presenting or off screen`() async {
+        let (presenter, window) = makePresenter()
+        defer { window.isHidden = true }
+        LMKAlert.present(from: presenter, title: "First")
+        #expect(presenter.presentedViewController != nil)
+        let busy = await LMKAlert.confirm(from: presenter, title: "Second?")
+        #expect(!busy)
+        #expect((presenter.presentedViewController as? UIAlertController)?.title == "First", "nothing else was presented")
+
+        let detached = UIViewController()
+        let offScreen = await LMKAlert.confirm(from: detached, title: "Nowhere?")
+        #expect(!offScreen)
+        #expect(detached.presentedViewController == nil)
+    }
+}
+
+// MARK: - LMKOnceContinuation
+
+@MainActor
+struct LMKOnceContinuationTests {
+    @Test
+    func `Resolves once and falls back to the default when released`() async {
+        let resolved = await withCheckedContinuation { continuation in
+            let once = LMKOnceContinuation(continuation, fallback: false)
+            once.resolve(true)
+            once.resolve(false)
+        }
+        #expect(resolved)
+
+        let released = await withCheckedContinuation { continuation in
+            _ = LMKOnceContinuation(continuation, fallback: false)
+        }
+        #expect(!released)
+    }
 }

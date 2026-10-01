@@ -16,6 +16,11 @@ struct LMKChipViewTests {
     }
 
     @Test
+    func `The dismiss glyph stays a bare glyph under the Mac idiom`() {
+        #expect(LMKChipView(text: "Test", style: .filled).dismissButton.preferredBehavioralStyle == .pad)
+    }
+
+    @Test
     func `Filled chip has a tinted background and onAccent text`() {
         let chip = LMKChipView(text: "Test", style: .filled)
         let traits = chip.traitCollection
@@ -252,13 +257,79 @@ struct LMKChipViewTests {
     }
 
     @Test
-    func `Interactive chips keep a 44pt hit target`() {
+    func `Interactive chips keep a 44pt hit target; disabled ones absorb their bounds`() {
         let chip = LMKChipView(text: "Small")
         chip.frame = CGRect(x: 0, y: 0, width: 60, height: 24)
         #expect(!chip.point(inside: CGPoint(x: 30, y: -8), with: nil), "display-only chips use their bounds")
         chip.onTap = {}
         #expect(chip.point(inside: CGPoint(x: 30, y: -8), with: nil))
         #expect(!chip.point(inside: CGPoint(x: 30, y: -12), with: nil))
+        chip.isEnabled = false
+        #expect(chip.point(inside: CGPoint(x: 30, y: 12), with: nil), "a disabled chip swallows the touch like a disabled UIControl")
+        #expect(!chip.point(inside: CGPoint(x: 30, y: -8), with: nil), "without the expanded area")
+        chip.isEnabled = true
+        chip.isHidden = true
+        #expect(!chip.point(inside: CGPoint(x: 30, y: 12), with: nil))
+    }
+
+    @Test
+    func `A display-only chip is not the hit view; a handler, host target, or recognizer makes it one`() {
+        let chip = LMKChipView(text: "Tag")
+        chip.frame = CGRect(x: 0, y: 0, width: 60, height: 24)
+        chip.layoutIfNeeded()
+        let center = CGPoint(x: 30, y: 12)
+        #expect(chip.hitTest(center, with: nil) == nil, "the row or card under a tag chip gets the tap")
+
+        chip.onTap = {}
+        #expect(chip.hitTest(center, with: nil) === chip)
+        chip.onTap = nil
+        chip.onDismiss = {}
+        #expect(chip.hitTest(center, with: nil) === chip)
+        chip.onDismiss = nil
+        #expect(chip.hitTest(center, with: nil) == nil)
+
+        final class Target: NSObject {
+            @objc func fire() {}
+        }
+        let target = Target()
+        chip.addTarget(target, action: #selector(Target.fire), for: .touchUpInside)
+        #expect(chip.hitTest(center, with: nil) === chip, "a host target-action makes the chip interactive")
+        chip.removeTarget(target, action: nil, for: .allEvents)
+        #expect(chip.hitTest(center, with: nil) == nil)
+
+        let action = UIAction { _ in }
+        chip.addAction(action, for: .touchUpInside)
+        #expect(chip.hitTest(center, with: nil) === chip, "a host UIAction makes the chip interactive")
+        chip.removeAction(action, for: .touchUpInside)
+        #expect(chip.hitTest(center, with: nil) == nil)
+
+        chip.addGestureRecognizer(UITapGestureRecognizer())
+        #expect(chip.hitTest(center, with: nil) === chip, "a host recognizer makes the chip interactive")
+    }
+
+    @Test
+    func `State overrides apply for their own state only, and a state fill is pressed once`() {
+        var style = LMKChipView.Style.filled.tint(.red)
+        style.surface.background = .solid(.gray)
+        style.highlighted = LMKControlStateStyle(background: .solid(.yellow))
+        let chip = LMKChipView(text: "A", style: style)
+        #expect(chip.backgroundColor == UIColor.gray)
+        chip.isEnabled = false
+        #expect(chip.backgroundColor == UIColor.gray, "a highlighted fill does not leak into the disabled look")
+        chip.isEnabled = true
+        chip.isSelected = true
+        #expect(chip.backgroundColor == UIColor.gray, "nor into the selected look")
+        chip.isHighlighted = true
+        #expect(chip.backgroundColor == UIColor.yellow)
+        chip.isHighlighted = false
+        chip.isSelected = false
+
+        var selectedFill = LMKChipView.Style.filled.tint(.red)
+        selectedFill.selected = LMKControlStateStyle(background: .solid(UIColor(white: 0.6, alpha: 1)))
+        let pressedSelected = LMKChipView(text: "B", style: selectedFill)
+        pressedSelected.isSelected = true
+        pressedSelected.isHighlighted = true
+        #expect(abs(Self.brightness(pressedSelected.backgroundColor, pressedSelected.traitCollection) - 0.6 * 0.85) < 0.01, "one shade, not two")
     }
 
     // MARK: - Theme

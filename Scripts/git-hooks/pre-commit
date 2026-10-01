@@ -1,46 +1,51 @@
 #!/bin/bash
 #
-# Pre-commit hook — runs SwiftLint + SwiftFormat on staged .swift files.
+# Pre-commit hook — runs SwiftLint + SwiftFormat on staged .swift files and refuses a personal
+# DEVELOPMENT_TEAM in a staged pbxproj.
 # Installed via: make setup-hooks
 #
 # To bypass (emergency): git commit --no-verify
 
 set -euo pipefail
 
-# Check for personal DEVELOPMENT_TEAM in staged pbxproj files. Runs before the
-# Swift early-exit so a pbxproj-only commit is still guarded. The diff is
-# captured first rather than piped into grep -q: under `pipefail`, grep exiting
-# early on a match can SIGPIPE git diff and turn a hit into a pass.
-STAGED_PBXPROJ=$(git diff --cached --name-only --diff-filter=ACM -- '*.pbxproj')
-if [ -n "$STAGED_PBXPROJ" ]; then
-    PBXPROJ_DIFF=$(git diff --cached -- $STAGED_PBXPROJ)
-    if grep -q '+.*DEVELOPMENT_TEAM = [A-Z0-9]\{10\}' <<< "$PBXPROJ_DIFF"; then
-        echo "error: DEVELOPMENT_TEAM with personal team ID found in staged pbxproj."
-        echo "       Set DEVELOPMENT_TEAM = \"\" or remove it before committing."
-        exit 1
-    fi
+# Check for a personal DEVELOPMENT_TEAM in the staged pbxproj changes. Runs before the Swift
+# early-exit so a pbxproj-only commit is still guarded. The diff is captured first rather than
+# piped into grep -q: under `pipefail`, grep exiting early on a match can SIGPIPE git diff and
+# turn a hit into a pass.
+PBXPROJ_DIFF=$(git diff --cached --diff-filter=ACMR -- '*.pbxproj')
+if grep -q '^+.*DEVELOPMENT_TEAM = [A-Z0-9]\{10\}' <<< "$PBXPROJ_DIFF"; then
+    echo "error: DEVELOPMENT_TEAM with personal team ID found in staged pbxproj." >&2
+    echo "       Set DEVELOPMENT_TEAM = \"\" or remove it before committing." >&2
+    exit 1
 fi
 
-STAGED=$(git diff --cached --name-only --diff-filter=ACM -- '*.swift')
+# Added, copied, modified, and renamed files, NUL-separated so a path with spaces reaches the
+# tools as one argument.
+staged_swift_files() {
+    git diff --cached --name-only -z --diff-filter=ACMR -- '*.swift'
+}
 
-if [ -z "$STAGED" ]; then
+STAGED_COUNT=$(staged_swift_files | tr -cd '\0' | wc -c | tr -d ' ')
+
+if [ "$STAGED_COUNT" -eq 0 ]; then
     exit 0
 fi
 
-echo "Pre-commit: checking $(echo "$STAGED" | wc -l | tr -d ' ') staged Swift file(s)..."
+echo "Pre-commit: checking $STAGED_COUNT staged Swift file(s)..."
 
-# SwiftLint (lint only, no fix)
-if command -v swiftlint &> /dev/null; then
-    echo "$STAGED" | xargs swiftlint lint --strict --quiet
-else
-    echo "warning: swiftlint not found, skipping lint (install: brew install swiftlint)"
-fi
+# A missing tool fails the hook: a check that is skipped reads as one that passed.
+for tool in swiftlint swiftformat; do
+    if ! command -v "$tool" &> /dev/null; then
+        echo "error: $tool not found (install: brew install $tool)" >&2
+        exit 1
+    fi
+done
+
+# SwiftLint (lint only, no fix). Explicit paths bypass the config's `included`, so every folder
+# the hook can see is listed there too and the hook, `make check`, and CI lint the same files.
+staged_swift_files | xargs -0 swiftlint lint --strict --quiet
 
 # SwiftFormat (check only, no modify)
-if command -v swiftformat &> /dev/null; then
-    echo "$STAGED" | xargs swiftformat --lint
-else
-    echo "warning: swiftformat not found, skipping format check (install: brew install swiftformat)"
-fi
+staged_swift_files | xargs -0 swiftformat --lint
 
 echo "Pre-commit: all checks passed."

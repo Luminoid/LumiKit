@@ -120,6 +120,22 @@ struct LMKFormScaffoldTests {
         #expect(stack.frame.width == 200)
         #expect(abs(stack.frame.midX - 375 / 2) < 1)
 
+        let wide = UIViewController()
+        window.rootViewController = wide
+        let wideScroll = LMKFormScaffold.makeScrollView()
+        let wideStack = LMKFormScaffold.makeContentStack()
+        wideStack.addArrangedSubview(UILabel())
+        LMKFormScaffold.install(scrollView: wideScroll, stack: wideStack, in: wide.view, widthMode: .capped(maxWidth: 1000, horizontalInset: 10))
+        wide.view.layoutIfNeeded()
+        #expect(wideStack.frame.width == 355)
+        // The scroll content edges float, so a required cap against the frame is what keeps a
+        // content-size chain from widening the stack past the screen.
+        let cap = wideScroll.constraints.first {
+            $0.firstItem === wideStack && $0.firstAttribute == .width && $0.relation == .lessThanOrEqual && $0.secondItem === wideScroll && $0.secondAttribute == .width
+        }
+        #expect(cap?.constant == -20)
+        #expect(cap?.priority == .required)
+
         let other = UIViewController()
         window.rootViewController = other
         let readableScroll = LMKFormScaffold.makeScrollView()

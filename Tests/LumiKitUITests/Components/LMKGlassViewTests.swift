@@ -9,6 +9,22 @@ import UIKit
 
 // MARK: - LMKGlassView
 
+/// Counts KVO callbacks (the observer closure is `@Sendable`).
+private final class EffectAssignmentCounter: @unchecked Sendable {
+    private let lock = NSLock()
+    private var value = 0
+
+    var count: Int {
+        lock.withLock { value }
+    }
+
+    var isEmpty: Bool { lock.withLock { value } < 1 }
+
+    func increment() {
+        lock.withLock { value += 1 }
+    }
+}
+
 @MainActor
 struct LMKGlassViewTests {
     @Test
@@ -25,7 +41,7 @@ struct LMKGlassViewTests {
 
     @Test
     func `clear style, tint, and interactivity reach the effect and can change later`() {
-        let view = LMKGlassView(style: .clear, tintColor: .red, isInteractive: true)
+        let view = LMKGlassView(variant: .clear, tintColor: .red, isInteractive: true)
         #expect(view.variant == .clear)
         #expect(view.isInteractive)
         if #available(iOS 26, *) {
@@ -70,6 +86,34 @@ struct LMKGlassViewTests {
         } else {
             #expect(view.layer.cornerRadius == 10)
         }
+    }
+
+    @Test
+    func `Partly rounded corners keep their square corners on iOS 26`() {
+        let view = LMKGlassView(style: LMKGlassView.Style(corners: .fixed(16, corners: .lmk_top)))
+        if #available(iOS 26, *) {
+            #expect(view.cornerConfiguration == .corners(topLeftRadius: .fixed(16), topRightRadius: .fixed(16), bottomLeftRadius: .fixed(0), bottomRightRadius: .fixed(0)))
+        } else {
+            #expect(view.layer.maskedCorners == .lmk_top)
+            #expect(view.layer.cornerRadius == 16)
+        }
+    }
+
+    @Test
+    func `The effect is rebuilt only when its inputs change`() {
+        let view = LMKGlassView(variant: .clear, tintColor: .red)
+        let assignments = EffectAssignmentCounter()
+        let observation = view.observe(\.effect, options: [.new]) { _, _ in assignments.increment() }
+        defer { observation.invalidate() }
+        view.cornerRadius = 30
+        view.applyTheme(LMKTheme())
+        #expect(assignments.isEmpty, "a radius or a theme pass leaves the effect alone")
+        view.style.tintColor = .blue
+        #expect(assignments.count == 1)
+        view.variant = .regular
+        #expect(assignments.count == 2)
+        view.isInteractive = true
+        #expect(assignments.count == 3)
     }
 
     @Test

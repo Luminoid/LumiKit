@@ -3,7 +3,8 @@
 //  LumiKit
 //
 //  Shared vocabulary of the text inputs: the validation state, the style
-//  both `LMKTextField` and `LMKTextView` use, and the helper/counter row.
+//  both `LMKTextField` and `LMKTextView` use, the character limit they
+//  enforce, and the helper/counter row.
 //
 
 import SnapKit
@@ -61,21 +62,23 @@ public nonisolated struct LMKTextInputStyle: Sendable, Equatable {
     public var iconTint: UIColor?
     /// `nil` = `small`.
     public var helperTextStyle: LMKTextStyle?
-    /// Helper line color in the normal and success states; `nil` = `textTertiary`.
+    /// Helper line color in the normal and success states; `nil` = `textSecondary`.
     public var helperColor: UIColor?
     /// `nil` = `small`.
     public var counterTextStyle: LMKTextStyle?
-    /// `nil` = `textTertiary`.
+    /// `nil` = `textSecondary`.
     public var counterColor: UIColor?
     /// Height floor of the input; `nil` = `minimumTouchTarget` (field) / 100 (view).
     public var minimumHeight: CGFloat?
     /// Growth cap of a text view; `nil` = unlimited.
     public var maximumHeight: CGFloat?
-    /// `nil` = `textTertiary`.
+    /// Tint of a text field's clear button; `nil` = `textTertiary`.
     public var clearButtonTint: UIColor?
     /// Per-state overrides (border color and width, background); missing kinds derive from the tokens:
     /// `focused` = `primary`, `warning` = `warning`, `error` = `error`, `success` = `success`.
     public var states: [LMKValidationState.Kind: LMKControlStateStyle]?
+    /// The whole input while disabled (`alpha`; `nil` = `alpha.disabled`).
+    public var disabled: LMKControlStateStyle?
 
     public init(
         surface: LMKSurfaceStyle = LMKSurfaceStyle(),
@@ -91,7 +94,8 @@ public nonisolated struct LMKTextInputStyle: Sendable, Equatable {
         minimumHeight: CGFloat? = nil,
         maximumHeight: CGFloat? = nil,
         clearButtonTint: UIColor? = nil,
-        states: [LMKValidationState.Kind: LMKControlStateStyle]? = nil
+        states: [LMKValidationState.Kind: LMKControlStateStyle]? = nil,
+        disabled: LMKControlStateStyle? = nil
     ) {
         self.surface = surface
         self.textStyle = textStyle
@@ -107,6 +111,7 @@ public nonisolated struct LMKTextInputStyle: Sendable, Equatable {
         self.maximumHeight = maximumHeight
         self.clearButtonTint = clearButtonTint
         self.states = states
+        self.disabled = disabled
     }
 
     /// `other`'s non-nil fields over this style's.
@@ -125,7 +130,8 @@ public nonisolated struct LMKTextInputStyle: Sendable, Equatable {
             minimumHeight: other.minimumHeight ?? minimumHeight,
             maximumHeight: other.maximumHeight ?? maximumHeight,
             clearButtonTint: other.clearButtonTint ?? clearButtonTint,
-            states: other.states.map { (states ?? [:]).merging($0) { LMKControlStateStyle.merge($0, $1) ?? $1 } } ?? states
+            states: other.states.map { (states ?? [:]).merging($0) { LMKControlStateStyle.merge($0, $1) ?? $1 } } ?? states,
+            disabled: LMKControlStateStyle.merge(disabled, other.disabled)
         )
     }
 
@@ -138,6 +144,64 @@ public nonisolated struct LMKTextInputStyle: Sendable, Equatable {
         case .warning: return LMKColor.warning
         case .error: return LMKColor.error
         case .success: return LMKColor.success
+        }
+    }
+}
+
+// MARK: - Character limit
+
+extension LMKTextInputStyle {
+    /// The character limit both inputs enforce, in `Character`s (the unit the counter shows).
+    /// An edit that fits goes through; one that grows an already full input is refused; a
+    /// multi-character insertion that partly fits (a paste, dictation, an autocorrection) goes
+    /// through and is trimmed to fit afterwards, so text that was already there is never cut.
+    /// Nothing runs while an input method composes marked text.
+    nonisolated enum CharacterLimit {
+        /// `current` with `ranges` removed and `replacement` inserted at the first of them (the
+        /// shape of the iOS 26 multi-range delegate calls), or `nil` for a range past the end.
+        static func proposed(_ current: String, replacing ranges: [NSRange], with replacement: String) -> String? {
+            let sorted = ranges.sorted { $0.location < $1.location }
+            let length = (current as NSString).length
+            guard let first = sorted.first, sorted.allSatisfy({ NSMaxRange($0) <= length }) else { return nil }
+            let result = NSMutableString(string: current)
+            for range in sorted.reversed() {
+                result.replaceCharacters(in: range, with: "")
+            }
+            result.insert(replacement, at: first.location)
+            return result as String
+        }
+
+        /// Whether the edit may proceed under `limit`: the result fits, it does not grow the text,
+        /// or there is room for part of the replacement (`trimmed` cuts the rest afterwards).
+        static func allowsChange(in current: String, ranges: [NSRange], replacement: String, limit: Int) -> Bool {
+            guard let result = proposed(current, replacing: ranges, with: replacement) else { return true }
+            if result.count <= limit || result.count <= current.count { return true }
+            guard let remaining = proposed(current, replacing: ranges, with: "") else { return true }
+            return remaining.count < limit
+        }
+
+        /// `current` with what was inserted since `previous` cut down until the text fits `limit`,
+        /// plus the caret offset (in UTF-16 units) right after the kept insertion; `nil` when the
+        /// text fits or nothing was inserted (text that was already there is never cut).
+        static func trimmed(_ current: String, previous: String, limit: Int) -> (text: String, caretOffset: Int)? {
+            let overflow = current.count - limit
+            guard overflow > 0 else { return nil }
+            let currentCharacters = Array(current)
+            let previousCharacters = Array(previous)
+            var prefix = 0
+            while prefix < currentCharacters.count, prefix < previousCharacters.count, currentCharacters[prefix] == previousCharacters[prefix] {
+                prefix += 1
+            }
+            var suffix = 0
+            while suffix < currentCharacters.count - prefix, suffix < previousCharacters.count - prefix,
+                  currentCharacters[currentCharacters.count - 1 - suffix] == previousCharacters[previousCharacters.count - 1 - suffix] {
+                suffix += 1
+            }
+            let inserted = currentCharacters.count - prefix - suffix
+            guard inserted > 0 else { return nil }
+            let head = String(currentCharacters[..<(prefix + max(0, inserted - overflow))])
+            let tail = String(currentCharacters[(currentCharacters.count - suffix)...])
+            return (head + tail, head.utf16.count)
         }
     }
 }
@@ -181,6 +245,12 @@ final class LMKTextInputHelperRow: UIView {
 
     private let stack = UIStackView()
 
+    /// Gap between the message and the counter; the owner sets it from the theme.
+    var spacing: CGFloat {
+        get { stack.spacing }
+        set { stack.spacing = newValue }
+    }
+
     override init(frame: CGRect) {
         super.init(frame: frame)
         messageLabel.numberOfLines = 0
@@ -193,7 +263,6 @@ final class LMKTextInputHelperRow: UIView {
         counterLabel.setContentCompressionResistancePriority(.required, for: .horizontal)
         stack.axis = .horizontal
         stack.alignment = .top
-        stack.spacing = LMKSpacing.small
         stack.addArrangedSubview(messageLabel)
         stack.addArrangedSubview(counterLabel)
         addSubview(stack)
@@ -211,8 +280,18 @@ final class LMKTextInputHelperRow: UIView {
     /// Whether either label has content.
     var hasContent: Bool { !(messageLabel.isHidden && counterLabel.isHidden) }
 
-    /// Shows `message` (hidden when `nil`) and the `count`/`limit` counter (hidden when `limit` is `nil`).
-    func update(message: String?, messageColor: UIColor, messageStyle: LMKTextStyle, count: Int?, limit: Int?, counterColor: UIColor, counterStyle: LMKTextStyle) {
+    /// Shows `message` (hidden when `nil`) and the `count`/`limit` counter (hidden when `limit` is
+    /// `nil`), which VoiceOver reads through `counterAccessibilityLabelFormat` (`%lld of %lld characters`).
+    func update(
+        message: String?,
+        messageColor: UIColor,
+        messageStyle: LMKTextStyle,
+        count: Int?,
+        limit: Int?,
+        counterColor: UIColor,
+        counterStyle: LMKTextStyle,
+        counterAccessibilityLabelFormat: String
+    ) {
         messageLabel.lmk_apply(messageStyle, color: messageColor)
         messageLabel.lmk_setText(message)
         messageLabel.isHidden = message?.isEmpty ?? true
@@ -221,9 +300,11 @@ final class LMKTextInputHelperRow: UIView {
             let counted = Self.counterFormatter.string(from: NSNumber(value: count)) ?? "\(count)"
             let limited = Self.counterFormatter.string(from: NSNumber(value: limit)) ?? "\(limit)"
             counterLabel.lmk_setText("\(counted)/\(limited)")
+            counterLabel.accessibilityLabel = String(format: counterAccessibilityLabelFormat, Int64(count), Int64(limit))
             counterLabel.isHidden = false
         } else {
             counterLabel.lmk_setText(nil)
+            counterLabel.accessibilityLabel = nil
             counterLabel.isHidden = true
         }
         isHidden = !hasContent

@@ -30,22 +30,28 @@ enum ExampleAccessibilityAudit {
     @MainActor
     static func run(on root: UIView, in window: UIWindow) -> [Finding] {
         var findings: [Finding] = []
-        walk(root, path: [], window: window, insideHorizontalScroller: false, insideCell: false, findings: &findings)
+        walk(root, path: [], window: window, insideHorizontalScroller: false, insideCell: false, insideDisabledControl: false, findings: &findings)
         return findings
     }
 
     // MARK: - Walk
 
     @MainActor
-    private static func walk(_ view: UIView, path: [String], window: UIWindow, insideHorizontalScroller: Bool, insideCell: Bool, findings: inout [Finding]) {
+    private static func walk(_ view: UIView, path: [String], window: UIWindow, insideHorizontalScroller: Bool, insideCell: Bool, insideDisabledControl: Bool, findings: inout [Finding]) {
         guard !view.isHidden, view.alpha > 0.01, view.window === window else { return }
+        // UIKit's own bars and pickers (reached through presented controllers) carry UIKit's
+        // accessibility; the sweep audits what LumiKit and the pages build.
+        guard !isSystemComposite(view) else { return }
         let path = path + [name(of: view)]
         let pathText = path.suffix(4).joined(separator: " > ")
         let frameInWindow = view.convert(view.bounds, to: window)
 
         if let label = view as? UILabel, let text = label.text, !text.isEmpty, label.bounds.width > 0 {
             checkTruncation(label, path: pathText, findings: &findings)
-            checkContrast(label, path: pathText, findings: &findings)
+            // Text of an inactive control is exempt from the contrast minimum (WCAG 1.4.3).
+            if !insideDisabledControl {
+                checkContrast(label, path: pathText, findings: &findings)
+            }
             // A button's or text field's own label is re-fonted by its owner on a category change.
             if !label.adjustsFontForContentSizeCategory, !insideOwnerThatScales(label) {
                 findings.append(Finding(severity: .info, check: "fixedFont", path: pathText, detail: "\(Int(label.font.pointSize))pt not scaling"))
@@ -79,8 +85,9 @@ enum ExampleAccessibilityAudit {
 
         let scrollsHorizontally = insideHorizontalScroller || ((view as? UIScrollView).map { $0.contentSize.width > $0.bounds.width + 1 } ?? false)
         let cell = insideCell || view is UITableViewCell || view is UICollectionViewCell
+        let disabled = insideDisabledControl || (view as? UIControl).map { !$0.isEnabled } ?? false
         for subview in view.subviews {
-            walk(subview, path: path, window: window, insideHorizontalScroller: scrollsHorizontally, insideCell: cell, findings: &findings)
+            walk(subview, path: path, window: window, insideHorizontalScroller: scrollsHorizontally, insideCell: cell, insideDisabledControl: disabled, findings: &findings)
         }
     }
 
@@ -128,15 +135,22 @@ enum ExampleAccessibilityAudit {
     @MainActor
     private static func checkTruncation(_ label: UILabel, path: String, findings: inout [Finding]) {
         let width = label.bounds.width
+        let height = label.bounds.height
         if label.numberOfLines == 1 {
-            let needed = label.intrinsicContentSize.width
-            if needed > width + 1, label.adjustsFontSizeToFitWidth == false, label.lineBreakMode != .byWordWrapping {
-                findings.append(Finding(severity: .error, check: "truncated", path: path, detail: "needs \(Int(needed))pt, has \(Int(width))pt"))
+            // Width and height both: a fixed-height host squeezes a single line vertically.
+            let needed = label.intrinsicContentSize
+            if needed.width > width + 1, !label.adjustsFontSizeToFitWidth {
+                findings.append(Finding(severity: .error, check: "truncated", path: path, detail: "needs \(Int(needed.width))pt, has \(Int(width))pt"))
+            } else if needed.height > height + 1 {
+                findings.append(Finding(severity: .error, check: "truncated", path: path, detail: "needs \(Int(needed.height))pt tall, has \(Int(height))pt"))
             }
         } else {
-            let needed = label.sizeThatFits(CGSize(width: width, height: .greatestFiniteMagnitude)).height
-            if needed > label.bounds.height + 1 {
-                findings.append(Finding(severity: .error, check: "truncated", path: path, detail: "needs \(Int(needed))pt tall, has \(Int(label.bounds.height))pt"))
+            // Measured without the line cap: `sizeThatFits` honors `numberOfLines`, so a label
+            // capped at two lines would otherwise always pass.
+            let unbounded = CGRect(x: 0, y: 0, width: width, height: CGFloat.greatestFiniteMagnitude)
+            let needed = label.textRect(forBounds: unbounded, limitedToNumberOfLines: 0).height
+            if needed > height + 1 {
+                findings.append(Finding(severity: .error, check: "truncated", path: path, detail: "needs \(Int(needed))pt tall, has \(Int(height))pt"))
             }
         }
     }
@@ -161,7 +175,14 @@ enum ExampleAccessibilityAudit {
 
     @MainActor
     private static func checkLabel(_ control: UIControl, path: String, findings: inout [Finding]) {
-        guard control.isAccessibilityElement || control is UIButton else { return }
+        guard control.isAccessibilityElement || control is UIButton else {
+            // A custom control VoiceOver cannot reach: no element of its own and nothing
+            // actionable inside it. UIKit's controls (text fields, sliders) are exposed by UIKit.
+            if isCustomControl(control), !hasActionableAccessibilityDescendant(control) {
+                findings.append(Finding(severity: .warning, check: "unlabeled", path: path, detail: "control is not an accessibility element"))
+            }
+            return
+        }
         if let label = control.accessibilityLabel, !label.isEmpty { return }
         if let button = control as? UIButton {
             let title = button.configuration?.title ?? button.currentTitle ?? button.configuration?.attributedTitle?.characters.map(String.init).joined()
@@ -173,6 +194,30 @@ enum ExampleAccessibilityAudit {
         }
         if control is UITextField || control is UISwitch || control is UISlider || control is UISegmentedControl { return }
         findings.append(Finding(severity: .warning, check: "unlabeled", path: path, detail: "control without an accessibility label"))
+    }
+
+    private static func isSystemComposite(_ view: UIView) -> Bool {
+        view is UINavigationBar || view is UITabBar || view is UIToolbar || view is UIDatePicker || view is UICalendarView
+    }
+
+    /// Whether `control`'s nearest UIKit ancestor class is `UIControl` itself: a control built
+    /// from scratch, whose accessibility is its author's job.
+    private static func isCustomControl(_ control: UIControl) -> Bool {
+        let uiKit = Bundle(for: UIControl.self)
+        var current: AnyClass? = type(of: control)
+        while let cls = current, Bundle(for: cls) != uiKit {
+            current = class_getSuperclass(cls)
+        }
+        return current == UIControl.self
+    }
+
+    @MainActor
+    private static func hasActionableAccessibilityDescendant(_ view: UIView) -> Bool {
+        view.subviews.contains { child in
+            let traits = child.accessibilityTraits
+            if child.isAccessibilityElement, traits.contains(.button) || traits.contains(.adjustable) { return true }
+            return hasActionableAccessibilityDescendant(child)
+        }
     }
 
     @MainActor
@@ -194,8 +239,10 @@ enum ExampleAccessibilityAudit {
     private static func checkContrast(_ label: UILabel, path: String, findings: inout [Finding]) {
         guard let background = effectiveBackground(behind: label) else { return }
         let traits = label.traitCollection
-        let text = label.textColor.resolvedColor(with: traits)
         let fill = background.resolvedColor(with: traits)
+        // Secondary and tertiary label colors carry alpha: measure what is drawn, the text color
+        // composited over the fill (and dimmed with the label's own alpha).
+        let text = composite(label.textColor.resolvedColor(with: traits), alpha: label.alpha, over: fill)
         let ratio = contrastRatio(text, fill)
         let pointSize = label.font.pointSize
         let isBold = label.font.fontDescriptor.symbolicTraits.contains(.traitBold)
@@ -241,6 +288,20 @@ enum ExampleAccessibilityAudit {
     }
 
     // MARK: - WCAG contrast
+
+    static func composite(_ color: UIColor, alpha viewAlpha: CGFloat, over fill: UIColor) -> UIColor {
+        var red: CGFloat = 0, green: CGFloat = 0, blue: CGFloat = 0, alpha: CGFloat = 0
+        var fillRed: CGFloat = 0, fillGreen: CGFloat = 0, fillBlue: CGFloat = 0, fillAlpha: CGFloat = 0
+        color.getRed(&red, green: &green, blue: &blue, alpha: &alpha)
+        fill.getRed(&fillRed, green: &fillGreen, blue: &fillBlue, alpha: &fillAlpha)
+        let weight = alpha * min(1, viewAlpha)
+        return UIColor(
+            red: red * weight + fillRed * (1 - weight),
+            green: green * weight + fillGreen * (1 - weight),
+            blue: blue * weight + fillBlue * (1 - weight),
+            alpha: 1
+        )
+    }
 
     static func contrastRatio(_ a: UIColor, _ b: UIColor) -> Double {
         let la = relativeLuminance(a)

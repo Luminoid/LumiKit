@@ -5,12 +5,12 @@
 //  Full-screen viewer for a single image.
 //
 
-import LumiKitUI
 import UIKit
 
 /// Presents one image full-screen in `LMKPhotoBrowserViewController`. Retain it while the
 /// browser is up (the browser's data source and delegate are weak). The optional `onAction`
-/// backs the browser's action button (replace, remove).
+/// backs the browser's action button (replace, remove); present the action's UI from
+/// `browser`, which is up at that moment.
 ///
 /// ```swift
 /// viewer = LMKSinglePhotoViewer(image: cover, onAction: { [weak self] in self?.presentCoverActions() })
@@ -24,15 +24,19 @@ public final class LMKSinglePhotoViewer: NSObject {
     private let subtitle: String?
     private let actionIconSystemName: String
     private let onAction: (() -> Void)?
-    private var browser: LMKPhotoBrowserViewController?
 
-    /// Strings forwarded to the browser.
-    public var browserStrings = LMKPhotoBrowserViewController.Strings()
+    /// The browser while it is up (`nil` before `present(from:)` and after a dismissal): the
+    /// controller to present an action sheet or a toast from in `onAction`.
+    public private(set) var browser: LMKPhotoBrowserViewController?
+
+    /// Strings forwarded to the browser; defaults to the browser's process-wide strings, so
+    /// an app-level override reaches this viewer's browser too.
+    public var browserStrings = LMKPhotoBrowserViewController.strings
     /// Style forwarded to the browser; `nil` leaves `theme.photoBrowser`.
     public var browserStyle: LMKPhotoBrowserViewController.Style?
     /// The thumbnail the photo zooms out of and back into.
     public var zoomSourceView: (() -> UIView?)?
-    /// Called when the browser is dismissed.
+    /// Called once when the browser is dismissed, by the user or through `dismiss()`.
     public var onDismiss: (() -> Void)?
 
     // MARK: - Init
@@ -73,10 +77,16 @@ public final class LMKSinglePhotoViewer: NSObject {
         host.present(browser, animated: true)
     }
 
-    /// Dismisses the browser if it is up.
-    public func dismiss(animated: Bool) {
-        browser?.dismiss(animated: animated)
-        browser = nil
+    /// Dismisses the browser if it is up and fires `onDismiss`; `completion` runs once the
+    /// dismissal has finished. A viewer with no browser up only runs `completion`.
+    public func dismiss(completion: (() -> Void)? = nil) {
+        guard let browser else {
+            completion?()
+            return
+        }
+        self.browser = nil
+        browser.dismiss(animated: true, completion: completion)
+        onDismiss?()
     }
 }
 

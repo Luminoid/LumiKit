@@ -6,7 +6,6 @@
 //
 
 import LumiKitUI
-import SnapKit
 import UIKit
 
 // MARK: - Tip View
@@ -14,43 +13,41 @@ import UIKit
 final class TipViewDetailViewController: DetailViewController {
     private let targetChip = LMKChipView(text: "Target View", style: .filled)
 
-    override func viewDidLoad() {
-        super.viewDidLoad()
-
+    override func setupStackContent() {
         addSectionHeader("Centered")
-        stack.addArrangedSubview(UILabel.lmk_make(.caption, text: "A card over a dimmed screen with a dismiss button; a tap outside dismisses it too."))
-        stack.addArrangedSubview(LMKButton(title: "Show Centered Tip", style: .outlined(.primary)) { [weak self] in self?.showCenteredTip() })
-        stack.addArrangedSubview(LMKButton(title: "Show Message-Only Tip", style: .outlined(.info)) { [weak self] in self?.showSimpleTip() })
+        stackView.addArrangedSubview(UILabel.lmk_make(.caption, text: "A card over a dimmed screen with a dismiss button; a tap outside dismisses it too."))
+        stackView.addArrangedSubview(LMKButton(title: "Show Centered Tip", style: .outlined(.primary)) { [weak self] in self?.showCenteredTip() })
+        stackView.addArrangedSubview(LMKButton(title: "Show Message-Only Tip", style: .outlined(.info)) { [weak self] in self?.showSimpleTip() })
 
         addDivider()
         addSectionHeader("Pointed")
-        stack.addArrangedSubview(UILabel.lmk_make(
+        stackView.addArrangedSubview(UILabel.lmk_make(
             .caption,
             text: "A bubble with an arrow toward a source view. The bubble and its arrow are one outline, so Style.surface colors, borders, and shadows wrap both."
         ))
         // The chip keeps its own width; a full-width target would hide where the arrow points.
-        stack.addArrangedSubview(UIStackView(lmk_axis: .horizontal, arrangedSubviews: [targetChip, UIView()]))
-        stack.addArrangedSubview(LMKButton(title: "Default", style: .outlined(.secondary)) { [weak self] in self?.showPointedTip(style: LMKTipView.Style()) })
-        stack.addArrangedSubview(LMKButton(title: "Brand color", style: .outlined(.secondary)) { [weak self] in
+        stackView.addArrangedSubview(UIStackView(lmk_axis: .horizontal, arrangedSubviews: [targetChip, UIView()]))
+        stackView.addArrangedSubview(LMKButton(title: "Default", style: .outlined(.secondary)) { [weak self] in self?.showPointedTip(style: LMKTipView.Style()) })
+        stackView.addArrangedSubview(LMKButton(title: "Brand color", style: .outlined(.secondary)) { [weak self] in
             self?.showPointedTip(style: LMKTipView.Style(
                 surface: LMKSurfaceStyle(background: .solid(LMKColor.primary), shadow: .level(.level4)),
                 titleColor: LMKColor.onAccent,
                 messageColor: LMKColor.onAccent
             ))
         })
-        stack.addArrangedSubview(LMKButton(title: "Outlined", style: .outlined(.secondary)) { [weak self] in
+        stackView.addArrangedSubview(LMKButton(title: "Outlined", style: .outlined(.secondary)) { [weak self] in
             self?.showPointedTip(style: LMKTipView.Style(surface: LMKSurfaceStyle(
                 background: .solid(LMKColor.backgroundPrimary),
                 corners: .fixed(LMKCornerRadius.large),
                 border: .solid(LMKColor.primary, width: 1.5),
-                shadow: LMKShadowSource.none
+                shadow: LMKShadowSource.hidden
             )))
         })
-        stack.addArrangedSubview(LMKButton(title: "Dashed border", style: .outlined(.secondary)) { [weak self] in
+        stackView.addArrangedSubview(LMKButton(title: "Dashed border", style: .outlined(.secondary)) { [weak self] in
             self?.showPointedTip(style: LMKTipView.Style(surface: LMKSurfaceStyle(
                 background: .solid(LMKColor.warning.lmk_composited(over: LMKColor.backgroundPrimary, alpha: LMKAlpha.xs)),
                 border: .dashed([6, 3], color: LMKColor.warning, width: 1),
-                shadow: LMKShadowSource.none
+                shadow: LMKShadowSource.hidden
             )))
         })
     }

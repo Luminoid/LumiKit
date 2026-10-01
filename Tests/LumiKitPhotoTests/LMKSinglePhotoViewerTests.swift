@@ -58,14 +58,48 @@ struct LMKSinglePhotoViewerTests {
     }
 
     @Test
-    func `Presents a full-screen photo browser`() {
+    func `Presents a full-screen photo browser and exposes it while it is up`() {
         let host = makeHost()
         let viewer = LMKSinglePhotoViewer(image: makeImage())
+        #expect(viewer.browser == nil)
         viewer.present(from: host)
 
         let browser = host.presentedViewController as? LMKPhotoBrowserViewController
         #expect(browser != nil)
+        #expect(viewer.browser === browser, "onAction presents its UI from here")
         #expect(browser?.modalPresentationStyle == .overFullScreen)
+    }
+
+    @Test
+    func `dismiss fires onDismiss once, clears the browser, and is idempotent`() {
+        let host = makeHost()
+        let viewer = LMKSinglePhotoViewer(image: makeImage())
+        var dismissed = 0
+        var completions = 0
+        viewer.onDismiss = { dismissed += 1 }
+        viewer.present(from: host)
+
+        viewer.dismiss { completions += 1 }
+        #expect(dismissed == 1)
+        #expect(viewer.browser == nil)
+
+        // The browser reporting its own dismissal afterwards adds nothing.
+        viewer.photoBrowserDidDismiss(LMKPhotoBrowserViewController())
+        #expect(dismissed == 2, "a browser the user closed still reports once")
+
+        var again = 0
+        viewer.dismiss { again += 1 }
+        #expect(again == 1, "with no browser up only the completion runs")
+        #expect(dismissed == 2)
+    }
+
+    @Test
+    func `Browser strings default to the browser's process-wide strings`() {
+        let original = LMKPhotoBrowserViewController.strings
+        defer { LMKPhotoBrowserViewController.strings = original }
+        LMKPhotoBrowserViewController.strings = LMKPhotoBrowserViewController.Strings(emptyText: "App Empty")
+        let viewer = LMKSinglePhotoViewer(image: makeImage())
+        #expect(viewer.browserStrings.emptyText == "App Empty")
     }
 
     @Test
