@@ -46,6 +46,9 @@ public final class LMKListRowContentView: UIView, UIContentView, LMKThemeApplyin
     public let titleLabel = UILabel()
     public let subtitleLabel = UILabel()
     public let detailLabel = UILabel()
+    /// The widest a single-line detail grows, as a share of the row; past it the detail truncates
+    /// and the title keeps the rest.
+    static let detailMaxWidthRatio: CGFloat = 0.5
     public let accessoryImageView = UIImageView()
     public let textStack = UIStackView()
     public let trailingStack = UIStackView()
@@ -112,7 +115,10 @@ public final class LMKListRowContentView: UIView, UIContentView, LMKThemeApplyin
 
         detailLabel.textAlignment = .right
         detailLabel.setContentHuggingPriority(.required, for: .horizontal)
-        detailLabel.setContentCompressionResistancePriority(.required, for: .horizontal)
+        // A short detail keeps its full width beside a wrapping title (999 outranks the title's
+        // 750); a long one truncates at `detailMaxWidthRatio` of the row instead of crushing the
+        // title to nothing (the cap below is required, so it wins over this).
+        detailLabel.setContentCompressionResistancePriority(UILayoutPriority(999), for: .horizontal)
         accessoryImageView.contentMode = .scaleAspectFit
         accessoryImageView.setContentHuggingPriority(.required, for: .horizontal)
         accessoryImageView.setContentCompressionResistancePriority(.required, for: .horizontal)
@@ -147,6 +153,9 @@ public final class LMKListRowContentView: UIView, UIContentView, LMKThemeApplyin
             // With every trailing view hidden the stack has no width of its own; it collapses so
             // the text takes the room (the visible views' required hugging wins otherwise).
             make.width.equalTo(0).priority(.medium)
+        }
+        detailLabel.snp.makeConstraints { make in
+            make.width.lessThanOrEqualTo(self).multipliedBy(Self.detailMaxWidthRatio)
         }
         textStack.snp.makeConstraints { make in
             make.leading.equalTo(leadingContainer.snp.trailing)

@@ -39,7 +39,9 @@ public nonisolated struct LMKColorTheme: Sendable {
     public var warning: UIColor
     public var error: UIColor
     public var info: UIColor
-    /// Foreground on any filled accent (button titles, badge text).
+    /// Foreground on any filled accent (button titles, badge text). A tonal theme may make it
+    /// dark in Dark Mode (light accents with dark text), so LumiKit uses it only on accent
+    /// fills, never as a stand-in for white.
     public var onAccent: UIColor
 
     // MARK: Text

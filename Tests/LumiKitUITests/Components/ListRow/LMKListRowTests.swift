@@ -266,6 +266,22 @@ struct LMKListRowTests {
     }
 
     @Test
+    func `A long detail truncates at half the row and leaves the title its room`() {
+        let view = LMKListRowContentView(configuration: LMKListRowConfiguration(
+            title: "Location",
+            detail: "A very long detail value that would take the whole row on its own",
+            trailing: .disclosure
+        ))
+        LMKThemeTesting.fit(view, width: 320)
+        #expect(view.detailLabel.frame.width <= 320 * LMKListRowContentView.detailMaxWidthRatio + 0.5)
+        #expect(view.titleLabel.frame.width > 80, "the title keeps a usable width: \(view.titleLabel.frame)")
+
+        view.configuration = LMKListRowConfiguration(title: "A title long enough to wrap onto a second line here", detail: "3", trailing: .disclosure)
+        LMKThemeTesting.fit(view, width: 320)
+        #expect(view.detailLabel.frame.width >= view.detailLabel.intrinsicContentSize.width - 0.5, "a short detail is never truncated")
+    }
+
+    @Test
     func `Async images show a placeholder, then the loaded image, never a stale one`() async {
         let loaded = UIImage.lmk_solidColor(.blue, size: CGSize(width: 8, height: 8))
         let (view, window) = makeRow(LMKListRowConfiguration(title: "Photo", leading: .asyncImage(id: "a", load: { _ in loaded })))

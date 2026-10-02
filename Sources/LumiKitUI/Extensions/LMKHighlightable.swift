@@ -38,12 +38,13 @@ enum LMKHighlightConstants {
     static let containerDetectionSubviewsThreshold = 2
 
     /// In dark mode the card itself is already dark, so a black overlay
-    /// barely registers, so a light (white) overlay is used instead to actually
-    /// lighten the surface. Light mode keeps the black-on-light darkening.
+    /// barely registers, so a light overlay (the text color) is used instead to actually
+    /// lighten the surface. Light mode keeps the black-on-light darkening. Not `onAccent`:
+    /// a tonal theme gives that a dark value in Dark Mode, which would darken instead.
     static var highlightOverlayColor: UIColor {
         UIColor { traitCollection in
             if traitCollection.userInterfaceStyle == .dark {
-                LMKColor.onAccent.withAlphaComponent(darkModeOverlayAlpha)
+                LMKColor.textPrimary.resolvedColor(with: traitCollection).withAlphaComponent(darkModeOverlayAlpha)
             } else {
                 LMKColor.scrim.withAlphaComponent(lightModeOverlayAlpha)
             }

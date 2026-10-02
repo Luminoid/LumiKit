@@ -67,7 +67,7 @@ example-catalyst:
 
 docs:
 	@mkdir -p $(LOG_DIR)
-	xcodebuild docbuild -scheme LumiKit-Package -destination 'generic/platform=iOS' -derivedDataPath build/docc -skipPackagePluginValidation CODE_SIGNING_ALLOWED=NO 2>&1 | tee $(LOG_DIR)/docs.log | tail -5
+	xcodebuild docbuild -scheme LumiKit-Package -destination 'generic/platform=iOS' -derivedDataPath build/docc -skipPackagePluginValidation CODE_SIGNING_ALLOWED=NO OTHER_DOCC_FLAGS=--warnings-as-errors 2>&1 | tee $(LOG_DIR)/docs.log | tail -5
 
 # CONSUMER=../MyApp ARGS=--dry-run
 migrate:

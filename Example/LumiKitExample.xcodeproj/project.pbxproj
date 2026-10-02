@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 63;
+	objectVersion = 77;
 	objects = {
 
 /* Begin PBXBuildFile section */
@@ -480,7 +480,6 @@
 				};
 			};
 			buildConfigurationList = 0A34966C09DBE8E5CC385B2D /* Build configuration list for PBXProject "LumiKitExample" */;
-			compatibilityVersion = "Xcode 14.0";
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
@@ -492,6 +491,8 @@
 			packageReferences = (
 				3AE574CC1CCC09617706D3D7 /* XCLocalSwiftPackageReference ".." */,
 			);
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 11734A1BD76B6C3263E3CA80 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (

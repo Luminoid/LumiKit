@@ -72,7 +72,7 @@ public enum LMKDevice {
             mainThreadKind.withLock { cached in
                 if let cached { return cached }
                 guard Thread.isMainThread else { return kindFromCurrentTraits() }
-                let kind = MainActor.assumeIsolated { kind(for: UIDevice.current.userInterfaceIdiom) ?? .other }
+                let kind: Kind = MainActor.assumeIsolated { Self.kind(for: UIDevice.current.userInterfaceIdiom) ?? .other }
                 cached = kind
                 return kind
             }

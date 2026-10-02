@@ -22,6 +22,12 @@ env:
   LUMIKIT_WARNINGS_AS_ERRORS: "1"
   XCB: xcodebuild -scheme LumiKit-Package -skipPackagePluginValidation CODE_SIGNING_ALLOWED=NO
   XCB_EXAMPLE: xcodebuild -project Example/LumiKitExample.xcodeproj -scheme LumiKitExample -skipPackagePluginValidation CODE_SIGNING_ALLOWED=NO
+  # Pinned release builds, so a new Homebrew release cannot change the lint or the generated
+  # Example project under an unchanged tree. Bump together with the Brewfile minimums.
+  SWIFTFORMAT_VERSION: "0.63.1"
+  SWIFTFORMAT_SHA256: 385ef1a263ba28685157b98c5536b9c9105e124518f28b7ef8a2bee4b167eaeb
+  XCODEGEN_VERSION: "2.46.0"
+  XCODEGEN_SHA256: 4d9e34b62172d645eed6457cac13fc222569974098ef4ee9c3368bedf0196806
 
 jobs:
   lint:
@@ -30,15 +36,24 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Install tools
-        run: brew install swiftlint swiftformat
+        run: |
+          brew install swiftlint
+          curl -fsSL -o "$RUNNER_TEMP/swiftformat.zip" \
+            "https://github.com/nicklockwood/SwiftFormat/releases/download/$SWIFTFORMAT_VERSION/swiftformat.zip"
+          echo "$SWIFTFORMAT_SHA256  $RUNNER_TEMP/swiftformat.zip" | shasum -a 256 -c -
+          unzip -q "$RUNNER_TEMP/swiftformat.zip" -d "$RUNNER_TEMP/swiftformat"
+          echo "$RUNNER_TEMP/swiftformat" >> "$GITHUB_PATH"
       - name: SwiftLint
         run: swiftlint --strict --reporter github-actions-logging
       - name: SwiftFormat
-        run: swiftformat --lint .
+        run: |
+          swiftformat --version
+          swiftformat --lint .
 
   # Xcode 26 (Swift 6.2) on the macos-26 image and Xcode 27 (Swift 6.4, the toolchain that isolates
   # extension members and needs `isolated deinit`) on the xcode-27 image (a GitHub preview label),
-  # which the macos-26 image does not carry.
+  # which the macos-26 image does not carry. The Xcode 27 lane does not block the run while the
+  # image is a preview: its cold simulator stalls the main actor past the tests' 10 s waits.
   test-ios:
     name: test-ios (Xcode ${{ matrix.xcode }})
     strategy:
@@ -47,9 +62,12 @@ jobs:
         include:
           - xcode: "26"
             runner: macos-26
+            preview: false
           - xcode: "27"
             runner: xcode-27
+            preview: true
     runs-on: ${{ matrix.runner }}
+    continue-on-error: ${{ matrix.preview }}
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
@@ -106,10 +124,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/select-xcode
+      # The zip keeps the binary next to the setting presets it loads (share/xcodegen).
       - name: Install XcodeGen
-        run: brew install xcodegen
+        run: |
+          curl -fsSL -o "$RUNNER_TEMP/xcodegen.zip" \
+            "https://github.com/yonaskolb/XcodeGen/releases/download/$XCODEGEN_VERSION/xcodegen.zip"
+          echo "$XCODEGEN_SHA256  $RUNNER_TEMP/xcodegen.zip" | shasum -a 256 -c -
+          unzip -q "$RUNNER_TEMP/xcodegen.zip" -d "$RUNNER_TEMP"
+          echo "$RUNNER_TEMP/xcodegen/bin" >> "$GITHUB_PATH"
       - name: Regenerate the Example project
-        run: cd Example && xcodegen generate
+        run: |
+          xcodegen --version
+          cd Example && xcodegen generate
       # The project file is tracked so the Example opens without XcodeGen; it must match the spec.
       - name: Check the tracked project is current
         run: |
@@ -132,6 +158,9 @@ jobs:
           name: example-build-logs
           path: build/build-example-*.log
 
+  # The Swift Package Index builds and hosts the docs (.spi.yml), so this job only gates them:
+  # DocC warnings (a broken symbol link, a missing article) fail the build here, where the
+  # compile in the other jobs never sees them.
   docs:
     runs-on: macos-26
     timeout-minutes: 45
@@ -142,13 +171,8 @@ jobs:
         run: |
           mkdir -p build
           xcodebuild docbuild -scheme LumiKit-Package -destination 'generic/platform=iOS' \
-            -derivedDataPath build/docc -skipPackagePluginValidation CODE_SIGNING_ALLOWED=NO 2>&1 | tee build/docs.log | tail -20
-      - name: Upload DocC archives
-        uses: actions/upload-artifact@v4
-        with:
-          name: docc-archives
-          path: build/docc/Build/Products/**/*.doccarchive
-          if-no-files-found: warn
+            -derivedDataPath build/docc -skipPackagePluginValidation CODE_SIGNING_ALLOWED=NO \
+            OTHER_DOCC_FLAGS=--warnings-as-errors 2>&1 | tee build/docs.log | tail -20
       - name: Upload build log
         if: failure()
         uses: actions/upload-artifact@v4

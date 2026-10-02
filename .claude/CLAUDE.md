@@ -103,7 +103,7 @@ make test             # full package on the simulator; UIKit targets cannot run 
 make test-filter FILTER=LumiKitUITests/LMKButtonTests      # one suite (or .../method)
 make example          # cd Example && xcodegen generate, then build (XcodeGen: -scheme, NEVER -target; regenerate after adding files)
 make example-catalyst # the same for the Mac idiom (CI checks the tracked pbxproj against xcodegen generate)
-make docs             # xcodebuild docbuild for every target into build/docc; log in build/logs/docs.log (unresolved links only warn)
+make docs             # xcodebuild docbuild for every target into build/docc; log in build/logs/docs.log (DocC warnings such as an unresolved link fail the build, as in CI)
 make migrate CONSUMER=../MyApp ARGS=--dry-run
 ```
 

@@ -230,6 +230,8 @@ One nomenclature, documented in [CONTRIBUTING.md](CONTRIBUTING.md) and checked b
 - Photo browser: a zoomed photo could be panned off the page into the empty stage, a double tap zoomed on a point other than the tapped one, the chrome stayed hidden after paging away from a zoomed photo, and a Live Photo never loaded unless the data source also implemented `photoIsLivePhoto(at:)`.
 - Photo browser: a dismiss drag faded the photo together with the stage and showed black behind both; letting go snapped the stage back to opaque before the photo zoomed out; a swipe made in the first second after the browser opened was sent back to the first photo when the presentation finished; a later appearance (a sheet over the browser went away) returned to the initial photo; at 1x a photo narrower than the page took the first sideways drag from the paging; the LIVE badge stayed while the rest of the chrome cleared.
 - A pressed or selected neutral filled button turned black: the state shaded the label color in place of the gray fill.
+- A list row's long detail value took the whole row and crushed the title; the detail now truncates at half the row, and a short detail still keeps its full width.
+- A theme whose `onAccent` is dark in Dark Mode (light accents with dark text) darkened highlighted cells instead of lightening them and drew the detail photo strip's badge dark over photos; both now use a light color of their own, and `onAccent` is used only on accent fills.
 - A badge on an `LMKNavigationBar` item was cut at the top by a host that clips the bar.
 - A banner shown over a screen covered the content under it and let that content show through.
 - The selected row of `LMKSortMenu` flipped its direction only once while the menu stayed open.

@@ -158,6 +158,10 @@ final class LMKDetailPhotoTileCell: UICollectionViewCell {
     private var generation = 0
     private var imageHeightConstraint: Constraint?
 
+    /// The badge glyph sits on the photo, not on the screen's background, so it keeps one light
+    /// look (over its shadow) in every appearance and theme; `onAccent` can be dark in Dark Mode.
+    static let badgeGlyphTint = UIColor.white
+
     override init(frame: CGRect) {
         super.init(frame: frame)
         imageView.contentMode = .scaleAspectFill
@@ -218,7 +222,7 @@ final class LMKDetailPhotoTileCell: UICollectionViewCell {
         let inset = theme.spacing.xs
         if let badgeSymbol {
             badgeView.image = UIImage(systemName: badgeSymbol)
-            badgeView.tintColor = LMKColor.onAccent
+            badgeView.tintColor = Self.badgeGlyphTint
             badgeView.lmk_applyShadow(.level1)
             badgeView.snp.remakeConstraints { make in
                 make.top.trailing.equalToSuperview().inset(inset)

@@ -64,7 +64,7 @@ open class LMKNavigationController: UINavigationController {
     }
 
     /// Under the Mac idiom a split view presented over the stack is collapsed as it is dismissed,
-    /// while it is still on screen (see ``collapseSidebarsOfDismissedPresentation()``).
+    /// while it is still on screen (see `collapseSidebarsOfDismissedPresentation()`).
     override open func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         if traitCollection.userInterfaceIdiom == .mac {
