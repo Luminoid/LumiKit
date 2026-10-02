@@ -232,6 +232,9 @@ One nomenclature, documented in [CONTRIBUTING.md](CONTRIBUTING.md) and checked b
 - A pressed or selected neutral filled button turned black: the state shaded the label color in place of the gray fill.
 - A list row's long detail value took the whole row and crushed the title; the detail now truncates at half the row, and a short detail still keeps its full width.
 - A theme whose `onAccent` is dark in Dark Mode (light accents with dark text) darkened highlighted cells instead of lightening them and drew the detail photo strip's badge dark over photos; both now use a light color of their own, and `onAccent` is used only on accent fills.
+- Month calendar count badges drew the notification badge's ring, which cut into a rounded-rectangle selection or today ring, and a row sized for badges left them touching that ring's bottom stroke; calendar badges now draw no ring unless `Style.badge` sets one, and the row keeps them clear of the stroke.
+- An `LMKTextView` or `LMKTextField` showing only its character counter could be no wider than the counter, which collapsed a form column that asked for its width below required priority (`LMKFormScaffold`'s capped mode); the counter now sits at the trailing edge without limiting the width.
+- The search bar's clear button squeezed its glyph inside 8pt insets in a 22pt square; the glyph fills the square again.
 - A badge on an `LMKNavigationBar` item was cut at the top by a host that clips the bar.
 - A banner shown over a screen covered the content under it and let that content show through.
 - The selected row of `LMKSortMenu` flipped its direction only once while the menu stayed open.

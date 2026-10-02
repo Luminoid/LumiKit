@@ -8,5 +8,5 @@
 # only if you're debugging a tool that worked on an older release.
 
 brew "swiftlint"   # 0.59+
-brew "swiftformat" # 0.63.1+ (CI pins 0.63.1)
+brew "swiftformat" # 0.62.0+ (CI pins 0.63.1)
 brew "xcodegen"    # 2.46+ (CI pins 2.46.0; regenerates Example/LumiKitExample.xcodeproj from Example/project.yml)

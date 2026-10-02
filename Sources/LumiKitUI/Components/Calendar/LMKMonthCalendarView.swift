@@ -695,9 +695,11 @@ public final class LMKMonthCalendarView: UIView, LMKThemeApplying {
         let band = decorations.values.reduce(CGFloat(0)) { max($0, LMKCalendarDayCell.decorationBandHeight(for: $1, style: resolved, theme: theme)) }
         guard band > 0 else { return 0 }
         let offset = resolved.numeralCenterOffset ?? LMKCalendarDayCell.defaultNumeralCenterOffset
-        // The numeral sits `offset` from the row's center, the band hangs under it with `xxs`
-        // above and below: center + offset + numeral / 2 + xxs + band + xxs <= height.
-        return ceil(2 * (offset + numeralLineHeight / 2 + band + theme.spacing.xxs * 2))
+        let bottomMargin = LMKCalendarDayCell.decorationBottomMargin(style: resolved, theme: theme)
+        // The numeral sits `offset` from the row's center, the band hangs `xxs` under it, and the
+        // row keeps `bottomMargin` below the band (more than `xxs` when a rounded-rectangle ring
+        // strokes the cell's edge): center + offset + numeral / 2 + xxs + band + margin <= height.
+        return ceil(2 * (offset + numeralLineHeight / 2 + band + theme.spacing.xxs + bottomMargin))
     }
 
     /// Re-applies every cell from `renderedMonth`, the selection, and the decorations.

@@ -12,11 +12,15 @@ import UIKit
 /// Polling wait for asynchronous work, as in the UI test target.
 @MainActor
 enum LMKWait {
-    /// Polls `condition` every 20 ms until it holds or `timeout` passes.
+    /// Polls `condition` every 20 ms until it holds or `timeout` worth of polls has run.
+    /// The budget counts polls, not wall-clock time, so a main-thread stall in another
+    /// suite cannot expire it before the awaited work has had its turn.
     static func until(timeout: Duration = .seconds(10), _ condition: () -> Bool) async {
-        let deadline = ContinuousClock.now + timeout
-        while !condition(), ContinuousClock.now < deadline {
-            try? await Task.sleep(for: .milliseconds(20))
+        let interval = Duration.milliseconds(20)
+        var polls = Int((timeout / interval).rounded(.up))
+        while !condition(), polls > 0 {
+            polls -= 1
+            try? await Task.sleep(for: interval)
         }
     }
 }

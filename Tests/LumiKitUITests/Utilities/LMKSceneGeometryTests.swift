@@ -39,15 +39,19 @@ struct LMKSceneGeometryTests {
         #expect(observation.geometry == reports.first)
         #expect(observation.window === window)
 
+        // iOS 27 re-derives a scene-less window's size classes after the layout pass, so the new
+        // size and the new tier can arrive as two reports; iOS 26 keeps the size classes.
         window.frame = CGRect(x: 0, y: 0, width: 800, height: 600)
         window.layoutIfNeeded()
-        #expect(reports.count == 2)
-        #expect(reports.last?.size == CGSize(width: 800, height: 600))
+        #expect(reports.count >= 2)
+        #expect(reports.dropFirst().allSatisfy { $0.size == CGSize(width: 800, height: 600) })
+        #expect(observation.geometry == reports.last)
 
         // The same size again is not a change.
+        let settled = reports.count
         window.setNeedsLayout()
         window.layoutIfNeeded()
-        #expect(reports.count == 2)
+        #expect(reports.count == settled)
     }
 
     /// The regression: `deinit` asserted the main actor, so an observation whose last

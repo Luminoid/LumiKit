@@ -115,7 +115,7 @@
 		1F881DEDD6852E8807DF1575 /* ThemeSwitcherExample.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThemeSwitcherExample.swift; sourceTree = "<group>"; };
 		204F1A05D1AFF859E357B50C /* DetailCardsExample.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetailCardsExample.swift; sourceTree = "<group>"; };
 		21A598445434168C83367012 /* ProgressExample.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProgressExample.swift; sourceTree = "<group>"; };
-		2B9C75CF348A9670C0B7CEE4 /* LumiKitExample.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = LumiKitExample.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		2B9C75CF348A9670C0B7CEE4 /* LumiKitExample.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = LumiKitExample.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		2E5762FD07D5AD709CD18012 /* ShareExample.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareExample.swift; sourceTree = "<group>"; };
 		2E83041427958D614AB1C07D /* ExampleTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExampleTheme.swift; sourceTree = "<group>"; };
 		330B6FB19C2616C63E297548 /* FadeExample.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FadeExample.swift; sourceTree = "<group>"; };
@@ -729,7 +729,6 @@
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = "";
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "Save photos from the share preview to your photo library.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -760,7 +759,6 @@
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = "";
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "Save photos from the share preview to your photo library.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;

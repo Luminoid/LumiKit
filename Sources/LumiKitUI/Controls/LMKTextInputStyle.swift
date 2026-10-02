@@ -267,7 +267,13 @@ final class LMKTextInputHelperRow: UIView {
         stack.addArrangedSubview(counterLabel)
         addSubview(stack)
         stack.snp.makeConstraints { make in
-            make.edges.equalToSuperview()
+            make.top.bottom.trailing.equalToSuperview()
+            // A counter alone hugs at required priority: pinned at both edges it would cap the
+            // row, and with it the input above, at the counter's width. The leading edge holds
+            // just below required, so a message still fills the row and a counter alone sits at
+            // the trailing edge.
+            make.leading.greaterThanOrEqualToSuperview()
+            make.leading.equalToSuperview().priority(.high)
         }
         isHidden = true
     }

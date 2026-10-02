@@ -82,6 +82,21 @@ struct LMKTextViewTests {
     }
 
     @Test
+    func `A counter alone never caps the width: the view and the field fill a wide column`() {
+        let tv = LMKTextView()
+        tv.maxCharacterCount = 1000
+        tv.showsCharacterCount = true
+        let field = LMKTextField()
+        field.maxCharacterCount = 1000
+        field.showsCharacterCount = true
+        for input in [tv as UIView, field] {
+            // A form column asks for its width just below required, as LMKFormScaffold's capped mode does.
+            let fitted = input.systemLayoutSizeFitting(CGSize(width: 320, height: 0), withHorizontalFittingPriority: UILayoutPriority(999), verticalFittingPriority: .fittingSizeLevel)
+            #expect(fitted.width == 320, "\(type(of: input)) stops at \(fitted.width)pt")
+        }
+    }
+
+    @Test
     func `Validation states recolor the border and the helper line`() {
         let tv = LMKTextView()
         tv.helperText = "Helper"

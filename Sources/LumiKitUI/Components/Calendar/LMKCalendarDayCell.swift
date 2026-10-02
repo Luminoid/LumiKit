@@ -308,7 +308,7 @@ open class LMKCalendarDayCell: UIControl {
                 }
             case .roundedRect:
                 mark.snp.remakeConstraints { make in
-                    make.edges.equalToSuperview().inset(1)
+                    make.edges.equalToSuperview().inset(Self.roundedRectMarkInset)
                 }
             }
             if mark === selectionView { selectionGeometry = geometry } else { todayGeometry = geometry }
@@ -357,6 +357,17 @@ open class LMKCalendarDayCell: UIControl {
     static let defaultMaxDots = 3
     static let defaultCircleRadius: CGFloat = 18
     static let defaultRingWidth: CGFloat = 2
+    /// How far a rounded-rectangle mark sits inside the cell's bounds.
+    static let roundedRectMarkInset: CGFloat = 1
+
+    /// The space the row keeps under the decoration band: `xxs`, or enough to clear a
+    /// rounded-rectangle ring (selection or today), which strokes along the cell's edges.
+    static func decorationBottomMargin(style: LMKMonthCalendarView.Style, theme: LMKTheme) -> CGFloat {
+        let drawsEdgeRing = style.selectionStyle == .ringRoundedRect || style.todayStyle == .ringRoundedRect
+        guard drawsEdgeRing else { return theme.spacing.xxs }
+        // The inset, the stroke, and a gap as wide as the inset between the stroke and the band.
+        return max(theme.spacing.xxs, roundedRectMarkInset * 2 + (style.ringWidth ?? defaultRingWidth))
+    }
 
     /// The height of the band under the numeral that `decoration` fills: dots, badges, or both.
     static func decorationBandHeight(for decoration: LMKCalendarDayDecoration, style: LMKMonthCalendarView.Style, theme: LMKTheme) -> CGFloat {
@@ -408,8 +419,10 @@ open class LMKCalendarDayCell: UIControl {
             view.isHidden = !visible
             guard visible else { continue }
             let badge = badges[index]
+            // A count sits inline under the numeral: the badge's default ring, which separates a
+            // badge from the icon it overlaps, would only cut into the selection and today rings.
             let base = LMKBadgeView.Style(
-                surface: LMKSurfaceStyle(background: .solid(badge.color ?? accent)),
+                surface: LMKSurfaceStyle(background: .solid(badge.color ?? accent), border: style.badge.surface.border ?? .hidden),
                 textColor: LMKColor.onAccent,
                 textStyle: .extraExtraSmallSemibold,
                 height: theme.layout.symbolRow

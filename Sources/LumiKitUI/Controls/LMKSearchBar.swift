@@ -328,7 +328,9 @@ public final class LMKSearchBar: UIView, LMKThemeApplying {
         iconSizeConstraint?.update(offset: resolved.iconSize ?? Self.defaultIconSize)
         textField.lmk_apply(resolved.textStyle ?? .body, color: resolved.textColor ?? LMKColor.textPrimary)
         applyPlaceholder()
+        // The glyph fills the clear button's small square; the button still answers a 44pt touch.
         clearButton.style = LMKButton.Style.iconOnly(.neutral).size(.small).tint(resolved.clearButtonTint ?? LMKColor.textTertiary)
+            .merging(LMKButton.Style(surface: LMKSurfaceStyle(contentInsets: .zero)))
         clearSizeConstraint?.update(offset: resolved.clearButtonSize ?? Self.defaultClearButtonSize)
         cancelButton.style = resolved.cancelButton ?? .ghost()
         let lineHeight = ceil(theme.typography.font(for: resolved.textStyle ?? .body, compatibleWith: traitCollection).lineHeight)

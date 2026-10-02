@@ -82,4 +82,4 @@ LMKShare.image(image, from: self, sourceView: button)
 
 - <doc:Theming> for the token categories, app-wide component defaults, and previewing a theme in one window.
 - <doc:Styling> for the `Style` vocabulary and the escape hatches.
-- <doc:Components> and <doc:Controls> for the catalog.
+- <doc:ComponentCatalog> and <doc:ControlCatalog> for the catalog.

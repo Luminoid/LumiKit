@@ -717,6 +717,31 @@ struct LMKMonthCalendarViewTests {
     }
 
     @Test
+    func `Count badges stay clear of a rounded-rectangle ring and draw no ring of their own`() throws {
+        let view = makeCalendar(style: LMKMonthCalendarView.Style(selectionStyle: .ringRoundedRect, todayStyle: .ringRoundedRect, ringWidth: 2))
+        view.setDecorations([Self.today: LMKCalendarDayDecoration(badges: [.count(2), .count(1, color: .orange)].compactMap(\.self))])
+        view.frame.size.height = view.intrinsicContentSize.height
+        view.layoutIfNeeded()
+
+        let cell = try #require(view.cell(for: Self.today))
+        cell.layoutIfNeeded()
+        let badges = cell.badgesStack.arrangedSubviews.compactMap { $0 as? LMKBadgeView }.filter { !$0.isHidden }
+        #expect(badges.count == 2)
+        // The ring strokes 2pt inside a 1pt inset along the cell's edges.
+        let ringInnerEdge = cell.bounds.maxY - 3
+        for badge in badges {
+            let frame = badge.convert(badge.bounds, to: cell)
+            #expect(frame.maxY < ringInnerEdge, "a badge ends at \(frame.maxY), the ring's inner edge is at \(ringInnerEdge)")
+            #expect(badge.layer.borderWidth == 0, "an inline count draws no separating ring")
+        }
+
+        // A host that wants a ring around its badges still gets one.
+        view.style.badge = LMKBadgeView.Style(surface: LMKSurfaceStyle(border: .solid(.white, width: 1)))
+        let ringed = cell.badgesStack.arrangedSubviews.compactMap { $0 as? LMKBadgeView }.filter { !$0.isHidden }
+        #expect(ringed.allSatisfy { $0.layer.borderWidth > 0 })
+    }
+
+    @Test
     func `One row height serves every month the decorations cover`() {
         let view = makeCalendar()
         view.setDecorations([day(12, month: 10): LMKCalendarDayDecoration(badges: [.init(text: "3")])])

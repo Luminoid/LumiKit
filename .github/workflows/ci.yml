@@ -53,7 +53,7 @@ jobs:
   # Xcode 26 (Swift 6.2) on the macos-26 image and Xcode 27 (Swift 6.4, the toolchain that isolates
   # extension members and needs `isolated deinit`) on the xcode-27 image (a GitHub preview label),
   # which the macos-26 image does not carry. The Xcode 27 lane does not block the run while the
-  # image is a preview: its cold simulator stalls the main actor past the tests' 10 s waits.
+  # image is a preview.
   test-ios:
     name: test-ios (Xcode ${{ matrix.xcode }})
     strategy:
@@ -173,6 +173,10 @@ jobs:
           xcodebuild docbuild -scheme LumiKit-Package -destination 'generic/platform=iOS' \
             -derivedDataPath build/docc -skipPackagePluginValidation CODE_SIGNING_ALLOWED=NO \
             OTHER_DOCC_FLAGS=--warnings-as-errors 2>&1 | tee build/docs.log | tail -20
+      # The tail above ends in the failed-commands summary; the DocC diagnostics sit far earlier.
+      - name: Show DocC diagnostics
+        if: failure()
+        run: grep -E "(warning|error): " build/docs.log | sort -u || true
       - name: Upload build log
         if: failure()
         uses: actions/upload-artifact@v4

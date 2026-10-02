@@ -171,6 +171,7 @@ struct LMKSearchBarTests {
         LMKThemeTesting.fit(sized, width: 300)
         #expect(sized.clearButton.bounds.width == 30)
         #expect(sized.clearButton.style.tintColor == UIColor.green)
+        #expect(sized.clearButton.configuration?.contentInsets == .zero, "the glyph fills the clear button's square")
         #expect(sized.textField.frame.minY == 6, "vertical insets reach the field")
         #expect(sized.containerView.bounds.height >= sized.textField.bounds.height + 12)
         #expect(sized.iconView.frame.minX == 20)

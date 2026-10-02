@@ -21,8 +21,8 @@ Start with <doc:GettingStarted>, then <doc:Theming> and <doc:Styling>.
 - <doc:GettingStarted>
 - <doc:Theming>
 - <doc:Styling>
-- <doc:Components>
-- <doc:Controls>
+- <doc:ComponentCatalog>
+- <doc:ControlCatalog>
 - <doc:Extensions>
 - <doc:Localization>
 - <doc:PlatformSupport>
