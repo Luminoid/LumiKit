@@ -215,6 +215,8 @@ One nomenclature, documented in [CONTRIBUTING.md](CONTRIBUTING.md) and checked b
 - `LMKCornerStyle.concentric(minimum:corners:curve:)` keeps its curve and honors masked corners on iOS 26.
 - `LMKNetworkRequestRecord.displayDuration` is locale-formatted ("2,500ms"); the inspector's detail text is localized. The history and detail screens use the card page's back chevron instead of an arrow.
 - `LMKMarkdownRenderer.render` and `renderFull` are callable from any isolation (`makeInlineTextView` stays on the main actor); `LMKImage.dominantColor` / `dominantColors` and `LMKDevice.deviceType` too.
+- An `LMKButton` whose menu is its primary action (`LMKMenu.makeButton`, or `menu` with `showsMenuAsPrimaryAction`) no longer shrinks on touch: iOS 26 already animates the button into the menu, and the press spring on top read as a bounce. `Style.pressAnimation = true` brings it back.
+- `LMKCheckbox` animates its symbol swap on iOS 26 and sets the image directly on earlier versions, as 0.x did; a highlight change during a tap no longer re-renders the symbol.
 
 ### Fixed
 
@@ -270,6 +272,8 @@ One nomenclature, documented in [CONTRIBUTING.md](CONTRIBUTING.md) and checked b
 - Photo browser: a rotation or resize left the pages misaligned and at the old size; a one-finger drag at 1x fought the paging on a trackpad; a dismissal that started during the zoom-in left the thumbnail invisible; a pinch released past the maximum reported the page as not zoomed; in RTL the pages and arrow keys ran the wrong way. Grid: every cell decoded and held the full-size image; the hand math mirrored the columns wrongly in RTL. Crop editor: the crop rendered a full-size bitmap first, lost a locked ratio when the crop area shrank under the frame, and took its pinch only outside the frame. Pick-and-crop: a cancel during the load did not stop it, and the crop editor could be presented before the picker had gone. Share preview: a second Save tap during a save wrote twice, and a save in a host without `NSPhotoLibraryAddUsageDescription` went to the photo library anyway instead of reporting `.photoLibraryAccessDenied`.
 - `LMKAlert.presentCountdownConfirmation`: a long message pushed the card off screen (the text scrolls inside the card now); the countdown title was built in code rather than from the string tables.
 - Day cells rendered "21日" instead of "21" in Chinese and Japanese locales.
+- A `textColor` set on a label after `UILabel.lmk_make` or `lmk_apply` went back to the style's color at the next Dynamic Type, layout direction, or theme change (black text on a black swatch); text fields and text views did the same. The trait handler now re-applies the font and line metrics only.
+- `LMKGlassView`'s blur fallback before iOS 26 drew a radius larger than half its height (a concentric minimum on a short button) where glass draws a capsule; it now caps the radius the same way.
 
 ### Deferred
 

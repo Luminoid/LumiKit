@@ -3,7 +3,7 @@
 //  LumiKit
 //
 //  Checkbox control: a symbol that toggles between checked and unchecked,
-//  with a 44pt hit target and a symbol content transition on every supported OS.
+//  with a 44pt hit target and a symbol content transition on iOS 26.
 //
 
 import UIKit
@@ -133,6 +133,8 @@ public final class LMKCheckbox: UIControl, LMKThemeApplying {
     }
 
     private var storedIsChecked = false
+    /// The symbol `glyphView` shows, so a pass that changes nothing leaves the image alone.
+    private var displayedSymbolName: String?
     private var resolved = Style()
     private var glyphSize: CGFloat { resolved.glyphSize ?? traitCollection.lmkTheme.layout.iconMedium }
 
@@ -208,7 +210,10 @@ public final class LMKCheckbox: UIControl, LMKThemeApplying {
         if isHighlighted { stateAlpha = min(stateAlpha, resolved.highlighted?.alpha ?? theme.alpha.xl) }
         if !isEnabled { stateAlpha = min(stateAlpha, resolved.disabled?.alpha ?? theme.alpha.disabled) }
         alpha = stateAlpha
-        glyphView.preferredSymbolConfiguration = UIImage.SymbolConfiguration(pointSize: glyphSize, weight: resolved.symbolWeight ?? .regular)
+        let configuration = UIImage.SymbolConfiguration(pointSize: glyphSize, weight: resolved.symbolWeight ?? .regular)
+        if glyphView.preferredSymbolConfiguration != configuration {
+            glyphView.preferredSymbolConfiguration = configuration
+        }
         updateGlyph(animated: false)
         invalidateIntrinsicContentSize()
         didApplyStyle?(self)
@@ -220,10 +225,16 @@ public final class LMKCheckbox: UIControl, LMKThemeApplying {
         if isHighlighted, let highlighted = resolved.highlighted?.foregroundColor { color = highlighted }
         if !isEnabled, let disabled = resolved.disabled?.foregroundColor { color = disabled }
         glyphView.tintColor = color
+        // A tap toggles and then un-highlights in the same pass: the highlight pass touches only
+        // the tint and alpha, never the image or its configuration, so the symbol the toggle set
+        // (and its transition on iOS 26) is left to finish.
+        guard name != displayedSymbolName || glyphView.image == nil else { return }
+        displayedSymbolName = name
         let image = UIImage(systemName: name)
         // Set the image directly, never via a cross-dissolve: a reused cell would animate from
-        // whatever glyph it last held, flashing a checkmark on unrelated rows.
-        if animated, LMKAnimation.shouldAnimate, let image {
+        // whatever glyph it last held, flashing a checkmark on unrelated rows. The symbol
+        // transition runs on iOS 26, as `LMKButton`'s does.
+        if animated, #available(iOS 26, *), LMKAnimation.shouldAnimate, let image {
             glyphView.setSymbolImage(image, contentTransition: .replace)
         } else {
             glyphView.image = image

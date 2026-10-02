@@ -40,6 +40,16 @@ struct LMKGlassViewTests {
     }
 
     @Test
+    func `The blur fallback caps its radius at half the shorter side, as glass does`() {
+        let button = CGRect(x: 0, y: 0, width: 120, height: 46)
+        #expect(LMKGlassView.fallbackCornerRadius(.concentric(minimum: 40), bounds: button) == 23, "a concentric minimum on a short button is a capsule")
+        #expect(LMKGlassView.fallbackCornerRadius(.fixed(40), bounds: button) == 23)
+        #expect(LMKGlassView.fallbackCornerRadius(.fixed(16), bounds: button) == 16, "a radius that fits is kept")
+        #expect(LMKGlassView.fallbackCornerRadius(.capsule, bounds: button) == 23)
+        #expect(LMKGlassView.fallbackCornerRadius(.fixed(40), bounds: .zero) == 40, "before layout the radius waits for a size")
+    }
+
+    @Test
     func `clear style, tint, and interactivity reach the effect and can change later`() {
         let view = LMKGlassView(variant: .clear, tintColor: .red, isInteractive: true)
         #expect(view.variant == .clear)

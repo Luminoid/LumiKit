@@ -88,7 +88,7 @@ open class LMKButton: UIButton, LMKThemeApplying {
         public var showsMenuIndicator: Bool?
         /// `nil` = the foreground color.
         public var loadingIndicatorColor: UIColor?
-        /// Scale-down on press; `nil` = yes.
+        /// Scale-down on press; `nil` = yes, except on a button whose menu is its primary action.
         public var pressAnimation: Bool?
         /// Haptic on touch down; `nil` = yes.
         public var haptics: Bool?
@@ -704,9 +704,14 @@ open class LMKButton: UIButton, LMKThemeApplying {
     }
 
     /// The scale a press shrinks to: `highlighted.scale`, else the theme's press scale, else none.
-    private var pressScale: CGFloat {
-        let theme = traitCollection.lmkTheme
-        return resolvedStyle.highlighted?.scale ?? (resolvedStyle.pressAnimation ?? true ? theme.animation.pressScale : 1)
+    /// A button whose menu opens on touch does not shrink unless its style asks: the menu's
+    /// presentation animates the button itself (iOS 26 morphs it into the menu), and a spring
+    /// on top of that reads as a bounce.
+    var pressScale: CGFloat {
+        if let scale = resolvedStyle.highlighted?.scale { return scale }
+        let presentsMenuOnTouch = showsMenuAsPrimaryAction && menu != nil
+        let shrinks = resolvedStyle.pressAnimation ?? !presentsMenuOnTouch
+        return shrinks ? traitCollection.lmkTheme.animation.pressScale : 1
     }
 
     @objc private func handleTouchDown() {

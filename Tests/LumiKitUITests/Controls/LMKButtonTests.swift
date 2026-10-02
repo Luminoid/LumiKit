@@ -299,6 +299,20 @@ struct LMKButtonTests {
     }
 
     @Test
+    func `A button whose menu opens on touch does not shrink unless its style asks`() {
+        let button = LMKMenu.makeButton(menu: UIMenu(children: [UIAction(title: "One") { _ in }]), systemImageName: "ellipsis", accessibilityLabel: "More")
+        #expect(button.pressScale == 1, "the menu's presentation animates the button")
+        button.showsMenuAsPrimaryAction = false
+        #expect(button.pressScale == LMKTheme.current.animation.pressScale, "a menu behind a long press keeps the press")
+        button.showsMenuAsPrimaryAction = true
+        button.style.pressAnimation = true
+        #expect(button.pressScale == LMKTheme.current.animation.pressScale, "an explicit pressAnimation wins")
+        button.style.pressAnimation = nil
+        button.style.highlighted = LMKControlStateStyle(scale: 0.5)
+        #expect(button.pressScale == 0.5)
+    }
+
+    @Test
     func `Selected filled buttons darken the tint and per-state overrides win`() {
         let gray = UIColor(red: 0.5, green: 0.5, blue: 0.5, alpha: 1)
         let button = LMKButton(title: "On", style: .filled().tint(gray))

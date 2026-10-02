@@ -35,7 +35,10 @@ private extension UIView {
         set { objc_setAssociatedObject(self, &lmk_textStyleStateKey, newValue, .OBJC_ASSOCIATION_RETAIN_NONATOMIC) }
     }
 
-    /// Stores the style and registers the one trait handler that re-applies it.
+    /// Stores the style and registers the one trait handler that re-applies it. The handler
+    /// re-applies the font and line metrics only: the color was set once by `lmk_apply`, follows
+    /// appearance and theme changes by itself (the tokens are dynamic colors), and a `textColor`
+    /// the host set afterwards must survive a Dynamic Type or theme change.
     func lmk_storeTextStyle(_ style: LMKTextStyle, color: UIColor?, lineMetrics: Bool, reapply: @escaping @MainActor (UIView) -> Void) {
         if let state = lmk_textStyleState {
             state.style = style
@@ -60,24 +63,25 @@ public extension UILabel {
     }
 
     /// Applies `style`: a per-view Dynamic Type font from the traits' theme,
-    /// `adjustsFontForContentSizeCategory`, and `color` when given. Re-applied
-    /// automatically when the content size category or the theme changes.
+    /// `adjustsFontForContentSizeCategory`, and `color` when given. The font and line
+    /// metrics are re-applied automatically when the content size category or the theme
+    /// changes; the color is set here only, so a `textColor` assigned afterwards stays.
     ///
     /// With `lineMetrics`, the label renders its text as an attributed string with
     /// the theme's line height and tracking; set text through `lmk_setText(_:)` (or
     /// call `lmk_apply` again) so the metrics survive, since `text =` drops attributes.
     func lmk_apply(_ style: LMKTextStyle, color: UIColor? = nil, lineMetrics: Bool = false) {
         lmk_storeTextStyle(style, color: color, lineMetrics: lineMetrics) { view in
-            (view as? UILabel)?.lmk_reapplyTextStyle()
+            (view as? UILabel)?.lmk_reapplyTextStyle(appliesColor: false)
         }
-        lmk_reapplyTextStyle()
+        lmk_reapplyTextStyle(appliesColor: true)
     }
 
     /// Sets `text` and, when line metrics are on, re-renders the attributed string.
     func lmk_setText(_ text: String?) {
         self.text = text
         if lmk_textStyleState?.lineMetrics == true {
-            lmk_reapplyTextStyle()
+            lmk_reapplyTextStyle(appliesColor: false)
         }
     }
 
@@ -91,13 +95,13 @@ public extension UILabel {
         return label
     }
 
-    private func lmk_reapplyTextStyle() {
+    private func lmk_reapplyTextStyle(appliesColor: Bool) {
         guard let state = lmk_textStyleState else { return }
         let theme = traitCollection.lmkTheme
         let resolvedFont = theme.typography.font(for: state.style, compatibleWith: traitCollection)
         font = resolvedFont
         adjustsFontForContentSizeCategory = true
-        if let color = state.color {
+        if appliesColor, let color = state.color {
             textColor = color
         }
         if state.lineMetrics, let text, !text.isEmpty {
@@ -133,16 +137,16 @@ public extension UITextField {
     /// re-applied on Dynamic Type and theme changes.
     func lmk_apply(_ style: LMKTextStyle, color: UIColor? = nil) {
         lmk_storeTextStyle(style, color: color, lineMetrics: false) { view in
-            (view as? UITextField)?.lmk_reapplyTextStyle()
+            (view as? UITextField)?.lmk_reapplyTextStyle(appliesColor: false)
         }
-        lmk_reapplyTextStyle()
+        lmk_reapplyTextStyle(appliesColor: true)
     }
 
-    private func lmk_reapplyTextStyle() {
+    private func lmk_reapplyTextStyle(appliesColor: Bool) {
         guard let state = lmk_textStyleState else { return }
         font = traitCollection.lmkTheme.typography.font(for: state.style, compatibleWith: traitCollection)
         adjustsFontForContentSizeCategory = true
-        if let color = state.color {
+        if appliesColor, let color = state.color {
             textColor = color
         }
     }
@@ -155,16 +159,16 @@ public extension UITextView {
     /// re-applied on Dynamic Type and theme changes.
     func lmk_apply(_ style: LMKTextStyle, color: UIColor? = nil) {
         lmk_storeTextStyle(style, color: color, lineMetrics: false) { view in
-            (view as? UITextView)?.lmk_reapplyTextStyle()
+            (view as? UITextView)?.lmk_reapplyTextStyle(appliesColor: false)
         }
-        lmk_reapplyTextStyle()
+        lmk_reapplyTextStyle(appliesColor: true)
     }
 
-    private func lmk_reapplyTextStyle() {
+    private func lmk_reapplyTextStyle(appliesColor: Bool) {
         guard let state = lmk_textStyleState else { return }
         font = traitCollection.lmkTheme.typography.font(for: state.style, compatibleWith: traitCollection)
         adjustsFontForContentSizeCategory = true
-        if let color = state.color {
+        if appliesColor, let color = state.color {
             textColor = color
         }
     }

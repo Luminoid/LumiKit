@@ -55,6 +55,25 @@ struct LMKCheckboxTests {
     }
 
     @Test
+    func `Highlight passes during a tap leave the toggled symbol and its configuration alone`() {
+        let checkbox = LMKCheckbox()
+        let window = LMKThemeTesting.host(checkbox)
+        defer { window.isHidden = true }
+        let configuration = checkbox.glyphView.preferredSymbolConfiguration
+        checkbox.isHighlighted = true
+        #expect(checkbox.glyphView.image == UIImage(systemName: "circle"))
+        checkbox.perform(NSSelectorFromString("handleTap"))
+        #expect(checkbox.glyphView.image == UIImage(systemName: "checkmark.circle.fill"))
+        checkbox.isHighlighted = false
+        #expect(checkbox.glyphView.preferredSymbolConfiguration === configuration, "highlight passes do not re-render the symbol")
+        #expect(checkbox.glyphView.image == UIImage(systemName: "checkmark.circle.fill"))
+        #expect(checkbox.glyphView.tintColor === LMKColor.success)
+        #expect(checkbox.alpha == 1)
+        checkbox.style = LMKCheckbox.Style(glyphSize: 30)
+        #expect(checkbox.glyphView.preferredSymbolConfiguration == UIImage.SymbolConfiguration(pointSize: 30, weight: .regular), "a style change still reaches it")
+    }
+
+    @Test
     func `Hit target, disabled state, and accessibility`() {
         let checkbox = LMKCheckbox()
         checkbox.frame = CGRect(x: 0, y: 0, width: 24, height: 24)

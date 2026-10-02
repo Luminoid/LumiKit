@@ -201,6 +201,35 @@ struct UILabelTextStyleTests {
     }
 
     @Test
+    func `A text color set after the style survives Dynamic Type, theme, and text changes`() {
+        let label = UILabel.lmk_make(.body, text: "Black: dark")
+        let field = UITextField()
+        field.lmk_apply(.body, color: .red)
+        let stack = UIStackView(arrangedSubviews: [label, field])
+        let window = LMKThemeTesting.host(stack)
+        defer { window.isHidden = true }
+        label.textColor = .white
+        field.textColor = .blue
+
+        window.traitOverrides.preferredContentSizeCategory = .accessibilityExtraLarge
+        stack.updateTraitsIfNeeded()
+        label.updateTraitsIfNeeded()
+        field.updateTraitsIfNeeded()
+        #expect(label.font.pointSize > LMKTheme.current.typography.bodySize, "the font did re-apply")
+        #expect(label.textColor == UIColor.white)
+        #expect(field.textColor == UIColor.blue)
+
+        window.traitOverrides.lmkTheme = LMKThemeReference(LMKThemeTesting.distinct)
+        label.updateTraitsIfNeeded()
+        label.lmk_setText("Still white")
+        #expect(label.textColor == UIColor.white)
+        #expect(label.attributedText?.attribute(.foregroundColor, at: 0, effectiveRange: nil) as? UIColor == UIColor.white)
+
+        label.lmk_apply(.body, color: .red)
+        #expect(label.textColor == UIColor.red, "an explicit lmk_apply color still wins")
+    }
+
+    @Test
     func `Text fields and text views apply styles too`() {
         let field = UITextField()
         field.lmk_apply(.caption, color: .red)

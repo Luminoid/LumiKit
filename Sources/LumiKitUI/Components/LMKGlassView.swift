@@ -195,9 +195,18 @@ public final class LMKGlassView: UIVisualEffectView, LMKThemeApplying {
 
     override public func layoutSubviews() {
         super.layoutSubviews()
-        if resolved.corners?.tracksBounds == true, !isGlass {
-            layer.cornerRadius = cornerRadius
+        if !isGlass {
+            layer.cornerRadius = Self.fallbackCornerRadius(resolved.corners ?? .fixed(traitCollection.lmkTheme.cornerRadius.large), bounds: bounds)
         }
+    }
+
+    /// The blur fallback's layer radius. iOS 26 caps a glass radius at half the shorter side,
+    /// so a radius larger than that (a concentric minimum on a short button) is a capsule there;
+    /// the fallback caps it the same way instead of drawing a radius the layer cannot fit.
+    static func fallbackCornerRadius(_ corners: LMKCornerStyle, bounds: CGRect) -> CGFloat {
+        let radius = corners.resolvedRadius(for: bounds)
+        guard bounds.width > 0, bounds.height > 0 else { return radius }
+        return min(radius, min(bounds.width, bounds.height) / 2)
     }
 
     /// The glass takes its shape from `cornerConfiguration` on iOS 26 (per corner, so a
@@ -215,7 +224,7 @@ public final class LMKGlassView: UIVisualEffectView, LMKThemeApplying {
                 cornerConfiguration = configuration
             }
         } else {
-            layer.cornerRadius = corners.resolvedRadius(for: bounds)
+            layer.cornerRadius = Self.fallbackCornerRadius(corners, bounds: bounds)
             layer.cornerCurve = corners.curve.layerCurve
             layer.maskedCorners = corners.maskedCorners
             clipsToBounds = true

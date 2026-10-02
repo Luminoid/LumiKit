@@ -23,7 +23,7 @@ LumiKit 1.0 targets iOS 18, iPadOS 18, and Mac Catalyst 18. `LumiKitCore` and `L
 | `UINavigationItem.subtitle` | `UINavigationItem.lmk_setSubtitle(_:)`, `LMKDetailPageViewController` | a two-line title view |
 | `UIBarButtonItem.Style.prominent`, `hidesSharedBackground`, `identifier`, `UIBarButtonItem.Badge` | `LMKNavigationBarItem.makeBarButtonItem()`, `UINavigationItem.lmk_setItems(leading:trailing:)` | `.done` style, no badge |
 | `UISlider.TrackConfiguration` (ticks, `neutralValue`) | `LMKSlider.step` (ticks when the steps divide the range evenly into at most 50 stops), `neutralValue` | no ticks |
-| `UISymbolContentTransition` | `LMKButton.Style.animatesSymbolChanges` | `setImage` without a transition |
+| `UISymbolContentTransition`, `UIImageView.setSymbolImage(_:contentTransition:)` | `LMKButton.Style.animatesSymbolChanges`, `LMKCheckbox`'s glyph swap | `setImage` without a transition |
 | `UIImage.SymbolConfiguration(variableValueMode:)`, `(colorRenderingMode:)` | `LMKImage.SymbolOptions` | the plain configuration |
 | `UISplitViewController.Column.inspector` | `UISplitViewController.lmk_setInspector(_:)`, `lmk_toggleInspector()` | inert |
 | `UITraitHDRHeadroomUsageLimit` | photo browser HDR (with `preferredImageDynamicRange` from iOS 17) | SDR |
@@ -33,7 +33,7 @@ LumiKit 1.0 targets iOS 18, iPadOS 18, and Mac Catalyst 18. `LumiKitCore` and `L
 | `UINavigationController.interactiveContentPopGestureRecognizer` | `LMKNavigationController` enables it from `canBeginPopGesture` (it has no delegate) after every push, pop, and layout pass; `LMKSegmentedPageViewController` makes it wait for its page pan and calls `updateContentPopGesture()` when its page changes | the edge-swipe pop gesture alone |
 | `UIBackgroundExtensionView` | `LMKNavigationBar.backgroundContentView` | a plain host view |
 
-APIs at or below the floor that LumiKit uses without a gate: `UIImageReader`, `UIContentUnavailableConfiguration`, and `UIImageView.setSymbolImage(_:contentTransition:)` (`LMKCheckbox`'s glyph swap) from iOS 17, `UITab` and `UISearchTab` (iOS 18), `Mutex` from Synchronization (iOS 18, macOS 15).
+APIs at or below the floor that LumiKit uses without a gate: `UIImageReader` and `UIContentUnavailableConfiguration` from iOS 17, `UITab` and `UISearchTab` (iOS 18), `Mutex` from Synchronization (iOS 18, macOS 15).
 
 Two iOS 26 APIs were reviewed and not adopted: `UIView.updateProperties()` (the trait-driven `applyTheme` path already re-renders on the same triggers) and `UIMenuElement.RepeatBehavior` (no LumiKit menu has a repeatable element).
 
