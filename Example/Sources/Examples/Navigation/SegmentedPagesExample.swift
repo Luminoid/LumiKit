@@ -15,10 +15,11 @@ final class SegmentedPagesDetailViewController: DetailViewController {
     override func setupStackContent() {
         addSectionHeader("Tab container with interactive swipe paging")
         stackView.addArrangedSubview(UILabel.lmk_make(.caption, text: "LMKSegmentedPageViewController pages between child view controllers selected by a "
-                + "top LMKSegmentedControl. Drag horizontally and both pages track your finger; "
-                + "release past the halfway point (or flick) to commit, otherwise it springs back. "
+                + "top LMKSegmentedControl. Drag horizontally, or swipe with two fingers on a trackpad, and both pages track the "
+                + "gesture; release past the halfway point (or flick) to commit, otherwise it springs back. "
                 + "Tapping a segment slides without the drag. Pages can opt into edge-only panning "
-                + "via usesFullWidthSwipe(forPageAt:) so a map or custom grid keeps its interior drags."))
+                + "via usesFullWidthSwipe(forPageAt:) so a map or custom grid keeps its interior drags. On the Mac the control "
+                + "sits in the center of the window toolbar, where the navigation bar lives."))
 
         let presentButton = LMKButton(title: "Present Segmented Pages", style: .filled(.primary),
                                       target: self,
@@ -36,6 +37,8 @@ final class SegmentedPagesDetailViewController: DetailViewController {
 private final class SegmentedPagesDemoViewController: LMKSegmentedPageViewController {
     init() {
         super.init(titles: ["First", "Second", "Third"])
+        // The Mac window toolbar shows the title beside the control; the iPhone bar shows the control alone.
+        title = "Segmented Pages"
     }
 
     @available(*, unavailable)

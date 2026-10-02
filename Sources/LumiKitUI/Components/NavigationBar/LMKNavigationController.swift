@@ -28,7 +28,9 @@ public protocol LMKPopGestureConfiguring: AnyObject {
 /// back on afterwards (``updateContentPopGesture()``). The top screen also answers for the
 /// status bar, so a forced-dark screen keeps its light status bar under a hidden system bar.
 /// Under the Mac idiom it restores the back button that the window toolbar loses when a
-/// full-screen presentation over the stack is dismissed.
+/// full-screen presentation over the stack is dismissed, and collapses the sidebar of a split
+/// view presented over it as that is dismissed, which would otherwise leave the stack's back
+/// button and title a sidebar's width in from the window controls.
 ///
 /// ```swift
 /// let navigation = LMKNavigationController(rootViewController: homeViewController)
@@ -61,6 +63,15 @@ open class LMKNavigationController: UINavigationController {
         updateContentPopGesture()
     }
 
+    /// Under the Mac idiom a split view presented over the stack is collapsed as it is dismissed,
+    /// while it is still on screen (see ``collapseSidebarsOfDismissedPresentation()``).
+    override open func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        if traitCollection.userInterfaceIdiom == .mac {
+            collapseSidebarsOfDismissedPresentation()
+        }
+    }
+
     /// Under the Mac idiom the bar's items live in the window toolbar, and a full-screen
     /// presentation that is dismissed hands the toolbar back without the back button (the title
     /// returns, the button does not). This view controller reappears exactly then, so the top
@@ -78,6 +89,35 @@ open class LMKNavigationController: UINavigationController {
         guard !isNavigationBarHidden, viewControllers.count > 1, let item = topViewController?.navigationItem, !item.hidesBackButton else { return }
         item.hidesBackButton = true
         item.hidesBackButton = false
+    }
+
+    /// Under the Mac idiom a split view controller presented over the stack moves the window
+    /// toolbar's sidebar edge to the end of its primary column, and its dismissal leaves the edge
+    /// there: the stack's back button and title then start a sidebar's width in from the window
+    /// controls, and nothing on the navigation side moves them back. Collapsing the primary column
+    /// while the presentation is still on screen hands the edge back. Runs as the stack reappears.
+    func collapseSidebarsOfDismissedPresentation() {
+        var presented = presentedViewController
+        while let controller = presented {
+            if controller.isBeingDismissed {
+                Self.collapseSidebars(in: controller)
+            }
+            presented = controller.presentedViewController
+        }
+    }
+
+    /// Collapses the primary column of every column-style split view controller in `controller`'s
+    /// hierarchy, without animation.
+    static func collapseSidebars(in controller: UIViewController) {
+        if let split = controller as? UISplitViewController, split.style != .unspecified {
+            UIView.performWithoutAnimation {
+                split.preferredDisplayMode = .secondaryOnly
+                split.hide(.primary)
+            }
+        }
+        for child in controller.children {
+            collapseSidebars(in: child)
+        }
     }
 
     /// Applies ``canBeginPopGesture`` to the iOS 26 content-area pop gesture, which has no

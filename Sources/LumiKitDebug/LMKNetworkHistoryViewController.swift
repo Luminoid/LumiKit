@@ -77,7 +77,6 @@
 
         public init() {
             super.init(title: Self.historyStrings.title)
-            leadingItem = LMKNavigationBarItem(systemName: "arrow.left")
             trailingItem = LMKNavigationBarItem(systemName: "trash", accessibilityLabel: Self.historyStrings.clearAccessibilityLabel) { [weak self] in
                 self?.clearTapped()
             }
@@ -97,10 +96,6 @@
             changeObserver = LMKNetworkLogger.ChangeObserver { [weak self] in
                 self?.reload()
             }
-        }
-
-        override public func leadingButtonTapped() {
-            navigationController?.popViewController(animated: true)
         }
 
         private func clearTapped() {

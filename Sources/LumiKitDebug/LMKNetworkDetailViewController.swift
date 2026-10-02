@@ -112,7 +112,6 @@
         init(record: LMKNetworkRequestRecord) {
             self.record = record
             super.init(title: Self.detailStrings.title)
-            leadingItem = LMKNavigationBarItem(systemName: "arrow.left")
             trailingItem = LMKNavigationBarItem(systemName: "doc.on.doc", accessibilityLabel: Self.detailStrings.copyAccessibilityLabel) { [weak self] in
                 self?.copyTapped()
             }
@@ -129,10 +128,6 @@
             changeObserver = LMKNetworkLogger.ChangeObserver { [weak self] in
                 self?.refreshRecord()
             }
-        }
-
-        override func leadingButtonTapped() {
-            navigationController?.popViewController(animated: true)
         }
 
         private func copyTapped() {

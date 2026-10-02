@@ -28,13 +28,6 @@ final class NetworkHistoryDetailViewController: DetailViewController {
             requestTask?.cancel()
         }
 
-        /// The history is a card page with its own header, so the system bar hides while it is
-        /// on top and comes back here.
-        override func viewWillAppear(_ animated: Bool) {
-            super.viewWillAppear(animated)
-            navigationController?.setNavigationBarHidden(false, animated: animated)
-        }
-
         override func setupStackContent() {
             addSectionHeader("LMKNetworkLogger")
             stackView.addArrangedSubview(UILabel.lmk_make(
@@ -50,12 +43,11 @@ final class NetworkHistoryDetailViewController: DetailViewController {
             addSectionHeader("LMKNetworkHistoryViewController")
             stackView.addArrangedSubview(UILabel.lmk_make(
                 .caption,
-                text: "A card page listing the captured requests newest first; rows update in place as responses land, and each opens the full request and response text."
+                text: "A card page listing the captured requests newest first; rows update in place as responses land, and each opens the full request and response text. "
+                    + "Pushed onto a stack that shows its bar, as here, it hands its title and Clear item to that bar; in a card or a stack with a hidden bar it draws its own header."
             ))
             let open = LMKButton(title: "Open Network History", style: .outlined(.primary)) { [weak self] in
-                guard let navigationController = self?.navigationController else { return }
-                navigationController.setNavigationBarHidden(true, animated: true)
-                navigationController.pushViewController(LMKNetworkHistoryViewController(), animated: true)
+                self?.navigationController?.pushViewController(LMKNetworkHistoryViewController(), animated: true)
             }
             stackView.addArrangedSubview(open)
         }

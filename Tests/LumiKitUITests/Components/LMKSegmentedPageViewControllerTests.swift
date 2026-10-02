@@ -241,6 +241,28 @@ struct LMKSegmentedPageViewControllerTests {
     }
 
     @Test
+    func `Under the Mac idiom the title placement is the toolbar's center item group`() {
+        let vc = TestSegmentedPageVC()
+        vc.navigationIdiom = .mac
+        vc.navigationItem.centerItemGroups = [UIBarButtonItemGroup(barButtonItems: [UIBarButtonItem(systemItem: .add)], representativeItem: nil)]
+        vc.loadViewIfNeeded()
+        #expect(vc.navigationItem.titleView == nil, "the window toolbar shows no title view")
+        #expect(vc.navigationItem.centerItemGroups.count == 2, "a host's own center group stays")
+        #expect(vc.navigationItem.centerItemGroups.last?.barButtonItems.first?.customView === vc.segmentedControl)
+
+        vc.segmentedControlPlacement = .manual
+        #expect(vc.navigationItem.centerItemGroups.count == 1)
+        #expect(vc.navigationItem.centerItemGroups.first?.barButtonItems.first?.customView == nil)
+    }
+
+    @Test
+    func `The page pan takes a trackpad's two-finger swipe`() {
+        let vc = TestSegmentedPageVC()
+        vc.loadViewIfNeeded()
+        #expect(vc.pagePanRecognizer.allowedScrollTypesMask == .continuous)
+    }
+
+    @Test
     func `Style and theme.segmentedPage tune the container and the control`() {
         let vc = TestSegmentedPageVC(style: LMKSegmentedPageViewController.Style(
             segmentedControl: LMKSegmentedControl.Style(corners: .rounded),

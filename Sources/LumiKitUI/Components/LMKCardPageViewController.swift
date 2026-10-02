@@ -36,6 +36,9 @@ import UIKit
 /// Designed for a `UINavigationController` with a hidden system bar (the header
 /// replaces it) or an `LMKCardPanelViewController`: the default back action pops
 /// the navigation stack, and dismisses the enclosing panel from its root page.
+/// Pushed onto a stack whose bar is showing, the page hides its header and hands its
+/// title and items to that bar (``usesSystemNavigationBar``), so it looks like the
+/// screens around it.
 open class LMKCardPageViewController: UIViewController, LMKThemeApplying {
     // MARK: - Style
 
@@ -212,6 +215,12 @@ open class LMKCardPageViewController: UIViewController, LMKThemeApplying {
     /// Whether pushed content can be popped.
     public var canPopContent: Bool { !pageStack.isEmpty }
 
+    /// Whether the page hands its title and items to the system navigation bar instead of
+    /// drawing its header: `true` while it sits in a navigation controller whose bar is showing,
+    /// where the header would stack a second bar under the first (under the Mac idiom, under the
+    /// window toolbar that bar becomes). Settled each time the page appears.
+    public private(set) var usesSystemNavigationBar = false
+
     private struct PageSnapshot {
         let contentView: UIView
         let title: String?
@@ -234,6 +243,11 @@ open class LMKCardPageViewController: UIViewController, LMKThemeApplying {
     private var titleLeadingToEdge: Constraint?
     private var titleTrailingToButton: Constraint?
     private var titleTrailingToEdge: Constraint?
+    /// The content's top: under the header, or under the system bar while the page uses it.
+    private var pageTopToHeader: Constraint?
+    private var pageTopToSafeArea: Constraint?
+    /// The navigation item carries the page's items (set while `usesSystemNavigationBar`).
+    private var installedNavigationItems = false
     /// The glyph button look resolved by the last `applyTheme`; items layer their role on it.
     private var itemButtonStyle = LMKButton.Style()
 
@@ -268,6 +282,11 @@ open class LMKCardPageViewController: UIViewController, LMKThemeApplying {
         setupPageContainer()
         setupContent()
         lmk_startApplyingTheme()
+    }
+
+    override open func viewIsAppearing(_ animated: Bool) {
+        super.viewIsAppearing(animated)
+        updateHeaderPlacement()
     }
 
     // MARK: - Template methods
@@ -366,9 +385,11 @@ open class LMKCardPageViewController: UIViewController, LMKThemeApplying {
         pageContainerView.clipsToBounds = true
         view.addSubview(pageContainerView)
         pageContainerView.snp.makeConstraints { make in
-            make.top.equalTo(headerView.snp.bottom)
+            pageTopToHeader = make.top.equalTo(headerView.snp.bottom).constraint
+            pageTopToSafeArea = make.top.equalTo(view.safeAreaLayoutGuide).constraint
             make.leading.trailing.bottom.equalToSuperview()
         }
+        pageTopToSafeArea?.deactivate()
         pageContainerView.addSubview(contentContainerView)
         contentContainerView.snp.makeConstraints { $0.edges.equalToSuperview() }
     }
@@ -387,6 +408,7 @@ open class LMKCardPageViewController: UIViewController, LMKThemeApplying {
             configure(trailingButton, with: trailingItem, fallbackLabel: strings.trailingButtonAccessibilityLabel)
         }
         trailingBadgeView = updateBadge(trailingBadgeView, for: trailingItem, on: trailingButton)
+        configureNavigationItem()
         leadingButton.isHidden = !showsLeading
         trailingButton.isHidden = !showsTrailing
         if showsLeading {
@@ -403,6 +425,53 @@ open class LMKCardPageViewController: UIViewController, LMKThemeApplying {
             titleTrailingToButton?.deactivate()
             titleTrailingToEdge?.activate()
         }
+    }
+
+    // MARK: - System bar
+
+    /// Shows the header, or hides it and hands the title and items to the system bar when the
+    /// page sits in a stack whose bar is showing. Runs as the page appears.
+    func updateHeaderPlacement() {
+        let usesBar = navigationController.map { !$0.isNavigationBarHidden } ?? false
+        usesSystemNavigationBar = usesBar
+        headerView.isHidden = usesBar
+        if usesBar {
+            pageTopToHeader?.deactivate()
+            pageTopToSafeArea?.activate()
+        } else {
+            pageTopToSafeArea?.deactivate()
+            pageTopToHeader?.activate()
+        }
+        configureHeaderButtons()
+    }
+
+    /// Mirrors the header items onto `navigationItem` while the page uses the system bar (the
+    /// title follows `title` on its own). Stacked content takes the back position, since the bar's
+    /// back button would pop the whole page; a leading item with neither an action nor a menu
+    /// stands for going back, which the back button already does.
+    private func configureNavigationItem() {
+        guard usesSystemNavigationBar else {
+            guard installedNavigationItems else { return }
+            installedNavigationItems = false
+            navigationItem.leftBarButtonItems = nil
+            navigationItem.rightBarButtonItems = nil
+            navigationItem.hidesBackButton = false
+            navigationItem.leftItemsSupplementBackButton = false
+            return
+        }
+        installedNavigationItems = true
+        let leading: LMKNavigationBarItem?
+        if canPopContent {
+            var back = Self.backItem
+            back.accessibilityLabel = strings.leadingButtonAccessibilityLabel
+            back.action = { [weak self] in self?.popContentView(animated: true) }
+            leading = back
+        } else {
+            leading = leadingItem.flatMap { $0.action == nil && $0.menu == nil ? nil : $0 }
+        }
+        navigationItem.hidesBackButton = canPopContent
+        navigationItem.leftItemsSupplementBackButton = !canPopContent
+        navigationItem.lmk_setItems(leading: leading.map { [$0] } ?? [], trailing: trailingItem.map { [$0] } ?? [])
     }
 
     private func configure(_ button: LMKButton, with item: LMKNavigationBarItem, fallbackLabel: String) {
@@ -569,7 +638,7 @@ open class LMKCardPageViewController: UIViewController, LMKThemeApplying {
         ) { [weak self] in
             self?.isTransitioning = false
         }
-        UIAccessibility.post(notification: .screenChanged, argument: headerTitleLabel)
+        UIAccessibility.post(notification: .screenChanged, argument: usesSystemNavigationBar ? nil : headerTitleLabel)
     }
 }
 

@@ -75,6 +75,63 @@ struct LMKCardPageViewControllerTests {
     }
 
     @Test
+    func `In a stack whose bar shows, the page hands its title and items to that bar`() throws {
+        let page = TestPage(title: "History")
+        var clears = 0
+        page.trailingItem = LMKNavigationBarItem(identifier: "clear", systemName: "trash") { clears += 1 }
+        let navigation = UINavigationController(rootViewController: UIViewController())
+        navigation.pushViewController(page, animated: false)
+        let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 375, height: 600))
+        window.rootViewController = navigation
+        window.makeKeyAndVisible()
+        defer { window.isHidden = true }
+        navigation.view.layoutIfNeeded()
+
+        #expect(page.usesSystemNavigationBar)
+        #expect(page.headerView.isHidden)
+        #expect(page.navigationItem.title == "History")
+        #expect(page.navigationItem.leftBarButtonItems == nil, "the default back item is the bar's own back button")
+        #expect(!page.navigationItem.hidesBackButton)
+        let clear = try #require(page.navigationItem.rightBarButtonItems?.first)
+        #expect(clear.accessibilityIdentifier == "clear")
+        clear.primaryAction?.performWithSender(nil, target: nil)
+        #expect(clears == 1)
+        let content = try #require(page.contentContainerView.superview)
+        #expect(content.frame.minY == page.view.safeAreaInsets.top, "the content starts under the bar")
+    }
+
+    @Test
+    func `Under the system bar, stacked content takes the back position and a hidden bar brings the header back`() throws {
+        let page = TestPage(title: "Root")
+        let navigation = UINavigationController(rootViewController: UIViewController())
+        navigation.pushViewController(page, animated: false)
+        page.loadViewIfNeeded()
+        page.updateHeaderPlacement()
+
+        page.pushContentView(UIView(), title: "Child", animated: false)
+        #expect(page.navigationItem.title == "Child")
+        #expect(page.navigationItem.hidesBackButton, "the bar's back button would pop the whole page")
+        let back = try #require(page.navigationItem.leftBarButtonItems?.first)
+        #expect(back.accessibilityLabel == "Back")
+        back.primaryAction?.performWithSender(nil, target: nil)
+        #expect(!page.canPopContent)
+        #expect(page.navigationItem.title == "Root")
+        #expect(!page.navigationItem.hidesBackButton)
+        #expect(page.navigationItem.leftBarButtonItems == nil)
+
+        page.leadingItem = .init(title: "Edit") {}
+        #expect(page.navigationItem.leftBarButtonItems?.first?.title == "Edit", "an item with an action keeps it")
+        #expect(page.navigationItem.leftItemsSupplementBackButton)
+
+        navigation.setNavigationBarHidden(true, animated: false)
+        page.updateHeaderPlacement()
+        #expect(!page.usesSystemNavigationBar)
+        #expect(!page.headerView.isHidden)
+        #expect(page.navigationItem.leftBarButtonItems == nil, "the header takes the items back")
+        #expect(page.leadingButton.title == "Edit")
+    }
+
+    @Test
     func `Items configure the buttons and their actions`() {
         let page = TestPage(title: "T")
         var trailingTaps = 0

@@ -110,4 +110,19 @@ struct LMKNavigationControllerTests {
         navigation.updateContentPopGesture()
         #expect(!recognizer.isEnabled, "a host's own disable is respected")
     }
+
+    @Test
+    func `A split view presented over the stack gives up its sidebar as it goes, a classic one is left alone`() {
+        let split = UISplitViewController(style: .doubleColumn)
+        split.setViewController(UIViewController(), for: .primary)
+        split.setViewController(UIViewController(), for: .secondary)
+        let container = UIViewController()
+        container.addChild(split)
+        LMKNavigationController.collapseSidebars(in: container)
+        #expect(split.preferredDisplayMode == .secondaryOnly, "found among the presentation's children")
+
+        let classic = UISplitViewController()
+        LMKNavigationController.collapseSidebars(in: classic)
+        #expect(classic.preferredDisplayMode == .automatic, "a classic split view has no column to hide")
+    }
 }

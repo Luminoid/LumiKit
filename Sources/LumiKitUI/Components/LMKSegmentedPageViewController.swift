@@ -14,15 +14,16 @@ import UIKit
 ///
 /// Pages can take a full-width pan (vertical scrollers) or an edge-only pan (a narrow
 /// band at each horizontal edge) so a page that owns horizontal drags (a map, a month
-/// grid) keeps its interior. Tapping a segment, or calling ``setPage(_:animated:)``,
-/// slides without the drag. Directions follow the layout direction, so a forward
-/// page comes from the trailing edge in RTL too.
+/// grid) keeps its interior. A two-finger swipe on a trackpad pages the same way, from where
+/// the pointer is. Tapping a segment, or calling ``setPage(_:animated:)``, slides without the
+/// drag. Directions follow the layout direction, so a forward page comes from the trailing
+/// edge in RTL too.
 ///
 /// Subclasses provide the pages via ``makePages()`` (or call ``setPages(_:titles:)``
 /// later), the per-page pan mode via ``usesFullWidthSwipe(forPageAt:)``, and react to
 /// page changes via ``didChangePage(to:)``. ``segmentedControlPlacement`` puts the
-/// control in the navigation title (default), in a container view of the host's
-/// chrome, or leaves it to the host.
+/// control in the navigation title (default; the window toolbar's center under the Mac
+/// idiom), in a container view of the host's chrome, or leaves it to the host.
 ///
 /// ```swift
 /// final class MyContainerViewController: LMKSegmentedPageViewController {
@@ -42,7 +43,8 @@ open class LMKSegmentedPageViewController: UIViewController, LMKThemeApplying, L
 
     /// Where the segmented control goes.
     public enum SegmentedControlPlacement {
-        /// The navigation item's title view.
+        /// The navigation item's title view. Under the Mac idiom the navigation bar is the window
+        /// toolbar, which shows no title view, so the control takes the toolbar's center item group.
         case navigationTitle
         /// Pinned to the edges of a host-provided view (a slot under a custom navigation bar).
         case container(UIView)
@@ -161,10 +163,17 @@ open class LMKSegmentedPageViewController: UIViewController, LMKThemeApplying, L
     private var pendingPages: (pages: [UIViewController], titles: [String]?)?
     /// The iOS 26 content-area pop gesture this pan has been arbitrated against.
     private weak var arbitratedContentPopGesture: UIGestureRecognizer?
+    /// The toolbar group holding the control under the Mac idiom.
+    private var toolbarItemGroup: UIBarButtonItemGroup?
+    /// The idiom that decides where `.navigationTitle` puts the control: the device's, which
+    /// never changes at runtime. Internal so tests can take the Mac path.
+    var navigationIdiom = UIDevice.current.userInterfaceIdiom
     private lazy var panDelegate = LMKSegmentedPagePanDelegate(owner: self)
     private lazy var pagePanGesture: UIPanGestureRecognizer = {
         let pan = UIPanGestureRecognizer(target: self, action: #selector(handlePagePan(_:)))
         pan.delegate = panDelegate
+        // A two-finger swipe on a trackpad (iPad, Mac) pages like a finger drag.
+        pan.allowedScrollTypesMask = .continuous
         return pan
     }()
 
@@ -265,7 +274,21 @@ open class LMKSegmentedPageViewController: UIViewController, LMKThemeApplying, L
         if navigationItem.titleView === segmentedControl {
             navigationItem.titleView = nil
         }
+        if let toolbarItemGroup {
+            navigationItem.centerItemGroups.removeAll { $0 === toolbarItemGroup }
+            self.toolbarItemGroup = nil
+        }
         switch segmentedControlPlacement {
+        case .navigationTitle where navigationIdiom == .mac:
+            // The window toolbar shows no title view, so the control takes the center item
+            // group; it draws its own capsule, so the toolbar's glass stays off it.
+            let item = UIBarButtonItem(customView: segmentedControl)
+            if #available(iOS 26, *) {
+                item.hidesSharedBackground = true
+            }
+            let group = UIBarButtonItemGroup(barButtonItems: [item], representativeItem: nil)
+            navigationItem.centerItemGroups.append(group)
+            toolbarItemGroup = group
         case .navigationTitle:
             navigationItem.titleView = segmentedControl
         case let .container(container):
@@ -631,9 +654,17 @@ open class LMKSegmentedPageViewController: UIViewController, LMKThemeApplying, L
 private final class LMKSegmentedPagePanDelegate: NSObject, UIGestureRecognizerDelegate {
     private weak var owner: LMKSegmentedPageViewController?
     private var startX: CGFloat = 0
+    /// The pan is following a trackpad scroll, which delivers no touch to start from.
+    private var isScrollInput = false
 
     init(owner: LMKSegmentedPageViewController) {
         self.owner = owner
+    }
+
+    func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldReceive event: UIEvent) -> Bool {
+        guard let owner, gestureRecognizer === owner.pagePanRecognizer else { return true }
+        isScrollInput = event.type == .scroll
+        return true
     }
 
     func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldReceive touch: UITouch) -> Bool {
@@ -645,7 +676,11 @@ private final class LMKSegmentedPagePanDelegate: NSObject, UIGestureRecognizerDe
 
     func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
         guard let owner, gestureRecognizer === owner.pagePanRecognizer else { return true }
-        return owner.shouldBeginPagePan(startX: startX)
+        guard isScrollInput else { return owner.shouldBeginPagePan(startX: startX) }
+        // A scroll starts where the pointer is, under the same rules a touch there would meet.
+        let location = gestureRecognizer.location(in: owner.view)
+        guard owner.pagePanShouldReceiveTouch(on: owner.view.hitTest(location, with: nil)) else { return false }
+        return owner.shouldBeginPagePan(startX: location.x)
     }
 
     func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldRecognizeSimultaneouslyWith other: UIGestureRecognizer) -> Bool {
