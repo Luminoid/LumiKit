@@ -176,7 +176,8 @@ jobs:
       # The tail above ends in the failed-commands summary; the DocC diagnostics sit far earlier.
       - name: Show DocC diagnostics
         if: failure()
-        run: grep -E "(warning|error): " build/docs.log | sort -u || true
+        run: |
+          grep -E "(warning|error): " build/docs.log | sort -u || true
       - name: Upload build log
         if: failure()
         uses: actions/upload-artifact@v4
