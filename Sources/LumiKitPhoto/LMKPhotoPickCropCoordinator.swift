@@ -166,7 +166,15 @@ public final class LMKPhotoPickCropCoordinator: NSObject {
         configuration.selectionLimit = 1
         let picker = PHPickerViewController(configuration: configuration)
         picker.delegate = self
-        host?.present(picker, animated: true)
+        guard let host else {
+            LMKLogger.warning("LMKPhotoPickCropCoordinator: the host is gone; the picker is not shown", category: .lumiKit)
+            return
+        }
+        if !host.lmk_canPresentAlert {
+            // UIKit refuses the presentation and the flow ends without a callback.
+            LMKLogger.warning("LMKPhotoPickCropCoordinator: \(type(of: host)) is off screen or already presenting; the picker may not appear", category: .lumiKit)
+        }
+        host.present(picker, animated: true)
     }
 
     /// Cancels an in-flight load, decode, or save; nothing is reported, and a crop editor
@@ -190,7 +198,7 @@ public final class LMKPhotoPickCropCoordinator: NSObject {
             let (image, metadata) = await Self.decode(data, maximumPixelSize: maximumPixelSize)
             guard let self, !Task.isCancelled else { return }
             guard let image else {
-                report(.decodeFailed)
+                report(.decodeFailed, note: "\(data.count) bytes, type \(Self.typeIdentifier(of: data))")
                 return
             }
             pickedMetadata = metadata
@@ -247,14 +255,9 @@ public final class LMKPhotoPickCropCoordinator: NSObject {
     }
 
     /// The one path every failure takes: logged, then handed to `onFailure`, or shown to the
-    /// user on the host when there is none.
-    private func report(_ failure: Failure) {
-        switch failure {
-        case let .loadFailed(error):
-            LMKLogger.error("Photo pick failed to load the picked item", error: error, category: .error)
-        default:
-            LMKLogger.error("Photo pick-and-crop failed: \(failure)", category: .error)
-        }
+    /// user on the host when there is none. `note` adds public context (sizes, type identifiers).
+    private func report(_ failure: Failure, note: String? = nil) {
+        LMKLogger.error("LMKPhotoPickCropCoordinator: the flow failed\(note.map { " (\($0))" } ?? "")", error: failure, category: .lumiKit)
         if let onFailure {
             onFailure(failure)
         } else if let host {
@@ -268,6 +271,12 @@ public final class LMKPhotoPickCropCoordinator: NSObject {
         case .saveFailed: strings.saveFailedMessage
         case .hostUnavailable: strings.hostUnavailableMessage
         }
+    }
+
+    /// The uniform type identifier ImageIO reads from the bytes' header, or "unknown".
+    private static func typeIdentifier(of data: Data) -> String {
+        guard let source = CGImageSourceCreateWithData(data as CFData, nil), let type = CGImageSourceGetType(source) else { return "unknown" }
+        return type as String
     }
 
     /// Reads the metadata and decodes the image from the same bytes on the global executor.

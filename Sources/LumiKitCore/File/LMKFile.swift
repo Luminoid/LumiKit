@@ -57,7 +57,7 @@ public enum LMKFile {
                 options: [.skipsHiddenFiles]
             )
         } catch {
-            LMKLogger.error("clearTemporaryFiles: failed to list the temporary directory", error: error, category: .data)
+            LMKLogger.error("clearTemporaryFiles: failed to list the temporary directory", error: error, category: .lumiKit)
             return 0
         }
         let cutoff = age.map { Date(timeIntervalSinceNow: -$0) }
@@ -73,7 +73,7 @@ public enum LMKFile {
                 try fileManager.removeItem(at: item)
                 removed += 1
             } catch {
-                LMKLogger.error("clearTemporaryFiles: failed to remove \(item.lastPathComponent)", error: error, category: .data)
+                LMKLogger.warning("clearTemporaryFiles: failed to remove an item", private: item.lastPathComponent, error: error, category: .lumiKit)
             }
         }
         return removed

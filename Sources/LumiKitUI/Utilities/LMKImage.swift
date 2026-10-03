@@ -5,6 +5,7 @@
 //  Image utility helpers.
 //
 
+import LumiKitCore
 import UIKit
 import UniformTypeIdentifiers
 
@@ -190,11 +191,17 @@ public nonisolated enum LMKImage {
     /// - Returns: Opaque JPEG data, or `nil` if the image is empty or the encode fails.
     public static func encodeJPEG(_ image: UIImage, maxPixelSize: CGFloat, quality: CGFloat = 0.8) -> Data? {
         let size = pixelSize(image.size, scale: image.scale)
-        guard size.width > 0, size.height > 0, maxPixelSize > 0 else { return nil }
+        guard size.width > 0, size.height > 0, maxPixelSize > 0 else {
+            logFailure("the input check (empty image or non-positive maxPixelSize)", pixelSize: size, maxPixelSize: maxPixelSize)
+            return nil
+        }
         let scale = min(1, maxPixelSize / max(size.width, size.height))
         let pixelWidth = Int((size.width * scale).rounded())
         let pixelHeight = Int((size.height * scale).rounded())
-        guard pixelWidth > 0, pixelHeight > 0 else { return nil }
+        guard pixelWidth > 0, pixelHeight > 0 else {
+            logFailure("sizing the output", pixelSize: size, maxPixelSize: maxPixelSize)
+            return nil
+        }
 
         guard let context = CGContext(
             data: nil,
@@ -204,7 +211,10 @@ public nonisolated enum LMKImage {
             bytesPerRow: 0,
             space: CGColorSpaceCreateDeviceRGB(),
             bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue
-        ) else { return nil }
+        ) else {
+            logFailure("creating the \(pixelWidth)x\(pixelHeight) RGBX context", pixelSize: size, maxPixelSize: maxPixelSize)
+            return nil
+        }
 
         // Draw through UIKit so the image's EXIF orientation is applied. Flip the
         // context first: CoreGraphics origins are bottom-left, UIKit's top-left.
@@ -213,7 +223,10 @@ public nonisolated enum LMKImage {
         context.scaleBy(x: 1, y: -1)
         image.draw(in: CGRect(x: 0, y: 0, width: pixelWidth, height: pixelHeight))
         UIGraphicsPopContext()
-        guard let opaqueImage = context.makeImage() else { return nil }
+        guard let opaqueImage = context.makeImage() else {
+            logFailure("making the opaque image", pixelSize: size, maxPixelSize: maxPixelSize)
+            return nil
+        }
 
         let data = NSMutableData()
         guard let destination = CGImageDestinationCreateWithData(
@@ -221,10 +234,16 @@ public nonisolated enum LMKImage {
             UTType.jpeg.identifier as CFString,
             1,
             nil
-        ) else { return nil }
+        ) else {
+            logFailure("creating the JPEG destination", pixelSize: size, typeIdentifier: UTType.jpeg.identifier, maxPixelSize: maxPixelSize)
+            return nil
+        }
         let options: [CFString: Any] = [kCGImageDestinationLossyCompressionQuality: quality]
         CGImageDestinationAddImage(destination, opaqueImage, options as CFDictionary)
-        guard CGImageDestinationFinalize(destination) else { return nil }
+        guard CGImageDestinationFinalize(destination) else {
+            logFailure("finalizing the JPEG", pixelSize: size, typeIdentifier: UTType.jpeg.identifier, maxPixelSize: maxPixelSize)
+            return nil
+        }
         return data as Data
     }
 
@@ -263,18 +282,24 @@ public nonisolated enum LMKImage {
     /// - Returns: `nil` when the bytes are not an image or `maxPixelSize` is not positive.
     public static func downsample(data: Data, maxPixelSize: CGFloat, options: DownsampleOptions = DownsampleOptions()) -> UIImage? {
         if options.prefersHighDynamicRange {
-            return downsampleHDR(maxPixelSize: maxPixelSize, options: options) { $0.image(data: data) }
+            return downsampleHDR(maxPixelSize: maxPixelSize, options: options, input: .bytes(data.count)) { $0.image(data: data) }
         }
-        guard let source = CGImageSourceCreateWithData(data as CFData, sourceOptions) else { return nil }
+        guard let source = CGImageSourceCreateWithData(data as CFData, sourceOptions) else {
+            logFailure("creating the image source from \(data.count) bytes", maxPixelSize: maxPixelSize)
+            return nil
+        }
         return downsample(source: source, maxPixelSize: maxPixelSize, options: options)
     }
 
     /// `downsample(data:maxPixelSize:options:)` from a file, without reading the whole file into memory first.
     public static func downsample(fileURL: URL, maxPixelSize: CGFloat, options: DownsampleOptions = DownsampleOptions()) -> UIImage? {
         if options.prefersHighDynamicRange {
-            return downsampleHDR(maxPixelSize: maxPixelSize, options: options) { $0.image(contentsOf: fileURL) }
+            return downsampleHDR(maxPixelSize: maxPixelSize, options: options, input: .file(fileURL)) { $0.image(contentsOf: fileURL) }
         }
-        guard let source = CGImageSourceCreateWithURL(fileURL as CFURL, sourceOptions) else { return nil }
+        guard let source = CGImageSourceCreateWithURL(fileURL as CFURL, sourceOptions) else {
+            logFailure("creating the image source from a file", maxPixelSize: maxPixelSize, fileURL: fileURL)
+            return nil
+        }
         return downsample(source: source, maxPixelSize: maxPixelSize, options: options)
     }
 
@@ -282,9 +307,12 @@ public nonisolated enum LMKImage {
     @concurrent
     public static func downsample(data: Data, maxPixelSize: CGFloat, options: DownsampleOptions = DownsampleOptions()) async -> UIImage? {
         if options.prefersHighDynamicRange {
-            return downsampleHDR(maxPixelSize: maxPixelSize, options: options) { $0.image(data: data) }
+            return downsampleHDR(maxPixelSize: maxPixelSize, options: options, input: .bytes(data.count)) { $0.image(data: data) }
         }
-        guard let source = CGImageSourceCreateWithData(data as CFData, sourceOptions) else { return nil }
+        guard let source = CGImageSourceCreateWithData(data as CFData, sourceOptions) else {
+            logFailure("creating the image source from \(data.count) bytes", maxPixelSize: maxPixelSize)
+            return nil
+        }
         return downsample(source: source, maxPixelSize: maxPixelSize, options: options)
     }
 
@@ -292,20 +320,37 @@ public nonisolated enum LMKImage {
     @concurrent
     public static func downsample(fileURL: URL, maxPixelSize: CGFloat, options: DownsampleOptions = DownsampleOptions()) async -> UIImage? {
         if options.prefersHighDynamicRange {
-            return downsampleHDR(maxPixelSize: maxPixelSize, options: options) { $0.image(contentsOf: fileURL) }
+            return downsampleHDR(maxPixelSize: maxPixelSize, options: options, input: .file(fileURL)) { $0.image(contentsOf: fileURL) }
         }
-        guard let source = CGImageSourceCreateWithURL(fileURL as CFURL, sourceOptions) else { return nil }
+        guard let source = CGImageSourceCreateWithURL(fileURL as CFURL, sourceOptions) else {
+            logFailure("creating the image source from a file", maxPixelSize: maxPixelSize, fileURL: fileURL)
+            return nil
+        }
         return downsample(source: source, maxPixelSize: maxPixelSize, options: options)
     }
 
+    /// What a downsample read, for its failure lines: a byte count, or a file (its path private).
+    private enum DownsampleInput {
+        case bytes(Int)
+        case file(URL)
+    }
+
     /// The `UIImageReader` path: HDR preserved, thumbnail no larger than `maxPixelSize` per side.
-    private static func downsampleHDR(maxPixelSize: CGFloat, options: DownsampleOptions, read: (UIImageReader) -> UIImage?) -> UIImage? {
-        guard maxPixelSize > 0 else { return nil }
+    private static func downsampleHDR(maxPixelSize: CGFloat, options: DownsampleOptions, input: DownsampleInput, read: (UIImageReader) -> UIImage?) -> UIImage? {
+        let fileURL: URL? = if case let .file(url) = input { url } else { nil }
+        let source = if case let .bytes(count) = input { "\(count) bytes" } else { "a file" }
+        guard maxPixelSize > 0 else {
+            logFailure("the HDR input check (non-positive maxPixelSize) for \(source)", maxPixelSize: maxPixelSize, fileURL: fileURL)
+            return nil
+        }
         var configuration = UIImageReader.Configuration()
         configuration.prefersHighDynamicRange = true
         configuration.preparesImagesForDisplay = options.cachesImmediately
         configuration.preferredThumbnailSize = CGSize(width: maxPixelSize, height: maxPixelSize)
-        guard let image = read(UIImageReader(configuration: configuration)) else { return nil }
+        guard let image = read(UIImageReader(configuration: configuration)) else {
+            logFailure("the HDR read of \(source)", maxPixelSize: maxPixelSize, fileURL: fileURL)
+            return nil
+        }
         guard options.scale != image.scale, let cgImage = image.cgImage else { return image }
         return UIImage(cgImage: cgImage, scale: options.scale, orientation: image.imageOrientation)
     }
@@ -343,7 +388,10 @@ public nonisolated enum LMKImage {
     private static var sourceOptions: CFDictionary { [kCGImageSourceShouldCache: false] as CFDictionary }
 
     private static func downsample(source: CGImageSource, maxPixelSize: CGFloat, options: DownsampleOptions) -> UIImage? {
-        guard maxPixelSize > 0, CGImageSourceGetCount(source) > 0 else { return nil }
+        guard maxPixelSize > 0, CGImageSourceGetCount(source) > 0 else {
+            logFailure("the input check (no image in the source, or non-positive maxPixelSize)", typeIdentifier: typeIdentifier(of: source), maxPixelSize: maxPixelSize)
+            return nil
+        }
         let thumbnailOptions: [CFString: Any] = [
             kCGImageSourceCreateThumbnailFromImageAlways: options.alwaysFromImage,
             kCGImageSourceCreateThumbnailFromImageIfAbsent: true,
@@ -352,8 +400,15 @@ public nonisolated enum LMKImage {
             kCGImageSourceCreateThumbnailWithTransform: options.appliesOrientation,
             kCGImageSourceShouldCacheImmediately: options.cachesImmediately,
         ]
-        guard let cgImage = CGImageSourceCreateThumbnailAtIndex(source, 0, thumbnailOptions as CFDictionary) else { return nil }
+        guard let cgImage = CGImageSourceCreateThumbnailAtIndex(source, 0, thumbnailOptions as CFDictionary) else {
+            logFailure("creating the thumbnail", pixelSize: imageSize(of: source), typeIdentifier: typeIdentifier(of: source), maxPixelSize: maxPixelSize)
+            return nil
+        }
         return UIImage(cgImage: cgImage, scale: options.scale, orientation: .up)
+    }
+
+    private static func typeIdentifier(of source: CGImageSource) -> String {
+        CGImageSourceGetType(source).map { $0 as String } ?? "unknown"
     }
 
     private static func imageSize(of source: CGImageSource) -> CGSize? {
@@ -383,21 +438,56 @@ public nonisolated enum LMKImage {
     ///   - compressionQuality: JPEG compression quality (0.0--1.0). Default 0.9.
     public static func jpegData(withPixelBuffer pixelBuffer: CVPixelBuffer, attachments: CFDictionary?, compressionQuality: CGFloat = 0.9) -> Data? {
         let renderedCIImage = CIImage(cvImageBuffer: pixelBuffer)
+        let size = CGSize(width: CVPixelBufferGetWidth(pixelBuffer), height: CVPixelBufferGetHeight(pixelBuffer))
+        let formatCode = CVPixelBufferGetPixelFormatType(pixelBuffer)
+        let fourCC = String(bytes: [24, 16, 8, 0].map { UInt8(truncatingIfNeeded: formatCode >> $0) }, encoding: .ascii) ?? "\(formatCode)"
+        let format = "pixel format '\(fourCC)'"
         guard let renderedCGImage = ciContext.createCGImage(renderedCIImage, from: renderedCIImage.extent) else {
+            logFailure("rendering the pixel buffer", pixelSize: size, typeIdentifier: format)
             return nil
         }
         guard let data = CFDataCreateMutable(kCFAllocatorDefault, 0) else {
+            logFailure("allocating the output buffer", pixelSize: size, typeIdentifier: format)
             return nil
         }
         guard let cgImageDestination = CGImageDestinationCreateWithData(data, UTType.jpeg.identifier as CFString, 1, nil) else {
+            logFailure("creating the JPEG destination", pixelSize: size, typeIdentifier: format)
             return nil
         }
         var imageProperties: [String: Any] = (attachments as? [String: Any]) ?? [:]
         imageProperties[kCGImageDestinationLossyCompressionQuality as String] = compressionQuality
         CGImageDestinationAddImage(cgImageDestination, renderedCGImage, imageProperties as CFDictionary)
-        if CGImageDestinationFinalize(cgImageDestination) {
-            return data as Data
+        guard CGImageDestinationFinalize(cgImageDestination) else {
+            logFailure("finalizing the JPEG", pixelSize: size, typeIdentifier: format)
+            return nil
         }
-        return nil
+        return data as Data
+    }
+
+    // MARK: - Failure logging
+
+    /// One warning per failed exit, never on success: the step that failed plus what is known of
+    /// the input (pixel size, type identifier or pixel format, cap). A file's path is private.
+    private static func logFailure(
+        _ step: String,
+        pixelSize: CGSize? = nil,
+        typeIdentifier: String? = nil,
+        maxPixelSize: CGFloat? = nil,
+        fileURL: URL? = nil,
+        function: String = #function,
+        line: Int = #line
+    ) {
+        var context: [String] = []
+        if let pixelSize {
+            context.append(String(format: "input %.0fx%.0f px", pixelSize.width, pixelSize.height))
+        }
+        if let typeIdentifier {
+            context.append("type \(typeIdentifier)")
+        }
+        if let maxPixelSize {
+            context.append(String(format: "maxPixelSize %.0f", maxPixelSize))
+        }
+        let suffix = context.isEmpty ? "" : " (\(context.joined(separator: ", ")))"
+        LMKLogger.warning("LMKImage: \(step) failed\(suffix)", private: fileURL?.path, category: .lumiKit, function: function, line: line)
     }
 }

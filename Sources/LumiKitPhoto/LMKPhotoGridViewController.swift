@@ -8,6 +8,7 @@
 //  The pinch and drag-to-select gestures live in +Gestures.
 //
 
+import LumiKitCore
 import LumiKitUI
 import PhotosUI
 import SnapKit
@@ -705,7 +706,12 @@ extension LMKPhotoGridViewController: UICollectionViewDataSource {
         cell.configure(with: nil, contentMode: photoContentMode.uiContentMode, isLive: isLive)
         let pixelSize = thumbnailPixelSize
         cell.loadImage { [weak self] in
-            await self?.dataSource?.photoGridThumbnail(at: dsIndex, pixelSize: pixelSize)
+            guard let dataSource = self?.dataSource else { return nil }
+            let thumbnail = await dataSource.photoGridThumbnail(at: dsIndex, pixelSize: pixelSize)
+            if thumbnail == nil {
+                LMKLogger.debug("LMKPhotoGridViewController: the data source returned no thumbnail for index \(dsIndex)", category: .lumiKit)
+            }
+            return thumbnail
         }
         cell.setShowsSelected(selectedIndices.contains(dsIndex))
         applyAccessibility(to: cell, displayIndex: indexPath.item)

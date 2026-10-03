@@ -111,13 +111,38 @@ public enum LMKErrorHandler {
     // MARK: - Presentation
 
     /// Presents `error` (its description plus any recovery suggestion) by severity.
-    public static func present(from host: UIViewController, error: Error, severity: Severity = .error, retryAction: (() -> Void)? = nil) {
-        show(from: host, title: nil, message: message(for: error), error: error, severity: severity, retryAction: retryAction, onRetryChosen: nil)
+    ///
+    /// When `logsErrors` is on, the presentation is logged against the caller's file and line,
+    /// with the error attached (its summary public, its description private).
+    public static func present(
+        from host: UIViewController,
+        error: Error,
+        severity: Severity = .error,
+        retryAction: (() -> Void)? = nil,
+        file: String = #fileID,
+        function: String = #function,
+        line: Int = #line
+    ) {
+        let callSite = CallSite(file: file, function: function, line: line)
+        show(from: host, title: nil, message: message(for: error), error: error, severity: severity, retryAction: retryAction, onRetryChosen: nil, callSite: callSite)
     }
 
     /// Presents `message` by severity.
-    public static func present(from host: UIViewController, title: String? = nil, message: String, severity: Severity = .error, retryAction: (() -> Void)? = nil) {
-        show(from: host, title: title, message: message, error: nil, severity: severity, retryAction: retryAction, onRetryChosen: nil)
+    ///
+    /// When `logsErrors` is on, the presentation is logged against the caller's file and line;
+    /// the message is user-facing text, so it is logged as private.
+    public static func present(
+        from host: UIViewController,
+        title: String? = nil,
+        message: String,
+        severity: Severity = .error,
+        retryAction: (() -> Void)? = nil,
+        file: String = #fileID,
+        function: String = #function,
+        line: Int = #line
+    ) {
+        let callSite = CallSite(file: file, function: function, line: line)
+        show(from: host, title: title, message: message, error: nil, severity: severity, retryAction: retryAction, onRetryChosen: nil, callSite: callSite)
     }
 
     /// Presents `message` by severity and waits for the user; `true` when a retry was chosen.
@@ -128,8 +153,17 @@ public enum LMKErrorHandler {
     /// (the host is off screen or already presenting) or goes away without an action, and
     /// when a custom presentation releases its context without running `retryAction`.
     @discardableResult
-    public static func confirmRetry(from host: UIViewController, title: String? = nil, message: String, severity: Severity = .error) async -> Bool {
-        await withCheckedContinuation { continuation in
+    public static func confirmRetry(
+        from host: UIViewController,
+        title: String? = nil,
+        message: String,
+        severity: Severity = .error,
+        file: String = #fileID,
+        function: String = #function,
+        line: Int = #line
+    ) async -> Bool {
+        let callSite = CallSite(file: file, function: function, line: line)
+        return await withCheckedContinuation { continuation in
             let resolution = LMKOnceContinuation(continuation, fallback: false)
             show(
                 from: host,
@@ -138,7 +172,8 @@ public enum LMKErrorHandler {
                 error: nil,
                 severity: severity,
                 retryAction: { resolution.resolve(true) },
-                onRetryChosen: { resolution.resolve($0) }
+                onRetryChosen: { resolution.resolve($0) },
+                callSite: callSite
             )
         }
     }
@@ -155,6 +190,13 @@ public enum LMKErrorHandler {
 
     // MARK: - Internals
 
+    /// The app call site a presentation is logged against.
+    private struct CallSite {
+        let file: String
+        let function: String
+        let line: Int
+    }
+
     private static func show(
         from host: UIViewController,
         title: String?,
@@ -162,13 +204,14 @@ public enum LMKErrorHandler {
         error: Error?,
         severity: Severity,
         retryAction: (() -> Void)?,
-        onRetryChosen: ((Bool) -> Void)?
+        onRetryChosen: ((Bool) -> Void)?,
+        callSite: CallSite
     ) {
         let hasRetry = retryAction != nil
         let presentation = policy.resolve(severity, hasRetry)
         let resolvedTitle = title ?? defaultTitle(for: severity)
         if logsErrors {
-            log(severity: severity, message: message, error: error)
+            log(severity: severity, message: message, error: error, callSite: callSite)
         }
         switch presentation {
         case .toast:
@@ -176,7 +219,14 @@ public enum LMKErrorHandler {
             onRetryChosen?(false)
         case let .alert(showsRetry):
             guard host.lmk_canPresentAlert else {
-                LMKLogger.warning("LMKErrorHandler: \(type(of: host)) cannot present “\(resolvedTitle)”: off screen or already presenting", category: .ui)
+                LMKLogger.warning(
+                    "LMKErrorHandler: \(type(of: host)) cannot present the alert: off screen or already presenting",
+                    private: resolvedTitle,
+                    category: .lumiKit,
+                    file: callSite.file,
+                    function: callSite.function,
+                    line: callSite.line
+                )
                 onRetryChosen?(false)
                 return
             }
@@ -214,11 +264,24 @@ public enum LMKErrorHandler {
         }
     }
 
-    private static func log(severity: Severity, message: String, error: Error?) {
-        switch severity {
-        case .info: LMKLogger.info("Showing info: \(message)", category: .ui)
-        case .warning: LMKLogger.warning("Showing warning: \(message)", category: .ui)
-        case .error, .critical: LMKLogger.error("Showing \(severity): \(message)", error: error, category: .error)
+    /// One line per presentation. With an error the message is that error's own description,
+    /// so only the error is attached (summary public, description private); a plain message is
+    /// user-facing text and goes in the private detail.
+    private static func log(severity: Severity, message: String, error: Error?, callSite: CallSite) {
+        let level: LMKLogLevel = switch severity {
+        case .info: .info
+        case .warning: .warning
+        case .error, .critical: .error
         }
+        LMKLogger.log(
+            level,
+            "LMKErrorHandler: showing \(severity)",
+            private: error == nil ? message : nil,
+            error: error,
+            category: .lumiKit,
+            file: callSite.file,
+            function: callSite.function,
+            line: callSite.line
+        )
     }
 }

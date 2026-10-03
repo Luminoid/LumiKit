@@ -2,15 +2,19 @@
 //  LMKLogger.swift
 //  LumiKit
 //
-//  Configurable logging on os.log.
-//  - Four levels (debug, info, warning, error); debug is compiled out of release builds
-//  - Runtime threshold (`minimumLevel`) and kill switch (`isEnabled`)
-//  - Configurable subsystem, message privacy, in-memory log store, and an entry handler
+//  Configurable logging on os.Logger.
+//  - Six levels (debug, info, notice, warning, error, fault) written at the unified-logging
+//    types os.Logger's own methods use
+//  - Runtime threshold (`minimumLevel`): debug in DEBUG builds, info otherwise, clamped at
+//    error so errors and faults always come through
+//  - Public message text, a private detail for user data, and errors split by `describe(_:)`
+//  - Configurable subsystem, message privacy, in-memory log store, and an entry handler;
+//    `record(_:)` forwards entries another package already wrote
 //  - `LMKLogging` gives the same API as an injectable instance
 //
 
 import Foundation
-import os.log
+import os
 import Synchronization
 
 // MARK: - LMKLogging
@@ -19,9 +23,12 @@ import Synchronization
 ///
 /// `LMKLogger.default` forwards to the static logger; a test double can capture calls instead.
 public protocol LMKLogging: Sendable {
+    /// Writes one line. `message` is public text; `privateDetail` carries user data and is
+    /// written as private; an attached `error` adds its summary to the message.
     func log(
         _ level: LMKLogLevel,
         _ message: String,
+        privateDetail: String?,
         error: (any Error)?,
         category: LMKLogger.LogCategory,
         file: String,
@@ -31,34 +38,98 @@ public protocol LMKLogging: Sendable {
 }
 
 public extension LMKLogging {
-    func debug(_ message: String, category: LMKLogger.LogCategory = .general, file: String = #file, function: String = #function, line: Int = #line) {
-        log(.debug, message, error: nil, category: category, file: file, function: function, line: line)
+    func debug(
+        _ message: String,
+        private detail: String? = nil,
+        error: (any Error)? = nil,
+        category: LMKLogger.LogCategory = .general,
+        file: String = #fileID,
+        function: String = #function,
+        line: Int = #line
+    ) {
+        log(.debug, message, privateDetail: detail, error: error, category: category, file: file, function: function, line: line)
     }
 
-    func info(_ message: String, category: LMKLogger.LogCategory = .general, file: String = #file, function: String = #function, line: Int = #line) {
-        log(.info, message, error: nil, category: category, file: file, function: function, line: line)
+    func info(
+        _ message: String,
+        private detail: String? = nil,
+        error: (any Error)? = nil,
+        category: LMKLogger.LogCategory = .general,
+        file: String = #fileID,
+        function: String = #function,
+        line: Int = #line
+    ) {
+        log(.info, message, privateDetail: detail, error: error, category: category, file: file, function: function, line: line)
     }
 
-    func warning(_ message: String, category: LMKLogger.LogCategory = .general, file: String = #file, function: String = #function, line: Int = #line) {
-        log(.warning, message, error: nil, category: category, file: file, function: function, line: line)
+    func notice(
+        _ message: String,
+        private detail: String? = nil,
+        error: (any Error)? = nil,
+        category: LMKLogger.LogCategory = .general,
+        file: String = #fileID,
+        function: String = #function,
+        line: Int = #line
+    ) {
+        log(.notice, message, privateDetail: detail, error: error, category: category, file: file, function: function, line: line)
     }
 
-    func error(_ message: String, error: (any Error)? = nil, category: LMKLogger.LogCategory = .error, file: String = #file, function: String = #function, line: Int = #line) {
-        log(.error, message, error: error, category: category, file: file, function: function, line: line)
+    func warning(
+        _ message: String,
+        private detail: String? = nil,
+        error: (any Error)? = nil,
+        category: LMKLogger.LogCategory = .general,
+        file: String = #fileID,
+        function: String = #function,
+        line: Int = #line
+    ) {
+        log(.warning, message, privateDetail: detail, error: error, category: category, file: file, function: function, line: line)
+    }
+
+    func error(
+        _ message: String,
+        private detail: String? = nil,
+        error: (any Error)? = nil,
+        category: LMKLogger.LogCategory = .error,
+        file: String = #fileID,
+        function: String = #function,
+        line: Int = #line
+    ) {
+        log(.error, message, privateDetail: detail, error: error, category: category, file: file, function: function, line: line)
+    }
+
+    func fault(
+        _ message: String,
+        private detail: String? = nil,
+        error: (any Error)? = nil,
+        category: LMKLogger.LogCategory = .error,
+        file: String = #fileID,
+        function: String = #function,
+        line: Int = #line
+    ) {
+        log(.fault, message, privateDetail: detail, error: error, category: category, file: file, function: function, line: line)
     }
 }
 
 // MARK: - LMKLogger
 
-/// Configurable logging system for the Lumi ecosystem.
+/// Configurable logging system for the Lumi ecosystem, on `os.Logger`.
 ///
 /// Configure once at app launch:
 /// ```swift
 /// LMKLogger.configure(subsystem: Bundle.main.bundleIdentifier ?? "com.example")
-/// LMKLogger.minimumLevel = .info        // optional: drop debug output at runtime
+/// LMKLogger.minimumLevel = .notice      // optional: write less at runtime
 /// LMKLogger.enableLogStore()            // optional: capture logs in memory
 /// LMKLogger.entryHandler = { entry in } // optional: forward entries (crash breadcrumbs, analytics)
 /// ```
+///
+/// Message text is public: keep it to static text, codes, ids, counts, dimensions, and type
+/// names. Pass user data (URLs, file paths, user content, text shown to the user) as `private:`,
+/// and attach errors with `error:` rather than interpolating their description:
+/// ```swift
+/// LMKLogger.error("Upload failed", private: fileURL.path, error: error, category: .network)
+/// ```
+///
 /// Every setting is safe to read and write from any thread.
 public enum LMKLogger {
     // MARK: - Types
@@ -71,26 +142,42 @@ public enum LMKLogger {
         case `private`
     }
 
+    #if DEBUG
+        /// The threshold before an app sets one: everything in DEBUG builds.
+        static let defaultMinimumLevel = LMKLogLevel.debug
+    #else
+        /// The threshold before an app sets one: info and above outside DEBUG builds.
+        static let defaultMinimumLevel = LMKLogLevel.info
+    #endif
+
     private struct Configuration {
         var subsystem: String
-        var minimumLevel: LMKLogLevel = .debug
-        var isEnabled = true
+        var minimumLevel = LMKLogger.defaultMinimumLevel
         var messagePrivacy: Privacy = .public
         var entryHandler: (@Sendable (LMKLogEntry) -> Void)?
         var logStore: LMKLogStore?
-        var logs: [String: OSLog] = [:]
+        var loggers: [String: Logger] = [:]
+        var osLogs: [String: OSLog] = [:]
+        var onceKeys: Set<String> = []
+
+        mutating func logger(for category: String) -> Logger {
+            if let cached = loggers[category] { return cached }
+            let logger = Logger(subsystem: subsystem, category: category)
+            loggers[category] = logger
+            return logger
+        }
     }
 
     private struct Emission {
-        let log: OSLog
+        let logger: Logger
         let privacy: Privacy
         let store: LMKLogStore?
         let handler: (@Sendable (LMKLogEntry) -> Void)?
     }
 
     private struct StaticLogging: LMKLogging {
-        func log(_ level: LMKLogLevel, _ message: String, error: (any Error)?, category: LogCategory, file: String, function: String, line: Int) {
-            LMKLogger.log(level, message, error: error, category: category, file: file, function: function, line: line)
+        func log(_ level: LMKLogLevel, _ message: String, privateDetail: String?, error: (any Error)?, category: LogCategory, file: String, function: String, line: Int) {
+            LMKLogger.log(level, message, private: privateDetail, error: error, category: category, file: file, function: function, line: line)
         }
     }
 
@@ -108,29 +195,28 @@ public enum LMKLogger {
     public static func configure(subsystem: String) {
         configuration.withLock {
             $0.subsystem = subsystem
-            $0.logs.removeAll()
+            $0.loggers.removeAll()
+            $0.osLogs.removeAll()
         }
     }
 
-    /// Entries below this level are dropped before they reach os.log, the store, or the handler. Default `.debug`.
+    /// Entries below this level are dropped before they reach the unified log, the store, or the
+    /// handler. Default `.debug` in DEBUG builds and `.info` otherwise. A value above `.error`
+    /// clamps to `.error`, so errors and faults are always written.
     public static var minimumLevel: LMKLogLevel {
         get { configuration.withLock { $0.minimumLevel } }
-        set { configuration.withLock { $0.minimumLevel = newValue } }
+        set { configuration.withLock { $0.minimumLevel = min(newValue, .error) } }
     }
 
-    /// `false` silences every level. Default `true`.
-    public static var isEnabled: Bool {
-        get { configuration.withLock { $0.isEnabled } }
-        set { configuration.withLock { $0.isEnabled = newValue } }
-    }
-
-    /// Privacy marker for message text in the unified logging system. Default `.public`.
+    /// Privacy marker for the message text in the unified logging system. Default `.public`.
+    /// The `[File.swift:12] function` prefix is always public and a private detail always private.
     public static var messagePrivacy: Privacy {
         get { configuration.withLock { $0.messagePrivacy } }
         set { configuration.withLock { $0.messagePrivacy = newValue } }
     }
 
-    /// Receives every emitted entry after level filtering, on the logging thread.
+    /// Receives every written entry after level filtering, and every entry passed to
+    /// `record(_:)`, on the logging thread.
     public static var entryHandler: (@Sendable (LMKLogEntry) -> Void)? {
         get { configuration.withLock { $0.entryHandler } }
         set { configuration.withLock { $0.entryHandler = newValue } }
@@ -162,13 +248,14 @@ public enum LMKLogger {
 
     /// Extensible log category shown in Console.
     ///
-    /// Built-in categories: `.general`, `.data`, `.ui`, `.network`, `.error`, `.localization`.
-    /// Create custom categories via `LogCategory(name:)`.
+    /// Built-in categories: `.general`, `.data`, `.ui`, `.network`, `.error`, `.localization`, and
+    /// `.lumiKit` (LumiKit's own lines). Create custom categories via `LogCategory(name:)`.
     public final class LogCategory: Sendable {
         /// The category name (e.g. "General", "Data", "Network").
         public let name: String
 
-        /// The `OSLog` for this category under the current subsystem.
+        /// The `OSLog` for this category under the current subsystem, for APIs that take one
+        /// (signposts). `LMKLogger` itself writes through `os.Logger`.
         public var osLog: OSLog {
             LMKLogger.osLog(for: name)
         }
@@ -186,122 +273,243 @@ public enum LMKLogger {
         public static let network = LogCategory(name: "Network")
         public static let error = LogCategory(name: "Error")
         public static let localization = LogCategory(name: "Localization")
+        /// Lines LumiKit writes itself (alerts, sharing, photos, image encoding), under the app's
+        /// subsystem: filter on it in Console, or find them in the log store and handler.
+        public static let lumiKit = LogCategory(name: "LumiKit")
     }
 
     private static func osLog(for name: String) -> OSLog {
         configuration.withLock { configuration in
-            if let log = configuration.logs[name] { return log }
+            if let log = configuration.osLogs[name] { return log }
             let log = OSLog(subsystem: configuration.subsystem, category: name)
-            configuration.logs[name] = log
+            configuration.osLogs[name] = log
             return log
         }
     }
 
     // MARK: - Log Levels
 
-    /// Debug logs — only emitted in DEBUG builds. The message is built only when the entry is
-    /// emitted, so an interpolation costs nothing when the level is filtered out.
+    /// Development detail. Written only at a `.debug` threshold (the DEBUG-build default). The
+    /// message and detail are built only when the entry is written, so an interpolation costs
+    /// nothing when the level is filtered out.
     public static func debug(
         _ message: @autoclosure () -> String,
+        private detail: @autoclosure () -> String? = nil,
+        error: (any Error)? = nil,
         category: LogCategory = .general,
-        file: String = #file,
+        file: String = #fileID,
         function: String = #function,
         line: Int = #line
     ) {
-        #if DEBUG
-            log(.debug, message(), error: nil, category: category, file: file, function: function, line: line)
-        #endif
+        log(.debug, message(), private: detail(), error: error, category: category, file: file, function: function, line: line)
     }
 
-    /// Info logs — emitted in all builds.
+    /// Helpful context; kept in memory only by the unified logging system.
     public static func info(
         _ message: @autoclosure () -> String,
+        private detail: @autoclosure () -> String? = nil,
+        error: (any Error)? = nil,
         category: LogCategory = .general,
-        file: String = #file,
+        file: String = #fileID,
         function: String = #function,
         line: Int = #line
     ) {
-        log(.info, message(), error: nil, category: category, file: file, function: function, line: line)
+        log(.info, message(), private: detail(), error: error, category: category, file: file, function: function, line: line)
     }
 
-    /// Warning logs — emitted in all builds.
+    /// A normal but significant event (configuration, lifecycle, an operation's outcome); saved on device.
+    public static func notice(
+        _ message: @autoclosure () -> String,
+        private detail: @autoclosure () -> String? = nil,
+        error: (any Error)? = nil,
+        category: LogCategory = .general,
+        file: String = #fileID,
+        function: String = #function,
+        line: Int = #line
+    ) {
+        log(.notice, message(), private: detail(), error: error, category: category, file: file, function: function, line: line)
+    }
+
+    /// Something went wrong, but the operation recovered or degraded.
     public static func warning(
         _ message: @autoclosure () -> String,
+        private detail: @autoclosure () -> String? = nil,
+        error: (any Error)? = nil,
         category: LogCategory = .general,
-        file: String = #file,
+        file: String = #fileID,
         function: String = #function,
         line: Int = #line
     ) {
-        log(.warning, message(), error: nil, category: category, file: file, function: function, line: line)
+        log(.warning, message(), private: detail(), error: error, category: category, file: file, function: function, line: line)
     }
 
-    /// Error logs — always emitted, highest priority.
+    /// An operation failed. Always written.
     public static func error(
         _ message: @autoclosure () -> String,
+        private detail: @autoclosure () -> String? = nil,
         error: (any Error)? = nil,
         category: LogCategory = .error,
-        file: String = #file,
+        file: String = #fileID,
         function: String = #function,
         line: Int = #line
     ) {
-        log(.error, message(), error: error, category: category, file: file, function: function, line: line)
+        log(.error, message(), private: detail(), error: error, category: category, file: file, function: function, line: line)
     }
 
-    /// The general entry point behind the level-specific functions. `message` is evaluated only
-    /// after the level and kill-switch checks pass.
+    /// A bug: an invariant the code relies on is broken. Always written.
+    public static func fault(
+        _ message: @autoclosure () -> String,
+        private detail: @autoclosure () -> String? = nil,
+        error: (any Error)? = nil,
+        category: LogCategory = .error,
+        file: String = #fileID,
+        function: String = #function,
+        line: Int = #line
+    ) {
+        log(.fault, message(), private: detail(), error: error, category: category, file: file, function: function, line: line)
+    }
+
+    /// The general entry point behind the level-specific functions. `message` and `detail` are
+    /// evaluated only after the level check passes.
+    ///
+    /// The unified log receives `[File.swift:12] function - message | detail`: the prefix is
+    /// public, the message follows `messagePrivacy`, and the detail is private. An attached
+    /// error adds `[summary]` (see `describe(_:)`) to the message and its full description to
+    /// the detail.
     public static func log(
         _ level: LMKLogLevel,
         _ message: @autoclosure () -> String,
+        private detail: @autoclosure () -> String? = nil,
         error: (any Error)? = nil,
         category: LogCategory = .general,
-        file: String = #file,
+        file: String = #fileID,
         function: String = #function,
         line: Int = #line
     ) {
-        #if !DEBUG
-            if level == .debug { return }
-        #endif
         let emission: Emission? = configuration.withLock { configuration in
-            guard configuration.isEnabled, level >= configuration.minimumLevel else { return nil }
-            let log: OSLog
-            if let cached = configuration.logs[category.name] {
-                log = cached
-            } else {
-                log = OSLog(subsystem: configuration.subsystem, category: category.name)
-                configuration.logs[category.name] = log
-            }
-            return Emission(log: log, privacy: configuration.messagePrivacy, store: configuration.logStore, handler: configuration.entryHandler)
+            guard level >= configuration.minimumLevel else { return nil }
+            return Emission(
+                logger: configuration.logger(for: category.name),
+                privacy: configuration.messagePrivacy,
+                store: configuration.logStore,
+                handler: configuration.entryHandler
+            )
         }
         guard let emission else { return }
 
-        var text = message()
+        var publicText = message()
+        var privateParts: [String] = []
+        if let detail = detail() {
+            privateParts.append(detail)
+        }
         if let error {
-            text += " | Error: \(error.localizedDescription)"
+            let described = describe(error)
+            publicText += " [\(described.summary)]"
+            if let errorDetail = described.detail {
+                privateParts.append(errorDetail)
+            }
         }
         let entry = LMKLogEntry(
             level: level,
             category: category.name,
-            message: text,
+            message: publicText,
+            privateDetail: privateParts.isEmpty ? nil : privateParts.joined(separator: " | "),
             file: (file as NSString).lastPathComponent,
             function: function,
             line: line
         )
-        switch emission.privacy {
-        case .public: os_log("%{public}@", log: emission.log, type: level.osLogType, entry.formattedMessage)
-        case .private: os_log("%{private}@", log: emission.log, type: level.osLogType, entry.formattedMessage)
-        }
+        write(entry, to: emission.logger, privacy: emission.privacy)
         emission.store?.append(entry)
         emission.handler?(entry)
     }
-}
 
-private extension LMKLogLevel {
-    var osLogType: OSLogType {
-        switch self {
-        case .debug: .debug
-        case .info: .info
-        case .warning: .default
-        case .error: .error
+    /// Writes a line once per `key` until `resetOnce(_:)`, for failures on per-frame, polling,
+    /// or per-call paths. A line below the threshold does not use up its key. Keys should come
+    /// from a small fixed set; each is remembered until reset.
+    public static func once(
+        _ key: String,
+        _ level: LMKLogLevel,
+        _ message: @autoclosure () -> String,
+        private detail: @autoclosure () -> String? = nil,
+        error: (any Error)? = nil,
+        category: LogCategory = .general,
+        file: String = #fileID,
+        function: String = #function,
+        line: Int = #line
+    ) {
+        let isFirst = configuration.withLock { configuration in
+            guard level >= configuration.minimumLevel else { return false }
+            return configuration.onceKeys.insert(key).inserted
+        }
+        guard isFirst else { return }
+        log(level, message(), private: detail(), error: error, category: category, file: file, function: function, line: line)
+    }
+
+    /// Re-arms a `once` key, typically when the failing state clears.
+    public static func resetOnce(_ key: String) {
+        configuration.withLock { _ = $0.onceKeys.remove(key) }
+    }
+
+    /// Adds an entry another logger already wrote to the unified log (a package's own logging
+    /// core, forwarded from its handler) to the log store and the entry handler. Nothing is
+    /// written to the unified log again and the threshold is not applied: the source filtered it.
+    public static func record(_ entry: LMKLogEntry) {
+        let (store, handler) = configuration.withLock { ($0.logStore, $0.entryHandler) }
+        store?.append(entry)
+        handler?(entry)
+    }
+
+    // MARK: - Errors
+
+    /// Splits an error into a public summary and a private detail.
+    ///
+    /// - Swift enum errors summarize as `Module.Type.case`, plus the summary of an error payload.
+    /// - Other errors summarize as NSError domain and code, plus the underlying error's domain and code.
+    /// - The detail is the full `String(describing:)`, which may carry user data; `nil` when the summary already says it all.
+    public static func describe(_ error: any Error) -> (summary: String, detail: String?) {
+        let full = String(describing: error)
+        let summary: String
+        let mirror = Mirror(reflecting: error)
+        if mirror.displayStyle == .enum {
+            let payload = mirror.children.first
+            var text = "\(String(reflecting: type(of: error))).\(payload?.label ?? full)"
+            if let inner = payload.flatMap({ firstError(in: $0.value) }) {
+                text += " <- \(describe(inner).summary)"
+            }
+            summary = text
+        } else {
+            let nsError = error as NSError
+            var text = "\(nsError.domain) \(nsError.code)"
+            if let underlying = nsError.userInfo[NSUnderlyingErrorKey] as? NSError {
+                text += " <- \(underlying.domain) \(underlying.code)"
+            }
+            summary = text
+        }
+        return (summary, summary.hasSuffix(full) ? nil : full)
+    }
+
+    /// An enum payload's error: the payload itself, or the first error among its (possibly labeled) tuple elements.
+    private static func firstError(in payload: Any) -> (any Error)? {
+        if let error = payload as? any Error {
+            return error
+        }
+        return Mirror(reflecting: payload).children.lazy.compactMap { $0.value as? any Error }.first
+    }
+
+    // MARK: - Writing
+
+    private static func write(_ entry: LMKLogEntry, to logger: Logger, privacy: Privacy) {
+        let prefix = entry.file.isEmpty ? "" : "[\(entry.file):\(entry.line)] \(entry.function) - "
+        let type = entry.level.osLogType
+        switch (privacy, entry.privateDetail) {
+        case (.public, nil):
+            logger.log(level: type, "\(prefix, privacy: .public)\(entry.message, privacy: .public)")
+        case let (.public, detail?):
+            logger.log(level: type, "\(prefix, privacy: .public)\(entry.message, privacy: .public) | \(detail, privacy: .private)")
+        case (.private, nil):
+            logger.log(level: type, "\(prefix, privacy: .public)\(entry.message, privacy: .private)")
+        case let (.private, detail?):
+            logger.log(level: type, "\(prefix, privacy: .public)\(entry.message, privacy: .private) | \(detail, privacy: .private)")
         }
     }
 }

@@ -465,26 +465,32 @@ public final class LMKSharePreviewViewController: UIViewController, LMKThemeAppl
         if let error {
             report(.save(error))
         } else if success {
-            LMKLogger.info("Image saved to photos", category: .general)
+            LMKLogger.notice("LMKSharePreviewViewController: image saved to the photo library", category: .lumiKit)
             onSave?()
             if dismissesAfterSave {
                 dismiss(animated: true) { [weak self] in
                     self?.onDismiss?()
                 }
             }
+        } else {
+            // The photo library reported a failure without an error: the user still has to learn
+            // the image was not saved, through the same path as any other save failure.
+            report(.save(CocoaError(.fileWriteUnknown)), note: "the photo library reported failure without an error")
         }
     }
 
     /// The one path every failure takes: logged, then handed to `onFailure`, or shown to the
     /// user when there is none (a warning for denied access, an error otherwise).
-    private func report(_ failure: Failure) {
+    /// `note` (static text) says more about the cause than the error does.
+    private func report(_ failure: Failure, note: String? = nil) {
+        let suffix = note.map { " (\($0))" } ?? ""
         switch failure {
         case let .share(error):
-            LMKLogger.error("Failed to share image", error: error, category: .error)
+            LMKLogger.error("LMKSharePreviewViewController: sharing the image failed\(suffix)", error: error, category: .lumiKit)
         case let .save(error):
-            LMKLogger.error("Failed to save image to photos", error: error, category: .error)
+            LMKLogger.error("LMKSharePreviewViewController: saving the image to the photo library failed\(suffix)", error: error, category: .lumiKit)
         case .photoLibraryAccessDenied:
-            LMKLogger.warning("Photo library add access is unavailable; the image was not saved", category: .general)
+            LMKLogger.warning("LMKSharePreviewViewController: photo library add access is unavailable; the image was not saved", category: .lumiKit)
         }
         if let onFailure {
             onFailure(failure)

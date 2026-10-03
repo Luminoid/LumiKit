@@ -140,6 +140,26 @@ struct LMKSharePreviewTests {
     }
 
     @Test
+    func `A write that fails without an error still reports a save failure`() async {
+        var saved = false
+        let vc = makeSheet { _ in (false, nil) }
+        var failure: LMKSharePreviewViewController.Failure?
+        vc.onFailure = { failure = $0 }
+        vc.onSave = { saved = true }
+
+        vc.saveToPhotoLibrary()
+        await LMKWait.until { failure != nil }
+
+        if case let .save(error) = failure {
+            #expect((error as? CocoaError)?.code == .fileWriteUnknown)
+        } else {
+            Issue.record("expected save, got \(String(describing: failure))")
+        }
+        #expect(!saved, "a failed write is never reported as saved")
+        #expect(!vc.isSaving)
+    }
+
+    @Test
     func `Denied access reports onFailure, and an undetermined status asks first`() async {
         let denied = makeSheet(status: .denied)
         var failure: LMKSharePreviewViewController.Failure?

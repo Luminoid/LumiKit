@@ -420,9 +420,11 @@ open class LMKBottomSheetViewController: UIViewController, LMKThemeApplying {
             make.leading.trailing.equalTo(containerView.safeAreaLayoutGuide)
             contentTopConstraint = make.top.equalTo(dragIndicator.snp.bottom).offset(0).constraint
             contentBottomToCancelConstraint = make.bottom.equalTo(cancelButton.snp.top).offset(0).constraint
+        }
+        // Built inactive: activated beside the cancel pin, it would squash the cancel button to zero height.
+        contentLayoutGuide.snp.prepareConstraints { make in
             contentBottomToSafeAreaConstraint = make.bottom.equalTo(containerView.safeAreaLayoutGuide.snp.bottom).inset(0).constraint
         }
-        contentBottomToSafeAreaConstraint?.deactivate()
     }
 
     /// The off-screen start offset: the largest height the container can take.

@@ -207,9 +207,11 @@ open class LMKScrollStackViewController: UIViewController, LMKThemeApplying {
             }
             make.leading.trailing.equalToSuperview()
             scrollBottomSafeAreaConstraint = make.bottom.equalTo(view.safeAreaLayoutGuide).constraint
+        }
+        // Built inactive: activated beside the safe-area pin, it conflicts whenever the bottom inset is nonzero.
+        scrollView.snp.prepareConstraints { make in
             scrollBottomSuperviewConstraint = make.bottom.equalToSuperview().constraint
         }
-        scrollBottomSuperviewConstraint?.deactivate()
 
         if installsKeyboardAdjustment {
             scrollView.lmk_enableKeyboardAdjustment()

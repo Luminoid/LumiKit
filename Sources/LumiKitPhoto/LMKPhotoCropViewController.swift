@@ -400,7 +400,10 @@ public final class LMKPhotoCropViewController: UIViewController, LMKThemeApplyin
     @objc func doneTapped() {
         guard !isCropping else { return }
         guard cropFrame.width > 0, cropFrame.height > 0, let pixelRect = currentCropRect else {
-            LMKLogger.warning("Crop frame is empty; delivering the original image", category: .ui)
+            LMKLogger.warning(
+                "LMKPhotoCropViewController: crop frame \(cropFrame) is empty or outside the image (\(image.size) pt at \(image.scale)x); delivering the original image",
+                category: .lumiKit
+            )
             onCrop?(image)
             return
         }
@@ -417,7 +420,10 @@ public final class LMKPhotoCropViewController: UIViewController, LMKThemeApplyin
             if let cropped {
                 onCrop?(cropped)
             } else {
-                LMKLogger.warning("Crop failed; delivering the original image", category: .ui)
+                LMKLogger.warning(
+                    "LMKPhotoCropViewController: rendering crop \(pixelRect) of a \(source.size) pt image at \(source.scale)x failed; delivering the original image",
+                    category: .lumiKit
+                )
                 onCrop?(source)
             }
         }

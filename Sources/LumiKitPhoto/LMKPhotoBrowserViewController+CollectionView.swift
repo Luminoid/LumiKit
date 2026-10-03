@@ -148,7 +148,12 @@ extension LMKPhotoBrowserViewController: UICollectionViewDataSource {
         let isLive = dataSource?.photoIsLivePhoto(at: photoIndex) ?? false
         // Placeholder first; the cell's generation token guards both async applies.
         cell.configure(screenSize: view.bounds.size, isLive: isLive) { [weak self] in
-            await self?.dataSource?.photo(at: photoIndex)
+            guard let dataSource = self?.dataSource else { return nil }
+            let photo = await dataSource.photo(at: photoIndex)
+            if photo == nil {
+                LMKLogger.debug("LMKPhotoBrowserViewController: the data source returned no photo for index \(photoIndex)", category: .lumiKit)
+            }
+            return photo
         }
         // Always asked: `photoIsLivePhoto` only shows the badge before the load lands, and a
         // source that vends a Live Photo without it still plays.

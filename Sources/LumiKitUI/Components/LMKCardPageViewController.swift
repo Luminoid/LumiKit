@@ -386,10 +386,12 @@ open class LMKCardPageViewController: UIViewController, LMKThemeApplying {
         view.addSubview(pageContainerView)
         pageContainerView.snp.makeConstraints { make in
             pageTopToHeader = make.top.equalTo(headerView.snp.bottom).constraint
-            pageTopToSafeArea = make.top.equalTo(view.safeAreaLayoutGuide).constraint
             make.leading.trailing.bottom.equalToSuperview()
         }
-        pageTopToSafeArea?.deactivate()
+        // Built inactive: activated beside the header pin, it conflicts with the header's height.
+        pageContainerView.snp.prepareConstraints { make in
+            pageTopToSafeArea = make.top.equalTo(view.safeAreaLayoutGuide).constraint
+        }
         pageContainerView.addSubview(contentContainerView)
         contentContainerView.snp.makeConstraints { $0.edges.equalToSuperview() }
     }

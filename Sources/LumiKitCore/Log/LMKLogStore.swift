@@ -92,7 +92,8 @@ public final class LMKLogStore: Sendable {
 
     /// Format all entries as a single string for display.
     ///
-    /// Each line: `[HH:mm:ss.SSS] [LEVEL] [Category] [File.swift:12] function - message`
+    /// Each line: `[HH:mm:ss.SSS] [LEVEL] [Category] [File.swift:12] function - message | private detail`.
+    /// The store is on-device debug output, so the private detail is included when the entry has one.
     public func formatted() -> String {
         let entries = entries
         guard !entries.isEmpty else { return "(no logs captured)" }
@@ -107,7 +108,8 @@ public final class LMKLogStore: Sendable {
         return entries.map { entry in
             let time = formatter.string(from: entry.timestamp)
             let level = entry.level.rawValue.uppercased()
-            return "[\(time)] [\(level)] [\(entry.category)] \(entry.formattedMessage)"
+            let detail = entry.privateDetail.map { " | \($0)" } ?? ""
+            return "[\(time)] [\(level)] [\(entry.category)] \(entry.formattedMessage)\(detail)"
         }.joined(separator: "\n")
     }
 }

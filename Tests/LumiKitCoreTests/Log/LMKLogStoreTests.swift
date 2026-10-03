@@ -133,6 +133,17 @@ struct LMKLogStoreTests {
     }
 
     @Test
+    func `Formatted output appends the private detail, which is on-device debug output`() {
+        let store = LMKLogStore(maxEntries: 10)
+        store.append(LMKLogEntry(level: .error, category: "Network", message: "upload failed", privateDetail: "/tmp/a.jpg", file: "Up.swift", function: "send()", line: 3))
+        store.append(LMKLogEntry(level: .info, category: "Network", message: "plain"))
+
+        let lines = store.formatted().split(separator: "\n")
+        #expect(lines.first?.hasSuffix("[Up.swift:3] send() - upload failed | /tmp/a.jpg") == true)
+        #expect(lines.last?.hasSuffix("] plain") == true)
+    }
+
+    @Test
     func `Formatted output stamps a fixed 24-hour ASCII time`() throws {
         let store = LMKLogStore(maxEntries: 10)
         store.append(LMKLogEntry(timestamp: Date(timeIntervalSince1970: 0), level: .info, category: "General", message: "m"))
@@ -174,15 +185,7 @@ struct LMKLogStoreTests {
 
     @Test
     func `All log levels have expected raw values`() {
-        #expect(LMKLogLevel.debug.rawValue == "debug")
-        #expect(LMKLogLevel.info.rawValue == "info")
-        #expect(LMKLogLevel.warning.rawValue == "warning")
-        #expect(LMKLogLevel.error.rawValue == "error")
-    }
-
-    @Test
-    func `Log level CaseIterable has 4 cases`() {
-        #expect(LMKLogLevel.allCases.count == 4)
+        #expect(LMKLogLevel.allCases.map(\.rawValue) == ["debug", "info", "notice", "warning", "error", "fault"])
     }
 
     // MARK: - Helpers

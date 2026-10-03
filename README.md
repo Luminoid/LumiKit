@@ -77,6 +77,29 @@ LMKAlert.presentDeleteConfirmation(from: self, itemName: "Photo", onConfirm: { d
 
 App-wide defaults for any component live on the theme (`theme.button.variant = .tinted`), per-instance tweaks on `style`, and anything the Style does not cover in a `didApplyStyle` hook that re-runs on every theme change.
 
+## Logging
+
+`LMKLogger` (in `LumiKitCore`) writes through `os.Logger` under your app's subsystem.
+
+```swift
+import LumiKitCore
+
+LMKLogger.configure(subsystem: Bundle.main.bundleIdentifier ?? "com.example.app")
+LMKLogger.enableLogStore()                          // optional: an in-memory ring buffer for a debug screen
+LMKLogger.entryHandler = { entry in breadcrumbs.add(entry) } // optional: forward every written entry
+
+LMKLogger.notice("Sync finished: \(count) records", category: .data)
+LMKLogger.error("Upload failed", private: fileURL.path, error: error, category: .network)
+```
+
+- **Six levels**, `debug < info < notice < warning < error < fault`, written at the unified-logging types `os.Logger`'s own methods use: `.debug`, `.info`, `.default`, `.error`, `.error`, `.fault`. Only notice and above are saved on the device, so a line you will need from a user's sysdiagnose is a notice or higher.
+- **Runtime threshold.** `LMKLogger.minimumLevel` defaults to `.debug` in DEBUG builds and `.info` otherwise, and can change at any time. Nothing is compiled out. The threshold clamps at `.error`, so errors and faults are always written.
+- **Public message, private detail.** The message is public: keep it to static text, codes, ids, counts, dimensions, and type names. Pass user data (URLs, file paths, user content, text shown to the user) as `private:`; it is written as private and redacted in field logs. `messagePrivacy = .private` additionally redacts the message text; the `[File.swift:12] function` prefix is always public.
+- **Errors.** Attach them with `error:` instead of interpolating a description. `LMKLogger.describe(_:)` puts the type and case of a Swift enum error, or the NSError domain and code plus the underlying error's, in the public message as `[NSURLErrorDomain -1001 <- NSPOSIXErrorDomain 60]`, and the full description in the private detail.
+- **Floods.** `LMKLogger.once(key, level, message)` writes a line once per key until `resetOnce(key)`, for failures on per-frame or polling paths.
+- **Other packages' logs.** A package with its own logger can forward its entries into the app's store and handler with `LMKLogger.record(_:)`, which writes nothing to the unified log again and applies no threshold.
+- **LumiKit's own lines** use the `LumiKit` category (`LMKLogger.LogCategory.lumiKit`): filter on it in Console or `log stream --predicate 'category == "LumiKit"'`. They reach the log store and the handler with no extra setup, and alerts, `LMKErrorHandler`, and `LMKConcurrency.executeTask` name your call site.
+
 ## Example app
 
 `Example/` is a catalog of 68 pages in 12 sections (Foundations, Buttons & Controls, Text Input & Forms, Labels & Indicators, Cards & Lists, Dates, Navigation, Feedback & Status, Sheets & Panels, Photos & Media, Utilities, Debug), with search and a live theme switcher. Generate it with [XcodeGen](https://github.com/yonaskolb/XcodeGen):

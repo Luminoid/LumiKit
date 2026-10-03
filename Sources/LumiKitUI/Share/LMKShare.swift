@@ -80,7 +80,7 @@ public enum LMKShare {
         completion: ((LMKShareResult) -> Void)? = nil
     ) -> UIActivityViewController? {
         for case let .file(url, _) in items where !FileManager.default.fileExists(atPath: url.path) {
-            LMKLogger.error("LMKShare: file does not exist at \(url.path)", category: .general)
+            LMKLogger.error("LMKShare: the file to share does not exist", private: url.path, category: .lumiKit)
             completion?(.failed(CocoaError(.fileNoSuchFile, userInfo: [NSFilePathErrorKey: url.path])))
             return nil
         }
@@ -93,16 +93,20 @@ public enum LMKShare {
                 try? FileManager.default.removeItem(at: url)
             }
             if let error {
-                LMKLogger.error("LMKShare: share failed", error: error, category: .general)
+                LMKLogger.error("LMKShare: share failed", error: error, category: .lumiKit)
                 completion?(.failed(error))
             } else if completed {
-                LMKLogger.info("LMKShare: shared via \(activityType?.rawValue ?? "unknown")", category: .general)
+                LMKLogger.notice("LMKShare: shared via \(activityType?.rawValue ?? "unknown")", category: .lumiKit)
                 completion?(.completed(activityType))
             } else {
                 completion?(.cancelled)
             }
         }
 
+        if !host.lmk_canPresentAlert {
+            // UIKit refuses the presentation; the completion then never runs.
+            LMKLogger.warning("LMKShare: \(type(of: host)) is off screen or already presenting; the share sheet may not appear", category: .lumiKit)
+        }
         host.present(controller, animated: true)
         return controller
     }

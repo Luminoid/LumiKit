@@ -34,7 +34,7 @@ jobs:
     runs-on: macos-26
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Install tools
         run: |
           brew install swiftlint
@@ -70,7 +70,7 @@ jobs:
     continue-on-error: ${{ matrix.preview }}
     timeout-minutes: 60
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: ./.github/actions/select-xcode
         with:
           major: ${{ matrix.xcode }}
@@ -81,7 +81,7 @@ jobs:
             -resultBundlePath build/ios.xcresult 2>&1 | tee build/test-ios.log | tail -40
       - name: Upload result bundle
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ios-test-results-xcode-${{ matrix.xcode }}
           path: |
@@ -92,7 +92,7 @@ jobs:
     runs-on: macos-26
     timeout-minutes: 45
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: ./.github/actions/select-xcode
       - name: Build (Mac Catalyst)
         run: |
@@ -100,7 +100,7 @@ jobs:
           $XCB build -destination 'platform=macOS,variant=Mac Catalyst' 2>&1 | tee build/build-catalyst.log | tail -40
       - name: Upload build log
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: catalyst-build-log
           path: build/build-catalyst.log
@@ -109,7 +109,7 @@ jobs:
     runs-on: macos-26
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: ./.github/actions/select-xcode
       # `swift test` links every test target into one bundle, so the UIKit targets keep native
       # macOS tests off the table; this lane proves the Foundation-only targets still build there.
@@ -122,7 +122,7 @@ jobs:
     runs-on: macos-26
     timeout-minutes: 60
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: ./.github/actions/select-xcode
       # The zip keeps the binary next to the setting presets it loads (share/xcodegen).
       - name: Install XcodeGen
@@ -153,7 +153,7 @@ jobs:
           $XCB_EXAMPLE build -destination 'platform=macOS,variant=Mac Catalyst' 2>&1 | tee build/build-example-catalyst.log | tail -40
       - name: Upload build logs
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: example-build-logs
           path: build/build-example-*.log
@@ -165,7 +165,7 @@ jobs:
     runs-on: macos-26
     timeout-minutes: 45
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: ./.github/actions/select-xcode
       - name: Build DocC archives
         run: |
@@ -180,7 +180,7 @@ jobs:
           grep -E "(warning|error): " build/docs.log | sort -u || true
       - name: Upload build log
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: docs-build-log
           path: build/docs.log

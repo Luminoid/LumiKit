@@ -74,8 +74,9 @@ public nonisolated struct LMKPhotoMetadata: Sendable, Equatable {
     /// The metadata of an item provider's image representation; `.empty` when it has none.
     public static func read(from provider: NSItemProvider) async -> Self {
         await withCheckedContinuation { continuation in
-            _ = provider.loadDataRepresentation(for: UTType.image) { data, _ in
+            _ = provider.loadDataRepresentation(for: UTType.image) { data, error in
                 guard let data else {
+                    LMKLogger.warning("LMKPhotoMetadata: loading the image data failed; reading no metadata", error: error, category: .lumiKit)
                     continuation.resume(returning: .empty)
                     return
                 }
@@ -97,7 +98,10 @@ public nonisolated struct LMKPhotoMetadata: Sendable, Equatable {
     ///
     /// - Returns: `nil` when the bytes are not an image or the write fails.
     public static func write(date: Date?, coordinate: CLLocationCoordinate2D?, to data: Data) -> Data? {
-        guard let source = CGImageSourceCreateWithData(data as CFData, nil) else { return nil }
+        guard let source = CGImageSourceCreateWithData(data as CFData, nil) else {
+            LMKLogger.warning("LMKPhotoMetadata: write failed: \(data.count) bytes are not an image", category: .lumiKit)
+            return nil
+        }
         return write(date: date, coordinate: coordinate, source: source)
     }
 
@@ -173,7 +177,10 @@ public nonisolated struct LMKPhotoMetadata: Sendable, Equatable {
     }
 
     private static func write(date: Date?, coordinate: CLLocationCoordinate2D?, source: CGImageSource) -> Data? {
-        guard let uti = CGImageSourceGetType(source) else { return nil }
+        guard let uti = CGImageSourceGetType(source) else {
+            LMKLogger.warning("LMKPhotoMetadata: write failed: the source has no type identifier", category: .lumiKit)
+            return nil
+        }
         let tags = tags(date: date, coordinate: coordinate)
         if let copied = copyingSource(source, type: uti, merging: tags) {
             return copied
@@ -191,7 +198,7 @@ public nonisolated struct LMKPhotoMetadata: Sendable, Equatable {
         for (dictionary, values) in tags {
             for (key, value) in values {
                 guard CGImageMetadataSetValueMatchingImageProperty(metadata, dictionary, key, value as CFTypeRef) else {
-                    LMKLogger.warning("Photo metadata tag \(key) has no XMP counterpart; re-encoding to write it", category: .data)
+                    LMKLogger.warning("LMKPhotoMetadata: tag \(key) has no XMP counterpart; re-encoding to write it", category: .lumiKit)
                     return nil
                 }
             }
@@ -199,8 +206,11 @@ public nonisolated struct LMKPhotoMetadata: Sendable, Equatable {
         let options: [CFString: Any] = [kCGImageDestinationMetadata: metadata, kCGImageDestinationMergeMetadata: true]
         var error: Unmanaged<CFError>?
         guard CGImageDestinationCopyImageSource(destination, source, options as CFDictionary, &error) else {
-            let reason = error?.takeRetainedValue().localizedDescription ?? "unknown error"
-            LMKLogger.warning("Photo metadata could not be copied through (\(reason)); re-encoding the first image", category: .data)
+            LMKLogger.warning(
+                "LMKPhotoMetadata: \(type) could not be copied through; re-encoding the first image",
+                error: error?.takeRetainedValue(),
+                category: .lumiKit
+            )
             return nil
         }
         return output as Data
@@ -220,9 +230,17 @@ public nonisolated struct LMKPhotoMetadata: Sendable, Equatable {
         properties[kCGImageDestinationLossyCompressionQuality] = 1.0
         properties[kCGImageDestinationPreserveGainMap] = true
         let output = NSMutableData()
-        guard let destination = CGImageDestinationCreateWithData(output, type, 1, nil) else { return nil }
+        guard let destination = CGImageDestinationCreateWithData(output, type, 1, nil) else {
+            LMKLogger.warning("LMKPhotoMetadata: write failed: ImageIO cannot encode \(type)", category: .lumiKit)
+            return nil
+        }
         CGImageDestinationAddImageFromSource(destination, source, 0, properties as CFDictionary)
-        guard CGImageDestinationFinalize(destination) else { return nil }
+        guard CGImageDestinationFinalize(destination) else {
+            let width = properties[kCGImagePropertyPixelWidth] as? Int ?? 0
+            let height = properties[kCGImagePropertyPixelHeight] as? Int ?? 0
+            LMKLogger.warning("LMKPhotoMetadata: write failed: re-encoding a \(width)x\(height) \(type) image did not finalize", category: .lumiKit)
+            return nil
+        }
         return output as Data
     }
 

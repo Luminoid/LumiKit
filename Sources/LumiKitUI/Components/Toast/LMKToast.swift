@@ -7,6 +7,7 @@
 //  presentation host, queue policy), returning a handle.
 //
 
+import LumiKitCore
 import UIKit
 
 // MARK: - Configuration
@@ -286,6 +287,7 @@ final class LMKToastPresenter {
         guard let host = hostView(for: configuration.presentation) else {
             // Nothing to show in (a scene disconnecting, a background launch): the toast is
             // over before it began, and an undo toast's commit must not be lost with it.
+            LMKLogger.debug("LMKToast: no window to show in; the toast is dismissed unseen", category: .lumiKit)
             configuration.onDismiss?(.programmatic)
             return LMKToast.Handle(view: nil, presenter: nil, isPresented: false)
         }

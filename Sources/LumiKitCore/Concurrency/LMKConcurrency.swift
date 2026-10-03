@@ -72,24 +72,30 @@ public enum LMKConcurrency {
     // MARK: - Task Management
 
     /// Runs `operation` on the main actor with a weak capture of `object`, logging cancellation and errors.
+    ///
+    /// A thrown error is logged at error level against the caller's file and line; a skip
+    /// (the object went away) or a cancellation is a debug line.
     /// - Returns: The task handle; store it and cancel in `deinit`.
     @discardableResult
     public static func executeTask<T: AnyObject & Sendable>(
         weak object: T,
+        file: String = #fileID,
+        function: String = #function,
+        line: Int = #line,
         operation: @escaping @MainActor (T) async throws -> Void
     ) -> Task<Void, Never> {
         Task { @MainActor [weak object] in
             guard let object else {
-                LMKLogger.info("Task skipped: object deallocated", category: .general)
+                LMKLogger.debug("Task skipped: object deallocated", category: .lumiKit, file: file, function: function, line: line)
                 return
             }
             do {
                 try Task.checkCancellation()
                 try await operation(object)
             } catch is CancellationError {
-                LMKLogger.info("Task cancelled", category: .general)
+                LMKLogger.debug("Task cancelled", category: .lumiKit, file: file, function: function, line: line)
             } catch {
-                LMKLogger.error("Task error", error: error, category: .general)
+                LMKLogger.error("Task failed", error: error, category: .lumiKit, file: file, function: function, line: line)
             }
         }
     }

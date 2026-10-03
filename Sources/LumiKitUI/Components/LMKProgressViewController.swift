@@ -301,7 +301,7 @@ public final class LMKProgressViewController: UIViewController, LMKThemeApplying
     /// not dropped. A host that is already presenting cannot take it; the call is logged and skipped.
     public func present(from host: UIViewController) {
         guard host.presentedViewController == nil else {
-            LMKLogger.warning("Progress modal not presented: \(type(of: host)) is already presenting", category: .ui)
+            LMKLogger.warning("Progress modal not presented: \(type(of: host)) is already presenting", category: .lumiKit)
             return
         }
         isPresentationInFlight = true

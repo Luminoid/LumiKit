@@ -84,6 +84,16 @@ One nomenclature, documented in [CONTRIBUTING.md](CONTRIBUTING.md) and checked b
 
 - Every user-visible default reads from the package's string tables through nested `Strings` structs. Apps that localized LumiKit strings themselves can delete those overrides; apps in other languages override `Type.strings` once at launch or `instance.strings` per view.
 
+#### Logging
+
+`LMKLogger` follows the same contract as the logging core of the other Luminoid packages, written through `os.Logger`:
+
+- `LMKLogLevel` has six cases, `debug`, `info`, `notice`, `warning`, `error`, and `fault`, so an exhaustive `switch` over it needs the two new ones. Each level is written at `osLogType`, the unified-logging type `os.Logger`'s own methods use: `warning` is now `.error` (it was `.default`) and `notice` is `.default`, the lowest level saved on the device.
+- Debug lines are no longer compiled out of Release builds. `minimumLevel` filters at runtime instead: `.debug` by default in DEBUG builds, `.info` otherwise. A threshold above `.error` clamps to `.error`, so errors and faults are always written.
+- An attached error adds a public summary to the message (`failed [NSURLErrorDomain -1001 <- NSPOSIXErrorDomain 60]`, from `LMKLogger.describe(_:)`) and its full description to the private detail, in place of `| Error: <localizedDescription>`, which dropped the domain and code and came out localized.
+- The `LMKLogging.log` requirement gained a `privateDetail: String?` parameter; a custom conformer adds it.
+- LumiKit's own lines moved from `.general`, `.ui`, `.data`, `.network`, and `.error` to the `.lumiKit` category.
+
 #### Removed
 
 | Removed | Use instead |
@@ -139,7 +149,8 @@ One nomenclature, documented in [CONTRIBUTING.md](CONTRIBUTING.md) and checked b
 #### Core and utilities
 
 - `LMKDateFormat` on `Date.FormatStyle`: `Context` (locale, calendar, time zone, hour cycle), `string(_:date:time:)`, `intervalString`, `rangeLabel`, `residenceLabel`, `relativeDayString`, `clockTime`, `dateWithClockTime`, `usesTwelveHourClock`, `widestClockSample`, `monthYearString`, `weekdaySymbols`, cached `formatter(pattern:)`, and `preferredDatePattern` for a user-chosen date format. `LMKFormat` number and percent formatting.
-- `LMKLogger`: `minimumLevel`, `isEnabled`, `messagePrivacy`, `entryHandler`, `log(_:_:)`, and the `LMKLogging` protocol with `LMKLogger.default` for injection; messages are autoclosures, built only when a level emits; `LMKLogLevel` is `Comparable`; `LMKLogEntry` is `Codable` and carries `file`, `function`, and `line`; `LMKLogStore` is an O(1) ring buffer whose `formatted()` timestamps are `en_US_POSIX`.
+- `LMKLogger`: `notice` and `fault`; a runtime `minimumLevel` clamped at `.error`; `private:` on every level for user data, written as private while the message and the `[File.swift:12] function` prefix stay public (`messagePrivacy` can redact the message too); `error:` on every level; `describe(_:)` for an error's public summary and private detail; `once(_:_:_:)` and `resetOnce(_:)` for failures on per-frame or polling paths; `record(_:)`, which adds an entry another package already wrote to the log store and the entry handler without writing it again; `entryHandler`, `log(_:_:)`, and the `LMKLogging` protocol with `LMKLogger.default` for injection; messages and details are autoclosures, built only when a level is written; the `.lumiKit` category for LumiKit's own lines; `LMKLogLevel` is `Comparable` with `osLogType`; `LMKLogEntry` is `Codable` and carries `privateDetail`, `file`, `function`, and `line`; `LMKLogStore` is an O(1) ring buffer whose `formatted()` timestamps are `en_US_POSIX` and which includes the private detail (on-device debug output).
+- `LMKErrorHandler.present` / `confirmRetry` and `LMKConcurrency.executeTask` take `file:function:line:` defaults, so their log lines name the app's call site. Failure paths that returned `nil` or dropped an error silently now log a warning naming the failed step: `LMKImage` encode, downsample, and pixel-buffer JPEG (input pixel size, type identifier, `maxPixelSize`), `LMKPhotoMetadata` reads and writes, the crop editor's fallbacks (crop rect and image size), the pick-and-crop coordinator's decode failure (byte count and type identifier), and a share sheet or picker presented from a host that cannot present. A custom font family that is missing logs one warning per family in every build instead of a debug line on each font lookup.
 - `LMKURLValidator.validate(_:)` returns `Result<URL, ValidationError>` with the rejection reason; the blocklist adds `0.0.0.0/8`, carrier-grade NAT, multicast, reserved, IPv4-mapped IPv6, and IPv6 multicast, and reads shorthand, octal, and hex IPv4 forms, `*.localhost`, a trailing dot, and bracketed IPv6 literals; `normalizeBaseURL(_:preservingPathExtension:)`.
 - `LMKFile.temporaryURL(extension:)`, `clearTemporaryFiles(olderThan:matchingPrefix:)`, and the async `clearTemporaryFilesInBackground(olderThan:matchingPrefix:)` (both return the count; an item whose age cannot be read is kept when an age is given); `LMKConcurrency.encode` / `decode` throw and accept custom coders, `onMainActor` / `onMainActorAfter` return their `Task` (a delay is clamped instead of trapping); `String.lmk_trimmedOrNil`; `LMKDate.calendar` follows time-zone changes from its first read, so `LMKDate.initialize()` is optional and idempotent.
 - `LMKImage.downsample(data:maxPixelSize:options:)` and `downsample(fileURL:...)` (sync and async, `prefersHighDynamicRange` through `UIImageReader`), `pixelSize`, `downsampledJPEG`, `imageSize`, `SymbolOptions` (palette / hierarchical / multicolor rendering, variable value, the iOS 26 variable-value and color-rendering modes); `LMKPhotoMetadata` read (`Data`, URL, `PHPickerResult`, `NSItemProvider`) and write (date, coordinate).
@@ -220,6 +231,7 @@ One nomenclature, documented in [CONTRIBUTING.md](CONTRIBUTING.md) and checked b
 
 ### Fixed
 
+- `LMKSharePreviewViewController` treated a photo-library write that reported failure without an error as neither saved nor failed: nothing was logged and the user saw nothing. It now logs the failure and reports `Failure.save` (a `CocoaError(.fileWriteUnknown)`) through `onFailure` or `LMKErrorHandler`, like any other failed save.
 - `lmk_touchAreaEdgeInsets` did nothing unless the owner overrode `point(inside:with:)`, so every hit-area expansion set from an app was inert; LumiKit controls now enforce the minimum target themselves.
 - `LMKSwitch`, `LMKSegmentedControl`, and `LMKChipView` ignored `isEnabled`.
 - A tap on a chip's title or icon did nothing (only the padding around them answered), which made every `LMKFilterChipBar` hard to use; the chip now answers hit tests itself. A badge on `LMKFloatingButton` swallowed touches the same way.

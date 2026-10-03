@@ -281,7 +281,7 @@ open class LMKCardPanelViewController: UIViewController, LMKThemeApplying {
             modalTransitionStyle = .crossDissolve
             host.present(self, animated: false)
             guard presentingViewController != nil else {
-                LMKLogger.warning("LMKCardPanelViewController: the host refused the presentation", category: .ui)
+                LMKLogger.warning("LMKCardPanelViewController: the host refused the presentation", category: .lumiKit)
                 isPresented = false
                 return
             }
@@ -293,7 +293,7 @@ open class LMKCardPanelViewController: UIViewController, LMKThemeApplying {
     private func presentInOverlayWindow(from host: UIViewController) {
         let hostWindow = host.view.window ?? LMKScene.keyWindow
         guard let windowScene = hostWindow?.windowScene else {
-            LMKLogger.warning("LMKCardPanelViewController: no window scene to overlay", category: .ui)
+            LMKLogger.warning("LMKCardPanelViewController: no window scene to overlay", category: .lumiKit)
             isPresented = false
             return
         }

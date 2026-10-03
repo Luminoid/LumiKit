@@ -217,12 +217,15 @@ public nonisolated struct LMKTypographyTheme: Sendable, Equatable {
             .traits: [UIFontDescriptor.TraitKey.weight: weight],
         ])
         let font = UIFont(descriptor: descriptor, size: size)
-        // Font validation is DEBUG-only: in release a missing family silently falls back to the system font.
-        #if DEBUG
-            if font.familyName != family {
-                LMKLogger.debug("Font family '\(family)' not found, using '\(font.familyName)'", category: .ui)
-            }
-        #endif
+        if font.familyName != family {
+            // Once per family in every build: the theme falls back to another font on every call.
+            LMKLogger.once(
+                "LMKTypographyTheme.missingFamily.\(family)",
+                .warning,
+                "Font family '\(family)' is not available; using '\(font.familyName)'",
+                category: .lumiKit
+            )
+        }
         return font
     }
 

@@ -170,7 +170,7 @@ public enum LMKAlert {
         isDestructive: Bool = false
     ) async -> Bool {
         guard host.lmk_canPresentAlert else {
-            LMKLogger.warning("LMKAlert: \(type(of: host)) cannot present “\(title)”: off screen or already presenting", category: .ui)
+            LMKLogger.warning("LMKAlert: \(type(of: host)) cannot present the confirmation: off screen or already presenting", private: title, category: .lumiKit)
             return false
         }
         return await withCheckedContinuation { continuation in
@@ -321,7 +321,7 @@ public enum LMKAlert {
     }
 }
 
-extension UIViewController {
+package extension UIViewController {
     /// Whether UIKit would honor a `present` from this controller: it is on screen and not
     /// already presenting. The awaited alerts check it so a refused presentation still resolves.
     var lmk_canPresentAlert: Bool {

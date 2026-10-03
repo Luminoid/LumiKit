@@ -152,7 +152,7 @@
         ///   the package defines for debug configurations.
         public static func enable() {
             guard isConfigured else {
-                LMKLogger.warning("Call configure() before enable()", category: .network)
+                LMKLogger.warning("LMKNetworkLogger: call configure() before enable(); logging stays off", category: .lumiKit)
                 return
             }
             URLProtocol.registerClass(LMKNetworkRequestLoggerProtocol.self)
