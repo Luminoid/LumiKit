@@ -277,6 +277,13 @@ public final class LMKEmptyStateView: UIView, LMKThemeApplying {
         actionStack.axis = .horizontal
         actionStack.alignment = .center
         actionStack.isHidden = true
+        // A `.center`-aligned stack has no height of its own beyond its buttons' `>=` bounds, so in a
+        // host taller than the content it absorbed the spare height and the buttons drifted to its
+        // middle, far below the message. Hugging it at 250 (above the 249 container pins) sends the
+        // spare height around the content instead.
+        actionStack.snp.makeConstraints { make in
+            make.height.equalTo(0).priority(250)
+        }
 
         containerStack.addArrangedSubview(iconView)
         containerStack.addArrangedSubview(textStack)

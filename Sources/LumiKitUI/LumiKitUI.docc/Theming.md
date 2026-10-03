@@ -9,7 +9,7 @@ One `LMKTheme` value carries every token category and the app-wide default `Styl
 | Property | Type | What it holds |
 |---|---|---|
 | `colors` | ``LMKColorTheme`` | Accent, text, background, and surface roles plus `highContrastBoost` |
-| `typography` | ``LMKTypographyTheme`` | Font family, sizes, weights, line heights, letter spacing, `maximumScale` |
+| `typography` | ``LMKTypographyTheme`` | Font family or system design (`fontDesign`, `headingFontDesign`), sizes, weights, line heights, letter spacing, `maximumScale` |
 | `spacing` | ``LMKSpacingTheme`` | The 4pt grid (`xxs` to `xxl`) and the canvas-tiered paddings |
 | `cornerRadius` | ``LMKCornerRadiusTheme`` | `xs` to `xxl` |
 | `shadow` | ``LMKShadowTheme`` | `level1` to `level5` and `iconOverlayOpacity` |
@@ -29,6 +29,8 @@ extension LMKTheme {
     )
 }
 ```
+
+A theme that keeps the system font can change its design instead of its family: `LMKTypographyTheme(fontDesign: .rounded)` draws every step in SF Rounded, and `headingFontDesign` limits a design to the heading steps.
 
 ## Applying and observing
 

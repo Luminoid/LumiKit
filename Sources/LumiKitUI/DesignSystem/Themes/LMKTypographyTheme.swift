@@ -2,7 +2,7 @@
 //  LMKTypographyTheme.swift
 //  LumiKit
 //
-//  Typography configuration: font family, the size and weight of each step of
+//  Typography configuration: font family or system design, the size and weight of each step of
 //  the ramp, line heights, tracking, and the Dynamic Type cap. Also the one
 //  font builder (`font(for:compatibleWith:)`) every label goes through.
 //
@@ -19,10 +19,21 @@ import UIKit
 ///
 /// // Change specific sizes
 /// LMKTheme.update { $0.typography = .init(h1Size: 32, bodySize: 15) }
+///
+/// // Use SF Rounded throughout (or only for headings with `headingFontDesign`)
+/// LMKTheme.update { $0.typography = .init(fontDesign: .rounded) }
 /// ```
 public nonisolated struct LMKTypographyTheme: Sendable, Equatable {
     /// Custom font family name. `nil` uses the system font (default).
     public var fontFamily: String?
+
+    /// The system font's design (`.rounded`, `.serif`, `.monospaced`). Applies when
+    /// `fontFamily` is `nil`; a custom family carries its own design.
+    public var fontDesign: UIFontDescriptor.SystemDesign
+
+    /// The design of the heading steps (h1 to h4) when it differs from `fontDesign`;
+    /// `nil` uses `fontDesign`.
+    public var headingFontDesign: UIFontDescriptor.SystemDesign?
 
     // MARK: - Heading Sizes
 
@@ -68,6 +79,8 @@ public nonisolated struct LMKTypographyTheme: Sendable, Equatable {
 
     public init(
         fontFamily: String? = nil,
+        fontDesign: UIFontDescriptor.SystemDesign = .default,
+        headingFontDesign: UIFontDescriptor.SystemDesign? = nil,
         h1Size: CGFloat = 28,
         h1Weight: UIFont.Weight = .bold,
         h2Size: CGFloat = 22,
@@ -92,6 +105,8 @@ public nonisolated struct LMKTypographyTheme: Sendable, Equatable {
         maximumScale: CGFloat = 1.75
     ) {
         self.fontFamily = fontFamily
+        self.fontDesign = fontDesign
+        self.headingFontDesign = headingFontDesign
         self.h1Size = h1Size
         self.h1Weight = h1Weight
         self.h2Size = h2Size
@@ -146,12 +161,12 @@ public nonisolated struct LMKTypographyTheme: Sendable, Equatable {
 
     // MARK: - Fonts
 
-    /// The one font builder: the family, size, and weight of `style`, scaled with
+    /// The one font builder: the family (or system design), size, and weight of `style`, scaled with
     /// Dynamic Type for `traits` (the current category when `nil`) and capped by
     /// `maximumScale`.
     public func font(for style: LMKTextStyle, compatibleWith traits: UITraitCollection? = nil) -> UIFont {
         let spec = spec(for: style)
-        let base = spec.isItalic ? makeItalicFont(size: spec.size, weight: spec.weight) : makeFont(size: spec.size, weight: spec.weight)
+        let base = spec.isItalic ? makeItalicFont(size: spec.size, weight: spec.weight, kind: spec.kind) : makeFont(size: spec.size, weight: spec.weight, kind: spec.kind)
         let metrics = UIFontMetrics(forTextStyle: spec.textStyle)
         let cap = spec.maximumPointSize ?? (maximumScale > 0 ? spec.size * maximumScale : 0)
         if cap > 0 {
@@ -163,7 +178,7 @@ public nonisolated struct LMKTypographyTheme: Sendable, Equatable {
     /// The unscaled font of `style` (the size before Dynamic Type).
     public func baseFont(for style: LMKTextStyle) -> UIFont {
         let spec = spec(for: style)
-        return spec.isItalic ? makeItalicFont(size: spec.size, weight: spec.weight) : makeFont(size: spec.size, weight: spec.weight)
+        return spec.isItalic ? makeItalicFont(size: spec.size, weight: spec.weight, kind: spec.kind) : makeFont(size: spec.size, weight: spec.weight, kind: spec.kind)
     }
 
     // MARK: - Line metrics
@@ -208,9 +223,20 @@ public nonisolated struct LMKTypographyTheme: Sendable, Equatable {
 
     // MARK: - Font construction
 
-    private func makeFont(size: CGFloat, weight: UIFont.Weight) -> UIFont {
+    /// The system design for a step of `kind`: the heading override for headings, else `fontDesign`.
+    public func systemDesign(for kind: LMKTypography.Kind) -> UIFontDescriptor.SystemDesign {
+        kind == .heading ? headingFontDesign ?? fontDesign : fontDesign
+    }
+
+    /// `font` redrawn in `design`; the font itself when the design is the default or unavailable.
+    private func applyingDesign(_ design: UIFontDescriptor.SystemDesign, to font: UIFont) -> UIFont {
+        guard design != .default, let descriptor = font.fontDescriptor.withDesign(design) else { return font }
+        return UIFont(descriptor: descriptor, size: font.pointSize)
+    }
+
+    private func makeFont(size: CGFloat, weight: UIFont.Weight, kind: LMKTypography.Kind) -> UIFont {
         guard let family = fontFamily else {
-            return .systemFont(ofSize: size, weight: weight)
+            return applyingDesign(systemDesign(for: kind), to: .systemFont(ofSize: size, weight: weight))
         }
         let descriptor = UIFontDescriptor(fontAttributes: [
             .family: family,
@@ -229,7 +255,7 @@ public nonisolated struct LMKTypographyTheme: Sendable, Equatable {
         return font
     }
 
-    private func makeItalicFont(size: CGFloat, weight: UIFont.Weight) -> UIFont {
+    private func makeItalicFont(size: CGFloat, weight: UIFont.Weight, kind: LMKTypography.Kind) -> UIFont {
         if let family = fontFamily {
             let descriptor = UIFontDescriptor(fontAttributes: [
                 .family: family,
@@ -237,6 +263,18 @@ public nonisolated struct LMKTypographyTheme: Sendable, Equatable {
             ])
             if let italicDescriptor = descriptor.withSymbolicTraits(.traitItalic) {
                 return UIFont(descriptor: italicDescriptor, size: size)
+            }
+        }
+        let design = systemDesign(for: kind)
+        if design != .default {
+            // SF Rounded has no italic face: the descriptor comes back but the font is upright, so a
+            // design without one falls through to the default design's italic below.
+            let designed = applyingDesign(design, to: .systemFont(ofSize: size, weight: weight))
+            if let italicDescriptor = designed.fontDescriptor.withSymbolicTraits([.traitItalic]) {
+                let italic = UIFont(descriptor: italicDescriptor, size: size)
+                if italic.fontDescriptor.symbolicTraits.contains(.traitItalic) {
+                    return italic
+                }
             }
         }
         if weight == .regular {

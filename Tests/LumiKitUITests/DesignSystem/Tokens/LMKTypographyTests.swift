@@ -4,6 +4,7 @@
 //
 
 import Testing
+import UIKit
 @testable import LumiKitUI
 
 // MARK: - LMKTypography
@@ -118,5 +119,66 @@ struct LMKTypographyConfigurationTests {
         let font = LMKTypography.body
         // System font family varies by platform but should be non-empty
         #expect(!font.familyName.isEmpty)
+    }
+}
+
+// MARK: - System design
+
+@MainActor
+struct LMKTypographySystemDesignTests {
+    private func isRounded(_ font: UIFont) -> Bool {
+        font.fontName.localizedCaseInsensitiveContains("rounded")
+    }
+
+    @Test
+    func `Default design is the plain system font`() {
+        let theme = LMKTypographyTheme()
+        #expect(theme.fontDesign == .default)
+        #expect(theme.headingFontDesign == nil)
+        #expect(!isRounded(theme.baseFont(for: .h1)))
+        #expect(!isRounded(theme.baseFont(for: .body)))
+    }
+
+    @Test
+    func `Rounded design applies to every step at its size`() {
+        let theme = LMKTypographyTheme(fontDesign: .rounded)
+        for style in [LMKTextStyle.h1, .h4, .body, .bodyBold, .caption, .extraSmall] {
+            #expect(isRounded(theme.baseFont(for: style)))
+        }
+        #expect(theme.baseFont(for: .body).pointSize == 16)
+        #expect(theme.baseFont(for: .h1).pointSize == 28)
+    }
+
+    @Test
+    func `Heading design overrides the heading steps only`() {
+        let theme = LMKTypographyTheme(headingFontDesign: .rounded)
+        #expect(isRounded(theme.baseFont(for: .h1)))
+        #expect(isRounded(theme.baseFont(for: .h3)))
+        #expect(!isRounded(theme.baseFont(for: .body)))
+        #expect(!isRounded(theme.baseFont(for: .caption)))
+        #expect(theme.systemDesign(for: .heading) == .rounded)
+        #expect(theme.systemDesign(for: .body) == .default)
+    }
+
+    @Test
+    func `Rounded design keeps Dynamic Type scaling`() {
+        let theme = LMKTypographyTheme(fontDesign: .rounded)
+        let traits = UITraitCollection(preferredContentSizeCategory: .accessibilityLarge)
+        let font = theme.font(for: .body, compatibleWith: traits)
+        #expect(font.pointSize > 16)
+        #expect(isRounded(font))
+    }
+
+    @Test
+    func `Italic steps stay italic under a design`() {
+        let theme = LMKTypographyTheme(fontDesign: .rounded)
+        #expect(theme.baseFont(for: .italicBody).fontDescriptor.symbolicTraits.contains(.traitItalic))
+        #expect(theme.baseFont(for: .italicCaption).pointSize == 13)
+    }
+
+    @Test
+    func `A custom family wins over the system design`() {
+        let theme = LMKTypographyTheme(fontFamily: "Helvetica Neue", fontDesign: .rounded)
+        #expect(theme.baseFont(for: .body).familyName == "Helvetica Neue")
     }
 }

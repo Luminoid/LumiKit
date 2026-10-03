@@ -138,19 +138,33 @@ struct UIColorLMKTests {
 // MARK: - Glyph tint
 
 struct UIColorGlyphTintTests {
-    @Test
-    func `A dark accent is its own glyph tint; a light one darkens`() {
-        let dark = UIColor(red: 0.1, green: 0.2, blue: 0.6, alpha: 1)
-        #expect(dark.lmk_glyphTint() == dark)
-        let light = UIColor(red: 0.9, green: 0.9, blue: 0.5, alpha: 1)
+    private static func brightness(_ color: UIColor, style: UIUserInterfaceStyle = .light) -> CGFloat {
         var brightness: CGFloat = 0
-        light.lmk_glyphTint().getHue(nil, saturation: nil, brightness: &brightness, alpha: nil)
-        var original: CGFloat = 0
-        light.getHue(nil, saturation: nil, brightness: &original, alpha: nil)
-        #expect(abs(brightness - original * 0.7) < 0.01)
-        var halved: CGFloat = 0
-        light.lmk_glyphTint(onLightAccentDarkenBy: 0.5).getHue(nil, saturation: nil, brightness: &halved, alpha: nil)
-        #expect(abs(halved - original * 0.5) < 0.01)
+        color.resolvedColor(with: UITraitCollection(userInterfaceStyle: style))
+            .getHue(nil, saturation: nil, brightness: &brightness, alpha: nil)
+        return brightness
+    }
+
+    @Test
+    func `A dark accent is its own glyph tint; a light one darkens on a light page`() {
+        let dark = UIColor(red: 0.1, green: 0.2, blue: 0.6, alpha: 1)
+        #expect(abs(Self.brightness(dark.lmk_glyphTint()) - Self.brightness(dark)) < 0.001)
+        let light = UIColor(red: 0.9, green: 0.9, blue: 0.5, alpha: 1)
+        let original = Self.brightness(light)
+        #expect(abs(Self.brightness(light.lmk_glyphTint()) - original * 0.7) < 0.01)
+        #expect(abs(Self.brightness(light.lmk_glyphTint(onLightAccentDarkenBy: 0.5)) - original * 0.5) < 0.01)
+    }
+
+    @Test
+    func `In Dark Mode a light accent is drawn as is`() {
+        // A tonal theme: deep tone in light mode, light tone in Dark Mode.
+        let tonal = UIColor.lmk_dynamic(lightHex: 0xA8592A, darkHex: 0xF0A472)
+        let tint = tonal.lmk_glyphTint()
+        let darkTone = Self.brightness(tonal, style: .dark)
+        #expect(abs(Self.brightness(tint, style: .dark) - darkTone) < 0.001)
+        #expect(abs(Self.brightness(tint, style: .light) - Self.brightness(tonal, style: .light)) < 0.001)
+        let pale = UIColor(red: 0.9, green: 0.9, blue: 0.5, alpha: 1)
+        #expect(abs(Self.brightness(pale.lmk_glyphTint(), style: .dark) - Self.brightness(pale)) < 0.001)
     }
 }
 

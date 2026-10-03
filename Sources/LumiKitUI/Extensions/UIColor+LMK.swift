@@ -149,10 +149,16 @@ public nonisolated extension UIColor {
     }
 
     /// The color to draw glyphs and text in when this color is an accent: itself when it is
-    /// dark enough, otherwise darkened by `factor` so a pale accent stays legible on light
-    /// backgrounds. Use the raw accent only for translucent fills behind the glyph.
+    /// dark enough, otherwise darkened by `factor` so a pale accent stays legible on a light
+    /// page. Resolved per appearance: in Dark Mode the page is dark, so a light accent (the
+    /// dark-mode tone of a tonal theme) is drawn as is. Use the raw accent only for translucent
+    /// fills behind the glyph.
     func lmk_glyphTint(onLightAccentDarkenBy factor: CGFloat = 0.7) -> UIColor {
-        lmk_isLight ? lmk_adjustedBrightness(by: factor) : self
+        UIColor { traits in
+            let resolved = self.resolvedColor(with: traits)
+            guard traits.userInterfaceStyle != .dark, resolved.lmk_isLight else { return resolved }
+            return resolved.lmk_adjustedBrightness(by: factor)
+        }
     }
 
     /// Returns a new color with brightness adjusted by the given factor.

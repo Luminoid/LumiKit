@@ -3,6 +3,7 @@
 //  LumiKit
 //
 
+import SnapKit
 import Testing
 import UIKit
 @testable import LumiKitUI
@@ -252,6 +253,35 @@ struct LMKEmptyStateViewSizingTests {
         let bottomGap = view.bounds.height - container.frame.maxY
         #expect(abs(topGap - bottomGap) < 1)
         #expect(topGap > 0)
+    }
+
+    @Test(arguments: [LMKEmptyStateView.Layout.fullScreen, .card])
+    func `In a taller window the action sits under the message and the content is centered`(layout: LMKEmptyStateView.Layout) throws {
+        let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 402, height: 874))
+        let host = UIViewController()
+        window.rootViewController = host
+        window.isHidden = false
+        defer { window.isHidden = true }
+        let view = LMKEmptyStateView()
+        view.style.layout = layout
+        host.view.addSubview(view)
+        view.snp.makeConstraints { make in
+            make.top.equalToSuperview().offset(240)
+            make.bottom.equalTo(host.view.safeAreaLayoutGuide)
+            make.leading.trailing.equalToSuperview().inset(16)
+        }
+        view.configure(LMKEmptyStateView.Content(message: "No Pets Yet", icon: .system("pawprint.fill"), primaryAction: .init(title: "Add Pet") {}), animated: false)
+        window.layoutIfNeeded()
+
+        let button = try #require(view.actionButton)
+        let buttonFrame = button.convert(button.bounds, to: view)
+        let labelFrame = view.messageLabel.convert(view.messageLabel.bounds, to: view)
+        let iconFrame = view.iconView.convert(view.iconView.bounds, to: view)
+        let actionSpacing = LMKSpacing.large
+        #expect(buttonFrame.minY - labelFrame.maxY < actionSpacing + 1, "the button follows the message (gap \(buttonFrame.minY - labelFrame.maxY))")
+        let topGap = iconFrame.minY
+        let bottomGap = view.bounds.height - buttonFrame.maxY
+        #expect(abs(topGap - bottomGap) < 2, "content centered (top \(topGap), bottom \(bottomGap))")
     }
 
     @Test

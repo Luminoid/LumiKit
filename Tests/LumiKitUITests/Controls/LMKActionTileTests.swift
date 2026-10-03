@@ -54,19 +54,21 @@ struct LMKActionTileTests {
     }
 
     @Test
-    func `Accent tints the background lightly and the glyph fully; light accents darken`() {
+    func `Accent tints the background lightly and the glyph fully; light accents darken`() throws {
         let (tile, window) = makeTile()
         defer { window.isHidden = true }
         tile.configure(title: "T", systemName: "star")
         let dark = UIColor(red: 0.1, green: 0.2, blue: 0.6, alpha: 1)
         tile.accentColor = dark
-        #expect(tile.iconView.tintColor == dark)
+        #expect(tile.iconView.tintColor?.resolvedColor(with: UITraitCollection(userInterfaceStyle: .light)) == dark)
         #expect(tile.backgroundColor == dark.withAlphaComponent(LMKAlpha.xxs))
 
         let light = UIColor(red: 0.9, green: 0.9, blue: 0.5, alpha: 1)
         tile.accentColor = light
-        #expect(tile.iconView.tintColor == light.lmk_glyphTint())
-        #expect(tile.iconView.tintColor != light)
+        let lightTraits = UITraitCollection(userInterfaceStyle: .light)
+        let glyph = try #require(tile.iconView.tintColor).resolvedColor(with: lightTraits)
+        #expect(glyph == light.lmk_glyphTint().resolvedColor(with: lightTraits))
+        #expect(glyph != light)
 
         tile.accentColor = nil
         #expect(tile.iconView.tintColor == LMKColor.primary)
@@ -77,11 +79,12 @@ struct LMKActionTileTests {
     func `A locked accent ignores accentColor`() {
         let (tile, window) = makeTile()
         defer { window.isHidden = true }
+        let light = UITraitCollection(userInterfaceStyle: .light)
         tile.lockedAccentColor = .red
         tile.accentColor = .blue
-        #expect(tile.iconView.tintColor == UIColor.red)
+        #expect(tile.iconView.tintColor?.resolvedColor(with: light) == UIColor.red.resolvedColor(with: light))
         tile.lockedAccentColor = nil
-        #expect(tile.iconView.tintColor == UIColor.blue)
+        #expect(tile.iconView.tintColor?.resolvedColor(with: light) == UIColor.blue.resolvedColor(with: light))
     }
 
     @Test
