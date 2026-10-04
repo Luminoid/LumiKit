@@ -121,7 +121,7 @@
             snapshot.appendItems(latest.map(\.id))
             let changed = latest.filter { record in
                 guard let previous = recordsByID[record.id] else { return false }
-                return !previous.hasSameOutcome(as: record)
+                return !previous.hasSameResult(as: record)
             }.map(\.id)
             recordsByID = Dictionary(uniqueKeysWithValues: latest.map { ($0.id, $0) })
             records = latest
@@ -132,15 +132,9 @@
             emptyStateView.isHidden = !latest.isEmpty
         }
 
-        /// The row for a record: status glyph, URL, and a method / status / duration / time line.
+        /// The row for a record: outcome glyph, URL, and a method / status / duration / time line.
         static func rowConfiguration(for record: LMKNetworkRequestRecord) -> LMKListRowConfiguration {
-            let (symbol, tint): (String, UIColor) = if record.isSuccess {
-                ("checkmark.circle", LMKColor.success)
-            } else if record.isError {
-                ("exclamationmark.triangle", LMKColor.error)
-            } else {
-                ("clock", LMKColor.textSecondary)
-            }
+            let (symbol, tint) = outcomeSymbol(for: record.outcome)
             let subtitle = [record.displayMethod, record.displayStatus, record.displayDuration, Self.timeFormatter.string(from: record.timestamp)]
                 .joined(separator: " · ")
             return LMKListRowConfiguration(
@@ -150,6 +144,16 @@
                 trailing: .disclosure,
                 style: LMKListRowConfiguration.Style(titleTextStyle: .caption, subtitleTextStyle: .smallMedium, titleLines: 3)
             )
+        }
+
+        /// The glyph and tint that mark an outcome; a redirect is a turn, never an error.
+        static func outcomeSymbol(for outcome: LMKNetworkRequestRecord.Outcome) -> (name: String, tint: UIColor) {
+            switch outcome {
+            case .success: ("checkmark.circle", LMKColor.success)
+            case .redirect: ("arrow.triangle.turn.up.right.circle", LMKColor.info)
+            case .error: ("exclamationmark.triangle", LMKColor.error)
+            case .pending: ("clock", LMKColor.textSecondary)
+            }
         }
 
         private static let timeFormatter: DateFormatter = {

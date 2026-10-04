@@ -139,9 +139,11 @@
                     #expect(server.requests.map(\.path) == ["/old", "/new?token=abc"])
                     let first = try #require(await settledRecord(path: "/old"))
                     #expect(first.statusCode == 302)
+                    #expect(first.outcome == .redirect, "a followed redirect is not an error")
                     #expect(first.response?.headers["Location"] == "/new?token=\(LMKNetworkLogger.redactedValueQueryEncoded)")
                     let second = try #require(await settledRecord(path: "/new"))
                     #expect(second.statusCode == 200)
+                    #expect(second.outcome == .success)
                     #expect(second.request.url.query == "token=\(LMKNetworkLogger.redactedValueQueryEncoded)")
                     #expect(LMKNetworkLogger.count == 2)
                 })
@@ -170,8 +172,84 @@
                     #expect(server.requests.map(\.path) == ["/old"], "the redirect target is never requested")
                     let record = try #require(await settledRecord(path: "/old"))
                     #expect(record.statusCode == 302)
+                    #expect(record.isRedirect)
                     #expect(record.response?.body == Data("redirecting".utf8))
                     #expect(LMKNetworkLogger.count == 1)
+                })
+            }
+
+            @Test
+            func `Concurrent followed redirects each complete once, with the target's response`() async throws {
+                try await withLogger(handler: { request in
+                    request.path.hasPrefix("/old/") ? .redirect(to: "/new/" + request.path.dropFirst("/old/".count)) : .text("moved \(request.path)")
+                }, body: { server in
+                    let session = makeSession()
+                    let results = try await withThrowingTaskGroup(of: (index: Int, body: String?, path: String?).self) { group in
+                        for index in 0 ..< 64 {
+                            group.addTask {
+                                let (data, response) = try await session.data(from: server.url("/old/\(index)"))
+                                return (index, String(data: data, encoding: .utf8), response.url?.path)
+                            }
+                        }
+                        return try await group.reduce(into: []) { $0.append($1) }
+                    }
+
+                    #expect(results.count == 64)
+                    for result in results {
+                        #expect(result.body == "moved /new/\(result.index)")
+                        #expect(result.path == "/new/\(result.index)")
+                    }
+                })
+            }
+
+            /// Answers a redirect only after the logger's grace period, so the held 3xx calls have
+            /// already gone out to the session when it decides.
+            private final class SlowRedirectDecider: NSObject, URLSessionTaskDelegate, @unchecked Sendable {
+                let follows: Bool
+
+                init(follows: Bool) {
+                    self.follows = follows
+                }
+
+                func urlSession(
+                    _ session: URLSession,
+                    task: URLSessionTask,
+                    willPerformHTTPRedirection response: HTTPURLResponse,
+                    newRequest request: URLRequest,
+                    completionHandler: @escaping (URLRequest?) -> Void
+                ) {
+                    let delay = LMKNetworkRequestLoggerProtocol.redirectDecisionGracePeriod + 0.3
+                    // URLSession calls the handler once, from any queue.
+                    nonisolated(unsafe) let completionHandler = completionHandler
+                    DispatchQueue.global().asyncAfter(deadline: .now() + delay) { [follows] in
+                        completionHandler(follows ? request : nil)
+                    }
+                }
+            }
+
+            @Test
+            func `A redirect the session follows after the grace period still lands on the target`() async throws {
+                try await withLogger(handler: { request in
+                    request.path == "/old" ? .redirect(to: "/new", body: "redirecting") : .text("moved")
+                }, body: { server in
+                    let (data, response) = try await makeSession(delegate: SlowRedirectDecider(follows: true)).data(from: server.url("/old"))
+
+                    #expect(String(data: data, encoding: .utf8) == "moved")
+                    #expect(response.url?.path == "/new")
+                    #expect(server.requests.map(\.path) == ["/old", "/new"])
+                })
+            }
+
+            @Test
+            func `A redirect the session refuses after the grace period still ends at the 3xx`() async throws {
+                try await withLogger(handler: { request in
+                    request.path == "/old" ? .redirect(to: "/new", body: "redirecting") : .text("moved")
+                }, body: { server in
+                    let (data, response) = try await makeSession(delegate: SlowRedirectDecider(follows: false)).data(from: server.url("/old"))
+
+                    #expect((response as? HTTPURLResponse)?.statusCode == 302)
+                    #expect(data == Data("redirecting".utf8))
+                    #expect(server.requests.map(\.path) == ["/old"])
                 })
             }
 

@@ -53,18 +53,42 @@
             }
         }
 
+        /// Where a request stands, as the history marks it.
+        public enum Outcome: Sendable, Hashable {
+            /// Neither a response nor an error has landed yet.
+            case pending
+            /// A 2xx response, or 304 Not Modified (the cached copy is still good).
+            case success
+            /// Any other 3xx response: a redirect the session followed, whose next hop is a record
+            /// of its own, or one it refused.
+            case redirect
+            /// The request failed, or the response status is outside 2xx and 3xx.
+            case error
+        }
+
         // MARK: - Computed Properties
 
         public var statusCode: Int? { response?.statusCode }
 
-        public var isSuccess: Bool {
-            guard let code = statusCode else { return false }
-            return (200 ... 299).contains(code)
+        /// The request's outcome. A transport error outranks a status that arrived before it.
+        public var outcome: Outcome {
+            if errorDescription != nil { return .error }
+            guard let code = statusCode else { return .pending }
+            switch code {
+            case 200 ... 299, 304: return .success
+            case 300 ... 399: return .redirect
+            default: return .error
+            }
         }
 
-        public var isError: Bool {
-            errorDescription != nil || (statusCode != nil && !isSuccess)
-        }
+        /// A 2xx response, or 304 Not Modified, with no error.
+        public var isSuccess: Bool { outcome == .success }
+
+        /// A 3xx response other than 304, with no error.
+        public var isRedirect: Bool { outcome == .redirect }
+
+        /// A transport error, or a response status outside 2xx and 3xx.
+        public var isError: Bool { outcome == .error }
 
         /// The request URL, with redacted query values shown as `LMKNetworkLogger.redactedValue`.
         public var displayURL: String {
@@ -104,9 +128,9 @@
 
         // MARK: - Helpers
 
-        /// Whether both records describe the same outcome (a record only changes when its response
-        /// or error lands), without comparing bodies.
-        func hasSameOutcome(as other: Self) -> Bool {
+        /// Whether both records carry the same result (a record only changes when its response or
+        /// error lands): status, error, and duration, without comparing bodies.
+        func hasSameResult(as other: Self) -> Bool {
             statusCode == other.statusCode && errorDescription == other.errorDescription && duration == other.duration
         }
 

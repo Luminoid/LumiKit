@@ -60,6 +60,31 @@
             }
 
             @Test
+            func `Each outcome has its own glyph and a redirect is not marked as an error`() throws {
+                let outcomes: [LMKNetworkRequestRecord.Outcome] = [.pending, .success, .redirect, .error]
+                let symbols = outcomes.map { LMKNetworkHistoryViewController.outcomeSymbol(for: $0) }
+                #expect(Set(symbols.map(\.name)).count == outcomes.count)
+                #expect(Set(symbols.map(\.tint)).count == outcomes.count)
+
+                let redirect = try LMKNetworkRequestRecord(
+                    id: UUID(),
+                    timestamp: Date(),
+                    request: .init(url: #require(URL(string: "https://example.com/old")), method: "GET", headers: [:], body: nil),
+                    response: .init(statusCode: 301, headers: ["Location": "https://example.com/new"], body: nil),
+                    errorDescription: nil,
+                    duration: 0.1
+                )
+                let row = LMKNetworkHistoryViewController.rowConfiguration(for: redirect)
+                guard case let .symbol(name, tint) = row.leading else {
+                    Issue.record("the row leads with an outcome glyph")
+                    return
+                }
+                #expect(name == LMKNetworkHistoryViewController.outcomeSymbol(for: .redirect).name)
+                #expect(name != LMKNetworkHistoryViewController.outcomeSymbol(for: .error).name)
+                #expect(tint == LMKColor.info)
+            }
+
+            @Test
             func `Strings default to localized text and the clear item is labeled`() {
                 let strings = LMKNetworkHistoryViewController.HistoryStrings()
                 #expect(strings.title != "networkHistory.title")

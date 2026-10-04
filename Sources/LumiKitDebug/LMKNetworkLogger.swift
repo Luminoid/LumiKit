@@ -312,7 +312,22 @@
     /// Every intercepted request runs on one shared inner session, so connections are reused
     /// across them; the session's delegate routes each task's callbacks back to the protocol
     /// instance that started it. Instance state is written in `startLoading` before the task
-    /// resumes and afterwards only touched on the inner session's serial delegate queue.
+    /// resumes and afterwards only touched on the inner session's serial delegate queue, except
+    /// the client-thread state, which only that thread touches.
+    ///
+    /// `URLProtocol` requires every `client` call on the client thread (the one that runs
+    /// `startLoading` and later `stopLoading`), so the inner callbacks hop there through
+    /// `notifyClient`.
+    ///
+    /// A redirect gets no answer the protocol can see. The client's session decides on its own
+    /// queue: a followed redirect stops this load, and a refused one says nothing and waits for
+    /// this load's 3xx response, body, and finish. Those calls must not land after the session
+    /// decided to follow but before the stop arrives, or the task completes with no response (a
+    /// trap inside `URLSession.data(for:)`). So after `wasRedirectedTo` the rest of this load's
+    /// calls are held: a stop drops them, and otherwise they go out after
+    /// `redirectDecisionGracePeriod`. The session handles calls that arrive while it is still
+    /// deciding either way, so a slower decision is safe too; a refused redirect just completes
+    /// that much later.
     @preconcurrency @objc
     final class LMKNetworkRequestLoggerProtocol: URLProtocol, @unchecked Sendable {
         private static let blankURL = URL(string: "about:blank") ?? URL(fileURLWithPath: "/")
@@ -343,8 +358,19 @@
         private var configuration = LMKNetworkLogger.Configuration()
         private var responseData = Data()
         private var responseByteCount = 0
-        private var didRedirect = false
-        private let isStopped = OSAllocatedUnfairLock(initialState: false)
+        /// The 3xx this load handed to the client as a redirect.
+        private var redirectResponse: HTTPURLResponse?
+        private var clientRunLoop: CFRunLoop?
+        private var clientRunLoopModes: [CFRunLoopMode] = [.defaultMode]
+
+        /// How long the calls after a redirect wait for `stopLoading` (the session followed it)
+        /// before they go to the client (the session refused it, or is still deciding).
+        static let redirectDecisionGracePeriod: TimeInterval = 0.5
+
+        /// Client thread only.
+        private var isStopped = false
+        /// The calls held after `wasRedirectedTo` until the session decides; `nil` when not holding.
+        private var heldClientCalls: [(any URLProtocolClient) -> Void]?
 
         override required init(request: URLRequest, cachedResponse: CachedURLResponse?, client: (any URLProtocolClient)?) {
             super.init(request: request, cachedResponse: cachedResponse, client: client)
@@ -367,6 +393,13 @@
         override func startLoading() {
             startTime = Date()
             configuration = LMKNetworkLogger.activeConfiguration ?? LMKNetworkLogger.Configuration()
+            // This is the client thread: client calls run on its run loop, in the default mode plus
+            // the mode it is running in now if that differs.
+            let runLoop = CFRunLoopGetCurrent()
+            if let current = CFRunLoopCopyCurrentMode(runLoop), current != .defaultMode {
+                clientRunLoopModes.append(current)
+            }
+            clientRunLoop = runLoop
 
             guard let forwarded = (request as NSURLRequest).mutableCopy() as? NSMutableURLRequest else {
                 client?.urlProtocol(self, didFailWithError: URLError(.unknown))
@@ -400,8 +433,46 @@
         }
 
         override func stopLoading() {
-            isStopped.withLock { $0 = true }
+            isStopped = true
+            heldClientCalls = nil
             dataTask?.cancel()
+        }
+
+        // MARK: - Client thread
+
+        /// Runs `call` with the client on the client thread, in order with the other calls. It is
+        /// held while a redirect decision is pending and dropped once `stopLoading` has run: both
+        /// happen on that thread, so nothing reaches the client after a stop.
+        private func notifyClient(_ call: @escaping (any URLProtocolClient) -> Void) {
+            guard let runLoop = clientRunLoop else { return }
+            CFRunLoopPerformBlock(runLoop, clientRunLoopModes.map(\.rawValue) as CFArray) { [self] in
+                if heldClientCalls != nil {
+                    heldClientCalls?.append(call)
+                } else if !isStopped, let client {
+                    call(client)
+                }
+            }
+            CFRunLoopWakeUp(runLoop)
+        }
+
+        /// Starts holding the calls that follow a `wasRedirectedTo`; a timer on the client run loop
+        /// sends them after `redirectDecisionGracePeriod` unless `stopLoading` dropped them first.
+        private func holdClientCallsForRedirectDecision() {
+            guard !isStopped, let runLoop = clientRunLoop else { return }
+            heldClientCalls = []
+            let fireDate = CFAbsoluteTimeGetCurrent() + Self.redirectDecisionGracePeriod
+            let timer = CFRunLoopTimerCreateWithHandler(nil, fireDate, 0, 0, 0) { [self] _ in
+                guard let calls = heldClientCalls else { return }
+                heldClientCalls = nil
+                for call in calls {
+                    // A call can make the client stop this load (a response it cancels).
+                    guard !isStopped, let client else { return }
+                    call(client)
+                }
+            }
+            for mode in clientRunLoopModes {
+                CFRunLoopAddTimer(runLoop, timer, mode)
+            }
         }
 
         /// Reads a streamed body into `forwarded.httpBody` so it can be captured and, on a redirect,
@@ -435,19 +506,19 @@
         /// session, which decides: a followed redirect comes back as a fresh request (the marker is
         /// off the copy it receives) and this load is stopped; a refused one keeps this load going,
         /// so the 3xx response and body reach the client as the task's result, as they would
-        /// without the logger.
+        /// without the logger (after the grace period, see the type's notes).
         func innerWillRedirect(to newRequest: URLRequest, response: HTTPURLResponse) {
-            didRedirect = true
+            redirectResponse = response
             guard let redirected = (newRequest as NSURLRequest).mutableCopy() as? NSMutableURLRequest else { return }
             Self.removeProperty(forKey: Self.markerKey, in: redirected)
-            guard !isStopped.withLock({ $0 }) else { return }
-            client?.urlProtocol(self, wasRedirectedTo: redirected as URLRequest, redirectResponse: response)
+            notifyClient { [self] client in
+                client.urlProtocol(self, wasRedirectedTo: redirected as URLRequest, redirectResponse: response)
+                holdClientCallsForRedirectDecision()
+            }
         }
 
         func innerDidReceive(_ response: URLResponse, completionHandler: (URLSession.ResponseDisposition) -> Void) {
-            if !isStopped.withLock({ $0 }) {
-                client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
-            }
+            notifyClient { $0.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed) }
             completionHandler(.allow)
         }
 
@@ -456,24 +527,22 @@
             if configuration.capturesBodies, responseData.count < configuration.maxBodyCaptureSize {
                 responseData.append(data.prefix(configuration.maxBodyCaptureSize - responseData.count))
             }
-            if !isStopped.withLock({ $0 }) {
-                client?.urlProtocol(self, didLoad: data)
-            }
+            notifyClient { $0.urlProtocol(self, didLoad: data) }
         }
 
         func innerDidComplete(_ task: URLSessionTask, error: (any Error)?) {
-            let stopped = isStopped.withLock { $0 }
             if let error {
-                if !stopped { client?.urlProtocol(self, didFailWithError: error) }
-                // A load stopped because its redirect was followed still records the 3xx it got.
-                if didRedirect, let response = task.response as? HTTPURLResponse {
-                    recordResponse(response, body: configuration.capturesBodies ? responseData : nil)
+                notifyClient { $0.urlProtocol(self, didFailWithError: error) }
+                // A load stopped because its redirect was followed still records the 3xx it got. The
+                // stop can land before the inner task takes the 3xx as its own `response`.
+                if let redirectResponse {
+                    recordResponse(redirectResponse, body: configuration.capturesBodies ? responseData : nil)
                 } else if let id = requestID, let store = LMKNetworkLogger.internalStore {
                     store.updateError(id: id, error: error, duration: Date().timeIntervalSince(startTime))
                 }
                 return
             }
-            if !stopped { client?.urlProtocolDidFinishLoading(self) }
+            notifyClient { $0.urlProtocolDidFinishLoading(self) }
             if let response = task.response as? HTTPURLResponse {
                 recordResponse(response, body: configuration.capturesBodies ? responseData : nil)
             }

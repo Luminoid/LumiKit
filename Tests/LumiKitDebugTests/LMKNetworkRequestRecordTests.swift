@@ -88,10 +88,28 @@
             #expect(record.isError)
         }
 
-        @Test
-        func `isError returns true for non-2xx status code`() throws {
-            let record = try makeRecord(statusCode: 500)
+        @Test(arguments: [100, 400, 404, 500, 503])
+        func `isError returns true for a status outside 2xx and 3xx`(statusCode: Int) throws {
+            let record = try makeRecord(statusCode: statusCode)
             #expect(record.isError)
+            #expect(record.outcome == .error)
+        }
+
+        @Test(arguments: [300, 301, 302, 303, 307, 308])
+        func `A 3xx other than 304 is a redirect, not an error`(statusCode: Int) throws {
+            let record = try makeRecord(statusCode: statusCode, responseHeaders: ["Location": "/next"])
+            #expect(record.outcome == .redirect)
+            #expect(record.isRedirect)
+            #expect(!record.isError)
+            #expect(!record.isSuccess)
+        }
+
+        @Test
+        func `304 Not Modified is a success`() throws {
+            let record = try makeRecord(statusCode: 304)
+            #expect(record.outcome == .success)
+            #expect(record.isSuccess)
+            #expect(!record.isRedirect)
         }
 
         @Test
@@ -110,6 +128,21 @@
         func `isError returns true when both error and non-2xx status`() throws {
             let record = try makeRecord(statusCode: 502, errorDescription: "Bad gateway")
             #expect(record.isError)
+        }
+
+        @Test(arguments: [200, 302])
+        func `A transport error outranks a status that arrived first`(statusCode: Int) throws {
+            let record = try makeRecord(statusCode: statusCode, errorDescription: "The network connection was lost.")
+            #expect(record.outcome == .error)
+            #expect(!record.isSuccess)
+            #expect(!record.isRedirect)
+        }
+
+        @Test
+        func `A record with no response and no error is pending`() throws {
+            let record = try makeRecord()
+            #expect(record.outcome == .pending)
+            #expect(!record.isSuccess && !record.isRedirect && !record.isError)
         }
 
         // MARK: - displayURL
@@ -253,15 +286,15 @@
         }
 
         @Test
-        func `hasSameOutcome compares status, error, and duration only`() throws {
+        func `hasSameResult compares status, error, and duration only`() throws {
             let pending = try makeRecord()
-            #expect(pending.hasSameOutcome(as: pending))
+            #expect(pending.hasSameResult(as: pending))
             let done = try makeRecord(statusCode: 200, responseBody: Data("a".utf8), duration: 1)
-            #expect(!pending.hasSameOutcome(as: done))
-            let sameOutcome = try makeRecord(statusCode: 200, responseBody: Data("different".utf8), duration: 1)
-            #expect(done.hasSameOutcome(as: sameOutcome), "bodies are not compared")
+            #expect(!pending.hasSameResult(as: done))
+            let sameResult = try makeRecord(statusCode: 200, responseBody: Data("different".utf8), duration: 1)
+            #expect(done.hasSameResult(as: sameResult), "bodies are not compared")
             let failed = try makeRecord(errorDescription: "boom", duration: 1)
-            #expect(!failed.hasSameOutcome(as: done))
+            #expect(!failed.hasSameResult(as: done))
         }
 
         @Test

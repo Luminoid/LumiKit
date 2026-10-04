@@ -150,7 +150,7 @@
 
         /// Re-reads the record from the store; a pending row that has since completed re-renders.
         func refreshRecord() {
-            guard let latest = LMKNetworkLogger.record(id: record.id), !latest.hasSameOutcome(as: record) else { return }
+            guard let latest = LMKNetworkLogger.record(id: record.id), !latest.hasSameResult(as: record) else { return }
             record = latest
             textView.text = Self.formatRecord(latest)
         }
