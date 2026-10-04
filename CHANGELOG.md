@@ -7,9 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-Nothing yet. Until 1.0.0 is tagged, changes land in its section below.
+Nothing yet.
 
-## [1.0.0] - Unreleased
+## [1.0.0] - 2026-10-04
 
 LumiKit 1.0 rebuilds the package as a public UI framework: five products, one naming scheme, a theme value that every component follows live, a `Style` on every component, built-in strings in four languages, and the iOS 26 APIs adopted with fallbacks for iOS 18. Every 0.x app needs the migration: read [docs/MIGRATION-1.0.md](docs/MIGRATION-1.0.md), then run `Scripts/migrate-1.0.sh <app-dir> --dry-run`.
 
