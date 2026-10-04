@@ -75,7 +75,7 @@ let exampleSections: [ExampleSection] = [
         ExampleItem(title: "Gradient", subtitle: "LMKGradientView: linear, angled, and radial", iconName: "rectangle.fill", makeViewController: { GradientDetailViewController() }),
         ExampleItem(
             title: "Glass",
-            subtitle: "LMKGlassView: Liquid Glass on iOS 26, material fallback before",
+            subtitle: "LMKGlassView and LMKGlassContainerView: Liquid Glass, blur before iOS 26",
             iconName: "circle.hexagongrid.fill",
             makeViewController: { GlassDetailViewController() }
         ),

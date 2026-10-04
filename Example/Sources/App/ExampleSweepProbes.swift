@@ -26,6 +26,7 @@ enum ExampleSweepProbes {
         "Segmented Pages": [["Present Segmented Pages"]],
         "Tab Bar": [["Present Tab Bar"]],
         "Split View Inspector": [["Present Split View", "Toggle Inspector"]],
+        "Glass": [["@end"]],
         "Text Field": [["@end"]],
         "Detail Cards": [["@end"]],
         "Loading State": [["@end"]],

@@ -2,7 +2,7 @@
 //  GlassExample.swift
 //  LumiKitExample
 //
-//  Glass: LMKGlassView: Liquid Glass on iOS 26, material fallback before.
+//  Glass: LMKGlassView and LMKGlassContainerView: Liquid Glass on iOS 26, material fallback before.
 //
 
 import LumiKitUI
@@ -12,8 +12,21 @@ import UIKit
 // MARK: - Glass
 
 final class GlassDetailViewController: DetailViewController {
+    /// Merge distances offered for the container; the middle one is selected first.
+    private static let mergeDistances: [CGFloat] = [LMKSpacing.small, LMKSpacing.xxl, LMKSpacing.xxl * 2]
+    /// The dots start apart, wider than the default merge distance, so dragging the gap down shows the merge.
+    private static let initialGap = LMKSpacing.xxl + LMKSpacing.medium
+
     private var tapCount = 0
     private lazy var tapLabel = UILabel.lmk_make(.caption, text: "Taps: 0")
+    private lazy var glassContainer = LMKGlassContainerView(spacing: Self.mergeDistances[1])
+    private lazy var glassRow: UIStackView = {
+        let row = UIStackView(lmk_axis: .horizontal, spacing: Self.initialGap)
+        for symbol in ["heart", "star", "bookmark"] {
+            row.addArrangedSubview(makeGlassDot(symbol: symbol))
+        }
+        return row
+    }()
 
     override func setupStackContent() {
         addSectionHeader("LMKGlassView")
@@ -58,29 +71,40 @@ final class GlassDetailViewController: DetailViewController {
         stackView.addArrangedSubview(tapLabel)
 
         addDivider()
-        addSectionHeader("makeContainer(spacing:)")
-        stackView.addArrangedSubview(UILabel.lmk_make(
-            .caption,
-            text: "Glass views hosted in a container merge into one shape once they come within the spacing (iOS 26). Before iOS 26 they render on their own."
-        ))
+        addSectionHeader("LMKGlassContainerView")
+        let containerNote = probe.isGlass
+            ? "Glass views in the container's contentView blend into one shape once the gap between them closes within its spacing. "
+            + "Drag the gap under the merge distance to watch them join. LMKGlassView.makeContainer(spacing:) builds the same view."
+            : "Below iOS 26 the container carries no effect, so each glass view renders on its own at any gap. "
+            + "Same API, no gate: on iOS 26 the views blend into one shape once the gap closes within the container's spacing."
+        stackView.addArrangedSubview(UILabel.lmk_make(.caption, text: containerNote))
         let containerBackdrop = makeBackdrop()
-        let container = LMKGlassView.makeContainer(spacing: LMKSpacing.xxl)
-        containerBackdrop.addSubview(container)
-        container.snp.makeConstraints { $0.center.equalToSuperview() }
-        let dots = UIStackView(lmk_axis: .horizontal, spacing: LMKSpacing.small)
-        for symbol in ["heart", "star", "bookmark"] {
-            let dot = LMKGlassView(cornerRadius: 28, usesConcentricCorners: false)
-            let icon = UIImageView(image: UIImage(systemName: symbol))
-            icon.tintColor = LMKColor.textPrimary
-            icon.contentMode = .center
-            dot.contentView.addSubview(icon)
-            icon.snp.makeConstraints { $0.edges.equalToSuperview() }
-            dot.snp.makeConstraints { $0.width.height.equalTo(56) }
-            dots.addArrangedSubview(dot)
-        }
-        container.contentView.addSubview(dots)
-        dots.snp.makeConstraints { $0.edges.equalToSuperview() }
+        containerBackdrop.addSubview(glassContainer)
+        glassContainer.snp.makeConstraints { $0.center.equalToSuperview() }
+        glassContainer.contentView.addSubview(glassRow)
+        glassRow.snp.makeConstraints { $0.edges.equalToSuperview() }
         stackView.addArrangedSubview(containerBackdrop)
+
+        let gapSlider = LMKSlider()
+        gapSlider.caption = "Gap between the views"
+        gapSlider.minimumValue = 0
+        gapSlider.maximumValue = Float(Self.mergeDistances[Self.mergeDistances.count - 1])
+        gapSlider.value = Float(Self.initialGap)
+        gapSlider.valueFormatter = { "\(Int($0)) pt" }
+        gapSlider.onValueChange = { [weak self] value in
+            self?.glassRow.spacing = CGFloat(value)
+        }
+        stackView.addArrangedSubview(gapSlider)
+
+        stackView.addArrangedSubview(UILabel.lmk_make(.caption, text: "Merge distance (spacing)"))
+        let mergeControl = LMKSegmentedControl(items: Self.mergeDistances.map { "\(Int($0)) pt" })
+        mergeControl.accessibilityLabel = "Merge distance"
+        mergeControl.selectedSegmentIndex = 1
+        mergeControl.onValueChange = { [weak self] index in
+            guard let distance = Self.mergeDistances[lmk_safe: index] else { return }
+            self?.glassContainer.spacing = distance
+        }
+        stackView.addArrangedSubview(mergeControl)
     }
 
     // MARK: - Actions
@@ -108,5 +132,18 @@ final class GlassDetailViewController: DetailViewController {
             make.leading.trailing.equalToSuperview().inset(LMKSpacing.small)
         }
         return glass
+    }
+
+    /// A circular glass view around a symbol, sized from the symbol plus a large inset on each side.
+    private func makeGlassDot(symbol: String) -> LMKGlassView {
+        let dot = LMKGlassView(style: LMKGlassView.Style(corners: .circle))
+        let icon = UIImageView(image: UIImage(systemName: symbol))
+        icon.preferredSymbolConfiguration = UIImage.SymbolConfiguration(pointSize: LMKLayout.symbolLarge)
+        icon.tintColor = LMKColor.textPrimary
+        icon.contentMode = .center
+        dot.contentView.addSubview(icon)
+        icon.snp.makeConstraints { $0.center.equalToSuperview() }
+        dot.snp.makeConstraints { $0.size.equalTo(LMKLayout.symbolLarge + LMKSpacing.large * 2) }
+        return dot
     }
 }
