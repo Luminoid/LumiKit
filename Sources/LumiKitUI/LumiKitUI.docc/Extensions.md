@@ -19,7 +19,7 @@ Every member added to a UIKit or Foundation type carries the `lmk_` prefix.
 |---|---|
 | `UILabel` | `lmk_make(_:text:color:numberOfLines:)`, `lmk_apply(_:color:lineMetrics:)` |
 | `UITextField`, `UITextView` | `lmk_apply(_:color:)`, `lmk_dismissKeyboardOnReturn()`, the form style helpers |
-| `UIColor` | `init(lmk_hex:)`, `lmk_dynamic(lightHex:darkHex:alpha:)`, `lmk_hexString`, `lmk_isLight`, `lmk_adjustedBrightness(by:)` (a multiplier: `0.85` darkens by 15 percent), `lmk_contrastingTextColor`, `lmk_glyphTint(onLightAccentDarkenBy:)` |
+| `UIColor` | `init(lmk_hex:)`, `lmk_dynamic(lightHex:darkHex:alpha:)`, `lmk_hexString`, `lmk_isLight`, `lmk_adjustedBrightness(by:)` (a multiplier: `0.85` darkens by 15 percent), `lmk_contrastingTextColor`, `lmk_glyphTint(onLightAccentDarkenBy:)`, `lmk_composited(over:alpha:)`, `lmk_stateShade(by:)`, and the WCAG helpers `lmk_relativeLuminance(resolvedWith:)`, `lmk_contrastRatio(to:resolvedWith:)`, `lmk_softestTone(over:washAlpha:minimumContrast:resolvedWith:)` |
 | `UIImage` | `lmk_resized(maxDimension:)`, `lmk_resized(to:)`, `lmk_solidColor(_:size:)`, `lmk_rounded(cornerRadius:)` |
 
 ## Cells and lists

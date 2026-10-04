@@ -5,6 +5,7 @@
 
 import Testing
 import UIKit
+import UniformTypeIdentifiers
 @testable import LumiKitUI
 
 @MainActor
@@ -132,5 +133,91 @@ struct LMKPhotoButtonTests {
         button.strings = LMKPhotoButton.Strings(addAccessibilityLabel: "Add avatar", changeAccessibilityLabel: "Change avatar")
         #expect(button.accessibilityLabel == "Add avatar")
         #expect(LMKPhotoButton.Style().merging(LMKPhotoButton.Style(shape: .circle)).shape == .circle)
+    }
+
+    // MARK: - Drop
+
+    @Test
+    func `onDropImage installs a drop target only while set`() {
+        let (button, window) = makeButton()
+        defer { window.isHidden = true }
+        #expect(!button.interactions.contains { $0 is UIDropInteraction }, "inert by default")
+        button.onDropImage = { _ in }
+        #expect(button.interactions.count { $0 is UIDropInteraction } == 1)
+        button.onDropImage = { _ in }
+        #expect(button.interactions.count { $0 is UIDropInteraction } == 1, "setting it again adds no second target")
+        button.onDropImage = nil
+        #expect(!button.interactions.contains { $0 is UIDropInteraction })
+    }
+
+    @Test
+    func `A dropped image arrives as its original bytes`() async throws {
+        let (button, window) = makeButton()
+        defer { window.isHidden = true }
+        let format = UIGraphicsImageRendererFormat()
+        format.scale = 1
+        let png = try #require(UIGraphicsImageRenderer(size: CGSize(width: 4, height: 4), format: format).image { context in
+            UIColor.red.setFill()
+            context.fill(CGRect(x: 0, y: 0, width: 4, height: 4))
+        }.pngData())
+        var received: [Data] = []
+        button.onDropImage = { received.append($0) }
+        let text = NSItemProvider(object: "not a photo" as NSString)
+        let image = NSItemProvider(item: png as NSData, typeIdentifier: UTType.png.identifier)
+        button.handleDrop(of: [text, image])
+        await LMKWait.until { !received.isEmpty }
+        #expect(received == [png], "the first image provider, byte for byte")
+
+        button.handleDrop(of: [text])
+        try await Task.sleep(for: .milliseconds(100))
+        #expect(received.count == 1, "nothing that is not an image")
+    }
+
+    @Test
+    func `A hovering drag shows an accent outline unless the style sets a highlighted look`() {
+        let (button, window) = makeButton()
+        defer { window.isHidden = true }
+        #expect(button.layer.borderWidth == 0)
+        button.isHighlighted = true
+        #expect(button.layer.borderWidth == 0, "a press keeps its own feedback")
+        button.isHighlighted = false
+        button.isDropTargeted = true
+        #expect(button.layer.borderWidth == LMKLayout.pixelAligned(2, for: button))
+        button.isDropTargeted = false
+        #expect(button.layer.borderWidth == 0)
+
+        button.style = LMKPhotoButton.Style(highlighted: LMKControlStateStyle(background: .solid(.blue)))
+        button.isDropTargeted = true
+        #expect(button.backgroundColor == UIColor.blue)
+        #expect(button.layer.borderWidth == 0, "the style's highlighted look replaces the outline")
+    }
+
+    @Test
+    func `Only the latest drop is delivered`() async throws {
+        let (button, window) = makeButton()
+        defer { window.isHidden = true }
+        let first = Data([0x01])
+        let second = Data([0x02])
+        // The first drop answers only after the second one has.
+        let slow = NSItemProvider()
+        let gate = AsyncStream<Void>.makeStream()
+        slow.registerDataRepresentation(forTypeIdentifier: UTType.png.identifier, visibility: .all) { completion in
+            Task {
+                for await _ in gate.stream {
+                    break
+                }
+                completion(first, nil)
+            }
+            return nil
+        }
+        var received: [Data] = []
+        button.onDropImage = { received.append($0) }
+        button.handleDrop(of: [slow])
+        button.handleDrop(of: [NSItemProvider(item: second as NSData, typeIdentifier: UTType.png.identifier)])
+        await LMKWait.until { !received.isEmpty }
+        gate.continuation.yield()
+        gate.continuation.finish()
+        try await Task.sleep(for: .milliseconds(200))
+        #expect(received == [second])
     }
 }

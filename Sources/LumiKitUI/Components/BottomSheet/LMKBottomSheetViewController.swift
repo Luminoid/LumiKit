@@ -75,6 +75,9 @@ open class LMKBottomSheetViewController: UIViewController, LMKThemeApplying {
         public var dismissVelocityThreshold: CGFloat?
         /// Drag distance as a fraction of the container height that dismisses; `nil` = 0.3.
         public var dismissDistanceRatio: CGFloat?
+        /// Widest the sheet grows in a regular-width size class (iPad, Mac), centered at the
+        /// bottom; `nil` = `readableContentMaxWidth`. A compact-width sheet spans the host.
+        public var maxWidth: CGFloat?
 
         public init(
             surface: LMKSurfaceStyle = LMKSurfaceStyle(),
@@ -87,7 +90,8 @@ open class LMKBottomSheetViewController: UIViewController, LMKThemeApplying {
             cancelButton: LMKButton.Style = LMKButton.Style(),
             maxHeightRatio: CGFloat? = nil,
             dismissVelocityThreshold: CGFloat? = nil,
-            dismissDistanceRatio: CGFloat? = nil
+            dismissDistanceRatio: CGFloat? = nil,
+            maxWidth: CGFloat? = nil
         ) {
             self.surface = surface
             self.dimmingColor = dimmingColor
@@ -100,6 +104,7 @@ open class LMKBottomSheetViewController: UIViewController, LMKThemeApplying {
             self.maxHeightRatio = maxHeightRatio
             self.dismissVelocityThreshold = dismissVelocityThreshold
             self.dismissDistanceRatio = dismissDistanceRatio
+            self.maxWidth = maxWidth.map { max(0, $0) }
         }
 
         public static let defaultValue = Self()
@@ -117,7 +122,8 @@ open class LMKBottomSheetViewController: UIViewController, LMKThemeApplying {
                 cancelButton: cancelButton.merging(other.cancelButton),
                 maxHeightRatio: other.maxHeightRatio ?? maxHeightRatio,
                 dismissVelocityThreshold: other.dismissVelocityThreshold ?? dismissVelocityThreshold,
-                dismissDistanceRatio: other.dismissDistanceRatio ?? dismissDistanceRatio
+                dismissDistanceRatio: other.dismissDistanceRatio ?? dismissDistanceRatio,
+                maxWidth: other.maxWidth ?? maxWidth
             )
         }
     }
@@ -188,6 +194,8 @@ open class LMKBottomSheetViewController: UIViewController, LMKThemeApplying {
     public private(set) var resolvedStyle = Style()
 
     var containerBottomConstraint: Constraint?
+    /// The regular-width cap, active only in a regular horizontal size class.
+    private var maxWidthConstraint: Constraint?
     private var maxHeightConstraint: Constraint?
     private var appliedMaxHeightRatio: CGFloat?
     private var dragIndicatorTopConstraint: Constraint?
@@ -214,6 +222,8 @@ open class LMKBottomSheetViewController: UIViewController, LMKThemeApplying {
     static let defaultMaxHeightRatio: CGFloat = 0.9
     static let defaultDismissVelocityThreshold: CGFloat = 500
     static let defaultDismissDistanceRatio: CGFloat = 0.3
+    /// The width cap before `applyTheme` sets it from the style or the theme.
+    private static let placeholderMaxWidth: CGFloat = 700
 
     /// The container's resting bottom offset: lifted by the keyboard and the extra inset.
     private var restingOffset: CGFloat {
@@ -359,6 +369,9 @@ open class LMKBottomSheetViewController: UIViewController, LMKThemeApplying {
             contentBottomToSafeAreaConstraint?.activate()
         }
 
+        maxWidthConstraint?.update(offset: resolved.maxWidth ?? theme.layout.readableContentMaxWidth)
+        updateWidthCap()
+
         let ratio = resolved.maxHeightRatio ?? Self.defaultMaxHeightRatio
         if appliedMaxHeightRatio != ratio {
             appliedMaxHeightRatio = ratio
@@ -386,11 +399,22 @@ open class LMKBottomSheetViewController: UIViewController, LMKThemeApplying {
 
         view.addSubview(containerView)
         containerView.snp.makeConstraints { make in
-            make.leading.trailing.equalToSuperview()
+            // Full width at 999, so the regular-width cap (required) can narrow it; centered and
+            // never wider than the host either way.
+            make.leading.trailing.equalToSuperview().priority(999)
+            make.leading.greaterThanOrEqualToSuperview()
+            make.trailing.lessThanOrEqualToSuperview()
+            make.centerX.equalToSuperview()
             // The keyboard lift raises the whole container; this bound keeps a tall sheet's
             // chrome on screen and lets the content (which yields below required) scroll instead.
             make.top.greaterThanOrEqualTo(view.safeAreaLayoutGuide.snp.top)
             containerBottomConstraint = make.bottom.equalToSuperview().offset(initialOffScreenOffset()).constraint
+        }
+        containerView.snp.prepareConstraints { make in
+            maxWidthConstraint = make.width.lessThanOrEqualTo(Self.placeholderMaxWidth).constraint
+        }
+        registerForTraitChanges([UITraitHorizontalSizeClass.self]) { (sheet: Self, _: UITraitCollection) in
+            sheet.updateWidthCap()
         }
         let pan = UIPanGestureRecognizer(target: self, action: #selector(handlePan(_:)))
         pan.delegate = panDelegate
@@ -424,6 +448,15 @@ open class LMKBottomSheetViewController: UIViewController, LMKThemeApplying {
         // Built inactive: activated beside the cancel pin, it would squash the cancel button to zero height.
         contentLayoutGuide.snp.prepareConstraints { make in
             contentBottomToSafeAreaConstraint = make.bottom.equalTo(containerView.safeAreaLayoutGuide.snp.bottom).inset(0).constraint
+        }
+    }
+
+    /// Caps the sheet's width in a regular-width size class; a compact sheet spans the host.
+    private func updateWidthCap() {
+        if traitCollection.horizontalSizeClass == .regular {
+            maxWidthConstraint?.activate()
+        } else {
+            maxWidthConstraint?.deactivate()
         }
     }
 

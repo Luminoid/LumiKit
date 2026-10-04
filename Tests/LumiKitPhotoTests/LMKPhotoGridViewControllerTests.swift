@@ -7,6 +7,7 @@ import Foundation
 import LumiKitUI
 import Testing
 import UIKit
+import UniformTypeIdentifiers
 @testable import LumiKitPhoto
 
 @MainActor
@@ -720,6 +721,177 @@ struct LMKPhotoGridCellAsyncImageTests {
     }
 }
 
+// MARK: - Drag and drop
+
+@MainActor
+struct LMKPhotoGridDragDropTests {
+    private static func png(_ color: UIColor) throws -> Data {
+        let format = UIGraphicsImageRendererFormat()
+        format.scale = 1
+        return try #require(UIGraphicsImageRenderer(size: CGSize(width: 4, height: 4), format: format).image { context in
+            color.setFill()
+            context.fill(CGRect(x: 0, y: 0, width: 4, height: 4))
+        }.pngData())
+    }
+
+    @Test
+    func `Drag and drop stay off until the consumer opts in, and switch off again`() {
+        let grid = LMKPhotoGridViewController()
+        grid.loadViewIfNeeded()
+        let system = grid.collectionView.dragInteractionEnabled
+        #expect(grid.collectionView.dragDelegate == nil)
+        #expect(grid.collectionView.dropDelegate == nil)
+
+        grid.allowsDraggingPhotos = true
+        #expect(grid.collectionView.dragDelegate === grid)
+        #expect(grid.collectionView.dropDelegate == nil)
+        #expect(grid.collectionView.dragInteractionEnabled)
+
+        grid.onDropImages = { _ in }
+        #expect(grid.collectionView.dropDelegate === grid)
+
+        grid.allowsDraggingPhotos = false
+        #expect(grid.collectionView.dragDelegate == nil)
+        #expect(grid.collectionView.dragInteractionEnabled, "a drop target still needs it")
+        grid.onDropImages = nil
+        #expect(grid.collectionView.dropDelegate == nil)
+        #expect(grid.collectionView.dragInteractionEnabled == system, "the collection view's own setting is back")
+    }
+
+    @Test
+    func `Opting in before the view loads applies once it does`() {
+        let grid = LMKPhotoGridViewController()
+        grid.allowsDraggingPhotos = true
+        grid.onDropImages = { _ in }
+        grid.loadViewIfNeeded()
+        #expect(grid.collectionView.dragDelegate === grid)
+        #expect(grid.collectionView.dropDelegate === grid)
+    }
+
+    @Test
+    func `A dragged photo carries the data source's full image`() async throws {
+        let ds = MockPhotoGridDataSource(photoCount: 3)
+        let grid = LMKPhotoGridViewController()
+        grid.dataSource = ds
+        grid.loadViewIfNeeded()
+        #expect(grid.dragItems(at: IndexPath(item: 0, section: 0)).isEmpty, "nothing while dragging is off")
+
+        grid.allowsDraggingPhotos = true
+        let items = grid.dragItems(at: IndexPath(item: 1, section: 0))
+        #expect(items.count == 1)
+        let item = try #require(items.first)
+        let dsIndex = try #require(grid.dataSourceIndex(forDisplayIndex: 1))
+        #expect(item.localObject as? Int == dsIndex)
+        #expect(item.itemProvider.canLoadObject(ofClass: UIImage.self))
+        let loaded = await withCheckedContinuation { (continuation: CheckedContinuation<CGSize?, Never>) in
+            _ = item.itemProvider.loadObject(ofClass: UIImage.self) { object, _ in
+                continuation.resume(returning: (object as? UIImage)?.size)
+            }
+        }
+        // The full image (100pt square), not the 10pt thumbnail; a round trip through PNG reads it back at scale 1.
+        #expect((loaded?.width ?? 0) >= 100)
+        #expect(ds.fullImageRequests.contains(dsIndex))
+        #expect(grid.dragItems(at: IndexPath(item: 9, section: 0)).isEmpty, "no photo there")
+    }
+
+    @Test
+    func `A dragged photo with a file carries the file's bytes, typed by what they hold`() async throws {
+        let url = FileManager.default.temporaryDirectory.appending(path: "lmk-drag-\(UUID().uuidString).jpg")
+        let jpeg = try #require(UIImage.lmk_solidColor(.red, size: CGSize(width: 8, height: 8)).jpegData(compressionQuality: 0.9))
+        try jpeg.write(to: url)
+        defer { try? FileManager.default.removeItem(at: url) }
+        let ds = MockPhotoGridDataSource(photoCount: 3)
+        ds.fileURL = url
+        let grid = LMKPhotoGridViewController()
+        grid.dataSource = ds
+        grid.loadViewIfNeeded()
+        grid.allowsDraggingPhotos = true
+        let provider = try #require(grid.dragItems(at: IndexPath(item: 1, section: 0)).first?.itemProvider)
+        #expect(provider.registeredContentTypes == [.jpeg])
+        #expect(provider.suggestedName == url.deletingPathExtension().lastPathComponent)
+        let loaded = await withCheckedContinuation { (continuation: CheckedContinuation<Data?, Never>) in
+            _ = provider.loadDataRepresentation(for: .image) { data, _ in
+                continuation.resume(returning: data)
+            }
+        }
+        #expect(loaded == jpeg, "the stored bytes, metadata and all")
+        #expect(ds.fullImageRequests.isEmpty, "no decode")
+
+        // The type comes from the bytes: PNG data in a .jpg file goes as PNG.
+        let png = try #require(UIImage.lmk_solidColor(.red, size: CGSize(width: 8, height: 8)).pngData())
+        try png.write(to: url)
+        let pngProvider = try #require(grid.dragItems(at: IndexPath(item: 1, section: 0)).first?.itemProvider)
+        #expect(pngProvider.registeredContentTypes == [.png])
+
+        // A file that is missing, or not an image, falls back to the full image.
+        // (The image provider is the one without the file's name.)
+        ds.fileURL = url.deletingLastPathComponent().appending(path: "missing.jpg")
+        let missing = try #require(grid.dragItems(at: IndexPath(item: 1, section: 0)).first?.itemProvider)
+        #expect(missing.canLoadObject(ofClass: UIImage.self))
+        #expect(missing.suggestedName == nil)
+        ds.fileURL = URL(filePath: "/etc/hosts")
+        #expect(grid.dragItems(at: IndexPath(item: 1, section: 0)).first?.itemProvider.suggestedName == nil)
+    }
+
+    @Test
+    func `A dragged photo is not delivered once the grid reloaded during the drag`() async throws {
+        let ds = MockPhotoGridDataSource(photoCount: 3)
+        let grid = LMKPhotoGridViewController()
+        grid.dataSource = ds
+        grid.loadViewIfNeeded()
+        grid.allowsDraggingPhotos = true
+        let provider = try #require(grid.dragItems(at: IndexPath(item: 1, section: 0)).first?.itemProvider)
+        grid.reloadData()
+        let loaded = await withCheckedContinuation { (continuation: CheckedContinuation<Bool, Never>) in
+            _ = provider.loadObject(ofClass: UIImage.self) { object, _ in
+                continuation.resume(returning: object != nil)
+            }
+        }
+        #expect(!loaded, "the index may name another photo after a reload")
+        #expect(ds.fullImageRequests.isEmpty)
+    }
+
+    @Test
+    func `Dropped images arrive in order as their bytes, leaving out what is not an image`() async throws {
+        let grid = LMKPhotoGridViewController()
+        grid.loadViewIfNeeded()
+        var drops: [[Data]] = []
+        grid.onDropImages = { drops.append($0) }
+        let red = try Self.png(.red)
+        let blue = try Self.png(.blue)
+        grid.handleDrop(of: [
+            NSItemProvider(item: red as NSData, typeIdentifier: UTType.png.identifier),
+            NSItemProvider(object: "caption" as NSString),
+            NSItemProvider(item: blue as NSData, typeIdentifier: UTType.png.identifier),
+        ])
+        await LMKWait.until { !drops.isEmpty }
+        #expect(drops == [[red, blue]])
+
+        grid.handleDrop(of: [NSItemProvider(object: "caption" as NSString)])
+        try await Task.sleep(for: .milliseconds(100))
+        #expect(drops.count == 1, "a drop with no image reports nothing")
+    }
+
+    @Test
+    func `The collector delivers once every load has answered, without the failed ones`() {
+        var delivered: [[Data]] = []
+        let collector = LMKPhotoGridDropCollector(count: 3) { delivered.append($0) }
+        let first = Data([1])
+        let third = Data([3])
+        collector.receive(third, at: 2)
+        collector.receive(nil, at: 1)
+        #expect(delivered.isEmpty)
+        collector.receive(first, at: 0)
+        #expect(delivered == [[first, third]])
+        collector.receive(first, at: 0)
+        #expect(delivered.count == 1, "late answers are ignored")
+
+        let failed = LMKPhotoGridDropCollector(count: 1) { delivered.append($0) }
+        failed.receive(nil, at: 0)
+        #expect(delivered.count == 1, "nothing loaded, nothing delivered")
+    }
+}
+
 // MARK: - Mock Data Source
 
 private final class MockPhotoGridDataSource: LMKPhotoGridDataSource {
@@ -729,6 +901,7 @@ private final class MockPhotoGridDataSource: LMKPhotoGridDataSource {
     var fullImageRequests: [Int] = []
     var thumbnailRequests: [(index: Int, pixelSize: CGSize)] = []
     var liveIndices: Set<Int> = []
+    var fileURL: URL?
     private let datesDescending: Bool
 
     init(photoCount: Int, datesDescending: Bool = false) {
@@ -754,6 +927,10 @@ private final class MockPhotoGridDataSource: LMKPhotoGridDataSource {
 
     func photoGridIsLivePhoto(at index: Int) -> Bool {
         liveIndices.contains(index)
+    }
+
+    func photoGridFileURL(at _: Int) -> URL? {
+        fileURL
     }
 
     func photoGridDate(at index: Int) -> Date? {

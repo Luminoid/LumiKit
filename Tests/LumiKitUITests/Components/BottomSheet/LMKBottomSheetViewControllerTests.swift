@@ -100,6 +100,67 @@ struct LMKBottomSheetViewControllerTests {
         #expect(second.containerView.frame.minY < second.view.bounds.height)
     }
 
+    /// A host window in a forced horizontal size class.
+    private func makeHost(width: CGFloat, sizeClass: UIUserInterfaceSizeClass) -> (UIViewController, UIWindow) {
+        let host = UIViewController()
+        let window = UIWindow(frame: CGRect(x: 0, y: 0, width: width, height: 800))
+        window.traitOverrides.horizontalSizeClass = sizeClass
+        window.rootViewController = host
+        window.makeKeyAndVisible()
+        return (host, window)
+    }
+
+    @Test
+    func `In a regular width the sheet is capped at the readable width and centered`() async {
+        let (host, window) = makeHost(width: 1024, sizeClass: .regular)
+        defer { window.isHidden = true }
+        let sheet = TestBottomSheet()
+        sheet.present(from: host)
+        sheet.view.layoutIfNeeded()
+        #expect(sheet.traitCollection.horizontalSizeClass == .regular)
+        #expect(abs(sheet.containerView.frame.width - LMKLayout.readableContentMaxWidth) < 0.5)
+        #expect(abs(sheet.containerView.frame.midX - 512) < 0.5)
+        #expect(abs(sheet.containerView.frame.maxY - 800) < 0.5, "still at the bottom")
+        #expect(abs(sheet.dimmingView.frame.width - 1024) < 0.5, "the dimming still covers the host")
+
+        sheet.style.maxWidth = 500
+        sheet.view.layoutIfNeeded()
+        #expect(abs(sheet.containerView.frame.width - 500) < 0.5)
+
+        // Narrower than the cap: the sheet spans the host.
+        window.frame.size.width = 450
+        host.view.frame = window.bounds
+        sheet.view.frame = host.view.bounds
+        sheet.view.layoutIfNeeded()
+        #expect(abs(sheet.containerView.frame.width - 450) < 0.5)
+
+        // A compact size class drops the cap.
+        window.frame.size.width = 1024
+        host.view.frame = window.bounds
+        sheet.view.frame = host.view.bounds
+        window.traitOverrides.horizontalSizeClass = .compact
+        window.updateTraitsIfNeeded()
+        sheet.view.layoutIfNeeded()
+        #expect(abs(sheet.containerView.frame.width - 1024) < 0.5)
+        sheet.dismiss()
+        await LMKWait.until { host.children.isEmpty }
+    }
+
+    @Test
+    func `In a compact width the sheet spans the host`() async {
+        let (host, window) = makeHost(width: 375, sizeClass: .compact)
+        defer { window.isHidden = true }
+        let sheet = TestBottomSheet(style: LMKBottomSheetViewController.Style(maxWidth: 200))
+        sheet.present(from: host)
+        sheet.view.layoutIfNeeded()
+        #expect(abs(sheet.containerView.frame.width - 375) < 0.5)
+        #expect(sheet.containerView.frame.minX == 0)
+        #expect(LMKBottomSheetViewController.Style(maxWidth: -5).maxWidth == 0)
+        #expect(LMKBottomSheetViewController.Style(maxWidth: 300).merging(LMKBottomSheetViewController.Style()).maxWidth == 300)
+        sheet.dismiss()
+        await LMKWait.until { host.children.isEmpty }
+    }
+
     @Test
     func `present ends editing on the host so the sheet is not hidden behind the keyboard`() {
         let (host, window) = makeHost()

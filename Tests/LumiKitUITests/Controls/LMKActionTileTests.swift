@@ -199,6 +199,157 @@ struct LMKActionTileTests {
         #expect(themed.backgroundColor == UIColor.black.withAlphaComponent(0.5))
     }
 
+    // MARK: - Glyph contrast
+
+    private static func traits(_ style: UIUserInterfaceStyle, contrast: UIAccessibilityContrast = .normal) -> UITraitCollection {
+        LMKThemeTesting.traits(for: LMKTheme(), style: style, contrast: contrast)
+    }
+
+    /// The tile's resolved glyph against its resolved accent wash over the page.
+    private static func glyphContrast(_ tile: LMKActionTile, accent: UIColor, _ traits: UITraitCollection) -> CGFloat {
+        let wash = accent.lmk_composited(over: LMKColor.backgroundPrimary, alpha: LMKAlpha.xxs)
+        return (tile.iconView.tintColor ?? .clear).lmk_contrastRatio(to: wash, resolvedWith: traits)
+    }
+
+    @Test
+    func `glyphMinimumContrast softens a deep accent to the ratio on the light page`() throws {
+        let (tile, window) = makeTile(style: LMKActionTile.Style(glyphMinimumContrast: 3.3))
+        defer { window.isHidden = true }
+        let accent = UIColor(lmk_hex: 0x1F4FA8)
+        tile.accentColor = accent
+        let light = Self.traits(.light)
+        let ratio = Self.glyphContrast(tile, accent: accent, light)
+        #expect(ratio >= 3.3 - 0.001)
+        #expect(ratio < 3.4, "the softest tone that still passes")
+        let glyph = try #require(tile.iconView.tintColor).resolvedColor(with: light)
+        #expect(glyph.lmk_relativeLuminance(resolvedWith: light) > accent.lmk_relativeLuminance(resolvedWith: light))
+        #expect(tile.backgroundColor == accent.withAlphaComponent(LMKAlpha.xxs), "the wash stays the accent's")
+    }
+
+    @Test
+    func `glyphMinimumContrast darkens a pale accent just enough`() {
+        let (tile, window) = makeTile(style: LMKActionTile.Style(glyphMinimumContrast: 3))
+        defer { window.isHidden = true }
+        let accent = UIColor(lmk_hex: 0xF2D16B)
+        tile.accentColor = accent
+        let ratio = Self.glyphContrast(tile, accent: accent, Self.traits(.light))
+        #expect(ratio >= 3 - 0.001)
+        #expect(ratio < 3.1)
+    }
+
+    @Test
+    func `Dark Mode keeps the accent while it passes, and Increase Contrast raises the floor to 4.5`() throws {
+        let (tile, window) = makeTile(style: LMKActionTile.Style(glyphMinimumContrast: 3))
+        defer { window.isHidden = true }
+        let accent = UIColor.lmk_dynamic(light: UIColor(lmk_hex: 0x2F7D57), dark: UIColor(lmk_hex: 0x7FD8A8))
+        tile.accentColor = accent
+        let dark = Self.traits(.dark)
+        let glyph = try #require(tile.iconView.tintColor)
+        #expect(glyph.resolvedColor(with: dark).lmk_hexString == accent.resolvedColor(with: dark).lmk_hexString, "the dark tone already passes")
+        #expect(Self.glyphContrast(tile, accent: accent, Self.traits(.light, contrast: .high)) >= 4.5 - 0.001)
+        #expect(Self.glyphContrast(tile, accent: accent, Self.traits(.dark, contrast: .high)) >= 4.5 - 0.001)
+
+        // A dark accent on the dark page fails and lightens until it passes.
+        let deep = UIColor(lmk_hex: 0x3A2F6B)
+        tile.accentColor = deep
+        #expect(Self.glyphContrast(tile, accent: deep, dark) >= 3 - 0.001)
+    }
+
+    @Test
+    func `Without an accent the glyph is measured against the tile's fill; a gradient fill leaves it alone`() {
+        let (tile, window) = makeTile(style: LMKActionTile.Style(iconTint: .black, glyphMinimumContrast: 4.5))
+        defer { window.isHidden = true }
+        let light = Self.traits(.light)
+        let ratio = (tile.iconView.tintColor ?? .clear).lmk_contrastRatio(to: LMKColor.backgroundSecondary, resolvedWith: light)
+        #expect(abs(ratio - 4.5) < 0.02, "black softens to the gray that keeps 4.5 on the secondary background")
+
+        tile.style.surface.background = .gradient(colors: [.red, .blue], direction: .leftToRight)
+        #expect(tile.iconView.tintColor == UIColor.black)
+
+        var plain = LMKActionTile.Style()
+        plain.iconTint = .black
+        tile.style = plain
+        #expect(tile.iconView.tintColor == UIColor.black, "nil keeps the tint as given")
+    }
+
+    @Test
+    func `A state's foreground color still wins over the contrast tone`() {
+        var style = LMKActionTile.Style(glyphMinimumContrast: 3)
+        style.highlighted = LMKControlStateStyle(foregroundColor: .orange)
+        let (tile, window) = makeTile(style: style)
+        defer { window.isHidden = true }
+        tile.accentColor = .blue
+        tile.isHighlighted = true
+        #expect(tile.iconView.tintColor == UIColor.orange)
+    }
+
+    // MARK: - Title scaling and height
+
+    @Test
+    func `titleMinimumScaleFactor shrinks the title, and clearing it restores the label`() {
+        let (tile, window) = makeTile(style: LMKActionTile.Style(titleMinimumScaleFactor: 0.7))
+        defer { window.isHidden = true }
+        #expect(tile.titleLabel.adjustsFontSizeToFitWidth)
+        #expect(abs(tile.titleLabel.minimumScaleFactor - 0.7) < 0.001)
+        #expect(tile.titleLabel.lineBreakMode == .byTruncatingTail)
+        tile.style.titleMinimumScaleFactor = nil
+        #expect(!tile.titleLabel.adjustsFontSizeToFitWidth)
+        #expect(tile.titleLabel.minimumScaleFactor == 0)
+
+        // Left nil, a theme pass keeps what the host set on the label itself.
+        let (hosted, hostedWindow) = makeTile()
+        defer { hostedWindow.isHidden = true }
+        hosted.titleLabel.adjustsFontSizeToFitWidth = true
+        hosted.titleLabel.minimumScaleFactor = 0.5
+        hosted.applyTheme(LMKTheme())
+        #expect(hosted.titleLabel.adjustsFontSizeToFitWidth)
+        #expect(hosted.titleLabel.minimumScaleFactor == 0.5)
+    }
+
+    @Test
+    func `minimumHeight is a floor that the content can exceed, and frame hosts keep their frames`() {
+        let tile = LMKActionTile(style: LMKActionTile.Style(minimumHeight: 90))
+        tile.configure(title: "Vet", systemName: "cross.case")
+        let window = LMKThemeTesting.host(tile)
+        defer { window.isHidden = true }
+        func fittingHeight(_ width: CGFloat) -> CGFloat {
+            tile.systemLayoutSizeFitting(
+                CGSize(width: width, height: UIView.layoutFittingCompressedSize.height),
+                withHorizontalFittingPriority: .required,
+                verticalFittingPriority: .fittingSizeLevel
+            ).height
+        }
+        #expect(abs(fittingHeight(80) - 90) < 0.5)
+        tile.style.minimumHeight = nil
+        #expect(fittingHeight(80) < 90)
+        tile.style.minimumHeight = 20
+        #expect(fittingHeight(80) > 20, "the content outgrows a short floor")
+        #expect(tile.translatesAutoresizingMaskIntoConstraints, "the floor sits on a layout guide, not the tile")
+        tile.frame = CGRect(x: 0, y: 0, width: 80, height: 30)
+        tile.style.minimumHeight = 90
+        tile.layoutIfNeeded()
+        #expect(tile.frame.height == 30)
+    }
+
+    @Test
+    func `The large content viewer shows the title and glyph, and lifting on the tile taps it`() throws {
+        let (tile, window) = makeTile()
+        defer { window.isHidden = true }
+        tile.configure(title: "Medications", systemName: "pills")
+        #expect(tile.showsLargeContentViewer)
+        #expect(tile.scalesLargeContentImage)
+        #expect(tile.largeContentTitle == "Medications")
+        #expect(tile.largeContentImage == UIImage(systemName: "pills"))
+        let interaction = try #require(tile.interactions.compactMap { $0 as? UILargeContentViewerInteraction }.first)
+        var taps = 0
+        tile.onTap = { taps += 1 }
+        tile.largeContentViewerInteraction(interaction, didEndOn: tile, at: CGPoint(x: 10, y: 10))
+        #expect(taps == 1)
+        tile.largeContentViewerInteraction(interaction, didEndOn: tile, at: CGPoint(x: -50, y: 10))
+        tile.largeContentViewerInteraction(interaction, didEndOn: nil, at: CGPoint(x: 10, y: 10))
+        #expect(taps == 1, "outside the tile or on no item is no tap")
+    }
+
     @Test
     func `Merging keeps base fields the override leaves nil`() {
         let merged = LMKActionTile.Style(iconTint: .red, titleLines: 3).merging(LMKActionTile.Style(titleLines: 1, pressAnimation: false))
@@ -206,5 +357,10 @@ struct LMKActionTileTests {
         #expect(merged.titleLines == 1)
         #expect(merged.pressAnimation == false)
         #expect(LMKActionTile.Style.defaultValue == LMKActionTile.Style())
+        let contrast = LMKActionTile.Style(glyphMinimumContrast: 3, titleMinimumScaleFactor: 0.7, minimumHeight: 60)
+            .merging(LMKActionTile.Style(minimumHeight: 72))
+        #expect(contrast.glyphMinimumContrast == 3)
+        #expect(contrast.titleMinimumScaleFactor == 0.7)
+        #expect(contrast.minimumHeight == 72)
     }
 }

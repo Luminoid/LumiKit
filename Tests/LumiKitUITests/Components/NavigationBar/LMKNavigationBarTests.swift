@@ -604,3 +604,68 @@ struct LMKNavigationBarAppearanceTests {
         #expect(bar.itemGlassViews.last?.style.tintColor == UIColor.systemOrange)
     }
 }
+
+// MARK: - Tooltips
+
+@MainActor
+struct LMKNavigationBarToolTipTests {
+    private func makeBar(idiom: UIUserInterfaceIdiom) -> (LMKNavigationBar, UIWindow) {
+        let bar = LMKNavigationBar()
+        let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 390, height: 120))
+        window.traitOverrides.userInterfaceIdiom = idiom
+        window.addSubview(bar)
+        window.isHidden = false
+        bar.updateTraitsIfNeeded()
+        return (bar, window)
+    }
+
+    /// The tooltip the bar gave `button`. `UIControl.toolTip` reads back `nil` on an iPhone
+    /// (the simulator the tests run on), so the bar's own record is what can be checked here.
+    private func toolTip(_ bar: LMKNavigationBar, _ button: UIButton?) -> String? {
+        button.flatMap { bar.automaticToolTips[ObjectIdentifier($0)] }
+    }
+
+    @Test
+    func `Under the Mac idiom glyph items show their label as a tooltip; text items do not`() {
+        let (bar, window) = makeBar(idiom: .mac)
+        defer { window.isHidden = true }
+        #expect(bar.traitCollection.userInterfaceIdiom == .mac)
+        bar.setRightItems([
+            LMKNavigationBarItem(identifier: "add", systemName: "plus", accessibilityLabel: "Add Pet") {},
+            LMKNavigationBarItem(identifier: "done", title: "Done") {},
+            LMKNavigationBarItem(identifier: "both", image: UIImage(systemName: "star"), title: "Favorite") {},
+        ])
+        #expect(toolTip(bar, bar.button(forItem: "add")) == "Add Pet")
+        #expect(toolTip(bar, bar.button(forItem: "done")) == nil, "a title already reads on screen")
+        #expect(toolTip(bar, bar.button(forItem: "both")) == "Favorite", "the title when there is no label")
+        #expect(toolTip(bar, bar.backButton) == bar.strings.backAccessibilityLabel)
+        if let shown = bar.button(forItem: "add")?.toolTip {
+            #expect(shown == "Add Pet", "where UIKit keeps tooltips (iPad, Mac), the button carries it")
+        }
+
+        bar.updateItem("add") { $0.accessibilityLabel = "Add" }
+        #expect(toolTip(bar, bar.button(forItem: "add")) == "Add", "an automatic tooltip follows the label")
+        let old = bar.button(forItem: "add")
+        bar.setRightItems([])
+        #expect(toolTip(bar, old) == nil, "a replaced button's record goes with it")
+    }
+
+    @Test
+    func `A tooltip the host set is never replaced`() {
+        #expect(LMKNavigationBar.ownsToolTip(nil, automatic: nil))
+        #expect(LMKNavigationBar.ownsToolTip(nil, automatic: "Add"))
+        #expect(LMKNavigationBar.ownsToolTip("Add", automatic: "Add"))
+        #expect(!LMKNavigationBar.ownsToolTip("Add a pet (⌘N)", automatic: "Add"))
+        #expect(!LMKNavigationBar.ownsToolTip("Add a pet (⌘N)", automatic: nil))
+    }
+
+    @Test
+    func `Off the Mac idiom no tooltips are set`() {
+        let (bar, window) = makeBar(idiom: .phone)
+        defer { window.isHidden = true }
+        bar.setRightItems([LMKNavigationBarItem(identifier: "add", systemName: "plus", accessibilityLabel: "Add") {}])
+        #expect(toolTip(bar, bar.button(forItem: "add")) == nil)
+        #expect(bar.button(forItem: "add")?.toolTip == nil)
+        #expect(toolTip(bar, bar.backButton) == nil)
+    }
+}

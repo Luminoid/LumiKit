@@ -95,7 +95,7 @@ struct LMKDetailPageViewControllerTests {
         #expect(saved == 1)
         #expect(page.isEditingDetail == false)
         #expect(page.navigationItem.rightBarButtonItems?.map(\.accessibilityIdentifier) == ["detailPage.edit", "detailPage.share"])
-        #expect(page.keyCommands?.isEmpty ?? true)
+        #expect(page.keyCommands?.map(\.input) == ["e"], "back to Command-E for Edit")
 
         page.beginEditing(onSave: { saved += 1 }, onCancel: { cancelled += 1 })
         page.perform(NSSelectorFromString("cancelFromKeyCommand"))
@@ -104,6 +104,72 @@ struct LMKDetailPageViewControllerTests {
         page.endEditing()
         page.onEdit = nil
         #expect(page.navigationItem.rightBarButtonItems?.map(\.accessibilityIdentifier) == ["detailPage.share"])
+    }
+
+    @Test
+    func `onEdit adds Command-E, titled for the discoverability HUD, and nil removes it`() throws {
+        let page = makePage()
+        #expect(page.keyCommands?.isEmpty ?? true)
+        #expect(!page.canBecomeFirstResponder)
+        var edits = 0
+        page.onEdit = { edits += 1 }
+        let command = try #require(page.keyCommands?.first)
+        #expect(command.input == "e")
+        #expect(command.modifierFlags == .command)
+        #expect(command.title == "Edit")
+        #expect(command.discoverabilityTitle == nil || command.discoverabilityTitle == "Edit")
+        #expect(page.canBecomeFirstResponder)
+        page.perform(NSSelectorFromString("editFromKeyCommand"))
+        #expect(edits == 1)
+
+        page.strings = LMKDetailPageViewController.Strings(edit: "Modify")
+        #expect(page.keyCommands?.first?.title == "Modify")
+
+        // While editing, Command-E does nothing and the form commands take over.
+        page.beginEditing(onSave: {}, onCancel: {})
+        #expect(page.keyCommands?.map(\.input) == ["\r", UIKeyCommand.inputEscape])
+        page.perform(NSSelectorFromString("editFromKeyCommand"))
+        #expect(edits == 1)
+        page.endEditing()
+
+        page.onEdit = nil
+        #expect(page.keyCommands?.isEmpty ?? true)
+        #expect(!page.canBecomeFirstResponder)
+    }
+
+    /// Reads as focused, without taking first responder (which hangs the test host).
+    private final class FocusedView: UIView {
+        override var isFirstResponder: Bool {
+            true
+        }
+    }
+
+    @Test
+    func `Appearing leaves a field elsewhere in the window focused; an edit the user starts takes the keyboard`() {
+        let page = makePage()
+        page.traitOverrides.userInterfaceIdiom = .pad
+        // Set before the page is in a window, so nothing claims first responder here.
+        page.onEdit = {}
+        let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 1024, height: 768))
+        let searchField = FocusedView()
+        window.addSubview(searchField)
+        window.isHidden = false
+        defer { window.isHidden = true }
+        // The host runs viewDidAppear as the view goes in, which is where the page claims.
+        window.addSubview(page.view)
+        #expect(page.traitCollection.userInterfaceIdiom == .pad)
+        #expect(!page.isFirstResponder, "a split view's search field keeps the keyboard")
+        #expect(!page.canClaimFirstResponder(overridingFocusElsewhere: false))
+        #expect(page.canClaimFirstResponder(overridingFocusElsewhere: true), "an edit the user starts takes it")
+
+        searchField.removeFromSuperview()
+        #expect(page.canClaimFirstResponder(overridingFocusElsewhere: false))
+        page.view.addSubview(searchField)
+        #expect(!page.canClaimFirstResponder(overridingFocusElsewhere: true), "a field inside the page is editing")
+
+        page.traitOverrides.userInterfaceIdiom = .phone
+        searchField.removeFromSuperview()
+        #expect(!page.canClaimFirstResponder(overridingFocusElsewhere: true), "never on the phone idiom")
     }
 
     @Test

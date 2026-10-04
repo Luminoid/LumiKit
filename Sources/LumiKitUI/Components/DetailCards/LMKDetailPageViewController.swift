@@ -4,8 +4,8 @@
 //
 //  A scroll-stack page of `LMKDetailCard`s diffed by id: subclasses describe
 //  the cards, the page keeps their views across reloads, installs Edit and
-//  Share items on whichever navigation bar it has, and offers an edit mode
-//  with Save / Cancel items and key commands.
+//  Share items (and Command-E) on whichever navigation bar it has, and offers
+//  an edit mode with Save / Cancel items and key commands.
 //
 
 import UIKit
@@ -73,9 +73,17 @@ open class LMKDetailPageViewController: LMKScrollStackViewController {
         }
     }
 
-    /// Installs an Edit item (`pencil`) that calls it; `nil` removes the item.
+    /// Installs an Edit item (`pencil`) and a Command-E key command (titled `strings.edit` in the
+    /// discoverability HUD) that call it; `nil` removes both. On iPad and Mac the page takes first
+    /// responder when it appears, unless a field anywhere in the window is editing (a split view's
+    /// search field keeps the keyboard), so the command works before anything is focused.
     public var onEdit: (() -> Void)? {
-        didSet { updateBarItems() }
+        didSet {
+            updateBarItems()
+            if onEdit != nil, oldValue == nil {
+                claimFirstResponderIfIdle(overridingFocusElsewhere: false)
+            }
+        }
     }
 
     /// Installs a Share item (`square.and.arrow.up`) that calls it; `nil` removes the item.
@@ -99,6 +107,15 @@ open class LMKDetailPageViewController: LMKScrollStackViewController {
     /// Readable width by default.
     override public init(style: LMKScrollStackViewController.Style = LMKScrollStackViewController.Style(widthMode: .readable)) {
         super.init(style: style)
+    }
+
+    // MARK: - Lifecycle
+
+    override open func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        if onEdit != nil || isEditingDetail {
+            claimFirstResponderIfIdle(overridingFocusElsewhere: isEditingDetail)
+        }
     }
 
     // MARK: - Cards
@@ -175,26 +192,33 @@ open class LMKDetailPageViewController: LMKScrollStackViewController {
         onCancelEditing = onCancel
         isEditingDetail = true
         updateBarItems()
-        claimFirstResponderIfIdle()
+        claimFirstResponderIfIdle(overridingFocusElsewhere: true)
     }
 
-    /// Restores the Edit / Share items.
+    /// Restores the Edit / Share items. The page keeps first responder while `onEdit` is set, for
+    /// Command-E.
     public func endEditing() {
         guard isEditingDetail else { return }
         isEditingDetail = false
         onSave = nil
         onCancelEditing = nil
         updateBarItems()
-        if isFirstResponder {
+        if isFirstResponder, onEdit == nil {
             resignFirstResponder()
         }
     }
 
     /// Takes first responder on iPad and Mac (where hardware key commands matter), unless a
-    /// field inside the page is editing.
-    private func claimFirstResponderIfIdle() {
-        guard traitCollection.userInterfaceIdiom != .phone, viewIfLoaded?.window != nil, !Self.containsFirstResponder(view) else { return }
+    /// field is editing or the page cannot take it. An edit the user started takes the keyboard
+    /// from a field elsewhere in the window (`overridingFocusElsewhere`); appearing leaves it there.
+    private func claimFirstResponderIfIdle(overridingFocusElsewhere: Bool) {
+        guard canClaimFirstResponder(overridingFocusElsewhere: overridingFocusElsewhere) else { return }
         becomeFirstResponder()
+    }
+
+    func canClaimFirstResponder(overridingFocusElsewhere: Bool) -> Bool {
+        guard traitCollection.userInterfaceIdiom != .phone, let window = viewIfLoaded?.window, canBecomeFirstResponder, !isFirstResponder else { return false }
+        return !Self.containsFirstResponder(overridingFocusElsewhere ? view : window)
     }
 
     private static func containsFirstResponder(_ view: UIView) -> Bool {
@@ -203,11 +227,20 @@ open class LMKDetailPageViewController: LMKScrollStackViewController {
     }
 
     override open var keyCommands: [UIKeyCommand]? {
-        guard isEditingDetail else { return super.keyCommands }
-        return lmk_formKeyCommands(save: #selector(saveFromKeyCommand), cancel: #selector(cancelFromKeyCommand)) + (super.keyCommands ?? [])
+        if isEditingDetail {
+            return lmk_formKeyCommands(save: #selector(saveFromKeyCommand), cancel: #selector(cancelFromKeyCommand)) + (super.keyCommands ?? [])
+        }
+        guard onEdit != nil else { return super.keyCommands }
+        let edit = UIKeyCommand(title: strings.edit, action: #selector(editFromKeyCommand), input: "e", modifierFlags: .command)
+        return [edit] + (super.keyCommands ?? [])
     }
 
-    override open var canBecomeFirstResponder: Bool { isEditingDetail || super.canBecomeFirstResponder }
+    override open var canBecomeFirstResponder: Bool { isEditingDetail || onEdit != nil || super.canBecomeFirstResponder }
+
+    @objc private func editFromKeyCommand() {
+        guard !isEditingDetail else { return }
+        onEdit?()
+    }
 
     @objc private func saveFromKeyCommand() {
         saveFromItem()

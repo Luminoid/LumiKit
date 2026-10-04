@@ -107,6 +107,76 @@ struct LMKAlertTests {
         #expect(short.actions.map(\.title) == ["Cancel", "Save"])
     }
 
+    /// Runs an alert action's handler the way a tap would (UIKit keeps it in a private property).
+    private func run(_ action: UIAlertAction) {
+        typealias Handler = @convention(block) (UIAlertAction) -> Void
+        guard action.responds(to: NSSelectorFromString("handler")), let block = action.value(forKey: "handler") else { return }
+        unsafeBitCast(block as AnyObject, to: Handler.self)(action)
+    }
+
+    @Test
+    func `Secure text input turns off autocorrection and adds actions after Save`() throws {
+        let (presenter, window) = makePresenter()
+        defer { window.isHidden = true }
+        var removed = 0
+        var saved: [String] = []
+        let alert = LMKAlert.presentTextInput(LMKAlert.TextInput(
+            title: "API Key",
+            initialText: "sk-123",
+            isSecure: true,
+            additionalActions: [
+                .init(title: "Remove", style: .destructive) { removed += 1 },
+                .init(title: "Off", isEnabled: false) {},
+            ]
+        ), from: presenter) { saved.append($0) }
+        let field = try #require(alert.textFields?.first)
+        #expect(field.isSecureTextEntry)
+        #expect(field.autocorrectionType == .no)
+        #expect(field.autocapitalizationType == UITextAutocapitalizationType.none)
+        #expect(field.spellCheckingType == .no)
+        #expect(field.smartQuotesType == .no)
+        #expect(field.smartDashesType == .no)
+        #expect(alert.actions.map(\.title) == ["Cancel", "Save", "Remove", "Off"])
+        #expect(alert.actions.map(\.style) == [.cancel, .default, .destructive, .default])
+        #expect(alert.actions[3].isEnabled == false)
+        run(alert.actions[2])
+        #expect(removed == 1)
+        #expect(saved.isEmpty, "an additional action does not save")
+        run(alert.actions[1])
+        #expect(saved == ["sk-123"])
+
+        // The defaults keep the plain prompt: no extra actions, the field's own text settings.
+        let other = UIViewController()
+        window.rootViewController = other
+        let plain = LMKAlert.presentTextInput(from: other, title: "Rename", initialText: "Fern") { _ in }
+        #expect(plain.actions.map(\.title) == ["Cancel", "Save"])
+        #expect(plain.textFields?.first?.isSecureTextEntry == false)
+        #expect(plain.textFields?.first?.autocorrectionType == .default)
+
+        let third = UIViewController()
+        window.rootViewController = third
+        let short = LMKAlert.presentTextInput(
+            from: third,
+            title: "Key",
+            isSecure: true,
+            additionalActions: [.init(title: "Remove", style: .destructive) {}]
+        ) { _ in }
+        #expect(short.textFields?.first?.isSecureTextEntry == true)
+        #expect(short.actions.map(\.title) == ["Cancel", "Save", "Remove"])
+    }
+
+    @Test
+    func `configureField still wins over the secure defaults`() {
+        let (presenter, window) = makePresenter()
+        defer { window.isHidden = true }
+        let alert = LMKAlert.presentTextInput(LMKAlert.TextInput(
+            title: "Code",
+            isSecure: true,
+            configureField: { $0.autocapitalizationType = .allCharacters }
+        ), from: presenter) { _ in }
+        #expect(alert.textFields?.first?.autocapitalizationType == .allCharacters)
+    }
+
     @Test
     func `Typed action sheet maps styles, enabled state, and adds cancel`() {
         let (presenter, window) = makePresenter()

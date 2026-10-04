@@ -25,9 +25,17 @@ Link `LumiKitPhoto` only where you show photos, and `LumiKitDebug` only in debug
 
 ## Screenshots
 
-| Catalog | Detail cards | Month calendar | Action sheet |
+| Catalog | Buttons | Chips | Text fields |
 |---|---|---|---|
-| <img src="docs/images/lumikit_1.png" alt="The Example app's catalog" width="200"> | <img src="docs/images/lumikit_2.png" alt="Detail cards" width="200"> | <img src="docs/images/lumikit_3.png" alt="Month calendar" width="200"> | <img src="docs/images/lumikit_4.png" alt="Action sheet" width="200"> |
+| <img src="docs/images/lumikit_1.png" alt="The Example app's catalog" width="200"> | <img src="docs/images/lumikit_2.png" alt="LMKButton roles in filled and outlined variants" width="200"> | <img src="docs/images/lumikit_3.png" alt="Filled, tinted, outlined, dismissible, and selectable chips" width="200"> | <img src="docs/images/lumikit_4.png" alt="Text fields with icons and validation states" width="200"> |
+
+| List rows | Detail cards | Month calendar | Photo grid |
+|---|---|---|---|
+| <img src="docs/images/lumikit_5.png" alt="List rows with symbols, thumbnails, badges, and a switch" width="200"> | <img src="docs/images/lumikit_6.png" alt="Detail cards" width="200"> | <img src="docs/images/lumikit_7.png" alt="Month calendar" width="200"> | <img src="docs/images/lumikit_8.png" alt="Photo grid with Live Photo badges" width="200"> |
+
+| Navigation bar | Tab bar | Action sheet | Banners |
+|---|---|---|---|
+| <img src="docs/images/lumikit_9.png" alt="Navigation bar appearances: automatic, classic, and glass" width="200"> | <img src="docs/images/lumikit_10.png" alt="Tab bar with a badge and the iOS 26 bottom accessory" width="200"> | <img src="docs/images/lumikit_11.png" alt="Action sheet" width="200"> | <img src="docs/images/lumikit_12.png" alt="Inline status banners and banners shown over a screen" width="200"> |
 
 ## Requirements
 
@@ -102,7 +110,7 @@ LMKLogger.error("Upload failed", private: fileURL.path, error: error, category: 
 
 ## Example app
 
-`Example/` is a catalog of 68 pages in 12 sections (Foundations, Buttons & Controls, Text Input & Forms, Labels & Indicators, Cards & Lists, Dates, Navigation, Feedback & Status, Sheets & Panels, Photos & Media, Utilities, Debug), with search and a live theme switcher. Generate it with [XcodeGen](https://github.com/yonaskolb/XcodeGen):
+`Example/` is a catalog of 69 pages in 12 sections (Foundations, Buttons & Controls, Text Input & Forms, Labels & Indicators, Cards & Lists, Dates, Navigation, Feedback & Status, Sheets & Panels, Photos & Media, Utilities, Debug), with search and a live theme switcher. Generate it with [XcodeGen](https://github.com/yonaskolb/XcodeGen):
 
 ```bash
 cd Example && xcodegen generate && open LumiKitExample.xcodeproj

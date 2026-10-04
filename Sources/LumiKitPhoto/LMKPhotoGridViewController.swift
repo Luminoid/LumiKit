@@ -83,6 +83,13 @@ public protocol LMKPhotoGridDataSource: AnyObject {
     /// Async fetch of the paired `PHLivePhoto` at the given index, forwarded to the browser.
     /// Default `nil`.
     func photoGridLivePhoto(at index: Int) async -> PHLivePhoto?
+    /// The file holding the photo's original bytes (HEIC, JPEG, PNG, metadata included), for a
+    /// photo dragged out of the grid (`allowsDraggingPhotos`): the drag carries this file's bytes,
+    /// typed by what they hold rather than the extension. Called on the main actor when the drag
+    /// starts. Default `nil`, which
+    /// drags `photoGridImage(at:)` instead; the destination re-encodes that image without its
+    /// EXIF date or location.
+    func photoGridFileURL(at index: Int) -> URL?
     /// The grid is about to need these data source indices (`UICollectionViewDataSourcePrefetching`);
     /// warm a cache here. Default does nothing.
     func photoGridPrefetch(indices: [Int])
@@ -101,6 +108,10 @@ public extension LMKPhotoGridDataSource {
     }
 
     func photoGridLivePhoto(at _: Int) async -> PHLivePhoto? {
+        nil
+    }
+
+    func photoGridFileURL(at _: Int) -> URL? {
         nil
     }
 
@@ -203,8 +214,28 @@ public final class LMKPhotoGridViewController: UIViewController, LMKThemeApplyin
     /// A context menu for the photo at a data source index (long press, secondary click).
     public var contextMenuProvider: ((Int) -> UIMenu?)?
 
+    /// Accepts images dragged into the grid (from Photos, Files, or another app) and hands over
+    /// their original bytes, metadata included, in drop order on the main actor; items that are
+    /// not images, or fail to load, are left out. `nil` (the default) installs no drop target.
+    /// Photos dragged from this grid are not dropped back into it. The grid shows nothing new by
+    /// itself: add the photos to the data source and call `reloadData()`.
+    public var onDropImages: (([Data]) -> Void)? {
+        didSet { updateDragAndDrop() }
+    }
+
+    /// Lets a long press lift a photo out of the grid and drop it into another app (or another
+    /// part of this one); more photos join the drag with a tap. The drag carries the photo's
+    /// file from the data source's `photoGridFileURL(at:)`, original bytes and metadata included,
+    /// or its full image when there is no file. Off by default.
+    public var allowsDraggingPhotos = false {
+        didSet { updateDragAndDrop() }
+    }
+
     /// Maps display position to data source index, accounting for sort order.
     var sortedIndices: [Int] = []
+    /// Counts `reloadData()` calls, so a drag that began before a reload does not deliver
+    /// whatever photo its index names afterwards.
+    var reloadGeneration = 0
     private var lastLayoutWidth: CGFloat = 0
     private var toolbarInsets = NSDirectionalEdgeInsets.zero
     private var toolbarBottomConstraint: Constraint?
@@ -217,6 +248,8 @@ public final class LMKPhotoGridViewController: UIViewController, LMKThemeApplyin
     var isRightToLeft: Bool { collectionView.effectiveUserInterfaceLayoutDirection == .rightToLeft }
     /// Room at the end of the grid for the floating toolbar, so the last row scrolls clear of it.
     private var toolbarContentInset: CGFloat = 0
+    /// The collection view's own drag setting, restored when drag and drop are both off again.
+    private var systemDragInteractionEnabled: Bool?
 
     // Gesture state (see +Gestures).
     var pinchAnchor: GridAnchor?
@@ -277,6 +310,7 @@ public final class LMKPhotoGridViewController: UIViewController, LMKThemeApplyin
     override public func viewDidLoad() {
         super.viewDidLoad()
         setupUI()
+        updateDragAndDrop()
         applyStrings()
         lmk_startApplyingTheme()
         rebuildSortedIndices()
@@ -341,6 +375,17 @@ public final class LMKPhotoGridViewController: UIViewController, LMKThemeApplyin
         }
         collectionView.addGestureRecognizer(pinchGesture)
         collectionView.addGestureRecognizer(selectionPanGesture)
+    }
+
+    /// Installs the drag and drop delegates the consumer opted into, and removes them again.
+    private func updateDragAndDrop() {
+        guard isViewLoaded else { return }
+        let system = systemDragInteractionEnabled ?? collectionView.dragInteractionEnabled
+        systemDragInteractionEnabled = system
+        collectionView.dragDelegate = allowsDraggingPhotos ? self : nil
+        collectionView.dropDelegate = onDropImages != nil ? self : nil
+        // Off by default on iPhone: drag and drop both need it once opted into.
+        collectionView.dragInteractionEnabled = allowsDraggingPhotos || onDropImages != nil ? true : system
     }
 
     private func applyStrings() {
@@ -495,6 +540,7 @@ public final class LMKPhotoGridViewController: UIViewController, LMKThemeApplyin
     /// Reloads the grid from the data source, and the browser it has presented; selections
     /// outside the new range are dropped.
     public func reloadData() {
+        reloadGeneration += 1
         rebuildSortedIndices()
         let count = photoCount
         selectedIndices = selectedIndices.filter { $0 < count }

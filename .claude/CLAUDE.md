@@ -38,7 +38,7 @@ LumiKit/
 │   │   ├── Controls/             # LMKButton, Checkbox, RatingControl, SegmentedControl (+Layout, +Gestures), Slider, Switch, TextField, TextView, SearchBar, ActionTile, CopyableLabel, PhotoButton, LMKHitExpandingControls, LMKTextInputStyle
 │   │   ├── Extensions/           # `Type+LMKFeature.swift`, named for the API they add (UIControl+LMKHitTest, UIScrollView+LMKKeyboardAdjustment, UIView+LMKTextStyle for labels, fields, and text views)
 │   │   ├── Alerts/ Animation/ Haptics/ Share/ Utilities/ Localization/ Resources/
-│   ├── LumiKitPhoto/             # browser (+CollectionView, +Dismiss, +MacCatalyst, +Style, +Transition), grid (+Gestures, +Style), crop (+Layout, +Gestures, +Resize, +Crop, +Style), coordinator, share preview, metadata
+│   ├── LumiKitPhoto/             # browser (+CollectionView, +Dismiss, +MacCatalyst, +Style, +Transition), grid (+Gestures, +Style, +DragDrop), crop (+Layout, +Gestures, +Resize, +Crop, +Style), coordinator, share preview, metadata
 │   ├── LumiKitDebug/             # logger, record, store, history + detail VCs, URLSessionConfiguration+LMKDebug
 │   └── LumiKitLottie/            # LMKLottieRefreshControl + Resources/refresh_spinner.json
 ├── Tests/<Target>Tests/          # mirrors the source folders (a test file sits in its subject's folder); UI Support/ holds LMKThemeTesting and LMKWait (Photo, Debug, and Lottie carry their own LMKWait); Naming/ checks the naming rules over Sources/

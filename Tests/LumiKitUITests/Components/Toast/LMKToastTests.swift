@@ -372,6 +372,48 @@ struct LMKToastPresenterTests {
     }
 
     @Test
+    func `An undo toast takes a status, an icon, a position, and tap-to-dismiss; by default a tap commits nothing`() async throws {
+        let (window, host) = Self.makeHost()
+        defer { window.isHidden = true; LMKToast.dismissAll() }
+        var commits = 0
+        let trash = try #require(UIImage(systemName: "trash.fill"))
+        LMKToast.showUndo(
+            message: "Walk deleted",
+            in: host,
+            status: .warning,
+            icon: trash,
+            position: .bottom,
+            tapToDismiss: true,
+            haptics: true,
+            onUndo: {},
+            onCommit: { commits += 1 }
+        )
+        let toast = try #require(Self.toasts(in: host.view).first)
+        #expect(toast.configuration.status == .warning)
+        #expect(toast.configuration.icon === trash)
+        #expect(toast.iconView.image === trash, "the icon replaces the status glyph inside the ring")
+        #expect(toast.configuration.position == .bottom)
+        #expect(toast.configuration.tapToDismiss)
+        #expect(toast.configuration.haptics == true)
+        #expect(toast.configuration.showsCountdown)
+        toast.didTapToast()
+        await LMKWait.until { commits == 1 }
+        #expect(commits == 1, "opted in, a tap dismisses it and commits")
+
+        // The defaults: a tap that misses Undo leaves the toast up and deletes nothing.
+        LMKToast.showUndo(message: "Deleted", in: host, onUndo: {}, onCommit: { commits += 1 })
+        let plain = try #require(Self.toasts(in: host.view).last)
+        #expect(plain.configuration.status == .neutral)
+        #expect(plain.configuration.icon == nil)
+        #expect(plain.configuration.position == .top)
+        #expect(plain.configuration.tapToDismiss == false)
+        #expect(plain.configuration.haptics == false)
+        plain.didTapToast()
+        #expect(plain.superview != nil, "a tap leaves it up")
+        #expect(commits == 1)
+    }
+
+    @Test
     func `A resigning scene commits its undo toasts at once and leaves other toasts alone`() {
         let (window, host) = Self.makeHost()
         defer { window.isHidden = true; LMKToast.dismissAll() }

@@ -10,6 +10,7 @@ What each component is for, grouped the way the Example app groups them.
 | ``LMKBannerView`` | A persistent bar for an ``LMKStatus`` with an optional action and dismiss: inline in a layout, or shown over a screen under its navigation bar with the scroll content inset beneath it |
 | ``LMKCardView`` | A surface with presets `.cell`, `.elevated`, `.flat`, `.outlined`, an optional `onTap` (a tappable card names itself to VoiceOver from its content), and a clear `contentView` that clips to the card's concentric curve |
 | ``LMKChipView`` | A tag or filter chip (`UIControl`) with filled, tinted, and outlined variants, distinct selected and pressed looks, and a dismiss button; a chip with no handler is display-only and lets touches through |
+| ``LMKChipFlowView`` | Chips (or any views) in lines that wrap at the view's width from the leading edge, with `Style.spacing` and `lineSpacing`; its height follows its width, in stacks and self-sizing cells |
 | ``LMKFilterChipBar`` | A scrolling chip row with single or multiple selection and an optional "All" chip; the selected chip carries the full tint, and a partial `Style.chip` (a tint alone) keeps the outlined default |
 | ``LMKDividerView`` | A hairline separator, horizontal or vertical, with optional dashes |
 | ``LMKEmptyStateView`` | Icon, title, message, and up to two actions in full-screen, card, or inline layouts; `configure(_:animated:)` re-binds content, and the action buttons persist across theme passes; bridges to `UIContentUnavailableConfiguration` |
@@ -26,10 +27,10 @@ What each component is for, grouped the way the Example app groups them.
 
 | Component | Purpose |
 |---|---|
-| ``LMKToast`` | `show(_ status:_ message:duration:in:completion:)`, `show(LMKToast.Configuration)` for titles, actions, persistence, positions, and queue policies, `showUndo(message:duration:in:onUndo:onCommit:)` with a countdown ring, `dismissAll(in:)`; returns an ``LMKToast/Handle``. With no host the toast sits on the active scene's window, above presented sheets. `onDismiss` fires once for every toast, also for one that never showed (`.programmatic`) or was displaced by `.replace` (`.replaced`) |
+| ``LMKToast`` | `show(_ status:_ message:duration:in:completion:)`, `show(LMKToast.Configuration)` for titles, actions, persistence, positions, and queue policies, `showUndo(message:duration:in:status:icon:position:tapToDismiss:haptics:onUndo:onCommit:)` with a countdown ring (a status, a glyph, the bottom edge, and no tap-to-dismiss for a delete snackbar), `dismissAll(in:)`; returns an ``LMKToast/Handle``. With no host the toast sits on the active scene's window, above presented sheets. `onDismiss` fires once for every toast, also for one that never showed (`.programmatic`) or was displaced by `.replace` (`.replaced`) |
 | ``LMKTip`` | Onboarding tips centered or pointed at a source view (``LMKTipView/Placement``); a pointed tip follows its source through a resize, never changes the source's own layout, and stays inside the safe area. The tip is a VoiceOver modal: the bubble's content, then the dismiss area, and the escape gesture dismisses |
 | ``LMKFloatingButton`` | A draggable, edge-snapping action button with a badge; `show(icon:in:positionKey:onTap:)` returns the instance, `positionKey` remembers the corner, and the button re-places itself when its superview resizes |
-| ``LMKAlert`` | Alerts, confirmations (`confirm(...) async`), delete confirmations, countdown confirmations, text input with validation, and typed action sheets |
+| ``LMKAlert`` | Alerts, confirmations (`confirm(...) async`), delete confirmations, countdown confirmations, text input with validation, secure entry, and extra actions after Save (`TextInput.additionalActions`), and typed action sheets |
 | ``LMKErrorHandler`` | Severity-based presentation (`info`, `warning`, `error`, `critical`) with an injectable `policy` and automatic logging |
 | ``LMKProgressViewController`` | A blocking determinate or indeterminate HUD with terminal states, `observe(_ progress:)`, and Escape (or the VoiceOver escape gesture) for `onCancel`; a `dismiss(completion:)` during the presentation waits for it to land |
 
@@ -37,7 +38,7 @@ What each component is for, grouped the way the Example app groups them.
 
 | Component | Purpose |
 |---|---|
-| ``LMKBottomSheetViewController`` | The base sheet: dimming, drag-to-dismiss that cooperates with an inner scroll view, keyboard avoidance that keeps the sheet below the top safe area, Escape and Command-W, a VoiceOver modal with the escape gesture, `onDismiss(reason)`, and an idempotent `dismiss(reason:completion:)`; a dismissed sheet can be presented again |
+| ``LMKBottomSheetViewController`` | The base sheet: dimming, drag-to-dismiss that cooperates with an inner scroll view, keyboard avoidance that keeps the sheet below the top safe area, Escape and Command-W, a VoiceOver modal with the escape gesture, `onDismiss(reason)`, and an idempotent `dismiss(reason:completion:)`; a dismissed sheet can be presented again. In a regular width it is capped at `Style.maxWidth` and centered |
 | ``LMKActionSheet`` | A sheet of actions with icons, subtitles, checkmarks, custom content, and sub-pages, from an `LMKActionSheet.Configuration` |
 | ``LMKEnumPicker`` | Pick one (`T?`) or many (`Set<T>`) cases of an ``LMKEnumSelectable`` type, with search, disabled options, and `onCancel`; the list is as tall as its rows |
 | ``LMKDatePicker`` | Single dates, ranges, a calendar range picker, and a date with a note field, each with `onCancel`; under the Mac idiom a wheel style resolves to `.inline` or `.compact` (`Configuration.resolvedPickerStyle(for:)`) |

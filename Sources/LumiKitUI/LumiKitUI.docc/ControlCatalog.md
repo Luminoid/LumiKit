@@ -14,8 +14,8 @@ Every control honors `isEnabled` and answers `point(inside:with:)` the way UIKit
 | ``LMKTextView`` | A multi-line input with a placeholder, a counter, and growth between `minimumHeight` and `maximumHeight`, scrolling past the cap |
 | ``LMKSearchBar`` | A search field with `onTextChange`, `onDebouncedTextChange` (a pending call is dropped by Cancel, Return, and setting `text`), `onSearch`, `onCancel`, and a `cancelButtonMode` |
 | ``LMKCopyableLabel`` | A label with a Copy edit menu and `onCopy` |
-| ``LMKPhotoButton`` | A circular or rounded photo well with a placeholder and `onTap` |
-| ``LMKActionTile`` | A tile with an icon, title, and count, tinted by an accent color, for dashboards |
+| ``LMKPhotoButton`` | A circular or rounded photo well with a placeholder, `onTap`, and `onDropImage` for an image dragged onto it (its original bytes) |
+| ``LMKActionTile`` | A tile with an icon, title, and count, tinted by an accent color, for dashboards; `Style.glyphMinimumContrast` softens the glyph to the softest tone that keeps a WCAG ratio against the tile, `titleMinimumScaleFactor` shrinks a long title, `minimumHeight` sets a floor, and the large content viewer shows the title at accessibility sizes |
 
 ## Buttons
 

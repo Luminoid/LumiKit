@@ -221,7 +221,10 @@ public final class LMKNavigationBar: UIView, LMKThemeApplying {
 
     /// Per-instance strings (default `Self.strings`).
     public var strings: Strings = LMKNavigationBar.strings {
-        didSet { backButton.accessibilityLabel = strings.backAccessibilityLabel }
+        didSet {
+            backButton.accessibilityLabel = strings.backAccessibilityLabel
+            updateToolTip(of: backButton, to: strings.backAccessibilityLabel)
+        }
     }
 
     // MARK: - Subviews
@@ -364,6 +367,8 @@ public final class LMKNavigationBar: UIView, LMKThemeApplying {
     var scrollEdgeInteraction: UIInteraction?
     weak var pinnedScrollView: UIScrollView?
     var pinsScrollViewUnderBar = false
+    /// The tooltips the bar set itself, by button, so a tooltip the host set is never replaced.
+    var automaticToolTips: [ObjectIdentifier: String] = [:]
 
     static let defaultButtonRowHeight: CGFloat = 44
     static let defaultLargeTitleRowHeight: CGFloat = 52
@@ -376,6 +381,9 @@ public final class LMKNavigationBar: UIView, LMKThemeApplying {
         self.style = style
         super.init(frame: .zero)
         setupUI()
+        registerForTraitChanges([UITraitUserInterfaceIdiom.self]) { (bar: Self, _: UITraitCollection) in
+            bar.updateToolTips()
+        }
         lmk_startApplyingTheme()
     }
 
@@ -580,6 +588,7 @@ public final class LMKNavigationBar: UIView, LMKThemeApplying {
     private func rebuildItems(_ items: [LMKNavigationBarItem], in stack: UIStackView, replacing old: [LMKButton]) -> (buttons: [LMKButton], sizeConstraints: [Constraint]) {
         for button in old {
             button.removeFromSuperview()
+            automaticToolTips[ObjectIdentifier(button)] = nil
         }
         let removedIdentifiers = Set(badgeViews.keys).subtracting((leftItems + rightItems).map(\.identifier))
         for identifier in removedIdentifiers {
@@ -610,7 +619,30 @@ public final class LMKNavigationBar: UIView, LMKThemeApplying {
         button.onTap = item.action
         button.accessibilityLabel = item.accessibilityLabel ?? item.title
         button.accessibilityIdentifier = item.identifier
+        updateToolTip(of: button, to: item.image == nil ? nil : item.accessibilityLabel ?? item.title)
         updateBadge(for: item, on: button)
+    }
+
+    /// Under the Mac idiom a glyph item (and the back button) shows its label as a tooltip on
+    /// hover, unless the host gave the button a tooltip of its own.
+    func updateToolTips() {
+        for (button, item) in Array(zip(leftItemButtons, leftItems)) + Array(zip(rightItemButtons, rightItems)) {
+            updateToolTip(of: button, to: item.image == nil ? nil : item.accessibilityLabel ?? item.title)
+        }
+        updateToolTip(of: backButton, to: strings.backAccessibilityLabel)
+    }
+
+    func updateToolTip(of button: UIButton, to text: String?) {
+        let key = ObjectIdentifier(button)
+        guard Self.ownsToolTip(button.toolTip, automatic: automaticToolTips[key]) else { return }
+        let wanted = traitCollection.userInterfaceIdiom == .mac ? text : nil
+        button.toolTip = wanted
+        automaticToolTips[key] = wanted
+    }
+
+    /// Whether the bar may set a button's tooltip: it has none, or the one the bar set itself.
+    static func ownsToolTip(_ current: String?, automatic: String?) -> Bool {
+        current == nil || current == automatic
     }
 
     private func updateBadge(for item: LMKNavigationBarItem, on button: LMKButton) {
@@ -774,6 +806,7 @@ public final class LMKNavigationBar: UIView, LMKThemeApplying {
             haptics: false
         ).merging(resolved.item)
         backButton.setSymbol(resolved.backSymbol ?? Self.defaultBackSymbol, pointSize: resolved.backSymbolPointSize ?? Self.defaultBackSymbolPointSize, weight: .medium)
+        updateToolTip(of: backButton, to: strings.backAccessibilityLabel)
         for (button, item) in zip(leftItemButtons, leftItems) {
             configure(button, with: item)
         }

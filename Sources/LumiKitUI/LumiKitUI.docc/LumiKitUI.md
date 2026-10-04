@@ -92,6 +92,7 @@ Start with <doc:GettingStarted>, then <doc:Theming> and <doc:Styling>.
 - ``LMKBannerView``
 - ``LMKCardView``
 - ``LMKChipView``
+- ``LMKChipFlowView``
 - ``LMKFilterChipBar``
 - ``LMKDividerView``
 - ``LMKEmptyStateView``

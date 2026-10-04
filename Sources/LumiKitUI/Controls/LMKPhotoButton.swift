@@ -6,7 +6,9 @@
 //  clipped to a circle or rounded square. Tapping it is the host's cue to pick.
 //
 
+import LumiKitCore
 import UIKit
+import UniformTypeIdentifiers
 
 /// Photo picker button (profile photos, product photos).
 ///
@@ -14,6 +16,7 @@ import UIKit
 /// let photoButton = LMKPhotoButton(size: 160)
 /// photoButton.image = pet.photo
 /// photoButton.onTap = { [weak self] in self?.pickPhoto() }
+/// photoButton.onDropImage = { [weak self] data in self?.usePhoto(data) }   // drag a photo in (iPad, Mac)
 /// ```
 public final class LMKPhotoButton: UIControl, LMKThemeApplying {
     // MARK: - Style
@@ -131,6 +134,15 @@ public final class LMKPhotoButton: UIControl, LMKThemeApplying {
     /// Called on tap.
     public var onTap: (() -> Void)?
 
+    /// Accepts an image dragged onto the well (from Photos, Files, or another app) and hands
+    /// over its original bytes, metadata included, on the main actor. While a drag hovers, the
+    /// well takes `Style.highlighted`, or an accent outline when that is unset. Only the latest
+    /// drop is delivered. `nil` (the default) installs no drop target. The well does not show the
+    /// image itself: set `image` once the data is decoded.
+    public var onDropImage: ((Data) -> Void)? {
+        didSet { updateDropInteraction() }
+    }
+
     /// Per-instance style; `nil` fields resolve from `theme.photoButton`, then the built-in look.
     public var style: Style {
         didSet {
@@ -145,6 +157,18 @@ public final class LMKPhotoButton: UIControl, LMKThemeApplying {
     public let imageView = UIImageView()
 
     private var resolved = Style()
+    private var dropInteraction: UIDropInteraction?
+    /// The data load of the last drop, cancelled when another drop replaces it or drops turn off.
+    private var dropLoad: Progress?
+    /// Counts drops, so a load that finishes after a newer drop (or after drops turn off) is dropped.
+    private var dropGeneration = 0
+    /// Whether a drag carrying an image hovers over the well.
+    var isDropTargeted = false {
+        didSet {
+            guard isDropTargeted != oldValue else { return }
+            applyTheme(traitCollection.lmkTheme)
+        }
+    }
 
     // MARK: - Initialization
 
@@ -224,10 +248,13 @@ public final class LMKPhotoButton: UIControl, LMKThemeApplying {
         }
         var surface = resolved.surface
         var stateAlpha: CGFloat = 1
-        if isHighlighted {
+        if isHighlighted || isDropTargeted {
             if let background = resolved.highlighted?.background { surface.background = background }
             if let border = resolved.highlighted?.border { surface.border = border }
             stateAlpha = min(stateAlpha, resolved.highlighted?.alpha ?? 1)
+        }
+        if isDropTargeted, resolved.highlighted?.background == nil, resolved.highlighted?.border == nil {
+            surface.border = .solid(LMKColor.primary, width: Self.dropTargetBorderWidth)
         }
         if !isEnabled {
             if let background = resolved.disabled?.background { surface.background = background }
@@ -278,6 +305,45 @@ public final class LMKPhotoButton: UIControl, LMKThemeApplying {
         LMKAnimation.animateButtonPressUp(self)
     }
 
+    // MARK: - Drop
+
+    private func updateDropInteraction() {
+        if onDropImage != nil, dropInteraction == nil {
+            let interaction = UIDropInteraction(delegate: self)
+            addInteraction(interaction)
+            dropInteraction = interaction
+        } else if onDropImage == nil, let interaction = dropInteraction {
+            removeInteraction(interaction)
+            dropInteraction = nil
+            dropGeneration += 1
+            dropLoad?.cancel()
+            dropLoad = nil
+            isDropTargeted = false
+        }
+    }
+
+    /// Loads the first image among `providers` and hands its bytes to `onDropImage`.
+    func handleDrop(of providers: [NSItemProvider]) {
+        guard let provider = providers.first(where: { $0.hasItemConformingToTypeIdentifier(UTType.image.identifier) }) else { return }
+        dropGeneration += 1
+        let generation = dropGeneration
+        dropLoad?.cancel()
+        dropLoad = provider.loadDataRepresentation(for: UTType.image) { [weak self] data, error in
+            Task { @MainActor [weak self] in
+                guard let self, generation == dropGeneration else { return }
+                dropLoad = nil
+                guard let data else {
+                    LMKLogger.warning("LMKPhotoButton: the dropped image could not be read", error: error, category: .lumiKit)
+                    return
+                }
+                onDropImage?(data)
+            }
+        }
+    }
+
+    /// The accent outline a hovering drag shows when `Style.highlighted` is unset.
+    private static let dropTargetBorderWidth: CGFloat = 2
+
     // MARK: - Accessibility
 
     private func updateAccessibility() {
@@ -294,6 +360,35 @@ public final class LMKPhotoButton: UIControl, LMKThemeApplying {
 extension LMKPhotoButton: UIPointerInteractionDelegate {
     public func pointerInteraction(_: UIPointerInteraction, styleFor _: UIPointerRegion) -> UIPointerStyle? {
         LMKPointerStyle.lift(for: self)
+    }
+}
+
+// MARK: - UIDropInteractionDelegate
+
+extension LMKPhotoButton: UIDropInteractionDelegate {
+    public func dropInteraction(_: UIDropInteraction, canHandle session: any UIDropSession) -> Bool {
+        isEnabled && onDropImage != nil && session.hasItemsConforming(toTypeIdentifiers: [UTType.image.identifier])
+    }
+
+    public func dropInteraction(_: UIDropInteraction, sessionDidUpdate _: any UIDropSession) -> UIDropProposal {
+        UIDropProposal(operation: isEnabled ? .copy : .forbidden)
+    }
+
+    public func dropInteraction(_: UIDropInteraction, sessionDidEnter _: any UIDropSession) {
+        isDropTargeted = true
+    }
+
+    public func dropInteraction(_: UIDropInteraction, sessionDidExit _: any UIDropSession) {
+        isDropTargeted = false
+    }
+
+    public func dropInteraction(_: UIDropInteraction, sessionDidEnd _: any UIDropSession) {
+        isDropTargeted = false
+    }
+
+    public func dropInteraction(_: UIDropInteraction, performDrop session: any UIDropSession) {
+        isDropTargeted = false
+        handleDrop(of: session.items.map(\.itemProvider))
     }
 }
 

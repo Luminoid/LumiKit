@@ -224,22 +224,57 @@ public enum LMKToast {
 
     /// Shows an undo toast: a countdown ring, an Undo action, and `onCommit` when the toast
     /// leaves any other way (timeout, replacement, dismissal, the scene resigning, or never
-    /// having reached the screen). `onCommit` is retained strongly so the commit survives the
+    /// having reached the screen). A tap on the toast's body leaves it up, so a tap that misses
+    /// Undo commits nothing early. `onCommit` is retained strongly so the commit survives the
     /// presenting screen.
+    ///
+    /// ```swift
+    /// // A delete snackbar: a trash glyph, at the bottom, dismissed only by Undo or the countdown.
+    /// LMKToast.showUndo(
+    ///     message: "Walk deleted",
+    ///     status: .warning,
+    ///     icon: UIImage(systemName: "trash.fill"),
+    ///     position: .bottom,
+    ///     onUndo: { restore(walk) },
+    ///     onCommit: { repository.delete(walk) }
+    /// )
+    /// ```
+    ///
+    /// - Parameters:
+    ///   - message: The toast's text.
+    ///   - duration: Seconds until the toast commits on its own.
+    ///   - host: The controller to show in; `nil` shows on the key window, above presented sheets.
+    ///   - status: Tints the ring and the glyph; `.neutral` by default.
+    ///   - icon: Replaces the status glyph inside the ring; `nil` keeps it.
+    ///   - position: The edge the toast slides in from; `.top` by default.
+    ///   - tapToDismiss: Whether a tap on the toast's body dismisses it early (and commits); off by
+    ///     default.
+    ///   - haptics: Whether the status haptic plays when it shows; off by default.
+    ///   - onUndo: Called when the user chooses Undo; the commit is skipped.
+    ///   - onCommit: Called once when the toast leaves any other way.
+    /// - Returns: The handle of the toast.
     @discardableResult
     public static func showUndo(
         message: String,
         duration: TimeInterval = defaultUndoDuration,
         in host: UIViewController? = nil,
+        status: LMKStatus = .neutral,
+        icon: UIImage? = nil,
+        position: Configuration.Position = .top,
+        tapToDismiss: Bool = false,
+        haptics: Bool = false,
         onUndo: @escaping () -> Void,
         onCommit: @escaping () -> Void
     ) -> Handle {
         show(Configuration(
-            status: .neutral,
+            status: status,
             message: message,
+            icon: icon,
             action: .init(title: strings.undo, onAction: onUndo),
             duration: .seconds(duration),
-            haptics: false,
+            position: position,
+            tapToDismiss: tapToDismiss,
+            haptics: haptics,
             presentation: host.map { .onViewController($0) } ?? .inWindowScene(nil),
             showsCountdown: true,
             onDismiss: { reason in

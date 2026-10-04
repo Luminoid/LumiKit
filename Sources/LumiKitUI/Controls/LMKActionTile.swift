@@ -44,8 +44,28 @@ public final class LMKActionTile: UIControl, LMKThemeApplying {
         public var countSeparator: String?
         /// Alpha of the accent behind the tile; `nil` = `alpha.xxs`.
         public var accentBackgroundAlpha: CGFloat?
-        /// Brightness factor applied to a light accent for the glyph; `nil` = 0.7.
+        /// Brightness factor applied to a light accent for the glyph; `nil` = 0.7. Unused while
+        /// `glyphMinimumContrast` is set.
         public var lightAccentGlyphBrightness: CGFloat?
+        /// The WCAG contrast the glyph keeps against the fill behind it; `nil` = the glyph takes
+        /// the accent as is (a light accent darkened by `lightAccentGlyphBrightness`).
+        ///
+        /// When set, the glyph takes the softest tone of its color that still meets this ratio
+        /// (`UIColor.lmk_softestTone(over:washAlpha:minimumContrast:resolvedWith:)`), resolved per
+        /// appearance: the accent mixed toward the page while it has contrast to spare, darkened
+        /// just enough when it has none. The fill measured is the accent's wash over
+        /// `LMKColor.backgroundPrimary`, or a solid `surface.background`; a gradient, blur, or glass
+        /// background leaves the glyph as it is. Dark Mode keeps the usual tone while it meets the
+        /// ratio, and Increase Contrast raises the ratio to at least 4.5. A state's
+        /// `foregroundColor` still wins.
+        public var glyphMinimumContrast: CGFloat?
+        /// The smallest scale the title shrinks to before it truncates, so a word too long for
+        /// the tile shrinks rather than breaking mid-word; `nil` = no shrinking.
+        public var titleMinimumScaleFactor: CGFloat?
+        /// A height floor for the tile that still grows with its content (a title wrapping at
+        /// large text sizes); `nil` = the content's height. Held just below required, so a table
+        /// or collection view's own sizing wins.
+        public var minimumHeight: CGFloat?
         /// Scale on press; `nil` = yes.
         public var pressAnimation: Bool?
         /// Haptic on tap; `nil` = yes.
@@ -64,6 +84,9 @@ public final class LMKActionTile: UIControl, LMKThemeApplying {
             countSeparator: String? = nil,
             accentBackgroundAlpha: CGFloat? = nil,
             lightAccentGlyphBrightness: CGFloat? = nil,
+            glyphMinimumContrast: CGFloat? = nil,
+            titleMinimumScaleFactor: CGFloat? = nil,
+            minimumHeight: CGFloat? = nil,
             pressAnimation: Bool? = nil,
             haptics: Bool? = nil,
             highlighted: LMKControlStateStyle? = nil,
@@ -79,6 +102,9 @@ public final class LMKActionTile: UIControl, LMKThemeApplying {
             self.countSeparator = countSeparator
             self.accentBackgroundAlpha = accentBackgroundAlpha
             self.lightAccentGlyphBrightness = lightAccentGlyphBrightness
+            self.glyphMinimumContrast = glyphMinimumContrast
+            self.titleMinimumScaleFactor = titleMinimumScaleFactor
+            self.minimumHeight = minimumHeight
             self.pressAnimation = pressAnimation
             self.haptics = haptics
             self.highlighted = highlighted
@@ -100,6 +126,9 @@ public final class LMKActionTile: UIControl, LMKThemeApplying {
                 countSeparator: other.countSeparator ?? countSeparator,
                 accentBackgroundAlpha: other.accentBackgroundAlpha ?? accentBackgroundAlpha,
                 lightAccentGlyphBrightness: other.lightAccentGlyphBrightness ?? lightAccentGlyphBrightness,
+                glyphMinimumContrast: other.glyphMinimumContrast ?? glyphMinimumContrast,
+                titleMinimumScaleFactor: other.titleMinimumScaleFactor ?? titleMinimumScaleFactor,
+                minimumHeight: other.minimumHeight ?? minimumHeight,
                 pressAnimation: other.pressAnimation ?? pressAnimation,
                 haptics: other.haptics ?? haptics,
                 highlighted: LMKControlStateStyle.merge(highlighted, other.highlighted),
@@ -156,11 +185,20 @@ public final class LMKActionTile: UIControl, LMKThemeApplying {
     private var iconSizeConstraint: Constraint?
     private var contentLeadingConstraint: Constraint?
     private var contentTopConstraint: Constraint?
+    /// Carries the `minimumHeight` floor: a constraint on the tile itself would turn off its
+    /// autoresizing translation and break frame-based hosts.
+    private let minimumHeightGuide = UILayoutGuide()
+    private var minimumHeightConstraint: Constraint?
+    /// Whether `titleMinimumScaleFactor` configured the title, so clearing it restores the label
+    /// without overwriting what a host set on it directly.
+    private var appliesTitleScaling = false
     /// The scale a state style set, so the press animation keeps the transform otherwise.
     private var appliedStateScale: CGFloat?
 
     /// Brightness factor for `lmk_stateShade(by:)` of the pressed fill (15% darker).
     private static let highlightedFillDelta: CGFloat = 0.85
+    /// The glyph contrast floor under Increase Contrast (WCAG's ratio for body text).
+    private nonisolated static let highContrastGlyphContrast: CGFloat = 4.5
 
     // MARK: - Initialization
 
@@ -206,7 +244,18 @@ public final class LMKActionTile: UIControl, LMKThemeApplying {
         addInteraction(UIPointerInteraction(delegate: self))
         isAccessibilityElement = true
         accessibilityTraits = .button
+        // At accessibility text sizes a long press shows the title and glyph in the large content
+        // viewer, so a title shrunk or truncated to fit stays readable.
         showsLargeContentViewer = true
+        scalesLargeContentImage = true
+        addInteraction(UILargeContentViewerInteraction(delegate: self))
+        addLayoutGuide(minimumHeightGuide)
+        minimumHeightGuide.snp.makeConstraints { make in
+            make.top.bottom.leading.trailing.equalToSuperview()
+        }
+        minimumHeightGuide.snp.prepareConstraints { make in
+            minimumHeightConstraint = make.height.greaterThanOrEqualTo(0).priority(999).constraint
+        }
     }
 
     override public func layoutSubviews() {
@@ -257,9 +306,19 @@ public final class LMKActionTile: UIControl, LMKThemeApplying {
         var surface = resolved.surface
         var defaults = LMKSurfaceStyle(background: .solid(LMKColor.backgroundSecondary), corners: .fixed(theme.cornerRadius.medium))
         var glyphTint = resolved.iconTint ?? LMKColor.primary
+        let washAlpha = resolved.accentBackgroundAlpha ?? theme.alpha.xxs
         if let accent {
-            defaults.background = .solid(accent.withAlphaComponent(resolved.accentBackgroundAlpha ?? theme.alpha.xxs))
+            defaults.background = .solid(accent.withAlphaComponent(washAlpha))
             glyphTint = accent.lmk_glyphTint(onLightAccentDarkenBy: resolved.lightAccentGlyphBrightness ?? 0.7)
+        }
+        if let minimumContrast = resolved.glyphMinimumContrast,
+           let fill = Self.glyphFill(background: surface.background, accent: accent, washAlpha: washAlpha) {
+            glyphTint = Self.contrastingGlyphTint(
+                base: accent ?? glyphTint,
+                usual: glyphTint,
+                fill: fill,
+                minimumContrast: minimumContrast
+            )
         }
         var stateAlpha: CGFloat = 1
         var stateScale: CGFloat?
@@ -295,8 +354,59 @@ public final class LMKActionTile: UIControl, LMKThemeApplying {
         iconView.tintColor = glyphTint
         titleLabel.lmk_apply(resolved.titleTextStyle ?? .caption, color: resolved.titleColor ?? LMKColor.textSecondary)
         titleLabel.numberOfLines = resolved.titleLines ?? 2
+        applyTitleScaling(resolved.titleMinimumScaleFactor)
+        if let minimumHeight = resolved.minimumHeight {
+            minimumHeightConstraint?.update(offset: minimumHeight)
+            minimumHeightConstraint?.activate()
+        } else {
+            minimumHeightConstraint?.deactivate()
+        }
         updateContent()
         didApplyStyle?(self)
+    }
+
+    private func applyTitleScaling(_ minimumScaleFactor: CGFloat?) {
+        if let minimumScaleFactor {
+            titleLabel.adjustsFontSizeToFitWidth = true
+            titleLabel.minimumScaleFactor = min(max(minimumScaleFactor, 0), 1)
+            titleLabel.lineBreakMode = .byTruncatingTail
+            appliesTitleScaling = true
+        } else if appliesTitleScaling {
+            titleLabel.adjustsFontSizeToFitWidth = false
+            titleLabel.minimumScaleFactor = 0
+            appliesTitleScaling = false
+        }
+    }
+
+    /// What the glyph is measured against: the color under the fill and the opacity of `base`'s
+    /// wash over it. `nil` for a fill that is not one solid color.
+    private static func glyphFill(background: LMKBackgroundStyle?, accent: UIColor?, washAlpha: CGFloat) -> (color: UIColor, washAlpha: CGFloat)? {
+        switch background {
+        case nil, .solid(nil):
+            // The default fill: the accent's wash over the page, or the secondary background.
+            accent == nil ? (LMKColor.backgroundSecondary, 0) : (LMKColor.backgroundPrimary, washAlpha)
+        case let .solid(color?):
+            // A translucent fill shows the page through it.
+            (color.lmk_composited(over: LMKColor.backgroundPrimary, alpha: 1), 0)
+        case .clear:
+            (LMKColor.backgroundPrimary, 0)
+        case .gradient, .blur, .glass:
+            nil
+        }
+    }
+
+    /// `base`'s softest tone that keeps `minimumContrast` (4.5 or more under Increase Contrast)
+    /// against `fill`; in Dark Mode `usual` while it already does.
+    private nonisolated static func contrastingGlyphTint(base: UIColor, usual: UIColor, fill: (color: UIColor, washAlpha: CGFloat), minimumContrast: CGFloat) -> UIColor {
+        UIColor { traits in
+            let target = traits.accessibilityContrast == .high ? max(Self.highContrastGlyphContrast, minimumContrast) : minimumContrast
+            if traits.userInterfaceStyle == .dark {
+                let wash = base.lmk_composited(over: fill.color, alpha: fill.washAlpha)
+                let tone = usual.resolvedColor(with: traits)
+                if tone.lmk_contrastRatio(to: wash, resolvedWith: traits) >= target { return tone }
+            }
+            return base.lmk_softestTone(over: fill.color, washAlpha: fill.washAlpha, minimumContrast: target, resolvedWith: traits)
+        }
     }
 
     private func apply(_ state: LMKControlStateStyle, to surface: inout LMKSurfaceStyle, _ foreground: inout UIColor, _ alpha: inout CGFloat, _ scale: inout CGFloat?) {
@@ -351,6 +461,16 @@ public final class LMKActionTile: UIControl, LMKThemeApplying {
 extension LMKActionTile: UIPointerInteractionDelegate {
     public func pointerInteraction(_: UIPointerInteraction, styleFor _: UIPointerRegion) -> UIPointerStyle? {
         LMKPointerStyle.lift(for: self)
+    }
+}
+
+// MARK: - UILargeContentViewerInteractionDelegate
+
+extension LMKActionTile: UILargeContentViewerInteractionDelegate {
+    /// Lifting the finger on the tile while its large content shows is a tap.
+    public func largeContentViewerInteraction(_: UILargeContentViewerInteraction, didEndOn item: (any UILargeContentViewerItem)?, at point: CGPoint) {
+        guard item === self, bounds.contains(point) else { return }
+        handleTap()
     }
 }
 

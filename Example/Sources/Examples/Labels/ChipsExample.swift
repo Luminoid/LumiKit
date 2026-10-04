@@ -2,7 +2,7 @@
 //  ChipsExample.swift
 //  LumiKitExample
 //
-//  Chips: Filled, tinted, outlined, dismissible, and selectable.
+//  Chips: Filled, tinted, outlined, dismissible, selectable, and wrapping.
 //
 
 import LumiKitUI
@@ -90,5 +90,20 @@ final class ChipsDetailViewController: DetailViewController {
             toggleRow.addArrangedSubview(UIView())
             stackView.addArrangedSubview(makeScrollingRow(toggleRow))
         }
+
+        addDivider()
+        addSectionHeader("Wrapping")
+        stackView.addArrangedSubview(UILabel.lmk_make(
+            .caption,
+            text: "LMKChipFlowView wraps chips onto new lines at the page width. Dismiss one and the rest close the gap."
+        ))
+        let tags = ["Design", "Swift", "UIKit", "Accessibility", "Dynamic Type", "Dark Mode", "Localization", "Mac Catalyst", "Right to Left"]
+        let flow = LMKChipFlowView(arrangedSubviews: tags.map { text in
+            let chip = LMKChipView(text: text, style: .outlined.tint(LMKColor.secondary))
+            // Removing the chip from its superview takes it out of the flow.
+            chip.onDismiss = { [weak chip] in chip?.removeFromSuperview() }
+            return chip
+        })
+        stackView.addArrangedSubview(flow)
     }
 }

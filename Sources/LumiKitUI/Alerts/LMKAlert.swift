@@ -61,11 +61,17 @@ public enum LMKAlert {
         public var autocapitalizationType: UITextAutocapitalizationType
         public var autocorrectionType: UITextAutocorrectionType
         public var keyboardType: UIKeyboardType
+        /// Secure entry (passwords, API keys): the text is masked, and autocorrection,
+        /// autocapitalization, spell checking, and smart punctuation are off whatever the other
+        /// fields say. `configureField` can still change them.
         public var isSecure: Bool
         /// `nil` = `strings.save`.
         public var saveTitle: String?
         /// `nil` = `strings.cancel`.
         public var cancelTitle: String?
+        /// More buttons after Save (a destructive Remove for a stored value), in order. Their
+        /// handlers get no text; `isEnabled` and `style` apply, `image` does not.
+        public var additionalActions: [Action]
         /// Enables Save only while it returns `true` for the current text.
         public var validate: ((String) -> Bool)?
         /// Runs after the standard configuration, so its changes win.
@@ -82,6 +88,7 @@ public enum LMKAlert {
             isSecure: Bool = false,
             saveTitle: String? = nil,
             cancelTitle: String? = nil,
+            additionalActions: [Action] = [],
             validate: ((String) -> Bool)? = nil,
             configureField: ((UITextField) -> Void)? = nil
         ) {
@@ -95,6 +102,7 @@ public enum LMKAlert {
             self.isSecure = isSecure
             self.saveTitle = saveTitle
             self.cancelTitle = cancelTitle
+            self.additionalActions = additionalActions
             self.validate = validate
             self.configureField = configureField
         }
@@ -229,7 +237,20 @@ public enum LMKAlert {
 
     /// A prompt with one text field and save / cancel. The save action hands back the field's
     /// text verbatim (empty when untouched); `input.validate` keeps Save disabled until the
-    /// text passes.
+    /// text passes. `input.additionalActions` follow Save.
+    ///
+    /// ```swift
+    /// LMKAlert.presentTextInput(
+    ///     LMKAlert.TextInput(
+    ///         title: "API Key",
+    ///         initialText: storedKey,
+    ///         isSecure: true,
+    ///         additionalActions: storedKey == nil ? [] : [.init(title: "Remove", style: .destructive) { removeKey() }]
+    ///     ),
+    ///     from: self,
+    ///     onSave: { key in save(key) }
+    /// )
+    /// ```
     @discardableResult
     public static func presentTextInput(
         _ input: TextInput,
@@ -249,6 +270,14 @@ public enum LMKAlert {
             field.autocorrectionType = input.autocorrectionType
             field.keyboardType = input.keyboardType
             field.isSecureTextEntry = input.isSecure
+            if input.isSecure {
+                field.autocorrectionType = .no
+                field.autocapitalizationType = .none
+                field.spellCheckingType = .no
+                field.smartQuotesType = .no
+                field.smartDashesType = .no
+                field.smartInsertDeleteType = .no
+            }
             input.configureField?(field)
             if let validate = input.validate {
                 save?.isEnabled = validate(field.text ?? "")
@@ -259,6 +288,11 @@ public enum LMKAlert {
         }
         alert.addAction(UIAlertAction(title: input.cancelTitle ?? strings.cancel, style: .cancel) { _ in onCancel?() })
         alert.addAction(save)
+        for action in input.additionalActions {
+            let alertAction = UIAlertAction(title: action.title, style: action.style == .destructive ? .destructive : .default) { _ in action.handler() }
+            alertAction.isEnabled = action.isEnabled
+            alert.addAction(alertAction)
+        }
         host.present(alert, animated: true)
         return alert
     }
@@ -271,11 +305,13 @@ public enum LMKAlert {
         message: String? = nil,
         placeholder: String? = nil,
         initialText: String? = nil,
+        isSecure: Bool = false,
+        additionalActions: [Action] = [],
         onSave: @escaping (String) -> Void,
         onCancel: (() -> Void)? = nil
     ) -> UIAlertController {
         presentTextInput(
-            TextInput(title: title, message: message, placeholder: placeholder, initialText: initialText),
+            TextInput(title: title, message: message, placeholder: placeholder, initialText: initialText, isSecure: isSecure, additionalActions: additionalActions),
             from: host,
             onSave: onSave,
             onCancel: onCancel
