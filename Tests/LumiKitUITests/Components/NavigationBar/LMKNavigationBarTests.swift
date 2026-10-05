@@ -277,6 +277,28 @@ struct LMKNavigationBarTests {
     }
 
     @Test
+    func `A long title truncates instead of squeezing a text item onto two lines`() throws {
+        let bar = LMKNavigationBar()
+        bar.showsBackButton = true
+        bar.title = "A very long plan title that keeps going and going well past the bar"
+        bar.setRightItems([.init(title: "Edit") {}])
+        let host = UIView(frame: CGRect(x: 0, y: 0, width: 390, height: 100))
+        bar.install(in: host)
+        host.layoutIfNeeded()
+        let button = try #require(bar.rightItemButtons.first)
+        // At equal priorities the engine breaks the tie either way, so the rule itself is pinned:
+        // an item outranks the title for horizontal room.
+        #expect(
+            button.contentCompressionResistancePriority(for: .horizontal)
+                > bar.titleLabel.contentCompressionResistancePriority(for: .horizontal)
+        )
+        #expect(button.bounds.width >= button.intrinsicContentSize.width - 0.5, "the item keeps its one-line width")
+        let titleFrame = bar.titleLabel.convert(bar.titleLabel.bounds, to: bar)
+        let buttonFrame = button.convert(button.bounds, to: bar)
+        #expect(titleFrame.maxX <= buttonFrame.minX + 0.5, "the title stops short of the item")
+    }
+
+    @Test
     func `Accessory views live outside the item stacks`() {
         let bar = LMKNavigationBar()
         bar.setRightItems([.init(systemName: "plus") {}])

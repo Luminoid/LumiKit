@@ -598,6 +598,10 @@ public final class LMKNavigationBar: UIView, LMKThemeApplying {
         var sizeConstraints: [Constraint] = []
         let buttons = items.map { item in
             let button = LMKButton(style: LMKButton.Style())
+            // Above the title label's 750: at a tie a long title squeezed a text item until its
+            // title wrapped ("Ed / it"); the title truncates instead. Not required, so a bar
+            // overfilled with items still resolves.
+            button.setContentCompressionResistancePriority(UILayoutPriority(999), for: .horizontal)
             stack.addArrangedSubview(button)
             button.snp.makeConstraints { make in
                 sizeConstraints.append(make.width.height.greaterThanOrEqualTo(resolved.itemSize ?? Self.defaultButtonRowHeight).constraint)

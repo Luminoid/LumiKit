@@ -179,6 +179,8 @@ public final class LMKMonthCalendarView: UIView, LMKThemeApplying {
     private var weekdaySpacing: CGFloat = 4
     /// Whether the today mark follows the system day (`configure(today: nil)`) or a host-pinned day.
     private var followsSystemToday = true
+    /// The header layout the header stack is arranged for; `nil` until the first theme pass.
+    private var arrangedHeaderLayout: HeaderLayout?
 
     static let rowCapacity = 6
     static let columnCount = 7
@@ -357,7 +359,14 @@ public final class LMKMonthCalendarView: UIView, LMKThemeApplying {
         headerHeightConstraint?.update(offset: headerBandHeight(theme: theme))
         headerSpacing = resolved.spacingAfterHeader ?? theme.spacing.small
         contentStack.setCustomSpacing(layout == .hidden ? 0 : headerSpacing, after: headerView)
-        arrangeHeader(layout: layout)
+        // Only a new layout rebuilds the header. A style holding a dynamic color never compares
+        // equal to the last one, so a host re-assigning an unchanged look on every reload re-ran
+        // this pass each time, and tearing the buttons out and back in laid the header out again
+        // even while the calendar was off screen.
+        if layout != arrangedHeaderLayout {
+            arrangeHeader(layout: layout)
+            arrangedHeaderLayout = layout
+        }
         let tappable = resolved.titleIsTappable ?? false
         titleButton.isUserInteractionEnabled = tappable
         titleButton.isPointerInteractionEnabled = tappable

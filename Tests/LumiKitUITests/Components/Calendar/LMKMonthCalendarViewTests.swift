@@ -176,6 +176,30 @@ struct LMKMonthCalendarViewTests {
     }
 
     @Test
+    func `Re-assigning an unchanged look keeps the header's views, and a new layout rebuilds them`() {
+        /// A dynamic color compares by identity: each call builds a new one (the closure
+        /// captures, so it is a fresh block), and each style differs from the last.
+        func style(_ layout: LMKMonthCalendarView.HeaderLayout) -> LMKMonthCalendarView.Style {
+            let tint = UIColor.systemOrange
+            return LMKMonthCalendarView.Style(accent: UIColor { _ in tint }, headerLayout: layout)
+        }
+        let view = makeCalendar(style: style(.leadingTitle))
+        // Identities, copied out: `arrangedSubviews` bridges lazily and would read the live list.
+        func arrangement() -> [ObjectIdentifier] {
+            view.headerStack.arrangedSubviews.map(ObjectIdentifier.init)
+        }
+        let arranged = arrangement()
+        var passes = 0
+        view.didApplyStyle = { _ in passes += 1 }
+        view.style = style(.leadingTitle)
+        #expect(passes == 1, "the fixture must re-run the theme pass")
+        #expect(arrangement() == arranged, "the header was torn down and rebuilt")
+        view.style = style(.centeredTitle)
+        #expect(arrangement() != arranged)
+        #expect(view.headerStack.arrangedSubviews.first === view.previousButton, "the centered layout leads with the previous chevron")
+    }
+
+    @Test
     func `The leading title stays on one line while the header has room for it`() {
         // Narrow enough that the title is wider than half the header, the width a stack view
         // caps a wrapping text view at, and wide enough that everything still fits on one line.

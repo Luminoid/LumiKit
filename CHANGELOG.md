@@ -7,7 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-Nothing yet.
+### Fixed
+
+- A long navigation bar title no longer squeezes a text item such as Edit onto two lines; the title truncates instead.
+- Reassigning `LMKMonthCalendarView.style` with an unchanged look no longer rebuilds the month header each time.
 
 ## [1.0.0] - 2026-10-04
 
