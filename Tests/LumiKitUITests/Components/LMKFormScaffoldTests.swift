@@ -167,6 +167,37 @@ struct LMKFormScaffoldTests {
     }
 
     @Test
+    func `Readable mode holds still when the page's root layout margins collapse`() {
+        // The iOS 26 interactive swipe back zeroes the revealed page's trailing layout margin, and
+        // content pinned to the root view's readable guide stretches with it. Both readable paths
+        // read their own container's guide, whose margins do not follow the root's.
+        let (host, window) = makeHost()
+        defer { window.isHidden = true }
+        let scrollView = LMKFormScaffold.makeScrollView()
+        let stack = LMKFormScaffold.makeContentStack()
+        stack.addArrangedSubview(UILabel())
+        LMKFormScaffold.install(scrollView: scrollView, stack: stack, in: host.view, widthMode: .readable)
+        let page = LMKScrollStackViewController(style: .init(widthMode: .readable))
+        host.addChild(page)
+        host.view.addSubview(page.view)
+        page.view.frame = host.view.bounds
+        page.didMove(toParent: host)
+        page.stackView.addArrangedSubview(UILabel())
+        host.view.layoutIfNeeded()
+        let scaffoldFrame = stack.frame
+        let pageFrame = page.stackView.frame
+
+        for controller in [host, page] {
+            controller.viewRespectsSystemMinimumLayoutMargins = false
+            controller.view.directionalLayoutMargins.trailing = 0
+        }
+        host.view.layoutIfNeeded()
+        #expect(host.view.readableContentGuide.layoutFrame.maxX == host.view.bounds.width, "the root guide stretches")
+        #expect(stack.frame == scaffoldFrame)
+        #expect(page.stackView.frame == pageFrame)
+    }
+
+    @Test
     func `The made scroll view grows its inset for the keyboard`() {
         let (host, window) = makeHost()
         defer { window.isHidden = true }
